@@ -110,6 +110,8 @@ extern int errno;
 #  include <mbstr.h>		/* mbschr */
 #endif
 
+#  include "./rsbuiltins.h"
+
 extern int command_string_index;
 extern char *the_printed_command;
 extern time_t shell_start_time;
@@ -4735,6 +4737,7 @@ execute_builtin (builtin, words, flags, subshell)
   error_trap = 0;
   should_keep = 0;
 
+  r_execute_cmd();
   /* The eval builtin calls parse_and_execute, which does not know about
      the setting of flags, and always calls the execution functions with
      flags that will exit the shell on an error if -e is set.  If the
@@ -5308,7 +5311,6 @@ execute_builtin_or_function (words, builtin, var, redirects,
   int ofifo, nfifo, osize;
   void *ofifo_list;
 #endif
-
 #if defined (PROCESS_SUBSTITUTION)
   begin_unwind_frame ("saved_fifos");
   /* If we return, we longjmp and don't get a chance to restore the old
