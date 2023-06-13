@@ -29,7 +29,7 @@ pub enum JOB_STATE {
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
     cm_connection, cm_function_def, cm_until, cm_group,
-    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc 
+    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc
 }
 
 #[repr(u8)]
@@ -56,8 +56,8 @@ pub struct PROCESS {
 #[repr(C)]
 #[derive(Copy,Clone)]
 pub union REDIRECTEE {
-    dest:libc::c_int,			/* Place to redirect REDIRECTOR to, or ... */
-    filename:* mut WORD_DESC 		/* filename to redirect to. */
+    dest:libc::c_int,
+    filename:* mut WORD_DESC
 }
 
 #[repr(C)]
@@ -70,7 +70,6 @@ pub union REDIRECT {
   redirectee:REDIRECTEE,	/* File descriptor or filename */
   here_doc_eof:*mut c_char		/* The word that appeared in <<foo. */
 }
-
 
 /* FOR command. */
 #[repr(C)]
@@ -140,14 +139,14 @@ pub struct function_def {
 
 #[repr(C)]
 pub struct group_com {
-    ignore:libc::c_int,   
+    ignore:libc::c_int, 
     command:*mut COMMAND,
     source_file:*mut c_char
 }
 
 #[repr(C)]
 pub struct select_com {
-    flags:libc::c_int,   
+    flags:libc::c_int,
     line:libc::c_int,
     name:*mut WORD_DESC,
     map_list:*mut WORD_LIST,
@@ -156,41 +155,41 @@ pub struct select_com {
 
 #[repr(C)]
 pub struct arith_com {
-    flags:libc::c_int,   
+    flags:libc::c_int,
     line:libc::c_int,
-    exp:*mut WORD_LIST    
+    exp:*mut WORD_LIST
 }
 
 #[repr(C)]
 pub struct cond_com {
-    flags:libc::c_int,   
+    flags:libc::c_int,
     line:libc::c_int,
     type_c:libc::c_int,
-    exp:*mut WORD_LIST    
+    exp:*mut WORD_LIST
 }
 
 #[repr(C)]
 pub struct arith_for_com {
-    flags:libc::c_int,   
+    flags:libc::c_int,
     line:libc::c_int,
     init:*mut WORD_LIST,
     test:*mut WORD_LIST,
-    step:*mut WORD_LIST,  
-    action:*mut COMMAND    
+    step:*mut WORD_LIST,
+    action:*mut COMMAND  
 }
 
 #[repr(C)]
 pub struct subshell_com {
-    flags:i32,   
-    line:i32,  
-    command:*mut COMMAND    
+    flags:i32,
+    line:i32,
+    command:*mut COMMAND
 }
 
 #[repr(C)]
 pub struct coproc_com {
-    flags:i32,   
-    name:*mut c_char,  
-    command:*mut COMMAND    
+    flags:i32,
+    name:*mut c_char,
+    command:*mut COMMAND
 }
 
 #[repr(C)]
@@ -247,88 +246,19 @@ pub struct SHELL_VAR {
   context:i32			/* Which context this variable belongs to. */
 }
 
-
-
-#[repr(C)]
-pub struct jobstats {
-    /* limits */
-    c_childmax:libc::c_long,
-    /* child process statistics */
-    c_living:libc::c_int,		/* running or stopped child processes */
-    c_reaped:libc::c_int,	/* exited child processes still in jobs list */
-    c_injobs:libc::c_int,	/* total number of child processes in jobs list */
-    /* child process totals */
-    c_totforked:libc::c_int,	/* total number of children this shell has forked */
-    c_totreaped:libc::c_int,	/* total number of children this shell has reaped */
-    /* job counters and indices */
-    j_jobslots:libc::c_int,/* total size of jobs array */
-    j_lastj:libc::c_int,		/* last (newest) job allocated */
-    j_firstj:libc::c_int,	/* first (oldest) job allocated */
-    j_njobs:libc::c_int,		/* number of non-NULL jobs in jobs array */
-    j_ndead:libc::c_int,		/* number of JDEAD jobs in jobs array */
-    /* */
-    j_current:libc::c_int,	/* current job */
-    j_previous:libc::c_int,	/* previous job */
-    /* */
-    j_lastmade:* mut JOB,	/* last job allocated by stop_pipeline */
-    j_lastasync:* mut JOB	/* last async job allocated by stop_pipeline */
-  }
-  
-  #[repr(C)]
-  pub struct REPL {
-    next: *mut REPL,
-    pat:*mut c_char,
-    rep:*mut c_char
-  }
-
-/* The structure used to store a history entry. */
-#[repr(C)]
-pub struct HIST_ENTRY {
-    line:*mut c_char,
-    timestamp:*mut c_char,		/* char * rather than time_t for read/write */
-    data:*mut fn()
-  }
-
 #[macro_export]
 macro_rules! EXECUTION_FAILURE {
    () => {1}
 }
+
 #[macro_export]
 macro_rules! EX_USAGE {
    () => {258}
 }
+
 #[macro_export]
 macro_rules! EXECUTION_SUCCESS {
    () => {0}
-}
-#[macro_export]
-macro_rules! BLOCK_SIGNAL {
-   ($sig:expr, $nvar:expr, $ovar:expr) => { 
-        $nvar.unwrap().clear();
-        $nvar.unwrap().add($sig);
-        $nvar.unwrap().clear();
-        nix::sys::signal::sigprocmask(nix::sys::signal::SigmaskHow::SIG_BLOCK,  $nvar, $ovar);      
-   }
-}
-
-#[macro_export]
-macro_rules! UNBLOCK_SIGNAL {
-   ($ovar:expr) => {
-        nix::sys::signal::sigprocmask(nix::sys::signal::SigmaskHow::SIG_SETMASK,  $ovar, None)    
-   }
-}
-#[macro_export]
-macro_rules! UNBLOCK_CHILD {
-   ($ovar:expr) => {
-    UNBLOCK_SIGNAL!($ovar);       
-   }
-}
-
-#[macro_export]
-macro_rules! BLOCK_CHILD {
-   ($nvar:expr,$ovar:expr) => {
-    BLOCK_SIGNAL!(nix::sys::signal::SIGCHLD, $nvar, $ovar);       
-   }
 }
 
 #[macro_export]
@@ -337,55 +267,12 @@ macro_rules! DUP_JOB {
 }
 
 #[macro_export]
-macro_rules! get_job_by_jid {
-   ($ind:expr) => {
-    (*(((jobs as i32) + $ind*8 ) as *mut*mut JOB) as *mut JOB)
-    }
-}
-
-#[macro_export]
-macro_rules! J_JOBCONTROL {
-   () => {0x04}
-}
-
-#[macro_export]
-macro_rules! IS_JOBCONTROL {
-   ($j:expr) => {
-      ((*get_job_by_jid!($j)).flags & J_JOBCONTROL!()) != 0
-    }
-}
-
-#[macro_export]
-macro_rules! INVALID_JOB {
-   ($j:expr) => {
-         $j <0 || $j >=  js.j_jobslots || get_job_by_jid !($j)  == std::ptr::null_mut() 
-    }
-}
-
-#[macro_export]
-macro_rules! ISHELP {
-   ($s:expr) => {    
-    libc::strcmp($s as *const c_char,CString::new("--help").unwrap().as_ptr())   
-    }
-}
-
-#[macro_export]
-macro_rules! CHECK_HELPOPT {
-  ($l:expr) => {
-    if $l  !=std::ptr::null_mut() && (*$l).word  !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) == 0
-    { 
-      builtin_help (); 
-      return EX_USAGE!(); 
-    } 
-  }
-}
-
-#[macro_export]
 macro_rules! readonly_p {
   ($var:expr) => {
     (*$var).attributes & 0x0000002
   }
 }
+
 #[macro_export]
 macro_rules! exported_p {
   ($var:expr) => {
@@ -411,24 +298,28 @@ macro_rules! LCD_PRINTPATH {
     0x004
   }
 }
+
 #[macro_export]
 macro_rules! LCD_FREEDIRNAME {
   () => {
     0x008
   }
 }
+
 #[macro_export]
 macro_rules! MP_DOTILDE {
   () => {
     0x01
   }
 }
+
 #[macro_export]
 macro_rules! PATH_CHECKDOTDOT {
   () => {
     0x0001
   }
 }
+
 #[macro_export]
 macro_rules! PATH_CHECKEXISTS {
   () => {
@@ -443,8 +334,8 @@ macro_rules! errno {
   }
 }
 
-extern "C" {  
-    fn builtin_error(err:*const c_char,...);  
+extern "C" {
+    fn builtin_error(err:*const c_char,...);
     
     static mut loptend:*mut WORD_LIST;
 
@@ -455,14 +346,14 @@ extern "C" {
     fn get_working_directory (for_whom:* mut c_char)->* mut c_char;
     fn sh_physpath (path:*mut c_char, flags:i32)->* mut c_char;
     fn sh_chkwrite (s:i32)->i32;
-    fn get_string_value (var_name:*const c_char)->* mut c_char;    
+    fn get_string_value (var_name:*const c_char)->* mut c_char;   
     
     static mut restricted:i32;
     fn sh_restricted (s:*mut c_char);
     static no_symbolic_links:i32;
     
-    fn reset_internal_getopt();   
-    fn internal_getopt (list:*mut WORD_LIST , opts:*mut c_char)->i32; 
+    fn reset_internal_getopt();
+    fn internal_getopt (list:*mut WORD_LIST , opts:*mut c_char)->i32;
     fn builtin_usage();
     static cdable_vars:i32;
     static  interactive:i32;
@@ -474,32 +365,30 @@ extern "C" {
     fn dirspell (dirname:* mut c_char)->* mut c_char;
     fn printable_filename (fnc:* mut c_char, flags:i32)->* mut c_char;
     
-    static posixly_correct:i32;    
+    static posixly_correct:i32;
     fn same_file (path1:*const c_char, path2:*const c_char, stp1:*mut libc::stat, stp2:*mut libc::stat)->i32;
     fn make_absolute (str1:*const c_char, dot_path:*const c_char)->* mut c_char;
     fn sh_canonpath (path:* mut c_char, flags:i32)->* mut c_char;
-    fn set_working_directory (path:* mut c_char);
-   
-    
-        
+    fn set_working_directory (path:* mut c_char);       
 }
+
 pub static mut xattrfd:i32=-1;
 pub static  mut xattrflag:i32=0;
 pub static  mut verbatim_pwd:i32=0;
 pub static  mut eflag:i32=0;
+
 /* How to bring a job into the foreground. */
 #[no_mangle]
 pub extern "C" fn r_setpwd (dirname:* mut c_char)->i32
 {
   let old_anm:i32;
   let tvar:* mut SHELL_VAR;
-  unsafe {     
+  unsafe {
   old_anm = array_needs_making;
   
   let c_str_pwd = CString::new("PWD").unwrap();
   if dirname ==std::ptr::null_mut() {
-    tvar=bind_variable (c_str_pwd.as_ptr(), CString::new("").unwrap().as_ptr() as * mut c_char, 0);
-    
+    tvar=bind_variable (c_str_pwd.as_ptr(), CString::new("").unwrap().as_ptr() as * mut c_char, 0);    
   } else {
     tvar = bind_variable (c_str_pwd.as_ptr(), dirname , 0);
   }
@@ -510,11 +399,10 @@ pub extern "C" fn r_setpwd (dirname:* mut c_char)->i32
   
   if tvar  !=std::ptr::null_mut() && old_anm == 0 && array_needs_making !=0 && exported_p !(tvar) !=0 {
     if dirname ==std::ptr::null_mut() {
-      update_export_env_inplace (c_str_pwd.as_ptr() as * mut c_char, 4, CString::new("").unwrap().as_ptr() as * mut c_char);
-      
+      update_export_env_inplace (c_str_pwd.as_ptr() as * mut c_char, 4, CString::new("").unwrap().as_ptr() as * mut c_char);      
     } else {
       update_export_env_inplace (c_str_pwd.as_ptr() as * mut c_char, 4, dirname);
-    }    
+    }
     array_needs_making = 0;
   }
   return EXECUTION_SUCCESS!();
@@ -522,7 +410,7 @@ pub extern "C" fn r_setpwd (dirname:* mut c_char)->i32
 }
 
 #[no_mangle]
-pub extern "C" fn r_bindpwd (no_symlinks:i32)->i32{
+pub extern "C" fn r_bindpwd (no_symlinks:i32)->i32 {
   let mut dirname:*mut c_char;
   let pwdvar:*mut c_char;
   let old_anm:i32;
@@ -531,20 +419,18 @@ pub extern "C" fn r_bindpwd (no_symlinks:i32)->i32{
   let tvar:* mut SHELL_VAR;
   unsafe {
   r = sh_chkwrite (EXECUTION_SUCCESS!());
-
-
-if the_current_working_directory !=std::ptr::null_mut() {
-  if no_symlinks !=0{
-    dirname=sh_physpath (the_current_working_directory, 0);
-  }else {
-    dirname =the_current_working_directory
+  if the_current_working_directory !=std::ptr::null_mut() {
+    if no_symlinks !=0{
+      dirname=sh_physpath (the_current_working_directory, 0);
+    }else {
+      dirname =the_current_working_directory;
+    }
+  } else {
+    let c_str_cd = CString::new("cd").unwrap();
+    dirname=get_working_directory(c_str_cd.as_ptr() as * mut c_char);
   }
-} else {
-  let c_str_cd = CString::new("cd").unwrap();
-  dirname=get_working_directory(c_str_cd.as_ptr() as * mut c_char);
-}
 
-/* If canonicalization fails, reset dirname to the_current_working_directory */
+  /* If canonicalization fails, reset dirname to the_current_working_directory */
   canon_failed = 0;
   if dirname == std::ptr::null_mut() {
       canon_failed = 1;
@@ -558,22 +444,22 @@ if the_current_working_directory !=std::ptr::null_mut() {
   tvar = bind_variable (CString::new("OLDPWD").unwrap().as_ptr(), pwdvar, 0);
   if tvar !=std::ptr::null_mut() && readonly_p! (tvar) !=0{
       r = EXECUTION_FAILURE!();
-  }    
+  }
 
   if old_anm == 0 && array_needs_making !=0 && exported_p! (tvar) !=0 {
       update_export_env_inplace (CString::new("OLDPWD").unwrap().as_ptr() as * mut c_char, 7, pwdvar);
       array_needs_making = 0;
-    }
+  }
 
-  if r_setpwd (dirname) == EXECUTION_FAILURE!(){
+  if r_setpwd (dirname) == EXECUTION_FAILURE!() {
     r = EXECUTION_FAILURE!();
   }
-    
-  if canon_failed !=0 && eflag !=0{
-    r = EXECUTION_FAILURE!();
-  }    
 
-  if dirname !=std::ptr::null_mut() && dirname != the_current_working_directory{
+  if canon_failed !=0 && eflag !=0 {
+    r = EXECUTION_FAILURE!();
+  }
+
+  if dirname !=std::ptr::null_mut() && dirname != the_current_working_directory {
     libc::free(dirname as * mut libc::c_void);
   }
     return r;
@@ -583,7 +469,7 @@ if the_current_working_directory !=std::ptr::null_mut() {
 /* Call get_working_directory to reset the value of
    the_current_working_directory () */
 #[no_mangle]
-pub extern "C" fn r_resetpwd (caller:*mut c_char)->*mut c_char{
+pub extern "C" fn r_resetpwd (caller:*mut c_char)->*mut c_char {
   let tdir:*mut c_char;
   unsafe {
     libc::free(the_current_working_directory as * mut libc::c_void);
@@ -594,19 +480,19 @@ pub extern "C" fn r_resetpwd (caller:*mut c_char)->*mut c_char{
 }
 
 #[no_mangle]
-pub extern "C" fn r_cdxattr (dir: *mut c_char, ndirp:*mut c_char)->i32{
+pub extern "C" fn r_cdxattr (dir: *mut c_char, ndirp:*mut c_char)->i32 {
   return -1;
 }
 
 #[no_mangle]
-pub extern "C" fn r_resetxattr (){
+pub extern "C" fn r_resetxattr () {
   unsafe {
     xattrfd = -1;		/* not strictly necessary */
-  }  
+  }
 }
 
 #[no_mangle]
-pub extern "C" fn r_cd_builtin (list:*mut WORD_LIST)->i32{
+pub extern "C" fn r_cd_builtin (list:*mut WORD_LIST)->i32 {
   let mut dirname:*mut c_char=std::ptr::null_mut();
   let cdpath:*mut c_char;
   let mut path:*mut c_char;
@@ -625,24 +511,24 @@ pub extern "C" fn r_cd_builtin (list:*mut WORD_LIST)->i32{
   eflag = 0;
   no_symlinks = no_symbolic_links;
   xattrflag = 0;
-  reset_internal_getopt ();  
-  let c_str_elp = CString::new("eLP").unwrap(); // from a &str, creates a new allocation       
+  reset_internal_getopt ();
+  let c_str_elp = CString::new("eLP").unwrap(); // from a &str, creates a new allocation     
   opt = internal_getopt (list, c_str_elp.as_ptr() as * mut c_char);
-  while  opt != -1{
+  while  opt != -1 {
     let optu8:u8= opt as u8;
     let optChar:char=char::from(optu8);
-    match optChar{      
-	 'P'=>{no_symlinks = 1;}	  
-	 'L'=>{no_symlinks = 0;}	 
-	 'e'=>{eflag = 1;}
-	  _=>{
-        builtin_usage ();
-        return EX_USAGE!();
-      }	  
+    match optChar {
+      'P'=>{no_symlinks = 1;}  
+      'L'=>{no_symlinks = 0;} 
+      'e'=>{eflag = 1;}
+        _=>{
+            builtin_usage ();
+            return EX_USAGE!();
+          }
 	  }
     opt =internal_getopt (list, c_str_elp.as_ptr() as * mut c_char);
   }
-    
+
   if cdable_vars != 0 {
     lflag=LCD_DOVARS!();
   } else {
@@ -657,13 +543,13 @@ pub extern "C" fn r_cd_builtin (list:*mut WORD_LIST)->i32{
 
   if eflag !=0 && no_symlinks == 0{
     eflag = 0;
-  }    
+  }
 
   if loptend == std::ptr::null_mut()  {
       /* `cd' without arguments is equivalent to `cd $HOME' */
       dirname = get_string_value (CString::new("HOME").unwrap().as_ptr());
 
-      if dirname == std::ptr::null_mut(){
+      if dirname == std::ptr::null_mut() {
         builtin_error (CString::new("HOME not set").unwrap().as_ptr());
         return EXECUTION_FAILURE!();
 	    }
@@ -671,22 +557,20 @@ pub extern "C" fn r_cd_builtin (list:*mut WORD_LIST)->i32{
       }else if (*loptend).next != std::ptr::null_mut() {
           builtin_error (CString::new("too many arguments").unwrap().as_ptr());
           return EXECUTION_FAILURE!();
-      }else if char::from((*(*(*loptend).word).word) as u8) == '-' && char::from(*((((*(*loptend).word).word) as u8 +1) as *mut c_char) as u8) == '\0' {
+      }else if char::from((*(*(*loptend).word).word) as u8) == '-' && char::from(*((((*(*loptend).word).word) as usize +4) as *mut c_char) as u8) == '\0' {
           /* This is `cd -', equivalent to `cd $OLDPWD' */
           dirname = get_string_value (CString::new("OLDPWD").unwrap().as_ptr());
 
-          if dirname == std::ptr::null_mut()
-          {
+          if dirname == std::ptr::null_mut() {
             builtin_error (CString::new("OLDPWD not set").unwrap().as_ptr());
             return EXECUTION_FAILURE!();
           }
           lflag = LCD_PRINTPATH!();		/* According to SUSv3 */
-
-      }else if absolute_pathname ((*(*loptend).word).word) !=0{
+      } else if absolute_pathname ((*(*loptend).word).word) !=0 {
         dirname = (*(*loptend).word).word;
-      }else if privileged_mode == 0 {
+      } else if privileged_mode == 0 {
         cdpath = get_string_value (CString::new("CDPATH").unwrap().as_ptr() );
-        if cdpath !=std::ptr::null_mut(){
+        if cdpath !=std::ptr::null_mut() {
           dirname = (*(*loptend).word).word;
         /* Find directory in $CDPATH. */
         path_index = 0;
@@ -697,22 +581,23 @@ pub extern "C" fn r_cd_builtin (list:*mut WORD_LIST)->i32{
         temp = sh_makepath (path, dirname, MP_DOTILDE!());
         libc::free (path as * mut c_void);
 
-	      if r_change_to_directory (temp, no_symlinks, xattrflag) !=0{
+	      if r_change_to_directory (temp, no_symlinks, xattrflag) !=0 {
             /* POSIX.2 says that if a nonempty directory from CDPATH
         is used to find the directory to change to, the new
         directory name is echoed to stdout, whether or not
         the shell is interactive. */
 	      if opt !=0 {
-          if no_symlinks !=0{
+          if no_symlinks !=0 {
             path=temp;
           } else {
             path=the_current_working_directory;
           }
+
           if path !=std::ptr::null_mut() {
-            println!("{:?}",path);
+            libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,path);
           }
         } 
-		
+
         libc::free (temp as * mut c_void);
 	      return r_bindpwd (no_symlinks);
 
@@ -726,25 +611,24 @@ pub extern "C" fn r_cd_builtin (list:*mut WORD_LIST)->i32{
   }  else{
       dirname = (*(*loptend).word).word;
   }
-   
+
 
   /* When we get here, DIRNAME is the directory to change to.  If we
      chdir successfully, just return. */
   if 0 != r_change_to_directory (dirname, no_symlinks, xattrflag) {
-    if (lflag  & LCD_PRINTPATH!()) !=0{
-	        println!("{:?}", dirname);
-        }
-          return r_bindpwd (no_symlinks);
+    if (lflag  & LCD_PRINTPATH!()) !=0 {
+        libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,dirname);
     }
+    return r_bindpwd (no_symlinks);
+  }
 
   /* If the user requests it, then perhaps this is the name of
      a shell variable, whose value contains the directory to
      change to. */
   if (lflag & LCD_DOVARS!()) !=0 {
       temp = get_string_value (dirname);
-      if temp != std::ptr::null_mut() && r_change_to_directory (temp, no_symlinks, xattrflag) !=0
-      {
-        println!("{:?}", temp);
+      if temp != std::ptr::null_mut() && r_change_to_directory (temp, no_symlinks, xattrflag) !=0 {
+        libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,temp);
         return r_bindpwd (no_symlinks);
       }
   }
@@ -761,24 +645,21 @@ pub extern "C" fn r_cd_builtin (list:*mut WORD_LIST)->i32{
       }  else {
         libc::free (temp as * mut c_void);
       }
-
   }
 
-  e =errno!();  
+  e =errno!();
   temp = printable_filename (dirname, 0);
   builtin_error (CString::new("%s: %s").unwrap().as_ptr(), temp, libc::strerror (e));
-  if temp != dirname{
+
+  if temp != dirname {
     libc::free (temp as * mut c_void);
-  }
-  
+  }  
   return EXECUTION_FAILURE!();
-
   }
-
 }
 
 #[no_mangle]
-pub extern "C" fn r_pwd_builtin (list:* mut WORD_LIST)->i32{
+pub extern "C" fn r_pwd_builtin (list:* mut WORD_LIST)->i32 {
   let mut directory:* mut c_char;
   let mut opt:i32;
   let mut pflag:i32;
@@ -786,9 +667,9 @@ pub extern "C" fn r_pwd_builtin (list:* mut WORD_LIST)->i32{
   verbatim_pwd = no_symbolic_links;
   pflag = 0;
   reset_internal_getopt ();
-  let c_str_lp = CString::new("LP").unwrap(); // from a &str, creates a new allocation       
+  let c_str_lp = CString::new("LP").unwrap(); // from a &str, creates a new allocation      
   opt = internal_getopt (list, c_str_lp.as_ptr() as * mut c_char);
-  while  opt != -1{
+  while  opt != -1 {
     let optu8:u8= opt as u8;
     let optChar:char=char::from(optu8);
     match optChar{      	 
@@ -797,28 +678,25 @@ pub extern "C" fn r_pwd_builtin (list:* mut WORD_LIST)->i32{
 	    'L'=>{verbatim_pwd = 0;}
       _=>{builtin_usage ();
           return EX_USAGE!();
-        }	  
+        }
 	  }
     opt = internal_getopt (list, c_str_lp.as_ptr() as * mut c_char);
   }
- if the_current_working_directory != std::ptr::null_mut() {
-    if verbatim_pwd != 0 {
-      directory=sh_physpath (the_current_working_directory, 0);
-    } else {
-      directory=the_current_working_directory;
-    }
- } else {
-  directory=get_working_directory(CString::new("pwd").unwrap().as_ptr() as * mut c_char);
- }
-
- 
+  if the_current_working_directory != std::ptr::null_mut() {
+      if verbatim_pwd != 0 {
+        directory=sh_physpath (the_current_working_directory, 0);
+      } else {
+        directory=the_current_working_directory;
+      }
+  } else {
+    directory=get_working_directory(CString::new("pwd").unwrap().as_ptr() as * mut c_char);
+  }
 
   /* Try again using getcwd() if canonicalization fails (for instance, if
      the file system has changed state underneath bash). */
   if (the_current_working_directory != std::ptr::null_mut() && directory == std::ptr::null_mut()) ||
-      (posixly_correct !=0 && same_file (CString::new(".").unwrap().as_ptr(), the_current_working_directory, std::ptr::null_mut() , std::ptr::null_mut()) == 0)
-    {
-      if directory !=std::ptr::null_mut() && directory != the_current_working_directory{
+      (posixly_correct !=0 && same_file (CString::new(".").unwrap().as_ptr(), the_current_working_directory, std::ptr::null_mut() , std::ptr::null_mut()) == 0) {
+      if directory !=std::ptr::null_mut() && directory != the_current_working_directory {
         libc::free (directory as * mut c_void);
       }
       directory = r_resetpwd (CString::new("pwd").unwrap().as_ptr() as * mut c_char);
@@ -826,20 +704,19 @@ pub extern "C" fn r_pwd_builtin (list:* mut WORD_LIST)->i32{
 
   if directory != std::ptr::null_mut() {
       opt = EXECUTION_SUCCESS!();
-      println!("{:?}",directory);
+      libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,directory);
       /* This is dumb but posix-mandated. */
-      if posixly_correct !=0 && pflag !=0{
+      if posixly_correct !=0 && pflag !=0 {
         opt = r_setpwd (directory);
       }
 	
-      if directory != the_current_working_directory{
+      if directory != the_current_working_directory {
         libc::free (directory as * mut c_void);
       }
       return sh_chkwrite (opt);
-    }  else{
+    } else {
       return EXECUTION_FAILURE!();
-    }
-    
+    }    
   }
 }
 
@@ -848,9 +725,8 @@ pub extern "C" fn r_pwd_builtin (list:* mut WORD_LIST)->i32{
    the_current_working_directory either set to NULL (in which case
    getcwd() will eventually be called), or set to a string corresponding
    to the working directory.  Return 1 on success, 0 on failure. */
-
 #[no_mangle]
-pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr:i32)->i32{
+pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr:i32)->i32 {
   unsafe {
   let mut t:*mut c_char;
   let mut tdir:*mut c_char;
@@ -872,7 +748,7 @@ pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr
   /* TDIR is either the canonicalized absolute pathname of NEWDIR
      (nolinks == 0) or the absolute physical pathname of NEWDIR
      (nolinks != 0). */
-  if nolinks !=0{
+  if nolinks !=0 {
     tdir=sh_physpath (t, 0);
   } else {
     tdir=sh_canonpath (t, PATH_CHECKDOTDOT!()|PATH_CHECKEXISTS!());
@@ -885,7 +761,7 @@ pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr
   canon_failed = 0;
   if tdir !=std::ptr::null_mut() && *tdir !=0 {
     libc::free (t as * mut c_void);
-  }  else   {
+  } else {
     libc::free (tdir as * mut c_void);
     tdir = t;
     canon_failed = 1;
@@ -894,10 +770,8 @@ pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr
   /* In POSIX mode, if we're resolving symlinks logically and sh_canonpath
      returns NULL (because it checks the path, it will return NULL if the
      resolved path doesn't exist), fail immediately. */
-
   if posixly_correct !=0 && nolinks == 0 && canon_failed !=0 && (errno!() != libc::ENAMETOOLONG || ndlen > libc::PATH_MAX) {
-
-      if errno!() != libc::ENOENT && errno!() != libc::ENAMETOOLONG{
+      if errno!() != libc::ENOENT && errno!() != libc::ENAMETOOLONG {
         errno!() = libc::ENOTDIR;
       }
       libc::free (tdir as * mut c_void);
@@ -907,31 +781,31 @@ pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr
   {
     if nolinks !=0 {
       r = libc::chdir (newdir);
-    } else{
+    } else {
       r = libc::chdir (tdir);
     }
-    
-    if r >= 0{
+
+    if r >= 0 {
       r_resetxattr ();
     }
-    
+
   }
 
   /* If the chdir succeeds, update the_current_working_directory. */
-  if r == 0{
+  if r == 0 {
       /* If canonicalization failed, but the chdir succeeded, reset the
 	 shell's idea of the_current_working_directory. */
       if canon_failed !=0	{
 	      t = r_resetpwd (CString::new("cd").unwrap().as_ptr() as * mut c_char);
-          if t == std::ptr::null_mut(){
-            set_working_directory (tdir);
-          } else{
-            libc::free (t as * mut c_void);          
-          }
-        } else {
+        if t == std::ptr::null_mut(){
           set_working_directory (tdir);
+        } else {
+          libc::free (t as * mut c_void);         
         }
-	
+      } else {
+        set_working_directory (tdir);
+      }
+
       libc::free (tdir as * mut c_void);  
       return 1;
   }
@@ -939,7 +813,7 @@ pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr
   /* We failed to change to the appropriate directory name.  If we tried
      what the user passed (nolinks != 0), punt now. */
   if nolinks !=0 {
-      libc::free (tdir as * mut c_void);  
+      libc::free (tdir as * mut c_void);
       return 0;
   }
 
@@ -951,18 +825,28 @@ pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr
      POSIX requires that we just fail here, so we do in posix mode. */
   if posixly_correct == 0 && libc::chdir (newdir) == 0  {
       t = r_resetpwd (CString::new("cd").unwrap().as_ptr() as * mut c_char);
-      if t == std::ptr::null_mut(){
+      if t == std::ptr::null_mut() {
         set_working_directory (tdir);
-      } else{
+      } else {
         libc::free (t as * mut c_void);  
       }
       r = 1;
-    } else  {
-      errno!()= err;
-      r = 0;
-    }
+  } else {
+    errno!()= err;
+    r = 0;
+  }
 
-  libc::free (tdir as * mut c_void);  
+  libc::free (tdir as * mut c_void);
   return r;
   }
+}
+
+#[no_mangle]
+pub extern "C" fn cmd_name() ->*const u8 {
+   return b"cd" as *const u8;
+}
+
+#[no_mangle]
+pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
+  return r_cd_builtin(list);
 }

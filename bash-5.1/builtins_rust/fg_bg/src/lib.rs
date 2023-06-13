@@ -29,7 +29,7 @@ pub enum JOB_STATE {
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
     cm_connection, cm_function_def, cm_until, cm_group,
-    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc 
+    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc
 }
 
 #[repr(u8)]
@@ -70,7 +70,6 @@ pub union REDIRECT {
   redirectee:REDIRECTEE,	/* File descriptor or filename */
   here_doc_eof:*mut c_char		/* The word that appeared in <<foo. */
 }
-
 
 /* FOR command. */
 #[repr(C)]
@@ -140,14 +139,14 @@ pub struct function_def {
 
 #[repr(C)]
 pub struct group_com {
-    ignore:libc::c_int,   
+    ignore:libc::c_int,
     command:*mut COMMAND,
     source_file:*mut c_char
 }
 
 #[repr(C)]
 pub struct select_com {
-    flags:libc::c_int,   
+    flags:libc::c_int,
     line:libc::c_int,
     name:*mut WORD_DESC,
     map_list:*mut WORD_LIST,
@@ -156,41 +155,41 @@ pub struct select_com {
 
 #[repr(C)]
 pub struct arith_com {
-    flags:libc::c_int,   
+    flags:libc::c_int,
     line:libc::c_int,
-    exp:*mut WORD_LIST    
+    exp:*mut WORD_LIST
 }
 
 #[repr(C)]
 pub struct cond_com {
-    flags:libc::c_int,   
+    flags:libc::c_int,
     line:libc::c_int,
     type_c:libc::c_int,
-    exp:*mut WORD_LIST    
+    exp:*mut WORD_LIST  
 }
 
 #[repr(C)]
 pub struct arith_for_com {
-    flags:libc::c_int,   
+    flags:libc::c_int,
     line:libc::c_int,
     init:*mut WORD_LIST,
     test:*mut WORD_LIST,
-    step:*mut WORD_LIST,  
-    action:*mut COMMAND    
+    step:*mut WORD_LIST,
+    action:*mut COMMAND  
 }
 
 #[repr(C)]
 pub struct subshell_com {
-    flags:i32,   
-    line:i32,  
+    flags:i32,
+    line:i32,
     command:*mut COMMAND    
 }
 
 #[repr(C)]
 pub struct coproc_com {
-    flags:i32,   
-    name:*mut c_char,  
-    command:*mut COMMAND    
+    flags:i32,
+    name:*mut c_char,
+    command:*mut COMMAND  
 }
 
 #[repr(C)]
@@ -231,6 +230,7 @@ pub struct JOB {
     j_cleanup:*mut fn(),
     cleanarg:* mut fn()
 }
+
 #[repr(C)]
 pub struct jobstats {
     /* limits */
@@ -254,62 +254,51 @@ pub struct jobstats {
     /* */
     j_lastmade:* mut JOB,	/* last job allocated by stop_pipeline */
     j_lastasync:* mut JOB	/* last async job allocated by stop_pipeline */
-  }
-  
-  #[repr(C)]
-  pub struct REPL {
-    next: *mut REPL,
-    pat:*mut c_char,
-    rep:*mut c_char
-  }
-
-/* The structure used to store a history entry. */
-#[repr(C)]
-pub struct HIST_ENTRY {
-    line:*mut c_char,
-    timestamp:*mut c_char,		/* char * rather than time_t for read/write */
-    data:*mut fn()
-  }
+}
 
 #[macro_export]
 macro_rules! EXECUTION_FAILURE {
    () => {1}
 }
+
 #[macro_export]
 macro_rules! EX_USAGE {
    () => {258}
 }
+
 #[macro_export]
 macro_rules! EXECUTION_SUCCESS {
    () => {0}
 }
+
 #[macro_export]
 macro_rules! BLOCK_SIGNAL {
-   ($sig:expr, $nvar:expr, $ovar:expr) => { 
+   ($sig:expr, $nvar:expr, $ovar:expr) => {
         $nvar.unwrap().clear();
         $nvar.unwrap().add($sig);
         $nvar.unwrap().clear();
-        nix::sys::signal::sigprocmask(nix::sys::signal::SigmaskHow::SIG_BLOCK,  $nvar, $ovar);      
+        nix::sys::signal::sigprocmask(nix::sys::signal::SigmaskHow::SIG_BLOCK,  $nvar, $ovar);   
    }
 }
 
 #[macro_export]
 macro_rules! UNBLOCK_SIGNAL {
    ($ovar:expr) => {
-        nix::sys::signal::sigprocmask(nix::sys::signal::SigmaskHow::SIG_SETMASK,  $ovar, None)    
+        nix::sys::signal::sigprocmask(nix::sys::signal::SigmaskHow::SIG_SETMASK,  $ovar, None)
    }
 }
+
 #[macro_export]
 macro_rules! UNBLOCK_CHILD {
    ($ovar:expr) => {
-    UNBLOCK_SIGNAL!($ovar);       
+    UNBLOCK_SIGNAL!($ovar);   
    }
 }
 
 #[macro_export]
 macro_rules! BLOCK_CHILD {
    ($nvar:expr,$ovar:expr) => {
-    BLOCK_SIGNAL!(nix::sys::signal::SIGCHLD, $nvar, $ovar);       
+    BLOCK_SIGNAL!(nix::sys::signal::SIGCHLD, $nvar, $ovar);  
    }
 }
 
@@ -321,7 +310,7 @@ macro_rules! DUP_JOB {
 #[macro_export]
 macro_rules! get_job_by_jid {
    ($ind:expr) => {
-    (*(((jobs as i32) + $ind*8 ) as *mut*mut JOB) as *mut JOB)
+    (*(((jobs as usize) + ($ind*32) as usize ) as *mut*mut JOB) as *mut JOB)
     }
 }
 
@@ -340,25 +329,24 @@ macro_rules! IS_JOBCONTROL {
 #[macro_export]
 macro_rules! INVALID_JOB {
    ($j:expr) => {
-         $j <0 || $j >=  js.j_jobslots || get_job_by_jid !($j) == std::ptr::null_mut() 
+         $j <0 || $j >=  js.j_jobslots || get_job_by_jid !($j) == std::ptr::null_mut()
     }
 }
 
 #[macro_export]
 macro_rules! ISHELP {
-   ($s:expr) => {    
-    libc::strcmp($s as *const c_char,CString::new("--help").unwrap().as_ptr())   
+   ($s:expr) => {
+    libc::strcmp($s as *const c_char,CString::new("--help").unwrap().as_ptr())
     }
 }
 
 #[macro_export]
 macro_rules! CHECK_HELPOPT {
   ($l:expr) => {
-    if $l  !=std::ptr::null_mut() && (*$l).word !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) == 0
-    { 
-      builtin_help (); 
-      return EX_USAGE!(); 
-    } 
+    if $l  !=std::ptr::null_mut() && (*$l).word !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) == 0 {
+      builtin_help ();
+      return EX_USAGE!();
+    }
   }
 }
 
@@ -380,12 +368,12 @@ extern "C" {
 
 /* How to bring a job into the foreground. */
 #[no_mangle]
-pub extern "C" fn  r_fg_builtin (list:*mut WORD_LIST)->i32{
+pub extern "C" fn  r_fg_builtin (list:*mut WORD_LIST)->i32 {
   let fg_bit:i32;
   unsafe {
     CHECK_HELPOPT! (list);
 
-    if job_control == 0  {
+    if job_control == 0 {
         sh_nojobs (0 as *mut c_char);
         return EXECUTION_FAILURE!();
     }
@@ -397,23 +385,22 @@ pub extern "C" fn  r_fg_builtin (list:*mut WORD_LIST)->i32{
     /* If the last arg on the line is '&', then start this job in the
       background.  Else, fg the job. */
     
-    if loptend  == std::ptr::null_mut(){
+    if loptend  == std::ptr::null_mut() {
       return r_fg_bg (loptend, 1);
-    }else {
+    } else {
       let mut t:WORD_LIST=*loptend;
-      while  t.next !=std::ptr::null_mut(){
+      while  t.next !=std::ptr::null_mut() {
         t=*(t.next);
       }
       let cstr:&std::ffi::CStr=std::ffi::CStr::from_ptr((*(t.word)).word );
       let mut isfg:bool=char::from( cstr.to_bytes()[0] ) == '&';
       isfg =isfg && char::from( cstr.to_bytes()[1])  == '\0';
       isfg = isfg ==false;
-      if isfg{
+      if isfg {
         fg_bit=1;
-      }else {
+      } else {
         fg_bit=0;
-      }
-    
+      }    
       return r_fg_bg (loptend, fg_bit);
     }
   }
@@ -421,7 +408,7 @@ pub extern "C" fn  r_fg_builtin (list:*mut WORD_LIST)->i32{
 
 /* How to put a job into the background. */
 #[no_mangle]
-pub extern "C" fn  r_bg_builtin (list:*mut WORD_LIST)->i32{
+pub extern "C" fn  r_bg_builtin (list:*mut WORD_LIST)->i32 {
   let mut r:i32;
   unsafe {
   CHECK_HELPOPT !(list);
@@ -439,23 +426,22 @@ pub extern "C" fn  r_bg_builtin (list:*mut WORD_LIST)->i32{
      on the first member (if any) of that list. */
   r = EXECUTION_SUCCESS!();
 
-  if r_fg_bg(loptend,0) == EXECUTION_FAILURE!(){
+  if r_fg_bg(loptend,0) == EXECUTION_FAILURE!() {
     r = EXECUTION_FAILURE!();
   }
   
   if loptend  !=std::ptr::null_mut() {
-      let mut t:WORD_LIST=*loptend;      
+      let mut t:WORD_LIST=*loptend;
       while t.next !=std::ptr::null_mut() {
-        if r_fg_bg (&mut t, 0) == EXECUTION_FAILURE!(){
+        if r_fg_bg (&mut t, 0) == EXECUTION_FAILURE!() {
           r = EXECUTION_FAILURE!();
-        }     
+        }
         t = *(t.next);
       }
       return r;
   } else {
     return r;
-  }
-	
+  }	
   }
 }
 
@@ -471,58 +457,64 @@ pub extern "C" fn r_fg_bg (list:*mut WORD_LIST, foreground:i32)->i32{
   let j:*mut JOB;
   
   unsafe {
-
-  BLOCK_CHILD !(Some(&mut set), Some(&mut oset));        
+  BLOCK_CHILD !(Some(&mut set), Some(&mut oset));      
   job = get_job_spec (list);
 
-  if INVALID_JOB !(job){
-      if job != DUP_JOB!(){
-        if list != std::ptr::null_mut() {
-          sh_badjob ( (*(*list).word).word );
-        }else {
-          let mut c_str_current = CString::new("current").unwrap(); // from a &str, creates a new allocation
-          sh_badjob (c_str_current.as_ptr() as * mut c_char);
-        }	      
+  if INVALID_JOB !(job) {
+    if job != DUP_JOB!() {
+      if list != std::ptr::null_mut() {
+        sh_badjob ( (*(*list).word).word );
+      } else {
+        let mut c_str_current = CString::new("current").unwrap(); // from a &str, creates a new allocation
+        sh_badjob (c_str_current.as_ptr() as * mut c_char);
       }
-
-      UNBLOCK_CHILD !(Some(&oset));
-      return EXECUTION_FAILURE!();
     }
+
+    UNBLOCK_CHILD !(Some(&oset));
+    return EXECUTION_FAILURE!();
+  }
 
   j = get_job_by_jid !(job);
   /* Or if j->pgrp == shell_pgrp. */
-  if ! IS_JOBCONTROL !(job)  {       
+  if ! IS_JOBCONTROL !(job) {       
       let jobNum:i32=job + 1;
       builtin_error ( String::from("job ").add(&jobNum.to_string()).add(&String::from("started without job control").to_string()).as_ptr() as * const c_char);
       UNBLOCK_CHILD !(Some(&oset));
       return EXECUTION_FAILURE!();
-    }
+  }
 
   if foreground == 0 {
       old_async_pid = i32::from(last_asynchronous_pid);
       last_asynchronous_pid = i32::from((*j).pgrp);	/* As per Posix.2 5.4.2 */
-    }
+  }
 
   status = start_job (job, foreground);
 
-  if status >= 0{
+  if status >= 0 {
     /* win: */
       UNBLOCK_CHILD !(Some(&oset));
       if foreground !=0 {
         return status;
-      }else {
+      } else {
         return  EXECUTION_SUCCESS!();
       }
-    }
-  else
-    {
-      if foreground == 0{
+    } else {
+      if foreground == 0 {
         last_asynchronous_pid = i32::from(old_async_pid);
       }
-   
+
       UNBLOCK_CHILD !(Some(&oset));
       return EXECUTION_FAILURE!();
     }
   }
 }
 
+#[no_mangle]
+pub extern "C" fn cmd_name() ->*const u8 {
+   return b"fg" as *const u8;
+}
+
+#[no_mangle]
+pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
+  return r_fg_builtin(list);
+}
