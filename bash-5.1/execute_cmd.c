@@ -4737,7 +4737,7 @@ execute_builtin (builtin, words, flags, subshell)
   error_trap = 0;
   should_keep = 0;
 
-  //r_execute_cmd();
+  r_execute_cmd();
   /* The eval builtin calls parse_and_execute, which does not know about
      the setting of flags, and always calls the execution functions with
      flags that will exit the shell on an error if -e is set.  If the
@@ -4841,7 +4841,6 @@ execute_builtin (builtin, words, flags, subshell)
   executing_builtin++;
   executing_command_builtin |= builtin == command_builtin;
   result = ((*builtin) (words->next));
-  // r_execute_cmd2(words->next);
 
   /* This shouldn't happen, but in case `return' comes back instead of
      longjmp'ing, we need to unwind. */
