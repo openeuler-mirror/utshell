@@ -355,7 +355,7 @@ macro_rules! get_job_by_jid {
 #[macro_export]
 macro_rules! INVALID_JOB {
    ($j:expr) => {
-         $j <0 || $j >=  js.j_jobslots || get_job_by_jid !($j) as u8 == 0 
+         $j <0 || $j >=  js.j_jobslots || get_job_by_jid !($j) == std::ptr::null_mut() 
     }
 }
 
@@ -399,7 +399,7 @@ extern "C" {
    
   /* First do the replacement of job specifications with pids. */
   
-  while l.next as u8 !=0    {
+  while l.next !=std::ptr::null_mut()    {
       let lchar:char=char::from((*(*l.word).word) as u8);
       if  lchar== '%'	/* we have a winner */	{
 	  job = get_job_spec (&mut l);
@@ -489,7 +489,7 @@ pub extern "C" fn r_jobs_builtin(list:*mut WORD_LIST)->i32{
         return r_execute_list_with_replacements (loptend);
     } 
     
-    if loptend as u8 ==0 {
+    if loptend  ==std::ptr::null_mut() {
         if state == JSTATE_ANY!() {
             list_all_jobs (form);
         } else if state == JSTATE_RUNNING!() {
@@ -501,11 +501,11 @@ pub extern "C" fn r_jobs_builtin(list:*mut WORD_LIST)->i32{
     }
    
     let mut loptendt=*loptend;
-    while loptendt.next as u8 !=0 {
+    while loptendt.next !=std::ptr::null_mut() {
         BLOCK_CHILD !(Some(&mut set), Some(&mut oset));
         job = get_job_spec (&mut loptendt);
 
-        if (job == NO_JOB!()) || jobs as u8 == 0 || get_job_by_jid !(job) as u8 == 0 {
+        if (job == NO_JOB!()) || jobs  == std::ptr::null_mut() || get_job_by_jid !(job)  == std::ptr::null_mut() {
             sh_badjob ((*loptendt.word).word);                      
             any_failed+=1;
         } else if (job != DUP_JOB!()){
@@ -558,7 +558,7 @@ pub extern "C" fn r_disown_builtin (list:* mut WORD_LIST)->libc::c_int{
   retval = EXECUTION_SUCCESS!();
 
   /* `disown -a' or `disown -r' */
-  if loptend as u8 == 0 && (all_jobs !=0 || running_jobs != 0) {
+  if loptend == std::ptr::null_mut() && (all_jobs !=0 || running_jobs != 0) {
       if nohup_only!=0{
         nohup_all_jobs (running_jobs);
       } else{
@@ -569,14 +569,14 @@ pub extern "C" fn r_disown_builtin (list:* mut WORD_LIST)->libc::c_int{
     }
     
     BLOCK_CHILD !(Some(&mut set), Some(&mut oset));
-     if (loptend as u8 !=0 && legal_number ((*(*loptend).word).word, &mut pid_value) !=0 && pid_value ==  pid_value) {
+     if (loptend !=std::ptr::null_mut() && legal_number ((*(*loptend).word).word, &mut pid_value) !=0 && pid_value ==  pid_value) {
         job=get_job_by_pid ( pid_value as i32, 0, 0 as *mut*mut PROCESS);
      }else {
         get_job_spec (loptend);
 
      }
-    if job == NO_JOB!() || jobs as u8 !=0 || INVALID_JOB!(job){
-        if loptend as u8 !=0 {
+    if job == NO_JOB!() || jobs !=std::ptr::null_mut() || INVALID_JOB!(job){
+        if loptend !=std::ptr::null_mut() {
             sh_badjob ((*(*loptend).word).word);
         }else {
             sh_badjob (CString::new("current").unwrap().as_ptr() as * mut c_char);
@@ -591,9 +591,9 @@ pub extern "C" fn r_disown_builtin (list:* mut WORD_LIST)->libc::c_int{
     UNBLOCK_CHILD !(Some(&oset));
     
     
-    if loptend as u8 !=0 {
+    if loptend  != std::ptr::null_mut() {
         let mut loptendt=*loptend;
-        while  loptendt.next as u8 !=0 {
+        while  loptendt.next !=std::ptr::null_mut() {
             loptendt = *loptendt.next;
             BLOCK_CHILD !(Some(&mut set), Some(&mut oset));
             if legal_number ((*loptendt.word).word, &mut pid_value) !=0 && pid_value ==  pid_value {
@@ -602,7 +602,7 @@ pub extern "C" fn r_disown_builtin (list:* mut WORD_LIST)->libc::c_int{
             get_job_spec (&mut loptendt);
     
             }
-        if job == NO_JOB!() || jobs as u8 !=0 || INVALID_JOB!(job){
+        if job == NO_JOB!() || jobs !=std::ptr::null_mut() || INVALID_JOB!(job){
                             
             sh_badjob ((*loptendt.word).word);              
                     

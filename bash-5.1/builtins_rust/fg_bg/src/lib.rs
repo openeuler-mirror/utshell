@@ -340,7 +340,7 @@ macro_rules! IS_JOBCONTROL {
 #[macro_export]
 macro_rules! INVALID_JOB {
    ($j:expr) => {
-         $j <0 || $j >=  js.j_jobslots || get_job_by_jid !($j) as u8 == 0 
+         $j <0 || $j >=  js.j_jobslots || get_job_by_jid !($j) == std::ptr::null_mut() 
     }
 }
 
@@ -354,7 +354,7 @@ macro_rules! ISHELP {
 #[macro_export]
 macro_rules! CHECK_HELPOPT {
   ($l:expr) => {
-    if $l as u8 !=0 && (*$l).word as u8 !=0 && ISHELP!((*(*$l).word).word) == 0
+    if $l  !=std::ptr::null_mut() && (*$l).word !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) == 0
     { 
       builtin_help (); 
       return EX_USAGE!(); 
@@ -397,11 +397,11 @@ pub extern "C" fn  r_fg_builtin (list:*mut WORD_LIST)->i32{
     /* If the last arg on the line is '&', then start this job in the
       background.  Else, fg the job. */
     
-    if loptend as u8 == 0{
+    if loptend  == std::ptr::null_mut(){
       return r_fg_bg (loptend, 1);
     }else {
       let mut t:WORD_LIST=*loptend;
-      while  t.next as u8 !=0{
+      while  t.next !=std::ptr::null_mut(){
         t=*(t.next);
       }
       let cstr:&std::ffi::CStr=std::ffi::CStr::from_ptr((*(t.word)).word );
@@ -443,9 +443,9 @@ pub extern "C" fn  r_bg_builtin (list:*mut WORD_LIST)->i32{
     r = EXECUTION_FAILURE!();
   }
   
-  if loptend as u8 !=0 {
+  if loptend  !=std::ptr::null_mut() {
       let mut t:WORD_LIST=*loptend;      
-      while t.next as u8 !=0 {
+      while t.next !=std::ptr::null_mut() {
         if r_fg_bg (&mut t, 0) == EXECUTION_FAILURE!(){
           r = EXECUTION_FAILURE!();
         }     
@@ -477,7 +477,7 @@ pub extern "C" fn r_fg_bg (list:*mut WORD_LIST, foreground:i32)->i32{
 
   if INVALID_JOB !(job){
       if job != DUP_JOB!(){
-        if list as u8 != 0 {
+        if list != std::ptr::null_mut() {
           sh_badjob ( (*(*list).word).word );
         }else {
           let mut c_str_current = CString::new("current").unwrap(); // from a &str, creates a new allocation
