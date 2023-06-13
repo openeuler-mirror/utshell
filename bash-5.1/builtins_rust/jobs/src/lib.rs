@@ -1,7 +1,7 @@
 extern crate  libc;
 extern crate nix;
 
-use libc::{F_UNLCK, c_char, c_long};
+use libc::{c_char, c_long};
 use std::ffi::CString;
 
 #[repr(C)]
@@ -392,12 +392,11 @@ extern "C" {
  pub extern "C" fn r_execute_list_with_replacements (list:*mut WORD_LIST)->i32{
   println!("r_execute_list_with_replacements");
   unsafe{
-  let mut l:WORD_LIST=WORD_LIST{next:list,word:(*list).word};
+  let mut l:WORD_LIST=*list;
   let mut job:i32;
   let result:i32;
   let command:*mut COMMAND;
- 
-  
+   
   /* First do the replacement of job specifications with pids. */
   
   while l.next as u8 !=0    {
@@ -500,20 +499,21 @@ pub extern "C" fn r_jobs_builtin(list:*mut WORD_LIST)->i32{
         }
         return EXECUTION_SUCCESS!();
     }
-    
-    while loptend as u8 !=0 {
+   
+    let mut loptendt=*loptend;
+    while loptendt.next as u8 !=0 {
         BLOCK_CHILD !(Some(&mut set), Some(&mut oset));
-        job = get_job_spec (loptend);
+        job = get_job_spec (&mut loptendt);
 
         if (job == NO_JOB!()) || jobs as u8 == 0 || get_job_by_jid !(job) as u8 == 0 {
-            sh_badjob ((*(*loptend).word).word);                      
+            sh_badjob ((*loptendt.word).word);                      
             any_failed+=1;
         } else if (job != DUP_JOB!()){
             list_one_job (0 as * mut JOB, form, 0, job);
         }
 
         UNBLOCK_CHILD !(Some(&oset));
-        loptend = (*loptend).next;
+        loptendt = *loptendt.next;
         }
         if any_failed !=0 {
             return EXECUTION_FAILURE!();
@@ -567,7 +567,7 @@ pub extern "C" fn r_disown_builtin (list:* mut WORD_LIST)->libc::c_int{
 	
       return EXECUTION_SUCCESS!();
     }
-
+    
     BLOCK_CHILD !(Some(&mut set), Some(&mut oset));
      if (loptend as u8 !=0 && legal_number ((*(*loptend).word).word, &mut pid_value) !=0 && pid_value ==  pid_value) {
         job=get_job_by_pid ( pid_value as i32, 0, 0 as *mut*mut PROCESS);
@@ -589,40 +589,33 @@ pub extern "C" fn r_disown_builtin (list:* mut WORD_LIST)->libc::c_int{
     }
     
     UNBLOCK_CHILD !(Some(&oset));
-
-    if loptend as u8 !=0{
-        loptend = (*loptend).next;
-    }
-
-
-    while  loptend as u8 !=0 {
-        BLOCK_CHILD !(Some(&mut set), Some(&mut oset));
-        if (loptend as u8 !=0 && legal_number ((*(*loptend).word).word, &mut pid_value) !=0 && pid_value ==  pid_value) {
-           job=get_job_by_pid ( pid_value as i32, 0, 0 as *mut*mut PROCESS);
-        }else {
-           get_job_spec (loptend);
-   
+    
+    
+    if loptend as u8 !=0 {
+        let mut loptendt=*loptend;
+        while  loptendt.next as u8 !=0 {
+            loptendt = *loptendt.next;
+            BLOCK_CHILD !(Some(&mut set), Some(&mut oset));
+            if legal_number ((*loptendt.word).word, &mut pid_value) !=0 && pid_value ==  pid_value {
+            job=get_job_by_pid ( pid_value as i32, 0, 0 as *mut*mut PROCESS);
+            }else {
+            get_job_spec (&mut loptendt);
+    
+            }
+        if job == NO_JOB!() || jobs as u8 !=0 || INVALID_JOB!(job){
+                            
+            sh_badjob ((*loptendt.word).word);              
+                    
+            retval = EXECUTION_FAILURE!();
+        }  else if nohup_only !=0{
+            nohup_job (job);
+        } else {
+            delete_job (job, 1);
         }
-       if job == NO_JOB!() || jobs as u8 !=0 || INVALID_JOB!(job){
-           if loptend as u8 !=0 {              
-               sh_badjob ((*(*loptend).word).word);              
-           }else {
-               sh_badjob (CString::new("current").unwrap().as_ptr() as * mut c_char);
-           }          
-           retval = EXECUTION_FAILURE!();
-       }  else if nohup_only !=0{
-           nohup_job (job);
-       } else {
-           delete_job (job, 1);
-       }
-       
-       UNBLOCK_CHILD !(Some(&oset));
-   
-       if loptend as u8 !=0{
-           loptend = (*loptend).next;
-       }
+        
+        UNBLOCK_CHILD !(Some(&oset));
+        }
     }
-
     return retval;
     }
 }
