@@ -1,5 +1,4 @@
 *.swp
 tags
-Cargo.lock
 target/
 .vscode
