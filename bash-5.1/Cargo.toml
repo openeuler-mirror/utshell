@@ -10,4 +10,3 @@ members = ["builtins/command1", "builtins/command2"]
 [dependencies]
 command1 = {path = "./builtins/command1"}
 command2 = {path = "./builtins/command2"}
-read = {path = "./builtins_rust/read"}
