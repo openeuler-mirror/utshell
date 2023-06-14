@@ -4231,7 +4231,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 if test -n "$want_auto_cflags"; then
 	AUTO_CFLAGS="-g ${GCC+-O2}"
 	AUTO_LDFLAGS="-g ${GCC+-O2}"
-	STYLE_CFLAGS="${GCC+-Wno-parentheses} ${GCC+-Wno-format-security}"
+	STYLE_CFLAGS="${GCC+-Wno-parentheses} ${GCC+-Wno-format-security} ${GCC+-fPIC}"
 else
 	AUTO_CFLAGS= AUTO_LDFLAGS= STYLE_CFLAGS=
 fi
@@ -20255,6 +20255,7 @@ fi
 $as_echo "using $bash_cv_termcap_lib" >&6; }
 if test $bash_cv_termcap_lib = gnutermcap && test -z "$prefer_curses"; then
 LDFLAGS="$LDFLAGS -L./lib/termcap"
+
 TERMCAP_LIB="./lib/termcap/libtermcap.a"
 TERMCAP_DEP="./lib/termcap/libtermcap.a"
 elif test $bash_cv_termcap_lib = libtermcap && test -z "$prefer_curses"; then
