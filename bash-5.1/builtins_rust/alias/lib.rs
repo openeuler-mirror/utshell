@@ -232,3 +232,72 @@ unsafe extern "C" fn print_alias( alias: *mut AliasT,  flags: libc::c_int) {
     println!("{}={}", CStr::from_ptr((*alias).name).to_string_lossy().into_owned(), CStr::from_ptr(value).to_string_lossy().into_owned());
     free(value as *mut libc::c_void);
 }
+unsafe  fn legal_alias_rust(name :*mut libc::c_char,value  :*mut libc::c_char ) -> libc::c_int {  
+    
+    let mut name_w:*mut libc::c_char;
+    let mut value_w:*mut libc::c_char;
+    let mut new_value:*mut libc::c_char;
+    let mut new_value_2:*mut libc::c_char;
+    let mut shell_bui : *mut libc::c_char;
+    let mut t: *mut AliasT;
+    let mut dflags ;
+    dflags = if posixly_correct != 0 { 0 as libc::c_int } else { 0x1 as libc::c_int };
+    
+    if libc::strstr(value,CString::new(";").unwrap().as_ptr() as *mut libc::c_char) != std::ptr::null_mut() {
+        println!("; is not allow in alias");
+        return  1;
+    }
+    t = find_alias(name);
+    if !t.is_null() {
+        println!("{} is already in alias", CStr::from_ptr(name).to_string_lossy().into_owned());
+        print_alias(t, dflags);
+        return  1;
+    }
+    name_w = find_user_command(name);
+    new_value = sh_single_quote(value);
+    // 按照空格区分
+    new_value_2 = libc::strtok(value, CString::new(" ").unwrap().as_ptr() as *mut libc::c_char) ;
+    t = find_alias(new_value_2);
+    while t != std::ptr::null_mut() {
+        new_value_2 = libc::strtok((*t).value, CString::new(" ").unwrap().as_ptr() as *mut libc::c_char) ;
+        if libc::strcmp((*t).name,new_value_2) == 0 {
+            break;
+        }
+        t = find_alias(new_value_2);
+    }
+    let arr:[ *mut libc::c_char;7] = [CString::new("exec").unwrap().into_raw() as *mut libc::c_char,
+                                      CString::new("eval").unwrap().into_raw() as *mut libc::c_char,
+                                      CString::new("builtin").unwrap().into_raw() as *mut libc::c_char,
+                                      CString::new("command").unwrap().into_raw() as *mut libc::c_char,
+                                      CString::new("function").unwrap().into_raw() as *mut libc::c_char,
+                                      CString::new("source").unwrap().into_raw() as *mut libc::c_char,
+                                      CString::new(".").unwrap().into_raw() as *mut libc::c_char ];
+    
+    for index in 0..7 {
+        if libc::strcmp(new_value_2, arr[index]) == 0 {
+            println!("command {} will raise an unsafe operation",CStr::from_ptr(arr[index]).to_string_lossy().into_owned());
+            return  1;
+        }
+    }
+    value_w = find_user_command(new_value_2);
+    if name_w != std::ptr::null_mut(){
+        if value_w != std::ptr::null_mut() && libc::strcmp(name_w, value_w) == 0  {
+            return 0;
+        }
+        else { 
+            println!("The name and value point to different executable files");
+            return 1 ;
+        }
+    }
+    else {
+        if find_shell_builtin(name) !=  std::ptr::null_mut() {
+            println!("name {} is shell builtin",CStr::from_ptr(name).to_string_lossy().into_owned());
+            return 1;
+        }
+        else if find_function(name) !=  std::ptr::null_mut() {
+            println!("name {} is function",CStr::from_ptr(name).to_string_lossy().into_owned());
+            return 1;
+        }
+    }
+    return 0;
+}
