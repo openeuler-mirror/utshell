@@ -33,3 +33,31 @@ extern "C" {
     fn find_function (name:* const libc::c_char)-> *mut SHELL_VAR;
     fn reset_internal_getopt();
 }
+pub type SizeT = libc::c_ulong;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct bucket_contents {
+    pub next: *mut bucket_contents,
+    pub key: *mut libc::c_char,
+    pub data: *mut libc::c_void,
+    pub khash: libc::c_uint,
+    pub times_found: libc::c_int,
+}
+pub type BucketContents = bucket_contents;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct hash_table {
+    pub bucket_array: *mut *mut BucketContents,
+    pub nbuckets: libc::c_int,
+    pub nentries: libc::c_int,
+}
+pub type HashTable = hash_table;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct alias {
+    pub name: *mut libc::c_char,
+    pub value: *mut libc::c_char,
+    pub flags: libc::c_char,
+}
+pub type AliasT = alias;
+pub static AL_REUSABLE:i32 = 0x01;
