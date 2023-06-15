@@ -61,3 +61,101 @@ pub struct alias {
 }
 pub type AliasT = alias;
 pub static AL_REUSABLE:i32 = 0x01;
+pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int {
+    let mut any_failed;
+    let mut offset;
+    let mut pflag ;
+    let mut dflags ;
+    let  alias_list: *mut *mut AliasT;
+    let mut t: *mut AliasT;
+    let mut name: *mut libc::c_char;
+    let mut value: *mut libc::c_char;
+    dflags = if posixly_correct != 0 { 0 as libc::c_int } else { 0x1 as libc::c_int };
+    pflag = 0 as libc::c_int;
+    reset_internal_getopt();
+    loop {
+        offset = internal_getopt(
+            list,
+            b"p\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        );
+        if !(offset != -(1 as libc::c_int)) {
+            break;
+        }
+        match offset as u8 {
+            b'p' => {
+                pflag = 1 ;
+                dflags |= AL_REUSABLE;
+            }
+            _ => {
+                if offset == -99 {
+                    r_builtin_help();
+                    return EX_USAGE;
+                }
+                r_builtin_usage();
+                return EX_USAGE;
+            }
+        }
+    }
+    list = loptend;
+    if list.is_null() || pflag != 0 {
+        if aliases.is_null() {
+            return EXECUTION_SUCCESS!();
+        }
+        alias_list = all_aliases();
+        if alias_list.is_null() {
+            return EXECUTION_SUCCESS!();
+        }
+        offset = 0;
+        while !(*alias_list.offset(offset as isize)).is_null() {
+            print_alias(*alias_list.offset(offset as isize), dflags);
+            offset += 1;
+        }
+        free(alias_list as *mut libc::c_void);
+        if list.is_null() {
+            return sh_chkwrite(EXECUTION_SUCCESS!());
+        }
+    }
+    any_failed = 0;
+    while !list.is_null() {
+        name = (*(*list).word).word;
+        offset = 0;
+        while *name.offset(offset as isize) as libc::c_int != 0
+            && *name.offset(offset as isize) as libc::c_int != '=' as i32
+        {
+            offset += 1;
+        }
+        if offset != 0 && *name.offset(offset as isize) as libc::c_int == '=' as i32 {
+            *name.offset(offset as isize) = '\u{0}' as i32 as libc::c_char;
+            value = name.offset(offset as isize).offset(1 as libc::c_int as isize);
+            if legal_alias_name(name, 0) == 0 {
+                builtin_error(
+                    dcgettext(
+                        0 as *const libc::c_char,
+                        b"`%s': invalid alias name\0" as *const u8
+                            as *const libc::c_char,
+                        5 as libc::c_int,
+                    ),
+                    name,
+                );
+                any_failed += 1;
+            } else {
+                let slice= CStr::from_ptr(value);
+                let mut r_str=slice.to_str().unwrap().to_owned();
+                let new_str =  CString::new(r_str).unwrap();
+                if legal_alias_rust(name,new_str.as_ptr() as *mut libc::c_char) == 0 {
+                    add_alias(name, value);
+                }
+            }
+        } else {
+            t = find_alias(name);
+            if !t.is_null() {
+                print_alias(t, dflags);
+            } else {
+                sh_notfound(name);
+                any_failed += 1;
+            }
+        }
+        list = (*list).next;
+    }
+    return if any_failed != 0 {EXECUTION_FAILURE!()} else { EXECUTION_SUCCESS!()};
+}
