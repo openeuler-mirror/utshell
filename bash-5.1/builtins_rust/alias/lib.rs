@@ -159,3 +159,54 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int
     }
     return if any_failed != 0 {EXECUTION_FAILURE!()} else { EXECUTION_SUCCESS!()};
 }
+#[no_mangle]
+pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WordList) -> libc::c_int {
+    let mut alias: *mut AliasT;
+    let mut opt: libc::c_int;
+    let mut aflag: libc::c_int;
+    aflag = 0 as libc::c_int;
+    reset_internal_getopt();
+    loop {
+        opt = internal_getopt(
+            list,
+            b"a\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        );
+        if !(opt != -(1 as libc::c_int)) {
+            break;
+        }
+        match opt as u8 {
+            b'a' => {
+                aflag = 1 as libc::c_int;
+            }
+            _ => {
+                if opt == -99 {
+                    r_builtin_help();
+                    return EX_USAGE;
+                }
+                builtin_usage();
+                return EX_USAGE;
+            }
+        }
+    }
+    list = loptend;
+    if aflag != 0 {
+        delete_all_aliases();
+        return 0;
+    }
+    if list.is_null() {
+        builtin_usage();
+        return EX_USAGE;
+    }
+    aflag = 0 as libc::c_int;
+    while !list.is_null() {
+        alias = find_alias((*(*list).word).word);
+        if !alias.is_null() {
+            remove_alias((*alias).name);
+        } else {
+            sh_notfound((*(*list).word).word);
+            aflag += 1;
+        }
+        list = (*list).next;
+    }
+    return if aflag != 0 { 1 as libc::c_int } else { 0 as libc::c_int };
+}
