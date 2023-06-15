@@ -1,5 +1,7 @@
-use std::ffi::CStr;
-//extern crate rcommon;
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+
+//# SPDX-License-Identifier: GPL-3.0-or-later//extern crate rcommon;
+
 use rcommon::r_sh_notfound;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage,SHELL_VAR};
 use rhelp::r_builtin_help;
