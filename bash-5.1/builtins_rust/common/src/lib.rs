@@ -265,3 +265,257 @@ pub struct SHELL_VAR {
   pub attributes:i32,       /* export, readonly, array, invisible... */
   pub context:i32           /* Which context this variable belongs to. */
 }
+
+//macro
+#[macro_export]
+macro_rules! EXECUTION_FAILURE {
+    () => {
+        1
+    };
+}
+#[macro_export]
+macro_rules! EXECUTION_SUCCESS {
+    () => {
+        0
+    };
+}
+#[macro_export]
+macro_rules! DISCARD {
+    () => {
+        2
+    };
+}
+#[macro_export]
+macro_rules! GETOPT_HELP {
+    () => {
+        -99
+    };
+}
+#[macro_export]
+macro_rules! ARGS_INVOC {
+    () => {
+        0x01
+    };
+}
+#[macro_export]
+macro_rules! ARGS_FUNC {
+    () => {
+        0x02
+    };
+}
+#[macro_export]
+macro_rules! ARGS_SETBLTIN {
+    () => {
+        0x04
+    };
+}
+#[macro_export]
+macro_rules! EX_BADUSAGE {
+    () => {
+        2
+    };
+}
+#[macro_export]
+macro_rules! DEBUG_TRAP {
+    () => {
+        NSIG!()
+    };
+}
+#[macro_export]
+macro_rules! NSIG {
+    () => {
+        65
+    };
+}
+#[macro_export]
+macro_rules! NO_JOB {
+    () => {
+        -1
+    };
+}
+#[macro_export]
+macro_rules! DUP_JOB {
+    () => {
+        -2
+    };
+}
+#[macro_export]
+macro_rules! JM_SUBSTRING {
+    () => {
+        0x02
+    };
+}
+#[macro_export]
+macro_rules! JM_EXACT {
+    () => {
+        0x04
+    };
+}
+#[macro_export]
+macro_rules! JM_STOPPED {
+    () => {
+        0x08
+    };
+}
+#[macro_export]
+macro_rules! JM_FIRSTMATCH {
+    () => {
+        0x10
+    };
+}
+#[macro_export]
+macro_rules! VA_NOEXPAND {
+    () => {
+        0x001
+    };
+}
+#[macro_export]
+macro_rules! VA_ONEWORD {
+    () => {
+        0x002
+    };
+}
+#[macro_export]
+macro_rules! ASS_NOEXPAND {
+    () => {
+        0x0080
+    };
+}
+#[macro_export]
+macro_rules! att_readonly {
+    () => {
+        0x0000002
+    };
+}
+#[macro_export]
+macro_rules! att_invisible {
+    () => {
+        0x0001000
+    };
+}
+#[macro_export]
+macro_rules! att_nounset {
+    () => {
+        0x0002000
+    };
+}
+#[macro_export]
+macro_rules! att_noassign {
+    () => {
+        0x0004000
+    };
+}
+#[macro_export]
+macro_rules! SPECIAL_BUILTIN {
+    () => {
+        0x08
+    };
+}
+#[macro_export]
+macro_rules! BUILTIN_ENABLED {
+    () => {
+        0x01
+    };
+}
+#[macro_export]
+macro_rules! BUILTIN_DELETED {
+    () => {
+        0x02
+    };
+}
+#[macro_export]
+macro_rules! DSIG_SIGPREFIX {
+    () => {
+        0x01
+    };
+}
+#[macro_export]
+macro_rules! DSIG_NOCASE {
+    () => {
+        0x02
+    };
+}
+#[macro_export]
+macro_rules! NO_SIG {
+    () => {
+        -1
+    };
+}
+#[macro_export]
+macro_rules! readonly_p {
+    ($var:expr) => {
+        (*$var).attributes & att_readonly!()
+    };
+}
+#[macro_export]
+macro_rules! noassign_p {
+    ($var:expr) => {
+        (*$var).attributes & att_noassign!()
+    };
+}
+#[macro_export]
+macro_rules! non_unsettable_p {
+    ($var:expr) => {
+        (*$var).attributes & att_nounset!()
+    };
+}
+#[macro_export]
+macro_rules! VUNSETATTR {
+    ($var:expr,$attr:expr) => {
+        (*$var).attributes &=  !($attr)
+    };
+}
+#[macro_export]
+macro_rules! ISOCTAL {
+    ($c:expr) => {
+        ($c) >= b'0' as libc::c_char  && ($c) <= b'7' as libc::c_char
+    };
+}
+#[macro_export]
+macro_rules! DIGIT {
+    ($c:expr) => {
+        ($c) >= b'0' as libc::c_char  && ($c) <= b'9' as libc::c_char
+    };
+}
+#[macro_export]
+macro_rules!  QUIT {
+    () => {
+        if read_volatile(&terminating_signal as *const i32) != 0{
+            termsig_handler(read_volatile(&terminating_signal as *const i32));
+        }
+        if interrupt_state != 0{
+            throw_to_top_level();
+        }
+    };
+}
+#[macro_export]
+macro_rules! FREE {
+    ($s:expr) => {
+        if ($s) != std::ptr::null_mut(){
+            free($s);
+        }
+    }
+}
+#[macro_export]
+macro_rules! STREQN {
+    ($a:expr,$b:expr,$n:expr) => {
+        if $n == 0 {
+            1
+        }
+        else{
+            (*$a == *$b && strncmp($a,$b,$n) == 0) as i32
+        }
+    }
+}
+#[macro_export]
+macro_rules! get_job_by_jid {
+   ($ind:expr) => {
+        (*((jobs as usize + ($ind*8) as usize ) as *mut*mut JOB) as *mut JOB)
+    }
+}
+#[macro_export]
+macro_rules! J_JOBSTATE {
+   ($j:expr) => {
+        (*$j).state
+    }
+}
