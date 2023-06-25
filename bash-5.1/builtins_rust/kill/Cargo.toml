@@ -1,0 +1,16 @@
+[package]
+name = "kill"
+version = "0.1.0"
+edition = "2021"
+authors = ["lvgenggeng"]
+build = "../build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "rkill"
+crate-type = ["cdylib"]
+
+[dependencies]
+libc = "0.2"
+nix = "0.23"
