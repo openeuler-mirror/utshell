@@ -59,6 +59,12 @@ int
 fg_builtin (list)
      WORD_LIST *list;
 {
+    return r_fg_builtin(list);
+}
+int
+__fg_builtin (list)
+     WORD_LIST *list;
+{
   int fg_bit;
   register WORD_LIST *t;
 
@@ -102,6 +108,12 @@ $END
 /* How to put a job into the background. */
 int
 bg_builtin (list)
+     WORD_LIST *list;
+{
+    return r_bg_builtin(list);
+}
+int
+__bg_builtin (list)
      WORD_LIST *list;
 {
   int r;
