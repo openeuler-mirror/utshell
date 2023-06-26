@@ -1,0 +1,25 @@
+use libc::{c_int, c_char, c_long, c_ulong};
+
+include!(concat!("intercdep.rs"));
+
+#[no_mangle]
+pub extern "C" fn r_return_builtin(list: *mut WORD_LIST) -> i32 {
+    println!("r_return_builtin call");
+
+unsafe {
+    if !list.is_null() && !(*list).word.is_null() &&
+        libc::strcmp((*((*list).word)).word, "--help\0".as_ptr() as *const c_char) == 0 {
+        builtin_help ();
+        return EX_USAGE;
+    }
+
+    return_catch_value = get_exitstat(list);
+    if return_catch_flag != 0 {
+        siglongjmp(std::mem::transmute(&return_catch), 1);
+    } else {
+        builtin_error("can only `return' from a function or sourced script\0".as_ptr() as *const c_char);
+        return EX_USAGE;
+    }
+}
+    return EXECUTION_SUCCESS;
+}
