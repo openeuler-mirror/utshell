@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 members = ["builtins_rust/read", "builtins/command1", "builtins/command2", "builtins_rust/history", "builtins_rust/kill",
 "builtins_rust/rlet", "builtins_rust/mapfile"]
 
+
 [dependencies]
 libc = "0.2"
 command1 = {path = "./builtins/command1"}
@@ -20,3 +21,4 @@ history = {path = "./builtins_rust/history"}
 kill = {path = "./builtins_rust/kill"}
 rlet = {path = "./builtins_rust/rlet"}
 mapfile = {path = "./builtins_rust/mapfile"}
+
