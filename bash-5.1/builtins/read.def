@@ -1066,14 +1066,14 @@ ttyrestore (ttp)
 }
 
 void
-read_tty_cleanup ()
+__read_tty_cleanup ()
 {
   if (tty_modified)
     ttyrestore (&termsave);
 }
 
 int
-read_tty_modified ()
+__read_tty_modified ()
 {
   return (tty_modified);
 }

@@ -78,16 +78,12 @@ static int execute_list_with_replacements PARAMS((WORD_LIST *));
    replace all job specs with the pid of the appropriate process
    group leader and execute the command.  The -r and -s options mean
    to print info about running and stopped jobs only, respectively. */
+extern int r_jobs_builtin(list);
 int
 jobs_builtin (list)
      WORD_LIST *list;
 {
-    return r_jobs_builtin(list);
-}
-int
-__jobs_builtin (list)
-     WORD_LIST *list;
-{
+  return r_jobs_builtin(list);
   int form, execute, state, opt, any_failed, job;
   sigset_t set, oset;
 
@@ -238,12 +234,6 @@ $END
 #if defined (JOB_CONTROL)
 int
 disown_builtin (list)
-     WORD_LIST *list;
-{
-    return r_disown_builtin(list);
-}
-int
-__disown_builtin (list)
      WORD_LIST *list;
 {
   int opt, job, retval, nohup_only, running_jobs, all_jobs;

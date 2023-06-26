@@ -2,7 +2,7 @@
 authors = ["huzhengming"]
 name = "rdeclare"
 version = "0.0.1"
-build = "../build.rs"
+#build = "../build.rs"
 edition = "2021"
 
 

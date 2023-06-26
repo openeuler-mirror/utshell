@@ -263,16 +263,13 @@ resetxattr ()
    change the current working directory.  It is called by cd_to_string (),
    so the programming interface is simple, and it handles errors and
    restrictions properly. */
+extern int r_cd_builtin (WORD_LIST *list);
+
 int
 cd_builtin (list)
      WORD_LIST *list;
 {
-    return r_cd_builtin(list);
-}
-int
-__cd_builtin (list)
-     WORD_LIST *list;
-{
+return r_cd_builtin(list);
   char *dirname, *cdpath, *path, *temp;
   int path_index, no_symlinks, opt, lflag, e;
 
@@ -491,12 +488,7 @@ int
 pwd_builtin (list)
      WORD_LIST *list;
 {
-    return r_pwd_builtin(list);
-}
-int
-__pwd_builtin (list)
-     WORD_LIST *list;
-{
+return r_pwd_builtin(list);
   char *directory;
   int opt, pflag;
 

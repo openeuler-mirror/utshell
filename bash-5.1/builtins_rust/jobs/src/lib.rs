@@ -440,7 +440,7 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn r_jobs_builtin(list:*mut WORD_LIST)->i32 {
-    //println!("r_jobs_builtin");
+    println!("r_jobs_builtin");
     let mut form:i32;
     let mut execute:i32=0;
     let mut state:i32;
@@ -616,8 +616,10 @@ pub extern "C" fn r_disown_builtin (list:* mut WORD_LIST)->libc::c_int {
 pub extern "C" fn cmd_name() ->*const u8 {
    return b"jobs" as *const u8;
 }
-
+/*
 #[no_mangle]
+
 pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
   return r_jobs_builtin(list);
 }
+*/
