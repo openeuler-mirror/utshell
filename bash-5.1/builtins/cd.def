@@ -267,12 +267,6 @@ int
 cd_builtin (list)
      WORD_LIST *list;
 {
-    return r_cd_builtin(list);
-}
-int
-__cd_builtin (list)
-     WORD_LIST *list;
-{
   char *dirname, *cdpath, *path, *temp;
   int path_index, no_symlinks, opt, lflag, e;
 
@@ -489,12 +483,6 @@ static int verbatim_pwd;
 /* Print the name of the current working directory. */
 int
 pwd_builtin (list)
-     WORD_LIST *list;
-{
-    return r_pwd_builtin(list);
-}
-int
-__pwd_builtin (list)
      WORD_LIST *list;
 {
   char *directory;

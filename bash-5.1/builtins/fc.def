@@ -182,12 +182,6 @@ int
 fc_builtin (list)
      WORD_LIST *list;
 {
-    return r_fc_builtin(list);
-}
-int
-__fc_builtin (list)
-     WORD_LIST *list;
-{
   register int i;
   register char *sep;
   int numbering, reverse, listing, execute;

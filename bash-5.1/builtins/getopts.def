@@ -315,12 +315,6 @@ int
 getopts_builtin (list)
      WORD_LIST *list;
 {
-    return r_getopts_builtin(list);
-}
-int
-__getopts_builtin (list)
-     WORD_LIST *list;
-{
   char **av;
   int ac, ret;
 

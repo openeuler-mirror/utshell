@@ -107,7 +107,7 @@ OBJEXT = @OBJEXT@
 VERSPROG = bashversion$(EXEEXT)
 VERSOBJ = bashversion.$(OBJEXT)
 
-Program = rush$(EXEEXT)
+Program = bash$(EXEEXT)
 Version = @BASHVERS@
 PatchLevel = `$(BUILD_DIR)/$(VERSPROG) -p`
 RELSTATUS = @RELSTATUS@
@@ -530,8 +530,8 @@ GETOPT_SOURCE   = $(DEFSRC)/getopt.c $(DEFSRC)/getopt.h
 PSIZE_SOURCE	= $(DEFSRC)/psize.sh $(DEFSRC)/psize.c
 
 BUILTINS_LIBRARY = $(DEFDIR)/libbuiltins.a
-BUILTINS_LIB = -lbuiltins -lrfg_bg -lrgetopts -lrcd -lrfc -lrjobs -lrread
-BUILTINS_LDFLAGS = -L$(DEFDIR) -L@RUSH_LIB@
+BUILTINS_LIB = -lbuiltins
+BUILTINS_LDFLAGS = -L$(DEFDIR)
 BUILTINS_DEP = $(BUILTINS_LIBRARY)
 
 # Documentation for the shell.

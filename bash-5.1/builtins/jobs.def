@@ -82,12 +82,6 @@ int
 jobs_builtin (list)
      WORD_LIST *list;
 {
-    return r_jobs_builtin(list);
-}
-int
-__jobs_builtin (list)
-     WORD_LIST *list;
-{
   int form, execute, state, opt, any_failed, job;
   sigset_t set, oset;
 
@@ -238,12 +232,6 @@ $END
 #if defined (JOB_CONTROL)
 int
 disown_builtin (list)
-     WORD_LIST *list;
-{
-    return r_disown_builtin(list);
-}
-int
-__disown_builtin (list)
      WORD_LIST *list;
 {
   int opt, job, retval, nohup_only, running_jobs, all_jobs;
