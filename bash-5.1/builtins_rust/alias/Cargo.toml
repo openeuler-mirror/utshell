@@ -14,4 +14,3 @@ libc = "0.2"
 rcmd = {path="../cmd"}
 rcommon= {path="../common"}
 # nix = "0.23"
-rcommon = {path = "../common"}

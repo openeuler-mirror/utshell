@@ -79,7 +79,7 @@ pub extern "C" fn r_break_builtin(mut list :*mut WORD_LIST) -> i32 {
 
     if newbreak <= 0{
         #[warn(temporary_cstring_as_ptr)]
-            sh_erange ((*(*list).word).word, CString::new("loop count ").unwrap().as_ptr() as * mut libc::c_char);
+            sh_erange ((*(*list).word).word, CString::new("loop count").unwrap().as_ptr() as * mut libc::c_char);
             set_breaking (get_loop_level());
       return (EXECUTION_FAILURE!());
     }
