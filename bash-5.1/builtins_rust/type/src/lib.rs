@@ -119,13 +119,13 @@ macro_rules!  STREQ{
 #[macro_export]
 macro_rules!  SIZEOFWORD{
     () => {
-    std::mem::size_of::<WORD_DESC>()
+    std::mem::size_of::<WordDesc>()
     }  
 }
 
 #[repr(C)]
 #[derive(Copy,Clone)]
-pub struct WORD_DESC {
+pub struct WordDesc {
     pub word: *mut i8,
     pub flags:i32
 }
@@ -134,7 +134,7 @@ pub struct WORD_DESC {
 #[derive(Copy,Clone)]
 pub struct WORD_LIST {
     next: *mut WORD_LIST,
-    word: *mut WORD_DESC
+    word: *mut WordDesc
 }
 
 #[repr(C)]
@@ -224,7 +224,7 @@ pub union REDIRECT {
 pub struct for_com {
     flags: i32 ,
     line: i32 ,
-    name:*mut WORD_DESC,
+    name:*mut WordDesc,
     map_list:*mut WORD_LIST,
     action:*mut COMMAND
 }
@@ -233,14 +233,14 @@ pub struct for_com {
 #[derive(Copy,Clone)]
 pub union REDIRECTEE {
     dest: i32 ,
-    filename:* mut WORD_DESC
+    filename:* mut WordDesc
 }
 
 #[repr(C)]
 pub struct case_com {
     flags: i32,
     line: i32,
-    word:*mut WORD_DESC,
+    word:*mut WordDesc,
     clauses:*mut PATTERN_LIST
 }
 #[repr(C)]
@@ -285,7 +285,7 @@ pub struct simple_com {
 pub struct function_def {
     flags: i32 ,
     line: i32 ,
-    name:*mut WORD_DESC,
+    name:*mut WordDesc,
     command:*mut COMMAND,
     source_file:*mut i8
 }
@@ -301,7 +301,7 @@ pub struct group_com {
 pub struct select_com {
     flags: i32 ,
     line: i32 ,
-    name:*mut WORD_DESC,
+    name:*mut WordDesc,
     map_list:*mut WORD_LIST,
     action:*mut COMMAND
 }
