@@ -1,16 +1,15 @@
 [package]
-name = "rmapfile"
+name = "rcommon"
 version = "0.1.0"
-edition = "2018"
-authors = ["lvgenggeng"]
-
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-name = "rmapfile"
-crate-type = ["staticlib","rlib"]
-
 [dependencies]
 libc = "0.2"
-nix = "0.23"
+nix = "0.24"
+
+
+[lib]
+crate-type = ["staticlib","rlib"]
+name = "rcommon"

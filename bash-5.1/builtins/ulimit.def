@@ -220,6 +220,7 @@ static int filesize PARAMS((RLIMTYPE *));
 static int pipesize PARAMS((RLIMTYPE *));
 static int getmaxuprc PARAMS((RLIMTYPE *));
 static int getmaxvm PARAMS((RLIMTYPE *, RLIMTYPE *));
+extern int r_ulimit_builtin PARAMS((WORD_LIST *));
 
 typedef struct {
   int  option;			/* The ulimit option for this limit. */
@@ -332,6 +333,7 @@ int
 ulimit_builtin (list)
      register WORD_LIST *list;
 {
+  return r_ulimit_builtin(list);
   register char *s;
   int c, limind, mode, opt, all_limits;
 

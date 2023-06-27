@@ -67,15 +67,23 @@ pub struct alias {
     pub flags: libc::c_char,
 }
 pub type alias_t = alias;
+
+pub static AL_REUSABLE:i32 = 0x01;
+pub static EX_USAGE:i32 = 258;
+//extern crate rcommon;
+use rcommon::EXECUTION_SUCCESS;
+use rcommon::r_builtin_usage;
+
+
 #[no_mangle]
 pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WORD_LIST) -> libc::c_int {
     println!("alias_builtin run!");
-    let mut any_failed: libc::c_int = 0;
-    let mut offset: libc::c_int = 0;
-    let mut pflag: libc::c_int = 0;
-    let mut dflags: libc::c_int = 0;
-    let mut alias_list: *mut *mut alias_t = 0 as *mut *mut alias_t;
-    let mut t: *mut alias_t = 0 as *mut alias_t;
+    let mut any_failed = 0;
+    let mut offset = 0;
+    let mut pflag = 0;
+    let mut dflags = 0;
+    let mut alias_list: *mut *mut alias_t;
+    let mut t: *mut alias_t;
     let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
     let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
     dflags = if posixly_correct != 0 { 0 as libc::c_int } else { 0x1 as libc::c_int };
@@ -91,38 +99,42 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WORD_LIST) -> libc::c_in
         }
         match offset as u8 {
             b'p' => {
-                pflag = 1 as libc::c_int;
-                dflags |= 0x1 as libc::c_int;
+                pflag = 1 ;
+                dflags |= AL_REUSABLE;
             }
             _ => {
-                builtin_usage();
-                return 258 as libc::c_int;
+                if offset == -99 {
+                    builtin_help();
+                    return EX_USAGE;
+                }
+                r_builtin_usage();
+                return EX_USAGE;
             }
         }
     }
     list = loptend;
     if list.is_null() || pflag != 0 {
         if aliases.is_null() {
-            return 0 as libc::c_int;
+            return EXECUTION_SUCCESS;
         }
         alias_list = all_aliases();
         if alias_list.is_null() {
-            return 0 as libc::c_int;
+            return EXECUTION_SUCCESS;
         }
-        offset = 0 as libc::c_int;
+        offset = 0;
         while !(*alias_list.offset(offset as isize)).is_null() {
             print_alias(*alias_list.offset(offset as isize), dflags);
             offset += 1;
         }
         free(alias_list as *mut libc::c_void);
         if list.is_null() {
-            return sh_chkwrite(0 as libc::c_int);
+            return sh_chkwrite(EXECUTION_SUCCESS);
         }
     }
-    any_failed = 0 as libc::c_int;
+    any_failed = 0;
     while !list.is_null() {
         name = (*(*list).word).word;
-        offset = 0 as libc::c_int;
+        offset = 0;
         while *name.offset(offset as isize) as libc::c_int != 0
             && *name.offset(offset as isize) as libc::c_int != '=' as i32
         {
@@ -131,7 +143,7 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WORD_LIST) -> libc::c_in
         if offset != 0 && *name.offset(offset as isize) as libc::c_int == '=' as i32 {
             *name.offset(offset as isize) = '\u{0}' as i32 as libc::c_char;
             value = name.offset(offset as isize).offset(1 as libc::c_int as isize);
-            if legal_alias_name(name, 0 as libc::c_int) == 0 as libc::c_int {
+            if legal_alias_name(name, 0) == 0 {
                 builtin_error(
                     dcgettext(
                         0 as *const libc::c_char,
@@ -156,7 +168,7 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WORD_LIST) -> libc::c_in
         }
         list = (*list).next;
     }
-    return if any_failed != 0 { 1 as libc::c_int } else { 0 as libc::c_int };
+    return if any_failed != 0 { rcommon::EXECUTION_FAILURE!()} else { EXECUTION_SUCCESS};
 }
 #[no_mangle]
 pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WORD_LIST) -> libc::c_int {
@@ -173,28 +185,28 @@ pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WORD_LIST) -> libc::c_
         if !(opt != -(1 as libc::c_int)) {
             break;
         }
-        match opt {
-            97 => {
+        match opt as u8{
+            b'a' => {
                 aflag = 1 as libc::c_int;
             }
-            -99 => {
-                builtin_help();
-                return 258 as libc::c_int;
-            }
             _ => {
+                if opt == -99 {
+                    builtin_help();
+                    return EX_USAGE;
+                }
                 builtin_usage();
-                return 258 as libc::c_int;
+                return EX_USAGE;
             }
         }
     }
     list = loptend;
     if aflag != 0 {
         delete_all_aliases();
-        return 0 as libc::c_int;
+        return 0;
     }
     if list.is_null() {
         builtin_usage();
-        return 258 as libc::c_int;
+        return EX_USAGE;
     }
     aflag = 0 as libc::c_int;
     while !list.is_null() {

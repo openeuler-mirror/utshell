@@ -71,6 +71,13 @@ macro_rules! PARAMS {
         $protos
     };
 }
+pub unsafe fn hash_entries(ht: *mut HASH_TABLE) -> i32 {
+    if ht != std::ptr::null_mut() {
+        return (*ht).nentries;
+    } else {
+        return 0;
+    }
+}
 
 #[macro_export]
 macro_rules! HASH_ENTRIES {
@@ -250,9 +257,12 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WORD_LIST)->i32{
             }
             else if pathname != std::ptr::null_mut(){
                 if is_directory(pathname) != 0{
-                    let c_err = CString::new("%s:%s").unwrap().as_ptr();
-                    builtin_error(c_err,pathname,strerror(EISDIR));
-                    opt = EXECUTION_SUCCESS!();
+                    let c_err = CString::new("%s:%s");
+                    builtin_error(c_err.unwrap().as_ptr(),pathname,strerror(EISDIR));
+                    let c_err = CString::new("%s: is a directory").unwrap().as_ptr();
+                    builtin_error(c_err ,pathname,strerror(EISDIR));
+
+                    opt = EXECUTION_FAILURE!();
                 }
                 else{
                     phash_insert(w,pathname,0,0);
@@ -275,7 +285,6 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WORD_LIST)->i32{
     }//unsafe
 }
 
-#[no_mangle]
 extern "C" fn r_add_hashed_command(w:*mut c_char,quiet:i32)->i32{
     let mut rv:i32;
     let full_path:*mut c_char;
@@ -304,7 +313,6 @@ extern "C" fn r_add_hashed_command(w:*mut c_char,quiet:i32)->i32{
     }//unsafe
 }
 
-#[no_mangle]
 extern "C" fn r_print_hash_info(item:*mut BUCKET_CONTENTS)->i32{
     
     unsafe{
@@ -336,7 +344,7 @@ extern "C" fn r_print_portable_hash_info(item:*mut BUCKET_CONTENTS)->i32{
 #[no_mangle]
 extern "C" fn r_print_hashed_commands(fmt:i32)->i32{
     unsafe{
-        if hashed_filenames.is_null() || HASH_ENTRIES!(hashed_filenames){
+        if hashed_filenames.is_null() || hash_entries(hashed_filenames) == 0 {
             return 0;
         }
         if fmt == 0{
@@ -400,20 +408,4 @@ extern "C" fn r_list_hashed_filename_targets(list:*mut WORD_LIST,fmt:i32)->i32{
         }
     }
 
-}
-
-
-
-
-
-
-
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
 }

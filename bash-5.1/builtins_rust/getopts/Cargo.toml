@@ -2,8 +2,7 @@
 authors = ["huzhengming"]
 name = "rgetopts"
 version = "0.0.1"
-build = "../build.rs"
-edition = "2021"
+edition = "2018"
 
 
 [dependencies]
@@ -12,5 +11,5 @@ libc = "0.2"
 nix = "0.23.0"
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["staticlib","rlib"]
 name = "rgetopts"

@@ -1,8 +1,8 @@
 [package]
-name = "exit"
+name = "rexit"
 version = "0.1.0"
-edition = "2021"
-#build = "../build.rs"
+edition = "2018"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,5 +13,5 @@ rjobs = {path="../jobs"}
 
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["staticlib","rlib"]
 name = "rexit"

@@ -1,15 +1,15 @@
 [package]
-name = "trap"
+name = "rtrap"
 version = "0.1.0"
 edition = "2018"
 authors = ["lvgenggeng"]
-build = "../build.rs"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 name = "rtrap"
-crate-type = ["staticlib"]
+crate-type = ["staticlib","rlib"]
 
 [dependencies]
 libc = "0.2"
