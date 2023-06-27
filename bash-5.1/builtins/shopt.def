@@ -94,6 +94,17 @@ extern int inherit_errexit;
 extern int localvar_inherit;
 extern int localvar_unset;
 
+void r_reset_shopt_options ();
+void r_set_bashopts ();
+void r_set_compatibility_opts ();
+int r_set_login_shell ( char *option_name, int mode);
+char** r_get_shopt_options();
+void r_initialize_bashopts ( int no_bashopts);
+void parse_bashopts ( char *value);
+
+int r_shopt_listopt ( char *name, int reusable);
+int r_shopt_setopt (char *name, int mode);
+
 #if defined (EXTENDED_GLOB)
 extern int extended_glob;
 #endif
@@ -270,10 +281,12 @@ static int set_shopt_o_options PARAMS((int, WORD_LIST *, int));
 #define OFLAG	0x08
 #define PFLAG	0x10
 
+extern int r_shopt_builtin ( WORD_LIST *list);
 int
 shopt_builtin (list)
      WORD_LIST *list;
 {
+return r_shopt_builtin(list);
   int opt, flags, rval;
 
   flags = 0;
@@ -332,6 +345,7 @@ shopt_builtin (list)
 void
 reset_shopt_options ()
 {
+return r_reset_shopt_options();
   autocd = cdable_vars = cdspelling = 0;
   check_hashed_filenames = CHECKHASH_DEFAULT;
   check_window_size = CHECKWINSIZE_DEFAULT;
@@ -676,6 +690,7 @@ set_compatibility_level (option_name, mode)
 void
 set_compatibility_opts ()
 {
+r_set_compatibility_opts ();
   shopt_compat31 = shopt_compat32 = 0;
   shopt_compat40 = shopt_compat41 = shopt_compat42 = shopt_compat43 = 0;
   shopt_compat44 = 0;
@@ -735,6 +750,7 @@ set_login_shell (option_name, mode)
      char *option_name;
      int mode;
 {
+return r_set_login_shell(option_name, mode);
   shopt_login_shell = login_shell != 0;
   return (0);
 }
@@ -742,6 +758,7 @@ set_login_shell (option_name, mode)
 char **
 get_shopt_options ()
 {
+return r_get_shopt_options();
   char **ret;
   int n, i;
 
@@ -763,6 +780,7 @@ shopt_setopt (name, mode)
      char *name;
      int mode;
 {
+return r_shopt_setopt(name, mode);
   WORD_LIST *wl;
   int r;
 
@@ -777,6 +795,7 @@ shopt_listopt (name, reusable)
      char *name;
      int reusable;
 {
+return r_shopt_listopt(name, reusable);
   int i;
 
   if (name == 0)
@@ -796,6 +815,7 @@ shopt_listopt (name, reusable)
 void
 set_bashopts ()
 {
+return r_set_bashopts();
   char *value;
   char tflag[N_SHOPT_OPTIONS];
   int vsize, i, vptr, *ip, exported;
@@ -855,6 +875,8 @@ void
 parse_bashopts (value)
      char *value;
 {
+
+return r_parse_bashopts (value);
   char *vname;
   int vptr, ind;
 
@@ -876,6 +898,7 @@ void
 initialize_bashopts (no_bashopts)
      int no_bashopts;
 {
+return r_initialize_bashopts (no_bashopts);
   char *temp;
   SHELL_VAR *var;
 

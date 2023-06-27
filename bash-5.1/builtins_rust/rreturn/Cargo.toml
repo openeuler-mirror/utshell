@@ -9,7 +9,7 @@ authors = ["lvgenggeng"]
 
 [lib]
 name = "rreturn"
-crate-type = ["cdylib"]
+crate-type = ["staticlib","rlib"]
 
 [dependencies]
 libc = "0.2"

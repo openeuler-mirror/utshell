@@ -79,10 +79,12 @@ static int list_hashed_filename_targets PARAMS((WORD_LIST *, int));
 /* Print statistics on the current state of hashed commands.  If LIST is
    not empty, then rehash (or hash in the first place) the specified
    commands. */
+int r_hash_builtin (WORD_LIST *list);
 int
 hash_builtin (list)
      WORD_LIST *list;
 {
+return r_hash_builtin(list);
   int expunge_hash_table, list_targets, list_portably, delete, opt;
   char *w, *pathname;
 

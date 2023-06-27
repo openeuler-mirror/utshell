@@ -10,6 +10,7 @@ use std::ptr::read_volatile;
 use nix::errno::errno;
 
 
+pub static EXECUTION_SUCCESS:i32 = 0;
 //struct
 #[repr (C)]
 #[derive(Copy,Clone)]
@@ -596,6 +597,12 @@ pub enum JOB_STATE {
 pub type sh_builtin_func_t = fn (*mut WORD_LIST)->i32;
 pub type QSFUNC = unsafe extern "C" fn(*const c_void,*const c_void)->i32;
 
+
+pub static EX_SUCCESS:i32 = 0;
+pub static EX_USAGE:i32 = -99;
+pub static EX_:i32 = 0;
+
+
 //extern C
 extern "C"{
     static interactive_shell:i32;
@@ -1033,7 +1040,7 @@ pub extern "C" fn r_shift_args(mut times:i32){
             if !rest_of_args.is_null(){
                 temp = rest_of_args;
                 *dollar_vars.as_mut_ptr().offset(9) = savestring!((*(*temp).word).word);
-                rest_of_args = (*test_of_args).next;
+                rest_of_args = (*rest_of_args).next;
                 (*temp).next = std::ptr::null_mut();
                 dispose_words(temp);
             }
@@ -1508,6 +1515,22 @@ pub extern "C" fn r_display_signal_list(mut list:*mut WORD_LIST,forcecols:i32)->
    Return the address of the builtin.
    DISABLED_OKAY means find it even if the builtin is disabled. */
 
+extern "C" fn r_print_builtin_name() {
+    let mut hi:i32;
+    let mut lo:i32;
+    let mut mid:i32 = 0;
+    let mut j:i32;
+
+    unsafe{
+        hi = num_shell_builtins -1;
+        lo = 0;
+
+        while lo <= hi {
+            //printf(b" builtin command name is :%s\n", (*shell_builtins.offset(mid as isize)).name);
+        }
+    }
+}
+
 extern "C" fn r_builtin_address_internal(name:*mut c_char,disabled_okay:i32)->*mut builtin{
     let mut hi:i32;
     let mut lo:i32;
@@ -1612,7 +1635,7 @@ extern "C" fn r_shell_builtin_compare(sbp1:*mut builtin,sbp2:*mut builtin)->i32{
 /* Sort the table of shell builtins so that the binary search will work
    in find_shell_builtin. */
 #[no_mangle]
-pub extern "C" fn initialize_shell_builtins(){
+pub extern "C" fn r_initialize_shell_builtins(){
     unsafe{
         qsort(shell_builtins as *mut c_void,
               num_shell_builtins as usize,

@@ -9,5 +9,5 @@ edition = "2018"
 libc = "0.2"
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["staticlib","rlib"]
 name = "reval"

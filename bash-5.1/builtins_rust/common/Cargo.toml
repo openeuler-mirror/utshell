@@ -11,5 +11,5 @@ nix = "0.24"
 
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["staticlib","rlib"]
 name = "rcommon"

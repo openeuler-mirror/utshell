@@ -13,22 +13,13 @@ pub struct word_list {
     pub next: *mut word_list,
     pub word: *mut WORD_DESC,
 }
-pub type WORD_LIST = word_list;
 
-/*
-#[macro_export]
-macro_rules! EX_USAGE {
-   () => {258}
-}
-*/
+pub type WORD_LIST = word_list;
 pub const EX_USAGE: c_int = 258;
 pub const EXECUTION_SUCCESS :c_int = 0;
+pub const EXECUTION_FAILURE :c_int = 1;
 
-/*
-pub const EXECUTION_SUCCESS : c_int = 0;
-pub const EXECUTION_FAILURE : c_int = 1;
-*/
-//typedef int sh_builtin_func_t PARAMS((WORD_LIST *)); /* sh_wlist_func_t */
+
 extern "C" {
     static mut loption :*mut WORD_LIST;
     pub fn no_options(list: *mut WORD_LIST) -> c_int;

@@ -2,7 +2,6 @@
 authors = ["huzhengming"]
 name = "rdeclare"
 version = "0.0.1"
-#build = "../build.rs"
 edition = "2018"
 
 
@@ -12,6 +11,5 @@ libc = "0.2"
 nix = "0.23.0"
 
 [lib]
-#crate-type = ["cdylib"]
-crate-type = ["staticlib"]
+crate-type = ["staticlib","rlib"]
 name = "rdeclare"

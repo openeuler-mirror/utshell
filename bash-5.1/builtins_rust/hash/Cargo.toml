@@ -1,7 +1,7 @@
 [package]
 name = "rhash"
 version = "0.1.0"
-edition = "2021"
+edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,5 +10,5 @@ libc = "0.2"
 read = {path = "../read"}
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["staticlib","rlib"]
 name = "rhash"

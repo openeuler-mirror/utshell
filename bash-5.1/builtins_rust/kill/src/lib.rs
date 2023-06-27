@@ -192,7 +192,7 @@ unsafe {
 unsafe fn is_option(s: *mut c_char, c: u8) -> bool
 {
     let str = CStr::from_ptr(s).to_bytes_with_nul();
-    return str[0] == b'-' && str[1] == c && str[2] != 0
+    return str[0] == b'-' && str[1] == c && str[2] == 0
 }
 
 unsafe fn kill_error(pid: libc::pid_t, e: c_int)
