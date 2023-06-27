@@ -2,7 +2,7 @@ extern crate  libc;
 extern crate nix;
 
 use libc::{c_char, c_long, c_void};
-use std::{ffi::CString};
+use std::{ffi::{CString, CStr}};
 
 #[repr(C)]
 pub struct WORD_DESC {
@@ -492,7 +492,7 @@ pub extern "C" fn r_resetxattr () {
 }
 
 #[no_mangle]
-pub extern "C" fn r_cd_builtin (list:*mut WORD_LIST)->i32 {
+pub extern "C" fn r_cd_builtin (mut list:*mut WORD_LIST)->i32 {
   let mut dirname:*mut c_char=std::ptr::null_mut();
   let cdpath:*mut c_char;
   let mut path:*mut c_char;
@@ -502,159 +502,168 @@ pub extern "C" fn r_cd_builtin (list:*mut WORD_LIST)->i32 {
   let mut opt:i32;
   let mut lflag:i32;
   let e:i32;
+
   unsafe {
-  if restricted !=0 {
-      sh_restricted (0 as * mut c_char);
-      return EXECUTION_FAILURE!();
-  }
+    if restricted !=0 {
+        sh_restricted (0 as * mut c_char);
+        return EXECUTION_FAILURE!();
+    }
 
-  eflag = 0;
-  no_symlinks = no_symbolic_links;
-  xattrflag = 0;
-  reset_internal_getopt ();
-  let c_str_elp = CString::new("eLP").unwrap(); // from a &str, creates a new allocation     
-  opt = internal_getopt (list, c_str_elp.as_ptr() as * mut c_char);
-  while  opt != -1 {
-    let optu8:u8= opt as u8;
-    let optChar:char=char::from(optu8);
-    match optChar {
-      'P'=>{no_symlinks = 1;}  
-      'L'=>{no_symlinks = 0;} 
-      'e'=>{eflag = 1;}
-        _=>{
-            builtin_usage ();
-            return EX_USAGE!();
-          }
-	  }
-    opt =internal_getopt (list, c_str_elp.as_ptr() as * mut c_char);
-  }
-
-  if cdable_vars != 0 {
-    lflag=LCD_DOVARS!();
-  } else {
-    lflag=0;
-  }
-
-  if interactive !=0 && cdspelling !=0 {
-    lflag=lflag | LCD_DOSPELL!();
-  } else {
-    lflag=lflag | 0;
-  }
-
-  if eflag !=0 && no_symlinks == 0{
     eflag = 0;
-  }
+    no_symlinks = no_symbolic_links;
+    xattrflag = 0;
+    reset_internal_getopt ();
 
-  if loptend == std::ptr::null_mut()  {
+    let c_str_elp = CString::new("eLP").unwrap(); // from a &str, creates a new allocation     
+    opt = internal_getopt (list, c_str_elp.as_ptr() as * mut c_char);
+    while  opt != -1 {
+      let optu8:u8= opt as u8;
+      let optChar:char=char::from(optu8);
+      match optChar {
+        'P'=>{no_symlinks = 1;}  
+        'L'=>{no_symlinks = 0;} 
+        'e'=>{eflag = 1;}
+          _=>{
+              builtin_usage ();
+              return EX_USAGE!();
+            }
+      }
+      opt =internal_getopt (list, c_str_elp.as_ptr() as * mut c_char);
+    }
+
+    // list = loptend;     //后加的
+
+    if cdable_vars != 0 {
+      lflag=LCD_DOVARS!();
+    } else {
+      lflag=0;
+    }
+
+    if interactive !=0 && cdspelling !=0 {
+      lflag=lflag | LCD_DOSPELL!();
+    } else {
+      lflag=lflag | 0;
+    }
+
+    if eflag !=0 && no_symlinks == 0{
+      eflag = 0;
+    }
+
+    if loptend == std::ptr::null_mut()  {
       /* `cd' without arguments is equivalent to `cd $HOME' */
       dirname = get_string_value (CString::new("HOME").unwrap().as_ptr());
 
       if dirname == std::ptr::null_mut() {
         builtin_error (CString::new("HOME not set").unwrap().as_ptr());
         return EXECUTION_FAILURE!();
-	    }
+      }
       lflag = 0;
-      }else if (*loptend).next != std::ptr::null_mut() {
-          builtin_error (CString::new("too many arguments").unwrap().as_ptr());
-          return EXECUTION_FAILURE!();
-      }else if char::from((*(*(*loptend).word).word) as u8) == '-' && char::from(*((((*(*loptend).word).word) as usize +4) as *mut c_char) as u8) == '\0' {
-          /* This is `cd -', equivalent to `cd $OLDPWD' */
-          dirname = get_string_value (CString::new("OLDPWD").unwrap().as_ptr());
+    }
+    else if (*loptend).next != std::ptr::null_mut() {
+        builtin_error (CString::new("too many arguments").unwrap().as_ptr());
+        return EXECUTION_FAILURE!();
+    }
+    else if char::from((*(*(*loptend).word).word) as u8) == '-' && char::from(*((((*(*loptend).word).word) as usize +4) as *mut c_char) as u8) == '\0' {
+      /* This is `cd -', equivalent to `cd $OLDPWD' */
+      dirname = get_string_value (CString::new("OLDPWD").unwrap().as_ptr());
+      if dirname == std::ptr::null_mut() {
+        builtin_error (CString::new("OLDPWD not set").unwrap().as_ptr());
+        return EXECUTION_FAILURE!();
+      }
+      lflag = LCD_PRINTPATH!();		/* According to SUSv3 */
+    } 
+    else if absolute_pathname ((*(*loptend).word).word) !=0 {
+      dirname = (*(*loptend).word).word;
+    }
+    else if privileged_mode == 0 && get_string_value (CString::new("CDPATH").unwrap().as_ptr() ) != std::ptr::null_mut(){
+      cdpath = get_string_value (CString::new("CDPATH").unwrap().as_ptr() );
+      dirname = (*(*loptend).word).word;
 
-          if dirname == std::ptr::null_mut() {
-            builtin_error (CString::new("OLDPWD not set").unwrap().as_ptr());
-            return EXECUTION_FAILURE!();
-          }
-          lflag = LCD_PRINTPATH!();		/* According to SUSv3 */
-      } else if absolute_pathname ((*(*loptend).word).word) !=0 {
-        dirname = (*(*loptend).word).word;
-      } else if privileged_mode == 0 {
-        cdpath = get_string_value (CString::new("CDPATH").unwrap().as_ptr() );
-        if cdpath !=std::ptr::null_mut() {
-          dirname = (*(*loptend).word).word;
-        /* Find directory in $CDPATH. */
-        path_index = 0;
-        path = extract_colon_unit (cdpath, & mut path_index);
-        while path  != std::ptr::null_mut()	{
+      /* Find directory in $CDPATH. */
+      path_index = 0;
+      path = extract_colon_unit (cdpath, & mut path_index);
+
+      while path  != std::ptr::null_mut()	{
         /* OPT is 1 if the path element is non-empty */
         opt = (char::from(*path as u8 )!= '\0') as i32 ;
         temp = sh_makepath (path, dirname, MP_DOTILDE!());
         libc::free (path as * mut c_void);
 
-	      if r_change_to_directory (temp, no_symlinks, xattrflag) !=0 {
-            /* POSIX.2 says that if a nonempty directory from CDPATH
-        is used to find the directory to change to, the new
-        directory name is echoed to stdout, whether or not
-        the shell is interactive. */
-	      if opt !=0 {
-          if no_symlinks !=0 {
-            path=temp;
-          } else {
-            path=the_current_working_directory;
-          }
+        if r_change_to_directory (temp, no_symlinks, xattrflag) !=0 {
+          /* POSIX.2 says that if a nonempty directory from CDPATH
+          is used to find the directory to change to, the new
+          directory name is echoed to stdout, whether or not
+          the shell is interactive. */
+          if opt !=0 {
+            if no_symlinks !=0 {
+              path=temp;
+            } 
+            else {
+              path=the_current_working_directory;
+            }
 
-          if path !=std::ptr::null_mut() {
-            libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,path);
-          }
-        } 
+            if path !=std::ptr::null_mut() {
+              libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,path);
+            }
+          } 
 
-        libc::free (temp as * mut c_void);
-	      return r_bindpwd (no_symlinks);
-
-	    }	else {
-        libc::free (temp as * mut c_void);
+          libc::free (temp as * mut c_void);
+          return r_bindpwd (no_symlinks);
+        }	
+        else {
+          libc::free (temp as * mut c_void);
+        }
+        
+        path = extract_colon_unit (cdpath, &mut path_index);
       }
-	    
-      path = extract_colon_unit (cdpath, &mut path_index);
-	    }
+    }  
+    else{
+        dirname = (*(*loptend).word).word;
     }
-  }  else{
-      dirname = (*(*loptend).word).word;
-  }
 
 
-  /* When we get here, DIRNAME is the directory to change to.  If we
-     chdir successfully, just return. */
-  if 0 != r_change_to_directory (dirname, no_symlinks, xattrflag) {
-    if (lflag  & LCD_PRINTPATH!()) !=0 {
-        libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,dirname);
+    /* When we get here, DIRNAME is the directory to change to.  If we
+      chdir successfully, just return. */
+    if 0 != r_change_to_directory (dirname, no_symlinks, xattrflag) {
+      if (lflag  & LCD_PRINTPATH!()) !=0 {
+          libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,dirname);
+      }
+      return r_bindpwd (no_symlinks);
     }
-    return r_bindpwd (no_symlinks);
-  }
 
-  /* If the user requests it, then perhaps this is the name of
-     a shell variable, whose value contains the directory to
-     change to. */
-  if (lflag & LCD_DOVARS!()) !=0 {
+    /* If the user requests it, then perhaps this is the name of
+      a shell variable, whose value contains the directory to
+      change to. */
+    if (lflag & LCD_DOVARS!()) !=0 {
       temp = get_string_value (dirname);
       if temp != std::ptr::null_mut() && r_change_to_directory (temp, no_symlinks, xattrflag) !=0 {
         libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,temp);
         return r_bindpwd (no_symlinks);
       }
-  }
+    }
 
-  /* If the user requests it, try to find a directory name similar in
-     spelling to the one requested, in case the user made a simple
-     typo.  This is similar to the UNIX 8th and 9th Edition shells. */
-  if (lflag & LCD_DOSPELL!()) !=0 {
-      temp = dirspell (dirname);
-      if temp !=std::ptr::null_mut() && r_change_to_directory (temp, no_symlinks, xattrflag) !=0  {
-        println!("{:?}", temp);
-        libc::free (temp as * mut c_void);
-        return r_bindpwd (no_symlinks);
-      }  else {
-        libc::free (temp as * mut c_void);
-      }
-  }
+    /* If the user requests it, try to find a directory name similar in
+      spelling to the one requested, in case the user made a simple
+      typo.  This is similar to the UNIX 8th and 9th Edition shells. */
+    if (lflag & LCD_DOSPELL!()) !=0 {
+        temp = dirspell (dirname);
+        if temp !=std::ptr::null_mut() && r_change_to_directory (temp, no_symlinks, xattrflag) !=0  {
+          println!("{:?}", temp);
+          libc::free (temp as * mut c_void);
+          return r_bindpwd (no_symlinks);
+        }  else {
+          libc::free (temp as * mut c_void);
+        }
+    }
 
-  e =errno!();
-  temp = printable_filename (dirname, 0);
-  builtin_error (CString::new("%s: %s").unwrap().as_ptr(), temp, libc::strerror (e));
+    e =errno!();
+    temp = printable_filename (dirname, 0);
+    builtin_error (CString::new("%s: %s").unwrap().as_ptr(), temp, libc::strerror (e));
 
-  if temp != dirname {
-    libc::free (temp as * mut c_void);
-  }  
-  return EXECUTION_FAILURE!();
+    if temp != dirname {
+      libc::free (temp as * mut c_void);
+    }  
+    return EXECUTION_FAILURE!();
   }
 }
 

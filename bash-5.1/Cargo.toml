@@ -23,10 +23,17 @@ members=[
  "builtins_rust/exit",
  "builtins_rust/help",
  "builtins_rust/alias",
+ "builtins_rust/caller",
+ "builtins_rust/eval",
+ "builtins_rust/exec",
+ "builtins_rust/common",
  "builtins_rust/cmd",
  "builtins_rust/enable",
  "builtins_rust/declare",
  "builtins_rust/setattr",
+ "builtins_rust/break_1",
+ "builtins_rust/type",
+ "builtins_rust/ulimit"
 ]
 
 [dependencies]
@@ -49,5 +56,12 @@ rcolon = {path = "./builtins_rust/colon"}
  #alias= {path = "./builtins_rust/alias"}
  exit = {path = "./builtins_rust/exit"}
  rhelp = {path = "./builtins_rust/help"}
+ rcaller = {path = "./builtins_rust/caller"}
+ reval = {path = "./builtins_rust/eval"}
+ rexec = {path = "./builtins_rust/exec"}
+ rcommon = {path = "./builtins_rust/common"}
  rcmd = {path = "builtins_rust/cmd"}
  enable = {path = "builtins_rust/enable"}
+ rbreak = {path = "builtins_rust/break_1"} 
+ rulimit = {path = "builtins_rust/ulimit"} 
+ rtype = {path = "builtins_rust/type"} 

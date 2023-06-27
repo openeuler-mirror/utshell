@@ -10,7 +10,7 @@ build = "../build.rs"
 [lib]
 name = "rread"
 #crate-type = ["cdylib"]
-crate-type = ["staticlib"]
+crate-type = ["staticlib","rlib"]
 
 [dependencies]
 libc = "0.2"

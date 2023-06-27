@@ -47,6 +47,7 @@ $END
 #include "common.h"
 
 static int check_loop_level PARAMS((void));
+extern int r_break_builtin  PARAMS((WORD_LIST *));
 
 /* The depth of while's and until's. */
 int loop_level = 0;
@@ -63,6 +64,7 @@ int
 break_builtin (list)
      WORD_LIST *list;
 {
+  return r_break_builtin(list);
   intmax_t newbreak;
 
   CHECK_HELPOPT (list);
@@ -140,4 +142,29 @@ check_loop_level ()
 #endif /* BREAK_COMPLAINS */
 
   return (loop_level);
+}
+
+extern void  set_loop_level(int i)
+{
+   loop_level = i;
+}
+extern int get_loop_level(void )
+{
+  return loop_level;
+}
+extern void  set_continuing(int i)
+{
+   continuing = i;
+}
+extern int get_continuing()
+{
+    return continuing;
+}
+extern void  set_breaking(int i)
+{
+   breaking = i ;
+}
+extern int get_breaking()
+{
+   return  breaking;
 }
