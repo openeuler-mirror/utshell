@@ -294,6 +294,7 @@ unsafe fn DEBUG_TRAP()->i32
 #[no_mangle]
 pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
 {
+  
   let mut result:i32;
   let mut filename:*mut c_char;
   let mut debug_trap:* mut c_char;
@@ -306,7 +307,7 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
   let mut  llist:* mut WordList = loptend.clone();
 
   if list == std::ptr::null_mut() {
-    builtin_error (CString::new("filename argument required").unwrap().as_ptr());
+    builtin_error (b"filename argument required\0" as *const u8 as *const i8 as *mut i8 );
     builtin_usage ();
     return EX_USAGE;
   }
@@ -344,7 +345,7 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
     }
   }
 
-  begin_unwind_frame (CString::new("source").unwrap().as_ptr() as * mut c_char);
+  begin_unwind_frame (b"source\0" as *const u8 as *const i8 as *mut i8);
   let xf:Functions=Functions{f_xfree :xfree};
   add_unwind_protect (xf, filename);
 
@@ -380,7 +381,7 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
 
   result = source_file (filename, (list !=std::ptr::null_mut() && (*list).next !=std::ptr::null_mut()) as i32);
 
-  run_unwind_frame (CString::new("source").unwrap().as_ptr() as * mut c_char);
+  run_unwind_frame (b"source\0" as *const u8 as *const i8 as *mut i8);
 
   return result;
   }
