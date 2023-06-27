@@ -400,7 +400,7 @@ pub extern "C" fn r_set_verbose_flag (){
 #[no_mangle]
 pub extern "C" fn r_fc_number (list:* mut WordList)->i32
 {
-  let mut s:*mut c_char = 0 as *mut i8;
+  let mut s:*mut c_char = 0 as *mut libc::c_char;
 
   if list == std::ptr::null_mut(){
     return 0;

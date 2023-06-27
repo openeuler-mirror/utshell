@@ -407,7 +407,7 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WordList)->i32{
 
             //if defined (JOB_CONTROL)
             //else if  w != std::ptr::null_mut() && (w as u8)as char == '%' {
-            else if *w != 0 && *w == '%' as i8  {
+            else if *w != 0 && *w == '%' as libc::c_char {
                 /* Must be a job spec.  Check it out. */
                 let job:i32;
                 let mut set:SigSet = SigSet::empty();

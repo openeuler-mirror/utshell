@@ -247,7 +247,7 @@ pub const CDESC_STDPATH: i32 = 0x100;
 //#define CDESC_STDPATH		0x100	/* command -p */
 
 
-pub const const_command_builtin:&CStr =unsafe{ CStr::from_bytes_with_nul_unchecked(b"command_builtin\0")};//.unwrap();
+pub const const_command_builtin:*mut libc::c_char = b"command_builtin\0" as *const u8 as *const libc::c_char as *mut libc::c_char;//.unwrap();
 //#define COMMAND_BUILTIN_FLAGS (CMD_NO_FUNCTIONS | CMD_INHIBIT_EXPANSION | CMD_COMMAND_BUILTIN | (use_standard_path ? CMD_STDPATH : 0))
 //#define CMD_WANT_SUBSHELL  0x01	/* User wants a subshell: ( command ) */
 //#define CMD_FORCE_SUBSHELL 0x02	/* Shell needs to force a subshell. */
@@ -345,7 +345,7 @@ pub unsafe extern "C" fn r_command_builtin(mut list: *mut WordList) -> libc::c_i
         return if any_found != 0 { EXECUTION_SUCCESS!() } else { EXECUTION_FAILURE!() };
     }
     begin_unwind_frame(
-        const_command_builtin.as_ptr() as *mut libc::c_char
+        const_command_builtin
     );
     command = make_bare_simple_command();
     // let ref mut fresh0 = (*(*command).value.Simple).words;

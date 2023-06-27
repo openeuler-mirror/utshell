@@ -100,7 +100,7 @@ macro_rules!  MP_RMDOT{
 #[macro_export]
 macro_rules!  STREQ{
    ($a:expr,$b:expr) =>{
-       *$a as i8 == *$b as i8 && libc::strcmp($a,$b)==0
+       *$a as libc::c_char == *$b as libc::c_char && libc::strcmp($a,$b)==0
     }
 }
 
@@ -114,11 +114,11 @@ macro_rules!  SIZEOFWORD{
 
 #[repr(C)]
 pub struct SHELL_VAR {
-  name:*mut i8,
-  value:*mut i8,
-  exportstr:*mut i8,
+  name:*mut libc::c_char,
+  value:*mut libc::c_char,
+  exportstr:*mut libc::c_char,
   dynamic_value:*mut fn(v:* mut SHELL_VAR)->*mut SHELL_VAR,
-  assign_func:* mut fn(v:* mut SHELL_VAR,str1:* mut i8,t:i64,str2:* mut i8)->*mut SHELL_VAR,
+  assign_func:* mut fn(v:* mut SHELL_VAR,str1:* mut libc::c_char,t:i64,str2:* mut libc::c_char)->*mut SHELL_VAR,
   attributes:i32,
   context:i32
 }
@@ -126,9 +126,9 @@ pub struct SHELL_VAR {
 #[repr (C)]
 #[derive(Copy,Clone)]
 pub struct alias {
-    name :*mut i8,
-    value :*mut i8 ,
-    flags:i8 
+    name :*mut libc::c_char,
+    value :*mut libc::c_char ,
+    flags:libc::c_char 
 }
 
 type sh_builtin_func_t = fn(WordList) -> i32;
@@ -192,7 +192,7 @@ pub union REDIRECT {
   flags: i32 ,
   instruction:r_instruction,
   redirectee:REDIRECTEE,
-  here_doc_eof:*mut i8
+  here_doc_eof:*mut libc::c_char
 }
 
 #[repr(C)]
@@ -262,14 +262,14 @@ pub struct function_def {
     line: i32 ,
     name:*mut WordDesc,
     command:*mut COMMAND,
-    source_file:*mut i8
+    source_file:*mut libc::c_char
 }
 
 #[repr(C)]
 pub struct group_com {
     ignore: i32 ,
     command:*mut COMMAND,
-    source_file:*mut i8
+    source_file:*mut libc::c_char
 }
 
 #[repr(C)]
@@ -316,7 +316,7 @@ pub struct subshell_com {
 #[repr(C)]
 pub struct coproc_com {
     flags:i32,
-    name:*mut i8,
+    name:*mut libc::c_char,
     command:*mut COMMAND
 }
 
@@ -345,7 +345,7 @@ macro_rules! FS_EXEC_ONLY {
 macro_rules! ABSPATH {
     ($s :expr) => {
         unsafe {
-            char::from(*($s as *mut i8) as u8) }== '/';
+            char::from(*($s as *mut libc::c_char) as u8) }== '/';
         
     // $x  == '/';
    }
@@ -354,27 +354,27 @@ macro_rules! ABSPATH {
 
 extern "C" {
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WordList , opts:*mut i8)->i32;
+    fn internal_getopt (list:*mut WordList , opts:*mut libc::c_char)->i32;
     fn builtin_usage();
     fn builtin_help();
-    fn sh_notfound (name:* mut i8);
+    fn sh_notfound (name:* mut libc::c_char);
     fn sh_chkwrite (ret:i32)->i32;
-    fn find_alias(alia :*mut i8) ->alias_t;
-    fn sh_single_quote(quote: *const i8) -> *mut i8;
-    fn find_reserved_word(word: *mut i8)->i32;
-    fn find_function (name:* const i8)-> *mut SHELL_VAR;
-    fn named_function_string (name: *mut i8, cmd:* mut COMMAND, i:i32)->* mut i8;
-    fn find_shell_builtin(builtin: *mut i8) -> *mut i8;
-    fn find_special_builtin(builtins: *mut i8) -> *mut sh_builtin_func_t;
-    fn absolute_program(program:*const i8) -> i32;
-    fn file_status(status :*const i8) -> i32 ;
-    fn phash_search(search:*const i8) -> *mut i8;
-    fn conf_standard_path() -> *mut i8;
-    fn find_in_path(path1:*const i8, path2:*mut i8, num: i32) -> *mut i8;
-    fn find_user_command(cmd:*mut i8) -> *mut i8;
-    fn user_command_matches(cmd:*const i8, num1:i32, num2:i32) -> *mut i8;
-    fn sh_makepath(path:*const i8, path1:*const i8, i: i32) -> *mut i8;
-    //fn find_alias(alia : *mut i8) -> *mut alias_t;
+    fn find_alias(alia :*mut libc::c_char) ->alias_t;
+    fn sh_single_quote(quote: *const libc::c_char) -> *mut libc::c_char;
+    fn find_reserved_word(word: *mut libc::c_char)->i32;
+    fn find_function (name:* const libc::c_char)-> *mut SHELL_VAR;
+    fn named_function_string (name: *mut libc::c_char, cmd:* mut COMMAND, i:i32)->* mut libc::c_char;
+    fn find_shell_builtin(builtin: *mut libc::c_char) -> *mut libc::c_char;
+    fn find_special_builtin(builtins: *mut libc::c_char) -> *mut sh_builtin_func_t;
+    fn absolute_program(program:*const libc::c_char) -> i32;
+    fn file_status(status :*const libc::c_char) -> i32 ;
+    fn phash_search(search:*const libc::c_char) -> *mut libc::c_char;
+    fn conf_standard_path() -> *mut libc::c_char;
+    fn find_in_path(path1:*const libc::c_char, path2:*mut libc::c_char, num: i32) -> *mut libc::c_char;
+    fn find_user_command(cmd:*mut libc::c_char) -> *mut libc::c_char;
+    fn user_command_matches(cmd:*const libc::c_char, num1:i32, num2:i32) -> *mut libc::c_char;
+    fn sh_makepath(path:*const libc::c_char, path1:*const libc::c_char, i: i32) -> *mut libc::c_char;
+    //fn find_alias(alia : *mut libc::c_char) -> *mut alias_t;
     static  expand_aliases : i32;
     static mut loptend:*mut WordList;
     static posixly_correct:i32;
@@ -396,27 +396,27 @@ pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
     unsafe{
     this = list;  
     while this != std::ptr::null_mut() && char::from((*(*(*this).word).word) as u8) == '-' {
-         let mut flag  = (((*(*this).word).word) as usize + 1) as *mut i8;
+         let mut flag  = (((*(*this).word).word) as usize + 1) as *mut libc::c_char;
          let mut c_str_type = CString::new("type").unwrap();
          let c_str_type1 = CString::new("-type").unwrap();
          let c_str_path = CString::new("path").unwrap();
          let c_str_path1 = CString::new("-path").unwrap();
          let c_str_all = CString::new("all").unwrap();
          let c_str_all1 = CString::new("-all").unwrap();
-         if STREQ!(flag, c_str_type.as_ptr() as *mut i8 ) || STREQ!(flag, c_str_type1.as_ptr() as *mut i8) {
+         if STREQ!(flag, c_str_type.as_ptr() as *mut libc::c_char ) || STREQ!(flag, c_str_type1.as_ptr() as *mut libc::c_char) {
            unsafe {
-            *((((*(*this).word).word) as usize + 1) as *mut i8)  = 't' as i8 ;
-            *((((*(*this).word).word) as usize + 2) as *mut i8)  = '\0' as i8 ;
+            *((((*(*this).word).word) as usize + 1) as *mut libc::c_char)  = 't' as libc::c_char ;
+            *((((*(*this).word).word) as usize + 2) as *mut libc::c_char)  = '\0' as libc::c_char ;
             } 
         }
-        else if STREQ!(flag, c_str_path.as_ptr() as *mut i8) || STREQ!(flag, c_str_path1.as_ptr() as *mut i8){
-            *((((*(*this).word).word) as usize + 1) as *mut i8) = 'p' as i8 ;
-            *((((*(*this).word).word) as usize + 2) as *mut i8)  = '\0' as i8 ;
+        else if STREQ!(flag, c_str_path.as_ptr() as *mut libc::c_char) || STREQ!(flag, c_str_path1.as_ptr() as *mut libc::c_char){
+            *((((*(*this).word).word) as usize + 1) as *mut libc::c_char) = 'p' as libc::c_char ;
+            *((((*(*this).word).word) as usize + 2) as *mut libc::c_char)  = '\0' as libc::c_char ;
 	     }
        
-         else if STREQ!(flag, c_str_all.as_ptr() as *mut i8) || STREQ!(flag, c_str_all1.as_ptr() as *mut i8) {
-            *((((*(*this).word).word) as usize + 1) as *mut i8) = 'a' as i8 ;
-            *((((*(*this).word).word) as usize + 2) as *mut i8)  = '\0' as i8 ;
+         else if STREQ!(flag, c_str_all.as_ptr() as *mut libc::c_char) || STREQ!(flag, c_str_all1.as_ptr() as *mut libc::c_char) {
+            *((((*(*this).word).word) as usize + 1) as *mut libc::c_char) = 'a' as libc::c_char ;
+            *((((*(*this).word).word) as usize + 2) as *mut libc::c_char)  = '\0' as libc::c_char ;
         }
 
        if (*this).next != std::ptr::null_mut(){
@@ -430,7 +430,7 @@ pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
     reset_internal_getopt();
 
    let c_str_afptP = CString::new("afptP").unwrap();
-   let mut opt = unsafe {internal_getopt(list,c_str_afptP.as_ptr() as *mut i8) } ;
+   let mut opt = unsafe {internal_getopt(list,c_str_afptP.as_ptr() as *mut libc::c_char) } ;
   while  opt != -1{
        let optu8:u8= opt as u8;
        let optChar:char=char::from(optu8);
@@ -455,7 +455,7 @@ pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
                 }
             }
         } 
-        opt = internal_getopt (list, c_str_afptP.as_ptr() as * mut i8);
+        opt = internal_getopt (list, c_str_afptP.as_ptr() as * mut libc::c_char);
    }
    list = loptend;
     while list !=  std::ptr::null_mut() {
@@ -486,15 +486,15 @@ pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
 }
 
 
-fn describe_command (command : *mut i8, dflags : i32) -> i32 {
+fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
     let mut found : i32 = 0;
     let mut i : i32;
     let mut found_file : i32 = 0;
     let mut f : i32;
     let mut all : i32;
-    let mut full_path : *mut i8;
-    let mut x : *mut i8;
-    let mut pathlist : *mut i8;
+    let mut full_path : *mut libc::c_char;
+    let mut x : *mut libc::c_char;
+    let mut pathlist : *mut libc::c_char;
     let mut func : *mut SHELL_VAR = 0 as  *mut SHELL_VAR; 
    // let mut alias : *mut alias_t;
 
@@ -514,7 +514,7 @@ fn describe_command (command : *mut i8, dflags : i32) -> i32 {
     {
       if (dflags & CDESC_TYPE!()) != 0{
           unsafe {
-            libc::puts("alias" as *const i8 );
+            libc::puts("alias" as *const libc::c_char );
           }
       }
       else if (dflags & CDESC_SHORTDESC!()) != 0 {
@@ -570,7 +570,7 @@ fn describe_command (command : *mut i8, dflags : i32) -> i32 {
           }
       }
       else if dflags & CDESC_SHORTDESC!() != 0 {
-          let mut result : *mut i8;
+          let mut result : *mut libc::c_char;
           unsafe {
             println!("{:?} is a function",CStr::from_ptr(command));
             result = named_function_string (command, function_cell(find_function (command)), FUNC_MULTILINE!()|FUNC_EXTERNAL!());

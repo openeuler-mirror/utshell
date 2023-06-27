@@ -1740,10 +1740,8 @@ f! {
         minor |= (dev & 0xffffff00) >> 12;
         minor as ::c_uint
     }
-}
 
-safe_f! {
-    pub {const} fn makedev(major: ::c_uint, minor: ::c_uint) -> ::dev_t {
+    pub fn makedev(major: ::c_uint, minor: ::c_uint) -> ::dev_t {
         let major = major as ::dev_t;
         let minor = minor as ::dev_t;
         let mut dev = 0;

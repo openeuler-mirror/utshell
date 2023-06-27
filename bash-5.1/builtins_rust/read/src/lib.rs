@@ -162,7 +162,7 @@ unsafe {
             'N' | 'n' => {
                 if opt_char == 'N' {
                     ignore_delim = 1;
-                    delim = -1;
+                    delim = 255 as u8 as libc::c_char;
                 }
                 nflag = 1;
                 code = legal_number(list_optarg, &mut intval);
@@ -222,7 +222,7 @@ unsafe {
 
     //忽略界定符
     if ignore_delim != 0{  //-N  ignore_delim = 1
-        delim = -1;
+        delim = 255 as u8 as libc::c_char;
     }
 
     ifs_chars = getifs(); //ifs_chars is "\n"
