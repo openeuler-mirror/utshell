@@ -4,19 +4,8 @@ extern crate nix;
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
 // use rcommon::{r_sh_notfound,r_sh_invalidopt,r_sh_invalidid,r_sh_readonly,r_sh_chkwrite,};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 
-#[repr(C)]
-pub struct WordDesc {
-    pub word: *mut libc::c_char,
-    pub flags:libc::c_int
-}
-
-#[repr(C)]
-#[derive(Copy,Clone)]
-pub struct WordList {
-    next: *mut WordList,
-    word: *mut WordDesc
-}
 
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -243,15 +232,6 @@ pub struct VAR_CONTEXT {
 	table:* mut HASH_TABLE		/* variables at this scope */
 }
 
-#[macro_export]
-macro_rules! EXECUTION_FAILURE {
-   () => {1}
-}
-
-#[macro_export]
-macro_rules! EX_USAGE {
-   () => {258}
-}
 
 #[macro_export]
 macro_rules! ARGS_SETBLTIN {
@@ -358,12 +338,6 @@ macro_rules! MKLOC_INHERIT {
   }
 }
 
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-  () => {
-    0
-  }
-}
 
 #[macro_export]
 macro_rules! ASS_APPEND {
@@ -558,7 +532,7 @@ pub extern "C" fn r_local_builtin (list:* mut WordList)->i32
       /* Catch a straight `local --help' before checking function context */
       if list !=std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && STREQ ((*(*list).word).word, CString::new("--help").unwrap().as_ptr()) {
         builtin_help ();
-        return EX_USAGE!();
+        return EX_USAGE;
       }
 
       if variable_context !=0 {
@@ -744,7 +718,7 @@ pub extern "C" fn r_declare_internal (list:* mut WordList, local_var:i32)->i32
              }
         'I'=>{ inherit_flag = MKLOC_INHERIT!();}
         _=>{ builtin_usage ();
-             return EX_USAGE!();
+             return EX_USAGE;
             }
 	    }
 		internal_getopt (list, DECLARE_OPTS() as * mut c_char);

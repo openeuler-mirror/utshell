@@ -5,7 +5,8 @@ extern crate nix;
 use libc::c_char;
 use std::ffi::CString;
 
-use rjobs::{PROCESS, COMMAND, r_jobs_builtin, JLIST_STANDARD, WordList};
+use rjobs::{PROCESS, COMMAND, r_jobs_builtin, JLIST_STANDARD };
+use rcommon::{ WordList};
 
 #[repr(C)]
 pub struct JOB {

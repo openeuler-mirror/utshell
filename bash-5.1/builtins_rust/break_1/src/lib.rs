@@ -5,37 +5,13 @@ extern crate nix;
 
 use std::ffi::CString;
 use libc::c_long;
-#[repr(C)]
-pub struct WordDesc {
-    pub word: *mut libc::c_char,
-    pub flags: libc::c_int
-}
 
-#[repr (C)]
-#[derive(Copy,Clone)]
-pub struct WordList {
-    next: *mut WordList,
-    word: *mut WordDesc
-}
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+
 
 // 屏蔽警告。
 #[allow(non_camel_case_types)]
 type intmax_t = c_long;
-
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-   () => {0}
-}
-
-#[macro_export]
-macro_rules! EXECUTION_FAILURE {
-   () => {1}
-}
-
-#[macro_export]
-macro_rules! EX_USAGE {
-   () => {258}
-}
 
 #[macro_export]
 macro_rules! ISHELP {
@@ -49,7 +25,7 @@ macro_rules! CHECK_HELPOPT {
   ($l:expr) => {
     if $l  !=std::ptr::null_mut() && (*$l).word !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) == 0 {
       builtin_help ();
-      return EX_USAGE!();
+      return EX_USAGE;
     }
   }
 }

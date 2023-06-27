@@ -9,6 +9,7 @@ build = "../build.rs"
 [dependencies]
 lazy_static = "1.4.0"
 libc = "0.2"
+rcommon = {path="../common"}
 nix = "0.23.0"
 
 [lib]
