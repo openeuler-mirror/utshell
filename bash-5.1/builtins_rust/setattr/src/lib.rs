@@ -43,6 +43,10 @@ unsafe {
             'a' => arrays_only = 1,
             'A' => assoc_only = 1,
             _ => {
+                if opt == -99 {
+                    builtin_help();
+                    return EX_USAGE;
+                }
             builtin_usage ();
             return EX_USAGE;
             }

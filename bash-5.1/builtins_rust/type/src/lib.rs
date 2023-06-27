@@ -356,6 +356,7 @@ extern "C" {
     fn reset_internal_getopt();
     fn internal_getopt (list:*mut WordList , opts:*mut i8)->i32;
     fn builtin_usage();
+    fn builtin_help();
     fn sh_notfound (name:* mut i8);
     fn sh_chkwrite (ret:i32)->i32;
     fn find_alias(alia :*mut i8) ->alias_t;
@@ -421,6 +422,9 @@ pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
        if (*this).next != std::ptr::null_mut(){
         this = (*this).next; 
        }
+       else  {
+           break;
+       }
     } 
 }
     reset_internal_getopt();
@@ -441,10 +445,10 @@ pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
                   dflags = dflags& !(CDESC_TYPE!()|CDESC_SHORTDESC!());
                 }
             _ =>{
-                if opt == -99 {
-                    builtin_usage();
-                    return EX_USAGE;
-                }
+                 if opt == -99 {
+                     builtin_help();
+                     return EX_USAGE;
+                 }
                 unsafe {
                 builtin_usage ();
                 return EX_USAGE;

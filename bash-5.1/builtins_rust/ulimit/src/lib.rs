@@ -483,17 +483,13 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
             'S' => { mode = mode | LIMIT_SOFT!() ; }
             'H' => { mode = mode | LIMIT_HARD!();}
             '?'=> {   
-                 builtin_help();
+                 builtin_usage();
                  return  EX_USAGE;
             }
-            //  => {
-            //     builtin_usage();
-            //     return EX_USAGE;
-            // }
             _ => {
                 //println!("enter switch default,opt  is {}",opt);
                 if opt == -99 {
-                    builtin_usage();
+                    builtin_help();
                     return EX_USAGE;
                 }
                 if ncmd >= cmdlistsz {
