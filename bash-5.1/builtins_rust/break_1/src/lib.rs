@@ -73,7 +73,8 @@ pub extern "C" fn r_break_builtin(mut list :*mut WordList) -> i32 {
   return (EXECUTION_SUCCESS!());
 }
 
-fn continue_builtin (list :*mut WordList) -> i32 {
+#[no_mangle]
+pub extern "C" fn r_continue_builtin (list :*mut WordList) -> i32 {
     let mut newcont : intmax_t = 0 as intmax_t;
     unsafe {
         CHECK_HELPOPT! (list);

@@ -139,7 +139,7 @@ LOCALE_DEFS = -DLOCALEDIR='"$(localedir)"' -DPACKAGE='"$(PACKAGE)"'
 
 LOCAL_LIBS = @LOCAL_LIBS@
 
-LIBS = $(BUILTINS_LIB) $(LIBRARIES) @LIBS@ -lrt -lpthread -L./target/debug  -lralias  -lrbind  -lrbreak  -lrbuiltin -lrcaller -lrcd -lrcolon -lrcommon -lrcommand -lrcomplete -lrdeclare -lrecho -lrenable -lreval -lrexec -lrexit -lrfc -lrfg_bg -lrgetopts -lrhash -lrexit -lrhelp -lrhistory -lrjobs -lrkill -lrmapfile  -lrpushd -lrread  -lrlet -lrreturn -lrset -lrsetattr -lrshift -lrshopt  -lrsource -lrsuspend  -lrtest -lrtimes -lrtrap -lrtype -lrulimit -lrumask -lrwait -lrprintf -lrexec_cmd
+LIBS = $(BUILTINS_LIB) $(LIBRARIES) @LIBS@ -lrt -lpthread -L./target/debug  -lralias  -lrbind  -lrbreak  -lrbuiltin -lrcaller -lrcd -lrcolon -lrcommon -lcommand -lrcomplete -lrdeclare -lrecho -lrenable -lreval -lrexec -lrexit -lrfc -lrfg_bg -lrgetopts -lrhash -lrexit -lrhelp -lrhistory -lrjobs -lrkill -lrmapfile  -lrpushd -lrread  -lrlet -lrreturn -lrset -lrsetattr -lrshift -lrshopt  -lrsource -lrsuspend  -lrtest -lrtimes -lrtrap -lrtype -lrulimit -lrumask -lrwait -lrprintf -lrexec_cmd
 LIBS_FOR_BUILD = 
 
 STATIC_LD = @STATIC_LD@

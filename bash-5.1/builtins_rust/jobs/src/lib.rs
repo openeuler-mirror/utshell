@@ -597,7 +597,6 @@ pub extern "C" fn r_disown_builtin (list:* mut WordList)->libc::c_int {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn cmd_name() ->*const u8 {
+fn cmd_name() ->*const u8 {
    return b"jobs" as *const u8;
 }

@@ -50,7 +50,7 @@ rtype = {path="../type"}
 rulimit = {path="../ulimit"}
 rumask = {path="../umask"}
 rwait = {path="../wait"}
-
+libc = "0.2"
 [lib]
 crate-type = ["staticlib","rlib"]
 name = "rexec_cmd"

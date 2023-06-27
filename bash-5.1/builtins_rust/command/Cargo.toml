@@ -11,4 +11,4 @@ rcommon = {path="../common"}
 
 [lib]
 crate-type = ["staticlib", "rlib"]
-name = "rcommand"
+name = "command"

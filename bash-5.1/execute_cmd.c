@@ -199,6 +199,7 @@ static int execute_pipeline PARAMS((COMMAND *, int, int, int, struct fd_bitmap *
 static int execute_connection PARAMS((COMMAND *, int, int, int, struct fd_bitmap *));
 
 static int execute_intern_function PARAMS((WORD_DESC *, FUNCTION_DEF *));
+extern int r_exec_cmd PARAMS((char *, WORD_LIST *));
 
 /* Set to 1 if fd 0 was the subject of redirection to a subshell.  Global
    so that reader_loop can set it to zero before executing a command. */
@@ -4395,7 +4396,6 @@ execute_simple_command (simple_command, pipe_in, pipe_out, async, fds_to_close)
     }
   else
     words = copy_word_list (simple_command->words);
-
   /* It is possible for WORDS not to have anything left in it.
      Perhaps all the words consisted of `$foo', and there was
      no variable `$foo'. */
@@ -4733,10 +4733,9 @@ execute_builtin (builtin, words, flags, subshell)
   int result, eval_unwind, ignexit_flag;
   int isbltinenv, should_keep;
   char *error_trap;
-
   error_trap = 0;
   should_keep = 0;
-
+ 
   //r_execute_cmd();
   /* The eval builtin calls parse_and_execute, which does not know about
      the setting of flags, and always calls the execution functions with
@@ -4840,8 +4839,9 @@ execute_builtin (builtin, words, flags, subshell)
 
   executing_builtin++;
   executing_command_builtin |= builtin == command_builtin;
-  result = ((*builtin) (words->next));
-  // r_execute_cmd2(words->next);
+  //result = ((*builtin) (words->next));
+  result = r_exec_cmd(this_command_name,words->next);
+  //r_execute_cmd2(words->next);
 
   /* This shouldn't happen, but in case `return' comes back instead of
      longjmp'ing, we need to unwind. */
@@ -5354,7 +5354,9 @@ execute_builtin_or_function (words, builtin, var, redirects,
   redirection_undo_list = (REDIRECT *)NULL;
 
   if (builtin)
+  {
     result = execute_builtin (builtin, words, flags, 0);
+  }
   else
     result = execute_function (var, words, flags, fds_to_close, 0, 0);
 
@@ -5376,15 +5378,15 @@ execute_builtin_or_function (words, builtin, var, redirects,
 
       discard = 0;
       if (saved_undo_list)
-	{
-	  dispose_redirects (saved_undo_list);
-	  discard = 1;
-	}
+    	{
+	       dispose_redirects (saved_undo_list);
+	       discard = 1;
+    	}
       redirection_undo_list = exec_redirection_undo_list;
       saved_undo_list = exec_redirection_undo_list = (REDIRECT *)NULL;      
       if (discard)
-	discard_unwind_frame ("saved-redirects");
-    }
+	        discard_unwind_frame ("saved-redirects");
+     }
 
   if (saved_undo_list)
     {
@@ -5498,6 +5500,7 @@ execute_disk_command (words, redirects, command_line, pipe_in, pipe_out,
 
   if (command)
     {
+      printf("command  is  %s ========== ======= \n",command);
       /* If we're optimizing out the fork (implicit `exec'), decrement the
 	 shell level like `exec' would do. */
 #if 0 /* TAG: bash-5.2 psmith 10/11/2020 */
@@ -5811,6 +5814,7 @@ shell_execve (command, args, env)
      char *command;
      char **args, **env;
 {
+  printf("wwwwwwwwwwwwwwwwwwwwwwwwww===========\n");
   int larray, i, fd;
   char sample[HASH_BANG_BUFSIZ];
   int sample_len;
