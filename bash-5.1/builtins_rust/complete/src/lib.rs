@@ -1376,12 +1376,3 @@ pub extern "C" fn r_compopt_builtin (listt:* mut WordList)->i32
   }
 }
 
-#[no_mangle]
-pub extern "C" fn cmd_name() ->*const u8 {
-   return b"complete" as *const u8;
-}
-
-#[no_mangle]
-pub extern "C" fn run(list : *mut WordList)->i32 {
-  return r_complete_builtin(list);
-}

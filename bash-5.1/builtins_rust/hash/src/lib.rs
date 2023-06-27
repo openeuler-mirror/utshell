@@ -197,7 +197,6 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
                  }
 
             }
-
             opt = internal_getopt(list,opts.as_ptr() as *mut c_char);
         }
 
@@ -210,12 +209,13 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
             if delete != 0{
                 temp = CString::new("-d").unwrap();
                 temp_ptr = temp.as_ptr() as *mut c_char;
+                sh_needarg(temp_ptr);
             }
             else{
                 temp = CString::new("-t").unwrap();
                 temp_ptr = temp.as_ptr() as *mut c_char;
+                sh_needarg(temp_ptr);
             }
-            sh_needarg(temp_ptr);
             return EXECUTION_FAILURE!();
         }
         

@@ -92,13 +92,14 @@ $END
 
 static SHELL_VAR *declare_find_variable PARAMS((const char *, int, int));
 static int declare_internal PARAMS((register WORD_LIST *, int));
+int r_declare_internal PARAMS((register WORD_LIST *, int));
 
 /* Declare or change variable attributes. */
 int
 declare_builtin (list)
      register WORD_LIST *list;
 {
-  return (declare_internal (list, 0));
+  return (r_declare_internal (list, 0));
 }
 
 $BUILTIN local
@@ -128,7 +129,7 @@ local_builtin (list)
     }
     
   if (variable_context)
-    return (declare_internal (list, 1));
+    return (r_declare_internal (list, 1));
   else
     {
       builtin_error (_("can only be used in a function"));
