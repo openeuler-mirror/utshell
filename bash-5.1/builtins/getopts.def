@@ -311,16 +311,14 @@ dogetopts (argc, argv)
 }
 
 /* The getopts builtin.  Build an argv, and call dogetopts with it. */
+extern int
+r_getopts_builtin (
+     WORD_LIST *list);
 int
 getopts_builtin (list)
      WORD_LIST *list;
 {
-    return r_getopts_builtin(list);
-}
-int
-__getopts_builtin (list)
-     WORD_LIST *list;
-{
+  return r_getopts_builtin(list);
   char **av;
   int ac, ret;
 

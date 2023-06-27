@@ -547,12 +547,12 @@ pub extern "C" fn r_getopts_builtin(list: * mut WORD_LIST)->i32
   }
 }
 
+/*
 #[no_mangle]
 pub extern "C" fn cmd_name() ->*const u8 {
    return b"getopts" as *const u8;
 }
-
 #[no_mangle]
 pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
   return r_getopts_builtin(list);
-}
+}*/

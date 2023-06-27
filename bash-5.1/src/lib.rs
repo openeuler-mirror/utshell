@@ -1,4 +1,4 @@
-use libc::{c_char, c_int, c_long};
+use libc::{c_char, c_int };
 use std::ffi::CStr;
 use std::str;
 
@@ -31,7 +31,7 @@ pub extern "C" fn r_execute_cmd2(l : *mut WORD_LIST) -> i32 {
         let mut it :  *mut WORD_LIST = l;
         while std::ptr::null()  !=  it {
             //let mut a = (&((* ((*l).word)).word) );
-            let mut a :*mut c_char =( *(*it).word).word;
+            let a :*mut c_char =( *(*it).word).word;
             let c_str: &CStr = CStr::from_ptr(a);
             let str_slice: &str = c_str.to_str().unwrap();
             println! ("word is {:?}", str_slice);

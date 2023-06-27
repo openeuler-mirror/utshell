@@ -1195,12 +1195,13 @@ pub extern "C" fn fc_readline (stream:* mut libc::FILE)->* mut c_char
   }
 }
 
+/*
 #[no_mangle]
 pub extern "C" fn cmd_name() ->*const u8 {
    return b"fc" as *const u8;
 }
-
 #[no_mangle]
 pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
   return r_fc_builtin(list);
 }
+*/

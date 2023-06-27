@@ -12,5 +12,5 @@ libc = "0.2"
 nix = "0.23.0"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["staticlib"]
 name = "rgetopts"

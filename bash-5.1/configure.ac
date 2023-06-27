@@ -23,10 +23,10 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_REVISION([for Bash 5.1, version 5.022])dnl
 
-define(bashvers, 5.1)
+define(rashvers, 0.1)
 define(relstatus, release)
 
-AC_INIT([bash], bashvers-relstatus, [bug-bash@gnu.org])
+AC_INIT([rash], rashvers-relstatus, [bug-rash@gnu.org])
 
 dnl make sure we are using a recent autoconf version
 AC_PREREQ(2.61)
@@ -37,7 +37,7 @@ AC_CONFIG_AUX_DIR(./support)
 AC_CONFIG_HEADERS(config.h)
 
 dnl checks for version info
-BASHVERS=bashvers
+BASHVERS=rashvers
 RELSTATUS=relstatus
 
 dnl defaults for debug settings
@@ -1305,7 +1305,7 @@ AC_OUTPUT([Makefile builtins/Makefile lib/readline/Makefile lib/glob/Makefile \
 	  lib/tilde/Makefile doc/Makefile support/Makefile po/Makefile.in \
 	  examples/loadables/Makefile examples/loadables/Makefile.inc \
 	  examples/loadables/perl/Makefile \
-	  support/bash.pc support/bashbug.sh],
+	  support/bash.pc support/rashbug.sh],
 [
 # Makefile uses this timestamp file to record whether config.h is up to date.
 echo timestamp > stamp-h

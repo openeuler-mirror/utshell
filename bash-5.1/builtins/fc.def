@@ -177,17 +177,16 @@ set_verbose_flag ()
 #else
 #  define POSIX_FC_EDIT_COMMAND "${FCEDIT:-${EDITOR:-ed}}"
 #endif
+extern int
+r_fc_builtin (
+     WORD_LIST *list);
 
 int
 fc_builtin (list)
      WORD_LIST *list;
 {
-    return r_fc_builtin(list);
-}
-int
-__fc_builtin (list)
-     WORD_LIST *list;
-{
+return r_fc_builtin (list);
+
   register int i;
   register char *sep;
   int numbering, reverse, listing, execute;

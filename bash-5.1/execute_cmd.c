@@ -5312,6 +5312,7 @@ execute_builtin_or_function (words, builtin, var, redirects,
   int ofifo, nfifo, osize;
   void *ofifo_list;
 #endif
+
 #if defined (PROCESS_SUBSTITUTION)
   begin_unwind_frame ("saved_fifos");
   /* If we return, we longjmp and don't get a chance to restore the old

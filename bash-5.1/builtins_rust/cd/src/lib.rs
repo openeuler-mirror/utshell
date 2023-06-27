@@ -841,12 +841,13 @@ pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr
   }
 }
 
+/*
 #[no_mangle]
 pub extern "C" fn cmd_name() ->*const u8 {
    return b"cd" as *const u8;
 }
-
 #[no_mangle]
 pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
   return r_cd_builtin(list);
 }
+*/
