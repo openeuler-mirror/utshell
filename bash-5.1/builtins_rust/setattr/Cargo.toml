@@ -1,0 +1,21 @@
+[package]
+name = "setattr"
+version = "0.1.0"
+edition = "2018"
+authors = ["lvgenggeng"]
+build = "../build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "rsetattr"
+#crate-type = ["cdylib"]
+crate-type = ["staticlib"]
+
+[build-dependencies]
+rdeclare = {path = "../declare"}
+
+[dependencies]
+libc = "0.2"
+nix = "0.23"
+rdeclare = {path = "../declare"}

@@ -104,10 +104,12 @@ static int enable_shell_command PARAMS((char *, int));
 /* Enable/disable shell commands present in LIST.  If list is not specified,
    then print out a list of shell commands showing which are enabled and
    which are disabled. */
+extern int r_enable_builtin ( WORD_LIST *list);
 int
 enable_builtin (list)
      WORD_LIST *list;
 {
+return r_enable_builtin(list);
   int result, flags;
   int opt, filter;
 #if defined (HAVE_DLOPEN) && defined (HAVE_DLSYM)
@@ -311,6 +313,7 @@ dyn_load_builtin (list, flags, filename)
 #endif
 
   handle = 0;
+  //没找到
   if (absolute_program (filename) == 0)
     {
       loadables_path = get_string_value ("BASH_LOADABLES_PATH");

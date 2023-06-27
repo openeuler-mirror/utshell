@@ -39,7 +39,7 @@ Returns 0 unless the shell is not executing a shell function or EXPR
 is invalid.
 $END
 
-#include <config.h>
+#include <config.h>   
 #include <stdio.h>
 #include "chartypes.h"
 #include "bashtypes.h"
