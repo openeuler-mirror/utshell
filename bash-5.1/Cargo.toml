@@ -61,6 +61,7 @@ members=[
  "builtins_rust/trap",
  "builtins_rust/setattr",
  "builtins_rust/source",
+ "builtins_rust/exec_cmd",
 ]
 
 [dependencies]
@@ -100,3 +101,4 @@ members=[
  rumask = {path = "./builtins_rust/umask"}
  rwait = {path = "./builtins_rust/wait"}
  rdeclare = {path = "./builtins_rust/declare"}
+ rexec_cmd = {path = "./builtins_rust/exec_cmd"}

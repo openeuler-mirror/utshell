@@ -108,14 +108,14 @@ maybe_pop_dollar_vars ()
   invalidate_cached_quoted_dollar_at ();	/* just invalidate to be safe */
 }
 
+int r_source_builtin ( WORD_LIST *list);
 /* Read and execute commands from the file passed as argument.  Guess what.
    This cannot be done in a subshell, since things like variable assignments
    take place in there.  So, I open the file, place it into a large string,
    close the file, and then execute the string. */
-int
-source_builtin (list)
-     WORD_LIST *list;
+int source_builtin ( WORD_LIST *list)
 {
+return r_source_builtin (list);
   int result;
   char *filename, *debug_trap, *x;
 

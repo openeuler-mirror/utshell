@@ -3,7 +3,6 @@ extern crate nix;
 
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
-// use rcommon::{r_sh_notfound,r_sh_invalidopt,r_sh_invalidid,r_sh_readonly,r_sh_chkwrite,};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 
 
@@ -1516,12 +1515,3 @@ pub extern "C" fn r_declare_internal (list:* mut WordList, local_var:i32)->i32
 }
 }
 
-#[no_mangle]
-pub extern "C" fn cmd_name() ->*const u8 {
-   return b"declare" as *const u8;
-}
-
-#[no_mangle]
-pub extern "C" fn run(list : *mut WordList)->i32 {
-  return r_declare_builtin(list);
-}
