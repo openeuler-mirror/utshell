@@ -11,4 +11,5 @@ crate-type = ["staticlib","rlib"]
 [dependencies]
 libc = "0.2"
 rcmd = {path="../cmd"}
+rcommon = {path="../common"}
 

@@ -1,51 +1,11 @@
 extern crate libc;
 extern crate rread;
 
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use libc::{c_char,c_int,PT_NULL,c_long,};
 use std::ffi::{CStr,CString};
 
 use rread::{SHELL_VAR,ARRAY,intmax_t,};
-
-//struct
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct word_desc {
-    pub word: *mut c_char,
-    pub flags: c_int,
-}
-pub type WordDesc = word_desc;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct word_list {
-    pub next: *mut word_list,
-    pub word: *mut WordDesc,
-}
-pub type WordList = word_list;
-
-
-//enum
-
-//macro
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-  () => {
-    0
-  }
-}
-
-#[macro_export]
-macro_rules! EXECUTION_FAILURE {
-  () => {
-    1
-  }
-}
-
-
-#[macro_export]
-macro_rules! EX_USAGE {
-    () => {258}
-}
 
 #[macro_export]
 macro_rules! att_array {

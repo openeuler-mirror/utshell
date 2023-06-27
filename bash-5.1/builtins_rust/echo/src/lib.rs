@@ -2,23 +2,11 @@ extern crate libc;
 
 use libc::{c_char,c_int, strchr, putchar,clearerr,free,FILE, fprintf, c_void};
 use std::ffi::{CString,CStr,};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 // use std::io::{stdout, Write};
 use std::ptr::read_volatile;
 
 //结构体
-#[repr (C)]
-pub struct WordDesc{
-    pub word:*mut c_char,
-    pub flags:c_int,
-}
-
-#[repr (C)]
-// #[derive(Copy,Clone)]
-pub struct WordList{
-    pub next:*mut WordList,
-    pub word:*mut WordDesc,
-}
-
 
 //枚举
 
@@ -41,11 +29,6 @@ macro_rules!  QUIT {
             throw_to_top_level();
         }
     };
-}
-
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-   () => {0}
 }
 
 

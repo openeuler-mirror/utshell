@@ -1,5 +1,6 @@
 use std::ffi::*;
 
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 extern "C" {
     fn copy_word_list(_: *mut WordList) -> *mut WordList;
     fn begin_unwind_frame(_: *mut libc::c_char);
@@ -56,20 +57,6 @@ pub const cm_if: command_type = 3;
 pub const cm_while: command_type = 2;
 pub const cm_case: command_type = 1;
 pub const cm_for: command_type = 0;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct word_desc {
-    pub word: *mut libc::c_char,
-    pub flags: libc::c_int,
-}
-pub type WordDesc = word_desc;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct word_list {
-    pub next: *mut word_list,
-    pub word: *mut WordDesc,
-}
-pub type WordList = word_list;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub union REDIRECTEE {
@@ -259,9 +246,6 @@ pub const CDESC_STDPATH: i32 = 0x100;
 //#define CDESC_ABSPATH		0x080	/* convert to absolute path, no ./ */
 //#define CDESC_STDPATH		0x100	/* command -p */
 
-pub const EX_USAGE :i32= 258;
-pub const EXECUTION_SUCCESS:i32 = 0;
-pub const EXECUTION_FAILURE:i32 = 1;
 
 pub const const_command_builtin:&CStr =unsafe{ CStr::from_bytes_with_nul_unchecked(b"command_builtin\0")};//.unwrap();
 //#define COMMAND_BUILTIN_FLAGS (CMD_NO_FUNCTIONS | CMD_INHIBIT_EXPANSION | CMD_COMMAND_BUILTIN | (use_standard_path ? CMD_STDPATH : 0))
@@ -340,11 +324,11 @@ pub unsafe extern "C" fn command_builtin(mut list: *mut WordList) -> libc::c_int
 
     list = loptend;
     if list.is_null() {
-        return EXECUTION_SUCCESS;
+        return EXECUTION_SUCCESS!();
     }
     if use_standard_path != 0 && restricted != 0 {
         sh_restricted(b"-p\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
-        return EXECUTION_FAILURE;
+        return EXECUTION_FAILURE!();
     }
     if verbose != 0 {
         let mut found: libc::c_int = 0;
@@ -358,7 +342,7 @@ pub unsafe extern "C" fn command_builtin(mut list: *mut WordList) -> libc::c_int
             any_found += found;
             list = (*list).next;
         }
-        return if any_found != 0 { EXECUTION_SUCCESS } else { EXECUTION_FAILURE };
+        return if any_found != 0 { EXECUTION_SUCCESS!() } else { EXECUTION_FAILURE!() };
     }
     begin_unwind_frame(
         const_command_builtin.as_ptr() as *mut libc::c_char
