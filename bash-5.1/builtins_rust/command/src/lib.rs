@@ -62,19 +62,19 @@ pub struct word_desc {
     pub word: *mut libc::c_char,
     pub flags: libc::c_int,
 }
-pub type WORD_DESC = word_desc;
+pub type WordDesc = word_desc;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct word_list {
     pub next: *mut word_list,
-    pub word: *mut WORD_DESC,
+    pub word: *mut WordDesc,
 }
 pub type WORD_LIST = word_list;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub union REDIRECTEE {
     pub dest: libc::c_int,
-    pub filename: *mut WORD_DESC,
+    pub filename: *mut WordDesc,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -146,7 +146,7 @@ pub struct cond_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
     pub type_0: libc::c_int,
-    pub op: *mut WORD_DESC,
+    pub op: *mut WordDesc,
     pub left: *mut cond_com,
     pub right: *mut cond_com,
 }
@@ -162,7 +162,7 @@ pub struct arith_com {
 pub struct select_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
-    pub name: *mut WORD_DESC,
+    pub name: *mut WordDesc,
     pub map_list: *mut WORD_LIST,
     pub action: *mut COMMAND,
 }
@@ -177,7 +177,7 @@ pub struct group_com {
 pub struct function_def {
     pub flags: libc::c_int,
     pub line: libc::c_int,
-    pub name: *mut WORD_DESC,
+    pub name: *mut WordDesc,
     pub command: *mut COMMAND,
     pub source_file: *mut libc::c_char,
 }
@@ -217,7 +217,7 @@ pub struct while_com {
 pub struct case_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
-    pub word: *mut WORD_DESC,
+    pub word: *mut WordDesc,
     pub clauses: *mut PATTERN_LIST,
 }
 pub type PATTERN_LIST = pattern_list;
@@ -234,7 +234,7 @@ pub struct pattern_list {
 pub struct for_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
-    pub name: *mut WORD_DESC,
+    pub name: *mut WordDesc,
     pub map_list: *mut WORD_LIST,
     pub action: *mut COMMAND,
 }

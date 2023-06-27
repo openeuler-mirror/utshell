@@ -35,12 +35,12 @@ pub struct word_desc {
     pub word: *mut libc::c_char,
     pub flags: libc::c_int,
 }
-pub type WORD_DESC = word_desc;
+pub type WordDesc = word_desc;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct word_list {
     pub next: *mut word_list,
-    pub word: *mut WORD_DESC,
+    pub word: *mut WordDesc,
 }
 pub type WORD_LIST = word_list;
 #[derive(Copy, Clone)]

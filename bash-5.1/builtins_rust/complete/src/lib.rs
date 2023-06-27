@@ -5,7 +5,7 @@ use libc::{c_char, c_int, c_ulong, c_void};
 use std::{ffi::CString};
 
 #[repr(C)]
-pub struct WORD_DESC {
+pub struct WordDesc {
     pub word: *mut c_char,
     pub flags:c_int
 }
@@ -14,7 +14,7 @@ pub struct WORD_DESC {
 #[derive(Copy,Clone)]
 pub struct WORD_LIST {
     next: *mut WORD_LIST,
-    word: *mut WORD_DESC
+    word: *mut WordDesc
 }
 
 #[repr(u8)]
@@ -39,7 +39,7 @@ enum r_instruction {
 #[derive(Copy,Clone)]
 pub union REDIRECTEE {
     dest:c_int,
-    filename:* mut WORD_DESC
+    filename:* mut WordDesc
 }
 
 #[repr(C)]
@@ -58,7 +58,7 @@ pub union REDIRECT {
 pub struct for_com {
     flags:c_int,
     line:c_int,
-    name:*mut WORD_DESC,
+    name:*mut WordDesc,
     map_list:*mut WORD_LIST,
     action:*mut COMMAND
 }
@@ -75,7 +75,7 @@ pub struct PATTERN_LIST {
 pub struct case_com {
     flags:c_int,
     line:c_int,
-    word:*mut WORD_DESC,
+    word:*mut WordDesc,
     clauses:*mut PATTERN_LIST
 }
 
@@ -114,7 +114,7 @@ pub struct simple_com {
 pub struct function_def {
     flags:c_int,
     line:c_int,
-    name:*mut WORD_DESC,
+    name:*mut WordDesc,
     command:*mut COMMAND,
     source_file:*mut c_char
 }
@@ -130,7 +130,7 @@ pub struct group_com {
 pub struct select_com {
     flags:c_int,
     line:c_int,
-    name:*mut WORD_DESC,
+    name:*mut WordDesc,
     map_list:*mut WORD_LIST,
     action:*mut COMMAND
 }
@@ -583,11 +583,11 @@ extern "C" {
   fn builtin_usage();
   static list_optarg:* mut c_char;
   fn builtin_error(err:*const c_char,...);
-  fn check_identifier (w:* mut WORD_DESC, f:i32)->i32;
+  fn check_identifier (w:* mut WordDesc, f:i32)->i32;
   static mut posixly_correct:i32;
   static mut loptend:*mut WORD_LIST;
-  fn make_word_list (w:* mut WORD_DESC, list:*mut WORD_LIST)->*mut WORD_LIST;
-  fn make_bare_word (w:*const c_char)->* mut WORD_DESC;
+  fn make_word_list (w:* mut WordDesc, list:*mut WORD_LIST)->*mut WORD_LIST;
+  fn make_bare_word (w:*const c_char)->* mut WordDesc;
   fn dispose_words (list:*mut WORD_LIST);
   fn progcomp_flush ();
   fn compspec_create ()->* mut COMPSPEC;
@@ -709,7 +709,7 @@ pub extern "C" fn r_build_actions (list : *mut WORD_LIST, flagp:* mut _optflags,
   let mut opt_given:i32=0;
   let mut acts:c_ulong=0;
   let mut copts:c_ulong=0;
-  let mut w:WORD_DESC=WORD_DESC{word:std::ptr::null_mut(),flags:0};
+  let mut w:WordDesc=WordDesc{word:std::ptr::null_mut(),flags:0};
 
   unsafe {
     reset_internal_getopt ();
