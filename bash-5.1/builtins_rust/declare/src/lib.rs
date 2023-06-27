@@ -3,6 +3,7 @@ extern crate nix;
 
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
+// use rcommon::{r_sh_notfound,r_sh_invalidopt,r_sh_invalidid,r_sh_readonly,r_sh_chkwrite,};
 
 #[repr(C)]
 pub struct WORD_DESC {

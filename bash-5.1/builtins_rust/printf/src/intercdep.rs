@@ -14,7 +14,7 @@ pub struct word_list {
 }
 pub type WORD_LIST = word_list;
 
-pub type SHELL_VAR = variable;
+// pub type SHELL_VAR = variable;
 
 pub type __intmax_t = c_long;
 pub type intmax_t = __intmax_t;

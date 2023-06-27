@@ -1,19 +1,19 @@
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct word_desc {
-    pub word: *mut c_char,
-    pub flags: c_int,
-}
-pub type WORD_DESC = word_desc;
+// #[repr(C)]
+// #[derive(Copy, Clone)]
+// pub struct word_desc {
+//     pub word: *mut c_char,
+//     pub flags: c_int,
+// }
+// pub type WORD_DESC = word_desc;
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct word_list {
-    pub next: *mut word_list,
-    pub word: *mut WORD_DESC,
-}
-pub type WORD_LIST = word_list;
+// #[repr(C)]
+// #[derive(Copy, Clone)]
+// pub struct word_list {
+//     pub next: *mut word_list,
+//     pub word: *mut WORD_DESC,
+// }
+// pub type WORD_LIST = word_list;
 
 pub type SigHandler = unsafe extern "C" fn(arg1: c_int);
 
