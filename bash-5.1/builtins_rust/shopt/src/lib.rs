@@ -937,7 +937,7 @@ pub unsafe extern "C" fn r_shopt_builtin(mut list: *mut WordList) -> i32 {
     let mut rval: i32 = 0;
     flags = 0 as i32;
     reset_internal_getopt();
-    let psuoq = CString::new("adnpsf").expect("CString::new failed");
+    let psuoq = CString::new("psuoq").expect("CString::new failed");
     loop {
         opt = internal_getopt( list, psuoq.as_ptr() as *mut c_char);
         if !(opt != -(1 as i32)) {
@@ -986,12 +986,12 @@ pub unsafe extern "C" fn r_shopt_builtin(mut list: *mut WordList) -> i32 {
     rval = 0;
     if flags & OFLAG != 0 && flags & (SFLAG | UFLAG) == 0 // shopt -o
     {//设置了o-flag，并没设s或u-flag
-        rval = list_shopt_o_options(list, flags);
+        rval = r_list_shopt_o_options(list, flags);
     } else if !list.is_null() && flags & OFLAG != 0 {     //shopt -so args
         rval = set_shopt_o_options(
             if flags & SFLAG != 0 { '-' as i32 } else { '+' as i32 },
             list,
-            flags & OFLAG,
+            flags & QFLAG,
         );
     } else if flags & OFLAG != 0 {                        // shopt -so
         rval = list_some_o_options(
@@ -1206,7 +1206,7 @@ unsafe extern "C" fn list_some_shopts(
     return sh_chkwrite(EXECUTION_SUCCESS);
 }
 
-unsafe extern "C" fn list_shopt_o_options(
+unsafe extern "C" fn r_list_shopt_o_options(
     list: *mut WordList,
     flags: i32,
 ) -> i32 {
@@ -1488,23 +1488,24 @@ pub unsafe extern "C" fn r_set_bashopts() {
     i = 0;
     vsize = 0;
     while !(SHOPT_VARS[i as usize].name).is_null() {
-        tflag[i as usize] = 0 as i32 as libc::c_char;
+        tflag[i as usize] = 0 as libc::c_char;
         if *SHOPT_VARS[i as usize].value != 0 {
-            vsize = vsize + strlen(SHOPT_VARS[i as usize].name) as i32;
+            vsize += strlen(SHOPT_VARS[i as usize].name) as i32;
+            vsize += 1;
             /*
             vsize = (vsize as libc::c_ulong)
                 .wrapping_add(
                     (strlen(SHOPT_VARS[i as usize].name))
                         .wrapping_add(1 as i32 as libc::c_ulong),
                 ) as i32 as libc::c_int;
-                */
+            */
             tflag[i as usize] = 1 as i32 as libc::c_char;
         }
         i += 1;
     }
-    value = xmalloc((vsize + 1 ) as SizeT) as *mut libc::c_char;
-    vptr = 0 as i32;
-    i = vptr;
+    value = libc::malloc((vsize + 1 ) as usize) as *mut libc::c_char;
+    vptr = 0;
+    i = 0;
     while !(SHOPT_VARS[i as usize].name).is_null() {
         if tflag[i as usize] != 0 {
             strcpy(value.offset(vptr as isize), SHOPT_VARS[i as usize].name);
@@ -1517,6 +1518,7 @@ pub unsafe extern "C" fn r_set_bashopts() {
         }
         i += 1;
     }
+    //printf(b"the values=%s" as *const u8 as *const libc::c_char, value);
     if vptr != 0 {
         vptr -= 1;
     }
@@ -1539,7 +1541,8 @@ pub unsafe extern "C" fn r_set_bashopts() {
     {
         (*v).attributes &= !(0x1 as i32);
     }
-    free(value as *mut libc::c_void);
+    //libc::free(value );
+    libc::free(value as *mut libc::c_void);
 }
 #[no_mangle]
 pub unsafe extern "C" fn r_parse_bashopts( value: *mut libc::c_char) {

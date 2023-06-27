@@ -262,7 +262,8 @@ pub const CDESC_STDPATH: i32 = 0x100;
 pub const EX_USAGE :i32= 258;
 pub const EXECUTION_SUCCESS:i32 = 0;
 pub const EXECUTION_FAILURE:i32 = 1;
-pub const const_command_builtin: &CStr = CStr::from_bytes_with_nul(b"command_builtin\0").unwrap();
+
+pub const const_command_builtin:&CStr =unsafe{ CStr::from_bytes_with_nul_unchecked(b"command_builtin\0")};//.unwrap();
 //#define COMMAND_BUILTIN_FLAGS (CMD_NO_FUNCTIONS | CMD_INHIBIT_EXPANSION | CMD_COMMAND_BUILTIN | (use_standard_path ? CMD_STDPATH : 0))
 //#define CMD_WANT_SUBSHELL  0x01	/* User wants a subshell: ( command ) */
 //#define CMD_FORCE_SUBSHELL 0x02	/* Shell needs to force a subshell. */
