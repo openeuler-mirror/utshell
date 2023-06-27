@@ -1,5 +1,5 @@
 use libc::{c_int, c_char, c_void};
-use rcommon::{r_make_builtin_argv,WORD_LIST};
+
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
@@ -17,7 +17,7 @@ unsafe {
         }
         return EXECUTION_FAILURE;
     }
-    let argv = r_make_builtin_argv(list, std::mem::transmute(&argc));
+    let argv = make_builtin_argv(list, std::mem::transmute(&argc));
     result = test_command(argc, argv);
     libc::free(argv as *mut c_void);
 }

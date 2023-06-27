@@ -1,16 +1,14 @@
 extern crate libc;
 extern crate nix;
-extern crate rcommon;
 
 use libc::{c_char,c_int, strlen, strcpy, size_t, c_void, free};
 use std::ffi::{CString,CStr};
 use nix::errno::errno;
-use rcommon::r_sh_restricted;
 
 
 #[repr (C)]
 #[derive(Copy,Clone)]
-pub struct WordDesc{
+pub struct WORD_DESC{
     pub word:*mut c_char,
     pub flags:c_int,
 }
@@ -19,7 +17,7 @@ pub struct WordDesc{
 #[derive(Copy,Clone)]
 pub struct WORD_LIST{
     pub next:*mut WORD_LIST,
-    pub word:*mut WordDesc,
+    pub word:*mut WORD_DESC,
 }
 
 #[repr (C)]
@@ -37,7 +35,7 @@ type REDIRECT = redirect;
 #[repr (C)]
 union REDIRECTEE {
     dest:i32,
-    filename:*mut WordDesc,
+    filename:*mut WORD_DESC,
 }
 
 #[repr(i8)]  //i8 or C ???????
@@ -128,7 +126,7 @@ extern "C" {
     static loptend:*mut WORD_LIST;
     static mut redirection_undo_list:*mut REDIRECT;
     static restricted:i32;
-    // static comsub_ignore_return:i32;
+    static comsub_ignore_return:i32;
     static export_env:*mut *mut c_char;
     static interactive_shell:i32;
     static subshell_environment:i32;
@@ -142,7 +140,7 @@ extern "C" {
     fn internal_getopt(list:*mut WORD_LIST,opts:*mut c_char)->i32;
     fn builtin_usage();
     fn dispose_redirects(list:*mut REDIRECT);
-    // fn sh_restricted(s:*mut c_char);
+    fn sh_restricted(s:*mut c_char);
     fn strvec_from_word_list(list:*mut WORD_LIST,alloc:i32,starting_index:i32,ip:*mut i32)->*mut *mut c_char;
     fn absolute_program(string:*const c_char)->i32;
     fn search_for_command(pathname:*const c_char,flags:i32)->*mut c_char;
@@ -177,7 +175,7 @@ pub static no_exit_on_failed_exec:i32 = 0;
    prepend a `-' onto NAME and return the new name. */
 #[no_mangle]
 extern "C" fn r_mkdashname(name:*mut c_char)->*mut c_char{
-    let ret:*mut c_char;
+    let mut ret:*mut c_char;
 
     unsafe{
         ret = xmalloc(2 + strlen(name)) as *mut c_char;
@@ -191,7 +189,7 @@ extern "C" fn r_mkdashname(name:*mut c_char)->*mut c_char{
 
 #[no_mangle]
 pub extern "C" fn r_exec_builtin(mut list:*mut WORD_LIST)->i32{
-    let mut exit_value ;
+    let mut exit_value = EXECUTION_FAILURE!();
     let mut cleanenv:i32 = 0;
     let mut login:i32 = 0;
     let mut opt:i32;
@@ -200,8 +198,8 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WORD_LIST)->i32{
     let mut command:*mut c_char;
     let mut args:*mut *mut c_char;
     let mut env:*mut *mut c_char;
-    let newname:*mut c_char;
-    let com2:*mut c_char;
+    let mut newname:*mut c_char;
+    let mut com2:*mut c_char;
 
     println!("r_exec_builtin");
 
@@ -240,19 +238,20 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WORD_LIST)->i32{
             if list.is_null(){
                 return EXECUTION_SUCCESS!();
             }
-
+    
             if restricted != 0{     //限制性shell
-                // sh_restricted(std::ptr::null_mut() as *mut c_char);
-                r_sh_restricted(std::ptr::null_mut() as *mut c_char);
+                sh_restricted(std::ptr::null_mut() as *mut c_char);
                 return EXECUTION_FAILURE!();
             }
     
             args = strvec_from_word_list(list,1,0,0 as *mut c_int);     //这个指针这样写不清楚可不可以
             env = 0 as *mut *mut c_char;
+            // println!("11111");
     
             /* A command with a slash anywhere in its name is not looked up in $PATH. */
             if absolute_program(*args.offset(0)) != 0{  //命令给的绝对路径，或者执行脚本
                 command = (*args).offset(0);
+                // println!("command:{}",CStr::from_ptr(command).to_str().unwrap());
             }
             else {  //exec后直接给命令
                 command = search_for_command(*args.offset(0),1);
@@ -276,9 +275,13 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WORD_LIST)->i32{
     
             com2 = full_pathname(command);
             if !com2.is_null(){
+                // println!("command:{}",CStr::from_ptr(command).to_str().unwrap());
+                // println!("args[0]:{}",CStr::from_ptr(*args.offset(0)).to_str().unwrap());
                 if command != *args.offset(0){
                     free(command as *mut c_void);
                 }
+                // println!("command:{}",CStr::from_ptr(command).to_str().unwrap());
+                println!("com2:{}",CStr::from_ptr(com2).to_str().unwrap());
                 command = com2;
             }
     
@@ -286,11 +289,16 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WORD_LIST)->i32{
                 free(*args.offset(0) as *mut c_void);
                 if login != 0{
                     *args.offset(0) = r_mkdashname(argv0);
+                    println!("args[0]:{}",CStr::from_ptr(*args.offset(0)).to_str().unwrap());
                 }
                 else {
                     *args.offset(0) = savestring!(argv0);
+                    println!("args[0]:{}",CStr::from_ptr(*args.offset(0)).to_str().unwrap());
+                    println!("args[1]:{}",CStr::from_ptr(*args.offset(1)).to_str().unwrap());
+                    println!("args[2]:{}",CStr::from_ptr(*args.offset(2)).to_str().unwrap());
                 }
                 exec_argv0 = savestring!(*args.offset(0));
+                println!("exec_argv0:{}",CStr::from_ptr(exec_argv0).to_str().unwrap());
             }
             else if login != 0{
                 newname = r_mkdashname(*args.offset(0));

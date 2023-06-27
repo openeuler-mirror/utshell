@@ -1,19 +1,19 @@
-use rcommon::{r_builtin_usage,r_sh_invalidsig,r_sh_badpid,r_sh_badjob,r_get_job_spec,r_display_signal_list,WORD_LIST,WordDesc};
-// #[repr(C)]
-// #[derive(Copy, Clone)]
-// pub struct word_desc {
-//     pub word: *mut c_char,
-//     pub flags: c_int,
-// }
-// pub type WordDesc = word_desc;
 
-// #[repr(C)]
-// #[derive(Copy, Clone)]
-// pub struct word_list {
-//     pub next: *mut word_list,
-//     pub word: *mut WordDesc,
-// }
-// pub type WORD_LIST = word_list;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct word_desc {
+    pub word: *mut c_char,
+    pub flags: c_int,
+}
+pub type WORD_DESC = word_desc;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct word_list {
+    pub next: *mut word_list,
+    pub word: *mut WORD_DESC,
+}
+pub type WORD_LIST = word_list;
 
 pub const EXECUTION_SUCCESS : c_int = 0;
 pub const EXECUTION_FAILURE : c_int = 1;
@@ -39,7 +39,7 @@ pub type command_type = c_uint;
 #[derive(Copy, Clone)]
 pub union REDIRECTEE {
     pub dest: c_int,
-    pub filename: *mut WordDesc,
+    pub filename: *mut WORD_DESC,
 }
 
 pub type r_instruction = c_uint;
@@ -100,7 +100,7 @@ pub type PATTERN_LIST = pattern_list;
 pub struct case_com {
     pub flags: c_int,
     pub line: c_int,
-    pub word: *mut WordDesc,
+    pub word: *mut WORD_DESC,
     pub clauses: *mut PATTERN_LIST,
 }
 
@@ -110,7 +110,7 @@ pub type CASE_COM = case_com;
 pub struct for_com {
     pub flags: c_int,
     pub line: c_int,
-    pub name: *mut WordDesc,
+    pub name: *mut WORD_DESC,
     pub map_list: *mut WORD_LIST,
     pub action: *mut COMMAND,
 }
@@ -133,7 +133,7 @@ pub type ARITH_FOR_COM = arith_for_com;
 pub struct select_com {
     pub flags: c_int,
     pub line: c_int,
-    pub name: *mut WordDesc,
+    pub name: *mut WORD_DESC,
     pub map_list: *mut WORD_LIST,
     pub action: *mut COMMAND,
 }
@@ -173,7 +173,7 @@ pub struct cond_com {
     pub flags: c_int,
     pub line: c_int,
     pub type_: c_int,
-    pub op: *mut WordDesc,
+    pub op: *mut WORD_DESC,
     pub left: *mut cond_com,
     pub right: *mut cond_com,
 }
@@ -194,7 +194,7 @@ pub type SIMPLE_COM = simple_com;
 pub struct function_def {
     pub flags: c_int,
     pub line: c_int,
-    pub name: *mut WordDesc,
+    pub name: *mut WORD_DESC,
     pub command: *mut COMMAND,
     pub source_file: *mut c_char,
 }
@@ -298,7 +298,7 @@ extern "C" {
 
     pub fn get_job_spec(list: *mut WORD_LIST) -> c_int;
 
-    // pub fn builtin_usage();
+    pub fn builtin_usage();
     pub fn builtin_help();
     pub fn builtin_error(format: *const c_char, ...);
 

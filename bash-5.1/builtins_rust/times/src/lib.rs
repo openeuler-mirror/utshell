@@ -1,5 +1,5 @@
 use libc::{c_int, c_char};
-use rcommon::{r_sh_chkwrite};
+
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
@@ -29,6 +29,6 @@ unsafe {
     print_timeval(stdout, std::mem::transmute(&kids.ru_stime));
     libc::putchar(b'\n' as c_int);
 
-    return r_sh_chkwrite(EXECUTION_SUCCESS);
+    return sh_chkwrite(EXECUTION_SUCCESS);
 }
 }

@@ -1,7 +1,6 @@
 use std::{ffi::{CString, CStr}, io::Write};
 
 use libc::{size_t, c_int, c_char, c_long, c_void, PT_NULL};
-use rcommon::{r_builtin_usage,r_sh_erange,r_sh_restricted,r_sh_chkwrite,r_get_numeric_arg,WORD_LIST};
 
 include!(concat!("intercdep.rs"));
 
@@ -47,7 +46,7 @@ unsafe {
             }
             'p' => flags |= PFLAG,
             _ => {
-            r_builtin_usage ();
+            builtin_usage ();
             return EX_USAGE;
             }
         }
@@ -81,12 +80,12 @@ unsafe {
         if !list.is_null() {
             return expand_and_print_history(list);
         }
-        return r_sh_chkwrite(EXECUTION_SUCCESS);
+        return sh_chkwrite(EXECUTION_SUCCESS);
     } else if (flags & PFLAG) != 0 {
         if !list.is_null() {
             return expand_and_print_history(list);
         }
-        return r_sh_chkwrite(EXECUTION_SUCCESS);
+        return sh_chkwrite(EXECUTION_SUCCESS);
     } else if (flags & DFLAG) != 0 && !range.is_null() {
         let mut delete_start: c_long = 0;
         let mut delete_end: c_long = 0;
@@ -96,26 +95,26 @@ unsafe {
         if legal_number(delete_arg, std::mem::transmute(&delete_start)) == 0 ||
         legal_number(range, std::mem::transmute(&delete_end)) == 0 {
             *((range as usize - 1) as *mut c_char) = b'-' as c_char;
-            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
+            sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;
         }
         if *delete_arg == b'-' as c_char && delete_start < 0 {
             delete_start += history_length as c_long;
             if delete_start < history_base as c_long {
-                r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
+                sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
                 return EXECUTION_FAILURE;
             }
         } else if delete_start > 0 {
             delete_start -= history_base as c_long;
         }
         if delete_start < 0 || delete_start >= history_length as c_long {
-            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
+            sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;
         }
         if *range == b'-' as c_char && delete_end < 0 {
             delete_end += history_length as c_long;
             if delete_end < history_base as c_long {
-                r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
+                sh_erange(range, "history position\0".as_ptr() as *mut c_char);
                 return EXECUTION_FAILURE;
             }
         } else if delete_end > 0 {
@@ -123,7 +122,7 @@ unsafe {
         }
 
         if delete_end < 0 || delete_end >= history_length as c_long {
-            r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
+            sh_erange(range, "history position\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;
         }
         result = bash_delete_history_range(delete_start as c_int, delete_end as c_int);
@@ -133,20 +132,20 @@ unsafe {
         return if result != 0 {EXECUTION_SUCCESS} else {EXECUTION_FAILURE};
     } else if (flags & DFLAG) != 0 {
         if legal_number(delete_arg, std::mem::transmute(&delete_offset)) == 0 {
-            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
+            sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;
         }
 
         if *delete_arg == b'-' as c_char && delete_offset < 0 {
             let ind = history_length + delete_offset as c_int;
             if ind < history_base {
-                r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
+                sh_erange(range, "history position\0".as_ptr() as *mut c_char);
                 return EXECUTION_FAILURE;
             }
             opt = ind + history_base;
         } else if delete_offset < history_base as c_long ||
             (delete_offset >= (history_base + history_length) as c_long) {
-            r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
+            sh_erange(range, "history position\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;
         } else {
             opt = delete_offset as c_int;
@@ -159,14 +158,14 @@ unsafe {
         return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
     } else if (flags & (AFLAG | RFLAG | NFLAG | WFLAG | CFLAG)) == 0 {
         result = display_history(list);
-        return r_sh_chkwrite(result);
+        return sh_chkwrite(result);
     }
 
     filename = if !list.is_null() {(*((*list).word)).word} else {get_string_value("HISTFILE\0".as_ptr() as *mut c_char)};
     result = EXECUTION_SUCCESS;
 
     if restricted != 0 && !(libc::strchr(filename, b'/' as c_int).is_null()) {
-        r_sh_restricted(filename);
+        sh_restricted(filename);
         return EXECUTION_FAILURE;
     }
 
@@ -238,7 +237,7 @@ unsafe fn display_history(list: *mut WORD_LIST) -> c_int
     let mut timestr: *mut c_char;
 
     if !list.is_null() {
-        if r_get_numeric_arg(list, 0, std::mem::transmute(&limit)) == 0 {
+        if get_numeric_arg(list, 0, std::mem::transmute(&limit)) == 0 {
             return EXECUTION_FAILURE;
         }
         if limit < 0 {

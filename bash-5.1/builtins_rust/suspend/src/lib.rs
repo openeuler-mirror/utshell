@@ -1,5 +1,4 @@
 use libc::{c_int, c_char, c_long, PT_NULL};
-use rcommon::{r_no_args,WORD_LIST,r_builtin_usage};
 
 include!(concat!("intercdep.rs"));
 
@@ -21,7 +20,7 @@ unsafe {
         match opt_char {
             'f' => force += 1,
             _ => {
-            r_builtin_usage ();
+            builtin_usage ();
             return EX_USAGE;
             }
         }
@@ -35,7 +34,7 @@ unsafe {
     }
 
     if force == 0 {
-        r_no_args(list);
+        no_args(list);
         if login_shell != 0 {
             builtin_error("cannot suspend a login shell\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;

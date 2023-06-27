@@ -1,5 +1,5 @@
 use libc::{c_int, c_char, c_long, c_ulong};
-use rcommon::{r_get_exitstat,WORD_LIST};
+
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
@@ -13,7 +13,7 @@ unsafe {
         return EX_USAGE;
     }
 
-    return_catch_value = r_get_exitstat(list);
+    return_catch_value = get_exitstat(list);
     if return_catch_flag != 0 {
         siglongjmp(std::mem::transmute(&return_catch), 1);
     } else {

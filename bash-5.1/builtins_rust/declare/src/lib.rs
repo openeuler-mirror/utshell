@@ -3,10 +3,9 @@ extern crate nix;
 
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
-// use rcommon::{r_sh_notfound,r_sh_invalidopt,r_sh_invalidid,r_sh_readonly,r_sh_chkwrite,};
 
 #[repr(C)]
-pub struct WordDesc {
+pub struct WORD_DESC {
     pub word: *mut libc::c_char,
     pub flags:libc::c_int
 }
@@ -15,7 +14,7 @@ pub struct WordDesc {
 #[derive(Copy,Clone)]
 pub struct WORD_LIST {
     next: *mut WORD_LIST,
-    word: *mut WordDesc
+    word: *mut WORD_DESC
 }
 
 #[repr(u8)]
@@ -40,7 +39,7 @@ enum r_instruction {
 #[derive(Copy,Clone)]
 pub union REDIRECTEE {
     dest:libc::c_int,
-    filename:* mut WordDesc
+    filename:* mut WORD_DESC
 }
 
 #[repr(C)]
@@ -59,7 +58,7 @@ pub union REDIRECT {
 pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    name:*mut WordDesc,
+    name:*mut WORD_DESC,
     map_list:*mut WORD_LIST,
     action:*mut COMMAND
 }
@@ -76,7 +75,7 @@ pub struct PATTERN_LIST {
 pub struct case_com {
     flags:libc::c_int,
     line:libc::c_int,
-    word:*mut WordDesc,
+    word:*mut WORD_DESC,
     clauses:*mut PATTERN_LIST
 }
 
@@ -115,7 +114,7 @@ pub struct simple_com {
 pub struct function_def {
     flags:libc::c_int,
     line:libc::c_int,
-    name:*mut WordDesc,
+    name:*mut WORD_DESC,
     command:*mut COMMAND,
     source_file:*mut c_char
 }
@@ -131,7 +130,7 @@ pub struct group_com {
 pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
-    name:*mut WordDesc,
+    name:*mut WORD_DESC,
     map_list:*mut WORD_LIST,
     action:*mut COMMAND
 }

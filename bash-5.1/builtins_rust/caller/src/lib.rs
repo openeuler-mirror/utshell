@@ -1,8 +1,8 @@
 extern crate libc;
 extern crate rread;
 
-use libc::{c_char,c_int,PT_NULL,c_long,};
-use std::ffi::{CStr,CString};
+use libc::{c_char,c_int,PT_NULL,c_long,printf,};
+use std::{ffi::{CStr,CString}, sync::Arc};
 
 use rread::{SHELL_VAR,ARRAY,intmax_t,};
 
@@ -13,13 +13,13 @@ pub struct word_desc {
     pub word: *mut c_char,
     pub flags: c_int,
 }
-pub type WordDesc = word_desc;
+pub type WORD_DESC = word_desc;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct word_list {
     pub next: *mut word_list,
-    pub word: *mut WordDesc,
+    pub word: *mut WORD_DESC,
 }
 pub type WORD_LIST = word_list;
 
@@ -155,38 +155,36 @@ unsafe fn array_empty(a:*mut ARRAY)->bool{
 //rust
 #[no_mangle]
 pub extern "C" fn r_caller_builtin(mut list:*mut WORD_LIST)->i32{
-    let funcname_v:*mut SHELL_VAR ;
+    let mut funcname_v:*mut SHELL_VAR = std::ptr::null_mut();
     let bash_source_v:*mut SHELL_VAR;
     let bash_lineno_v:*mut SHELL_VAR;
-    let funcname_a:*mut ARRAY;
-    let bash_source_a:*mut ARRAY;
-    let bash_lineno_a:*mut ARRAY;
+    let mut funcname_a:*mut ARRAY= std::ptr::null_mut();
+    let mut bash_source_a:*mut ARRAY= std::ptr::null_mut();
+    let mut bash_lineno_a:*mut ARRAY= std::ptr::null_mut();
     let funcname_s:*mut c_char;
     let mut source_s:*mut c_char;
     let mut lineno_s:*mut c_char;
     let mut num:intmax_t = 0;
-
-    let mut c_str :CString;
 
     println!("r_caller_builtin");
 
     unsafe{
         CHECK_HELPOPT!(list);
 
-        let c_str1 = CString::new("FUNCNAME").unwrap();
-        let c_ptr1 = c_str1.as_ptr();
-        GET_ARRAY_FROM_VAR!(c_ptr1,funcname_v,funcname_a);
-        // GET_ARRAY_FROM_VAR!(CString::new("FUNCNAME").unwrap().as_ptr(),funcname_v,funcname_a);
+        // let str= CString::new("FUNCNAME").unwrap().as_ptr();
+        GET_ARRAY_FROM_VAR!(CString::new("FUNCNAME").unwrap().as_ptr(),funcname_v,funcname_a);
 
-        let c_str1 = CString::new("BASH_SOURCE").unwrap();
-        let c_ptr1 = c_str1.as_ptr();
-        GET_ARRAY_FROM_VAR!(c_ptr1,bash_source_v,bash_source_a);
-        // GET_ARRAY_FROM_VAR!(CString::new("BASH_SOURCE").unwrap().as_ptr(),bash_source_v,bash_source_a);
+        // let str =  {
+        //     let tmp = CString::new("BASH_SOURCE");
+        //     let tmp2 = tmp.unwrap();
+        //     let tmp2.as_ptr()
+        // }
+        // let str= CString::new("BASH_SOURCE").unwrap().as_ptr();
+        // let str_ptr = str.as_ptr();
+        GET_ARRAY_FROM_VAR!(CString::new("BASH_SOURCE").unwrap().as_ptr(),bash_source_v,bash_source_a);
 
-        let c_str1 = CString::new("BASH_LINENO").unwrap();
-        let c_ptr1 = c_str1.as_ptr();
-        GET_ARRAY_FROM_VAR!(c_ptr1,bash_lineno_v,bash_lineno_a);
-        // GET_ARRAY_FROM_VAR!(CString::new("BASH_LINENO").unwrap().as_ptr(),bash_lineno_v,bash_lineno_a);
+        // let str= CString::new("BASH_LINENO").unwrap().as_ptr();
+        GET_ARRAY_FROM_VAR!(CString::new("BASH_LINENO").unwrap().as_ptr(),bash_lineno_v,bash_lineno_a);
 
         if bash_lineno_a.is_null() || array_empty(bash_lineno_a){
             return EXECUTION_FAILURE!();
@@ -210,18 +208,14 @@ pub extern "C" fn r_caller_builtin(mut list:*mut WORD_LIST)->i32{
                 lineno_s = lineno_s;
             }
             else{
-                c_str = CString::new("NULL").unwrap();
-                lineno_s = c_str.as_ptr() as *mut c_char;
-                // lineno_s = CString::new("NULL").unwrap().as_ptr() as *mut c_char;
+                lineno_s = CString::new("NULL").unwrap().as_ptr() as *mut c_char;
             }
 
             if !source_s.is_null(){
                 source_s = source_s;
             }
             else{
-                c_str = CString::new("NULL").unwrap();
-                source_s = c_str.as_ptr() as *mut c_char;
-                // source_s = CString::new("NULL").unwrap().as_ptr() as *mut c_char;
+                source_s = CString::new("NULL").unwrap().as_ptr() as *mut c_char;
             }
             let lineno_s_str = CStr::from_ptr(lineno_s).to_str().unwrap().to_owned();
             let source_s_str = CStr::from_ptr(source_s).to_str().unwrap().to_owned();

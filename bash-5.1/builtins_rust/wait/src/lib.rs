@@ -4,14 +4,13 @@ extern crate rread;
 extern crate nix;
 
 use libc::{c_char, intmax_t, pid_t, c_short,c_int, SIGCHLD, c_long};
-use std::ffi::{CString,};
+use std::ffi::{CString, CStr};
 use nix::sys::signal::{SigSet};
 
 use rjobs::{PROCESS,COMMAND, BLOCK_CHILD, UNBLOCK_CHILD};
-// use rjobs::WORD_LIST;
+use rjobs::WORD_LIST;
 use rread::{SHELL_VAR,sh_var_value_func_t,sh_var_assign_func_t,
     sigjmp_buf,__jmp_buf_tag,__sigset_t,__sigsetjmp,};
-use rcommon::{r_builtin_unbind_variable,r_builtin_usage,r_get_job_spec,WORD_LIST};
 
 
 
@@ -212,16 +211,16 @@ extern "C" {
 
     // fn sigsetjmp(env:sigjmp_buf,val:c_int)->i32;
     fn internal_getopt (list:*mut WORD_LIST,  opts:*mut c_char)->i32;
-    // fn builtin_usage();
+    fn builtin_usage();
     fn legal_number(string:*const c_char,result:*mut c_long)->i32;
     fn get_job_by_pid(pid:pid_t,block:i32,procp:*mut *mut PROCESS)->i32;
-    // fn get_job_spec(list:*mut WORD_LIST)->i32;
+    fn get_job_spec(list:*mut WORD_LIST)->i32;
     fn sh_badjob(str:*mut c_char);
     fn reset_internal_getopt();
     fn legal_identifier(name:*const c_char)->i32;
     fn valid_array_reference(name:*const c_char,flage:i32)->i32;
     fn sh_invalidid(s:*mut c_char);
-    // fn builtin_unbind_variable(name:*const c_char)->i32;
+    fn builtin_unbind_variable(name:*const c_char)->i32;
     fn wait_sigint_cleanup();
     fn first_pending_trap()->i32;
     fn next_pending_trap(start:i32)->i32;
@@ -278,25 +277,20 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WORD_LIST)->i32{
 
         reset_internal_getopt();
         let c_fnp = CString::new("fnp:").unwrap();
-        
-        loop{
-            opt = internal_getopt(list,c_fnp.as_ptr() as *mut c_char);
-            if opt == -1{
-                break;
-            }
+        opt = internal_getopt(list,c_fnp.as_ptr() as *mut c_char);
+        while opt != -1{
             let optu8 = opt as u8;
             let opt_char = char::from(optu8);
 
             match opt_char{
                 'n' => nflag = 1,
                 'f' => wflags |= JWAIT_FORCE!(),
-                'p' => vname = list_optarg,
+                'P' => vname = list_optarg,
                  _  => {
-                     r_builtin_usage();
+                     builtin_usage();
                      return EX_USAGE!();
                  } 
             }
-            
         }
 
         list = loptend;
@@ -317,7 +311,7 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WORD_LIST)->i32{
                 return WAIT_RETURN!(EXECUTION_FAILURE!());
             }
 
-            if r_builtin_unbind_variable(vname) == -2{
+            if builtin_unbind_variable(vname) == -2{
                 return WAIT_RETURN!(EXECUTION_FAILURE!());
             }
         }
@@ -398,8 +392,8 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WORD_LIST)->i32{
 
         status = EXECUTION_SUCCESS!();
         while list != std::ptr::null_mut(){
-            let pid:pid_t;
-            let w:*mut c_char;
+            let mut pid:pid_t;
+            let mut w:*mut c_char;
             let mut pid_value:intmax_t = 0;
 
             w = (*(*list).word).word;
@@ -427,7 +421,7 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WORD_LIST)->i32{
                 let mut oset:SigSet = SigSet::empty();
 
                 BLOCK_CHILD!(Some(&mut set),Some(&mut oset));
-                job = r_get_job_spec(list);
+                job = get_job_spec(list);
 
                 if INVALID_JOB!(job) == true{
                     if job != DUP_JOB!(){
@@ -492,7 +486,7 @@ extern "C" fn r_set_waitlist(list:*mut WORD_LIST) -> i32{
                 job = get_job_by_pid(pid as pid_t,0,std::ptr::null_mut());
             }
             else{
-                r_get_job_spec(l);
+                get_job_spec(l);
             }
 
             if job == NO_JOB!() || jobs == std::ptr::null_mut() || INVALID_JOB!(job) {
@@ -527,7 +521,7 @@ extern "C" fn r_set_waitlist(list:*mut WORD_LIST) -> i32{
 /* Clean up after a call to wait -n jobs */
 #[no_mangle]
 extern "C" fn r_unset_waitlist(){
-    // let mut i:i32;
+    let mut i:i32;
     let mut set:SigSet = SigSet::empty();
     let mut oset:SigSet = SigSet::empty();
 

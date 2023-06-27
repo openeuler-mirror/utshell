@@ -147,10 +147,8 @@ static mut sourced_logout:i32 = 0;
 pub extern "C" fn r_exit_builtin(list:*mut WORD_LIST) -> i32{
     println!("r_exit_builtin");
     unsafe{
-        let c_str = CString::new("--help").unwrap();
-        let c_ptr = c_str.as_ptr();
         if list != std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && 
-           STREQ((*(*list).word).word, c_ptr){
+           STREQ((*(*list).word).word, CString::new("--help").unwrap().as_ptr()){
                builtin_help();
                return EX_USAGE!();
         }
@@ -176,18 +174,14 @@ pub extern "C" fn r_exit_builtin(list:*mut WORD_LIST) -> i32{
 #[no_mangle]
 pub extern "C" fn  r_logout_builtin(list:*mut WORD_LIST)->i32{
     unsafe{
-        let c_str = CString::new("--help").unwrap();
-        let c_ptr = c_str.as_ptr();
         if list != std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && 
-           STREQ((*(*list).word).word, c_ptr){
+           STREQ((*(*list).word).word, CString::new("--help").unwrap().as_ptr()){
                builtin_help();
                return EX_USAGE!();
         }
 
         if login_shell == 0{
-            let c_str = CString::new("not login shell: use `exit'").unwrap();
-            let c_ptr = c_str.as_ptr();
-            builtin_error(c_ptr);
+            builtin_error(CString::new("not login shell: use `exit'").unwrap().as_ptr());
             return EXECUTION_FAILURE!();
         }else{
             return r_exit_or_logout(list)
@@ -261,9 +255,7 @@ pub extern "C" fn r_bash_logout(){
     unsafe{    
         if login_shell != 0 && sourced_logout == 0 && subshell_environment == 0 {
             sourced_logout = sourced_logout + 1;
-            let c_str = CString::new("~/.bash_logout").unwrap();
-            let c_ptr = c_str.as_ptr();
-            maybe_execute_file(c_ptr,1);
+            maybe_execute_file(CString::new("~/.bash_logout").unwrap().as_ptr(),1);
             maybe_execute_file(SYS_BASH_LOGOOUT!(),1);
         }
     }

@@ -28,7 +28,7 @@ pub extern "C" fn set_or_show_attributes(mut list: *mut WORD_LIST, mut attribute
     let mut aflags: c_int;
     let mut tlist: *mut WORD_LIST;
     let mut nlist: *mut WORD_LIST;
-    let mut w: *mut WordDesc;
+    let mut w: *mut WORD_DESC;
 unsafe {
     reset_internal_getopt();
     let opt_str = std::ffi::CString::new("aAfnp").unwrap();

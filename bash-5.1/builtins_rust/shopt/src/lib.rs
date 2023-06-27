@@ -1,5 +1,4 @@
 use std::ffi::*;
-use rset::r_set_shellopts;
 use libc::*;
 /*
 /* First, the user-visible attributes */
@@ -124,7 +123,7 @@ extern "C" {
     fn minus_o_option_value(_: *mut libc::c_char) -> i32;
     fn list_minus_o_opts(_: i32, _: i32);
     fn set_minus_o_option(_: i32, _: *mut libc::c_char) -> libc::c_int;
-    //fn r_set_shellopts();
+    fn set_shellopts();
     static mut print_shift_error: i32;
     static mut source_uses_path: i32;
     static mut loptend: *mut WordList;
@@ -924,8 +923,8 @@ static QFLAG:i32 = 0x04;
 static OFLAG:i32 = 0x08;
 static PFLAG:i32 = 0x10;
 static EX_USAGE:i32 = 258;
-static SETOPT:i32 = 1;
-static UNSETOPT:i32 = 0;
+static SETOPT:i32 = 0;
+static UNSETOPT:i32 = 1;
 static EXECUTION_SUCCESS : i32 = 0;
 static EXECUTION_FAILURE :i32 = 1;
 
@@ -933,12 +932,12 @@ static mut ON: *const libc::c_char = b"on\0" as *const u8 as *const libc::c_char
 static mut OFF: *const libc::c_char = b"off\0" as *const u8 as *const libc::c_char;
 #[no_mangle]
 pub unsafe extern "C" fn r_shopt_builtin(mut list: *mut WordList) -> i32 {
-    let mut opt: i32;
+    let mut opt: i32 = 0;
     let mut flags: i32 = 0;
     let mut rval: i32 = 0;
-
+    flags = 0 as i32;
     reset_internal_getopt();
-    let psuoq = CString::new("psuoq").expect("CString::new failed");
+    let psuoq = CString::new("adnpsf").expect("CString::new failed");
     loop {
         opt = internal_getopt( list, psuoq.as_ptr() as *mut c_char);
         if !(opt != -(1 as i32)) {
@@ -984,30 +983,29 @@ pub unsafe extern "C" fn r_shopt_builtin(mut list: *mut WordList) -> i32 {
         );
         return EXECUTION_FAILURE;
     }
-
-    if (flags & OFLAG != 0) &&( (flags & (SFLAG | UFLAG)) == 0) // shopt -o
+    rval = 0;
+    if flags & OFLAG != 0 && flags & (SFLAG | UFLAG) == 0 // shopt -o
     {//设置了o-flag，并没设s或u-flag
-        rval = r_list_shopt_o_options(list, flags);
-    } else if !list.is_null() && flags & OFLAG != 0 {  //设置-o了   //shopt -so args , shopt -u args
+        rval = list_shopt_o_options(list, flags);
+    } else if !list.is_null() && flags & OFLAG != 0 {     //shopt -so args
         rval = set_shopt_o_options(
-            if flags & SFLAG != 0 { '-' as i32 /*on*/} else { '+' as i32 /*off*/},
+            if flags & SFLAG != 0 { '-' as i32 } else { '+' as i32 },
             list,
-            flags & QFLAG,//是否沉默?
+            flags & OFLAG,
         );
     } else if flags & OFLAG != 0 {                        // shopt -so
         rval = list_some_o_options(
             if flags & SFLAG != 0 { 1 } else { 0 },
             flags,
         );
-    } else if !list.is_null() && flags & (SFLAG | UFLAG) != 0 {    // shopt -s/u args
+    } else if !list.is_null() && flags & (SFLAG | UFLAG) != 0 {    // shopt -su args
         rval = toggle_shopts(
             if flags & SFLAG != 0 { 1 } else { 0 },
             list,
             flags & QFLAG,
         );
     } else if flags & (SFLAG | UFLAG) == 0 {                        // shopt [args]
-        println!("shopt   ===list all ");
-        rval = r_list_shopts(list, flags);
+        rval = list_shopts(list, flags);
     } else {                                                        // shopt -su
         rval = list_some_shopts(
             if flags & SFLAG != 0 { SETOPT } else { UNSETOPT },
@@ -1094,9 +1092,8 @@ unsafe extern "C" fn shopt_error( s: *mut libc::c_char) {
 unsafe extern "C" fn toggle_shopts(
      mode: i32,
      list: *mut WordList,
-     _quiet: i32,
+     quiet: i32,
 ) -> i32 {
-    printf(CString::new(" set command: %s mode=%d").expect("").as_ptr() ,(*(*list).word).word, mode);
     let mut l: *mut WordList;
     let mut ind:i32;
     let mut rval: i32;
@@ -1137,10 +1134,10 @@ unsafe extern "C" fn print_shopt(
     flags: i32,
 ) {
 
-    let msg: CString = CString::new("shopt %s %s\n").expect("CString new faild");
-    let s: CString = CString::new("-s").expect("CString new faild");
-    let u: CString = CString::new("-u").expect("CString new faild");
-    let optfmt: CString = CString::new("%-15s\t%s\n").expect("CString new faild");
+        let msg: CString = CString::new("shopt %s %s\n").expect("CString new faild");
+        let s: CString = CString::new("-s").expect("CString new faild");
+        let u: CString = CString::new("-u").expect("CString new faild");
+        let optfmt: CString = CString::new("%-15s\t\n").expect("CString new faild");
     if flags & PFLAG != 0 {
             printf(
             msg.as_ptr(),
@@ -1159,42 +1156,41 @@ unsafe extern "C" fn print_shopt(
         );
     };
 }
-unsafe extern "C" fn r_list_shopts(
+unsafe extern "C" fn list_shopts(
      list: *mut WordList,
      flags: i32,
 ) -> i32 {
     let mut l:*mut WordList;
     let mut i;
     let mut val = 0;
-    let mut rval =0;
-    rval = EXECUTION_SUCCESS;
-    if (flags & QFLAG) ==0 {
-        if list.is_null() {
-            for item in SHOPT_VARS {
-              if  item.value != std::ptr::null_mut()  {
-                val = *item.value;
-                    print_shopt(item.name, val, flags);
-              }
+    let mut rval;
+    if list.is_null() {
+        for item in SHOPT_VARS {
+            if (flags & QFLAG) ==0 {
+                print_shopt(item.name, val, flags);
             }
-            return sh_chkwrite(EXECUTION_SUCCESS);
         }
-        l = list;
-        while !l.is_null() {
-            i = find_shopt((*(*l).word).word);
-            if i < 0 {
-                shopt_error((*(*l).word).word);
+        return sh_chkwrite(EXECUTION_SUCCESS);
+    }
+    l = list;
+    rval = EXECUTION_SUCCESS;
+    while !l.is_null() {
+        i = find_shopt((*(*l).word).word);
+        if i < 0 {
+            shopt_error((*(*l).word).word);
+            rval = EXECUTION_FAILURE;
+        } else {
+            val = *SHOPT_VARS[i as usize].value;
+            if val == 0 as i32 {
                 rval = EXECUTION_FAILURE;
-            } else {
-                val = *SHOPT_VARS[i as usize].value;
-                if val == 0 {
-                    rval = EXECUTION_FAILURE;
-                }
+            }
+            if flags & QFLAG == 0 {
                 print_shopt((*(*l).word).word, val, flags);
             }
-            l = (*l).next;
         }
-
+        l = (*l).next;
     }
+
     return sh_chkwrite(rval);
 }
 
@@ -1203,23 +1199,20 @@ unsafe extern "C" fn list_some_shopts(
     flags: i32,
 ) -> i32 {
     for item in SHOPT_VARS {
-        //if !item.name.is_null()  {
-        //printf(b"===name=%s, value=%d\n\0" as *const u8 as *const libc::c_char, item.name as *const u8 as *const libc::c_char, *item.value);
-        //}
-        if ((flags & QFLAG) == 0 )&& item.value != std::ptr::null_mut() && mode==*item.value {
+        if ((flags & QFLAG) == 0 )&& mode==*item.value {
             print_shopt(item.name, *item.value, flags);
         }
     }
     return sh_chkwrite(EXECUTION_SUCCESS);
 }
 
-unsafe extern "C" fn r_list_shopt_o_options(
+unsafe extern "C" fn list_shopt_o_options(
     list: *mut WordList,
     flags: i32,
 ) -> i32 {
     let mut l: *mut WordList = 0 as *mut WordList;
     let mut val: i32 = 0;
-    let mut rval: i32 = EXECUTION_SUCCESS;
+    let mut rval: i32 = 0;
     if list.is_null() {
         if flags & QFLAG == 0 {
             list_minus_o_opts(-1, flags & PFLAG);
@@ -1227,7 +1220,7 @@ unsafe extern "C" fn r_list_shopt_o_options(
         return sh_chkwrite(EXECUTION_SUCCESS);
     }
     l = list;
-
+    rval = EXECUTION_SUCCESS;
     while !l.is_null() {
         val = minus_o_option_value((*(*l).word).word);
         if val == -1 {
@@ -1284,14 +1277,14 @@ unsafe extern "C" fn set_shopt_o_options(
         }
         l = (*l).next;
     }
-    r_set_shellopts();
+    set_shellopts();
     return rval;
 }
 unsafe extern "C" fn set_shellopts_after_change(
      option_name: *mut libc::c_char,
      mode: i32,
 ) -> i32 {
-    r_set_shellopts();
+    set_shellopts();
     return 0;
 }
 unsafe extern "C" fn shopt_set_debug_mode(
@@ -1300,7 +1293,7 @@ unsafe extern "C" fn shopt_set_debug_mode(
 ) -> i32 {
     function_trace_mode = debugging_mode;
     error_trace_mode = function_trace_mode;
-    r_set_shellopts();
+    set_shellopts();
     if debugging_mode != 0 {
         init_bash_argv();
     }
@@ -1462,7 +1455,7 @@ pub unsafe extern "C" fn r_shopt_listopt(
 ) -> i32 {
     let mut i: i32 = 0;
     if name.is_null() {
-        return r_list_shopts(
+        return list_shopts(
            // 0 as *mut libc::c_void as *mut WORD_LIST,
            std::ptr::null_mut(),
             if reusable != 0 { PFLAG } else { 0 },
@@ -1495,24 +1488,23 @@ pub unsafe extern "C" fn r_set_bashopts() {
     i = 0;
     vsize = 0;
     while !(SHOPT_VARS[i as usize].name).is_null() {
-        tflag[i as usize] = 0 as libc::c_char;
+        tflag[i as usize] = 0 as i32 as libc::c_char;
         if *SHOPT_VARS[i as usize].value != 0 {
-            vsize += strlen(SHOPT_VARS[i as usize].name) as i32;
-            vsize += 1;
+            vsize = vsize + strlen(SHOPT_VARS[i as usize].name) as i32;
             /*
             vsize = (vsize as libc::c_ulong)
                 .wrapping_add(
                     (strlen(SHOPT_VARS[i as usize].name))
                         .wrapping_add(1 as i32 as libc::c_ulong),
                 ) as i32 as libc::c_int;
-            */
-            tflag[i as usize] = 1 as libc::c_char;
+                */
+            tflag[i as usize] = 1 as i32 as libc::c_char;
         }
         i += 1;
     }
-    value = libc::malloc((vsize + 1 ) as usize) as *mut libc::c_char;
-    vptr = 0;
-    i = 0;
+    value = xmalloc((vsize + 1 ) as SizeT) as *mut libc::c_char;
+    vptr = 0 as i32;
+    i = vptr;
     while !(SHOPT_VARS[i as usize].name).is_null() {
         if tflag[i as usize] != 0 {
             strcpy(value.offset(vptr as isize), SHOPT_VARS[i as usize].name);
@@ -1525,7 +1517,6 @@ pub unsafe extern "C" fn r_set_bashopts() {
         }
         i += 1;
     }
-    //printf(b"the values=%s" as *const u8 as *const libc::c_char, value);
     if vptr != 0 {
         vptr -= 1;
     }
@@ -1535,20 +1526,20 @@ pub unsafe extern "C" fn r_set_bashopts() {
         (*v).attributes &= !(0x2 as i32);
         exported = (*v).attributes & 0x1 as i32;
     } else {
-        exported = 0;
+        exported = 0 as i32;
     }
     v = bind_variable(
         b"BASHOPTS\0" as *const u8 as *const libc::c_char,
         value,
-        0,
+        0 as i32,
     );
-    (*v).attributes |= 0x2;
+    (*v).attributes |= 0x2 as i32;
     if mark_modified_vars != 0 && exported == 0 as i32
-        && (*v).attributes & 0x1 != 0
+        && (*v).attributes & 0x1 as i32 != 0
     {
-        (*v).attributes &= !(0x1);
+        (*v).attributes &= !(0x1 as i32);
     }
-    libc::free(value as *mut libc::c_void);
+    free(value as *mut libc::c_void);
 }
 #[no_mangle]
 pub unsafe extern "C" fn r_parse_bashopts( value: *mut libc::c_char) {
@@ -1587,11 +1578,11 @@ pub unsafe extern "C" fn r_initialize_bashopts(no_bashopts: i32) {
             temp = if (*var).attributes & att_array != 0
                 || (*var).attributes & att_assoc != 0
             {
-                std::ptr::null_mut()
+                0 as *mut libc::c_void as *mut libc::c_char
             } else {
                 strcpy(
                     xmalloc(
-                        (1 as libc::c_ulong)
+                        (1 as i32 as libc::c_ulong)
                             .wrapping_add(strlen((*var).value)),
                     ) as *mut libc::c_char,
                     (*var).value,

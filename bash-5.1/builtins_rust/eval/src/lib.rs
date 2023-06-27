@@ -1,25 +1,22 @@
 extern crate libc;
-extern crate rcommon;
-
 use libc::{c_char,c_int};
-use std::ffi::{CString};
-use rcommon::{r_no_options,WORD_LIST};
+use std::ffi::{CStr, CString};
 
-// #[repr(C)]
-// #[derive(Copy, Clone)]
-// pub struct word_desc {
-//     pub word: *mut c_char,
-//     pub flags: c_int,
-// }
-// pub type WordDesc = word_desc;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct word_desc {
+    pub word: *mut c_char,
+    pub flags: c_int,
+}
+pub type WORD_DESC = word_desc;
 
-// #[repr(C)]
-// #[derive(Copy, Clone)]
-// pub struct word_list {
-//     pub next: *mut word_list,
-//     pub word: *mut WordDesc,
-// }
-// pub type WORD_LIST = word_list;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct word_list {
+    pub next: *mut word_list,
+    pub word: *mut WORD_DESC,
+}
+pub type WORD_LIST = word_list;
 
 #[macro_export]
 macro_rules! EX_USAGE {
@@ -42,7 +39,7 @@ macro_rules! EXECUTION_SUCCESS {
 extern "C" {
     static loptend:*mut WORD_LIST;
 
-    // fn no_options(list:*mut WORD_LIST)->i32;
+    fn no_options(list:*mut WORD_LIST)->i32;
     fn evalstring(string:*mut c_char,from_file:*const c_char,flag:i32)->i32;
     fn string_list(list:*mut WORD_LIST)->*mut c_char;
 }
@@ -52,16 +49,14 @@ pub extern "C" fn r_eval_builtin(mut list:*mut WORD_LIST)->i32{
     println!("r_eval_builtin");
     
     unsafe{
-        if r_no_options(list) != 0{
+        if no_options(list) != 0{
             return EX_USAGE!();
         }
 
         list = loptend;
 
         if !list.is_null() {
-            let c_str = CString::new("eval").unwrap();
-            let c_ptr = c_str.as_ptr();
-            return evalstring(string_list(list),c_ptr,SEVAL_NOHIST!());
+            return evalstring(string_list(list),CString::new("eval").unwrap().as_ptr(),SEVAL_NOHIST!());
         }
         else{
             return EXECUTION_SUCCESS!();

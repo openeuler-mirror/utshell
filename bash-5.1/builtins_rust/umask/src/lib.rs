@@ -1,14 +1,13 @@
 extern crate libc;
-
 use libc::{c_char,c_int};
 use std::ffi::{CString};
-use rcommon::{r_read_octal};
+
 
 
 //结构体
 #[repr (C)]
 #[derive(Debug)]
-pub struct WordDesc{
+pub struct WORD_DESC{
     pub word:*mut c_char,
     pub flags:c_int,
 }
@@ -17,7 +16,7 @@ pub struct WordDesc{
 #[derive(Debug)]
 pub struct WORD_LIST{
     pub next:*mut WORD_LIST,
-    pub word:*mut WordDesc,
+    pub word:*mut WORD_DESC,
 }
 
 
@@ -186,7 +185,7 @@ extern "C" {
     fn reset_internal_getopt();
     fn internal_getopt (list:*mut WORD_LIST,  opts:*mut c_char)->i32;
     fn builtin_usage();
-    // fn read_octal(string:*mut c_char)->i32;
+    fn read_octal(string:*mut c_char)->i32;
     fn sh_erange(s:*mut c_char,desc:*mut c_char);
     fn sh_chkwrite(s:i32)->i32;
     fn umask(__maks:mode_t!())->mode_t!();
@@ -219,7 +218,7 @@ unsafe fn member(c:*mut c_char,s:*mut c_char) -> bool{
    of -S means display the umask in a symbolic mode. */
 
 pub extern "C" fn r_umask_builtin(mut list:*mut WORD_LIST) ->i32{
-    println!("r_umask_builtin");
+
     let mut print_symbolically:i32;
     let mut opt:i32;
     let  umask_value:i32;
@@ -249,7 +248,7 @@ pub extern "C" fn r_umask_builtin(mut list:*mut WORD_LIST) ->i32{
         list = loptend;
         if list != std::ptr::null_mut(){
             if DIGIT( *(*(*list).word).word) != false {
-                umask_value = r_read_octal((*(*list).word).word);
+                umask_value = read_octal((*(*list).word).word);
                  /* Note that other shells just let you set the umask to zero
                     by specifying a number out of range.  This is a problem
                     with those shells.  We don't change the umask if the input
@@ -262,7 +261,7 @@ pub extern "C" fn r_umask_builtin(mut list:*mut WORD_LIST) ->i32{
                 }
             }
             else{
-                umask_value = r_symbolic_umask(list);
+                umask_value = symbolic_umask(list);
                 if umask_value == -1{
                     return EXECUTION_FAILURE!();
                 }                  
@@ -270,11 +269,11 @@ pub extern "C" fn r_umask_builtin(mut list:*mut WORD_LIST) ->i32{
             umask_arg = umask_value;
             umask(umask_arg);
             if print_symbolically != 0{
-                r_print_symbolic_umask(umask_arg);
+                print_symbolic_umask(umask_arg);
             }
         }
         else{            /* Display the UMASK for this user. */        
-            umask_arg = umask(0o22);
+            umask_arg = umask(022);
             umask(umask_arg);
 
             if pflag != 0{
@@ -287,9 +286,10 @@ pub extern "C" fn r_umask_builtin(mut list:*mut WORD_LIST) ->i32{
             }
 
             if print_symbolically != 0{
-                r_print_symbolic_umask(umask_arg);
+                print_symbolic_umask(umask_arg);
             }
             else{
+                println!("{}",umask_arg);
                 println!("{:04o}",umask_arg);
             }
         }
@@ -302,7 +302,7 @@ pub extern "C" fn r_umask_builtin(mut list:*mut WORD_LIST) ->i32{
 /* Print the umask in a symbolic form.  In the output, a letter is
    printed if the corresponding bit is clear in the umask. */
 
-extern "C"  fn r_print_symbolic_umask(um:mode_t!()){
+extern "C"  fn  print_symbolic_umask(um:mode_t!()){
     /* u=rwx,g=rwx,o=rwx */
     let mut ubits = String::new();
     let mut gbits =String::new();
@@ -342,7 +342,7 @@ extern "C"  fn r_print_symbolic_umask(um:mode_t!()){
 }
 
 #[no_mangle]
-extern "C" fn r_parse_symbolic_mode(mode:*mut c_char,initial_bits:i32)->i32{
+extern "C" fn parse_symbolic_mode(mode:*mut c_char,initial_bits:i32)->i32{
     let mut who:i32;
     let mut op:i32;
     let mut perm:i32;
@@ -463,24 +463,24 @@ extern "C" fn r_parse_symbolic_mode(mode:*mut c_char,initial_bits:i32)->i32{
    by chmod.  If the -S argument is given, then print the umask in a
    symbolic form. */
 
-extern "C" fn r_symbolic_umask(list:*mut WORD_LIST)->i32{
+extern "C" fn symbolic_umask(list:*mut WORD_LIST)->i32{
     let mut um:i32;
     let bits:i32;
     
     unsafe{
         /* Get the initial umask.  Don't change it yet. */
-        um = umask(0o22);
+        um = umask(022);
         umask(um);
 
         /* All work is done with the complement of the umask -- it's
             more intuitive and easier to deal with.  It is complemented
             again before being returned. */
-        bits = r_parse_symbolic_mode((*(*list).word).word, !um & 0777);
+        bits = parse_symbolic_mode((*(*list).word).word, !um & 0777);
         if bits == -1 {
             return -1;
         }
 
-        um = !bits & 0o777;
+        um = !bits & 0777;
         return um;
     }
 

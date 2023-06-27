@@ -5,19 +5,17 @@ pub struct word_desc {
     pub word: *mut c_char,
     pub flags: c_int,
 }
-pub type WordDesc = word_desc;
+pub type WORD_DESC = word_desc;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct word_list {
     pub next: *mut word_list,
-    pub word: *mut WordDesc,
+    pub word: *mut WORD_DESC,
 }
 pub type WORD_LIST = word_list;
 
-use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable};
-//use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable,SHELL_VAR};
-pub type SHELL_VAR = rcommon::SHELL_VAR;
+pub type SHELL_VAR = variable;
 
 pub type __intmax_t = c_long;
 pub type intmax_t = __intmax_t;
@@ -100,8 +98,7 @@ pub const CTLNUL: c_char = b'\x4f' as c_char;
 pub const __S_IFMT: u32 = 0o0170000;
 pub const __S_IFREG: u32 = 0o0100000;
 
-extern "C" { 
-
+extern "C" {
     pub fn reset_internal_getopt();
 
     pub fn internal_getopt(

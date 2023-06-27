@@ -1,8 +1,6 @@
 use std::{ffi::{CString, CStr}};
 use libc::{c_int, c_uint, c_char, c_long, c_void, PT_NULL};
 
-// use rcommon::{r_builtin_usage,r_sh_invalidsig,r_sh_badpid,r_sh_badjob,r_get_job_spec,r_display_signal_list,WORD_LIST};
-
 include!(concat!("intercdep.rs"));
 
 
@@ -16,7 +14,7 @@ unsafe {
 	let mut pid_value: c_long = 0;
 
 	if list.is_null() {
-		r_builtin_usage();
+		builtin_usage();
 		return EX_USAGE;
 	}
 
@@ -35,6 +33,7 @@ unsafe {
 	let dflags = DSIG_NOCASE | if posixly_correct == 0 {DSIG_SIGPREFIX} else {0};
 	while !list.is_null() {
 		word = (*((*list).word)).word;
+
 		if is_option(word, b'l') || is_option(word, b'L') {
 			listing += 1;
 			list = (*list).next;
@@ -82,7 +81,7 @@ unsafe {
 			list = (*list).next;
 			break;
 		} else if is_option(word, b'?') {
-			r_builtin_usage();
+			builtin_usage();
 			return EX_USAGE;
 		} else if *word == b'-' as c_char && saw_signal == 0 {
 			sigspec = (word as usize + 1) as *mut c_char;
@@ -95,16 +94,16 @@ unsafe {
 	}
 
 	if listing != 0 {
-		return r_display_signal_list(list, 0);
+		return display_signal_list(list, 0);
 	}
 
 	if sig == NO_SIG {
-		r_sh_invalidsig(sigspec);
+		sh_invalidsig(sigspec);
 		return EXECUTION_FAILURE;
 	}
 
 	if list.is_null() {
-		r_builtin_usage();
+		builtin_usage();
 		return EX_USAGE;
 	}
 
@@ -121,7 +120,7 @@ unsafe {
 
 			if kill_pid(pid, sig, (pid < -1) as c_int) < 0 {
 				if *(libc::__errno_location()) == EINVAL {
-					r_sh_invalidsig(sigspec);
+					sh_invalidsig(sigspec);
 				} else {
 					kill_error(pid, *(libc::__errno_location()));
 				}
@@ -146,11 +145,11 @@ unsafe {
 			libc::sigemptyset(std::mem::transmute(&oset));
 			libc::sigprocmask(libc::SIG_BLOCK, std::mem::transmute(&set), std::mem::transmute(&oset));
 			
-		    let job = r_get_job_spec(list);
+		    let job = get_job_spec(list);
 
 			if job < 0 || job > js.j_jobslots || ((jobs as usize + job as usize * 8) as *mut JOB).is_null() {
 				if job != DUP_JOB {
-					r_sh_badjob((*((*list).word)).word);
+					sh_badjob((*((*list).word)).word);
 				}
 				libc::sigprocmask(libc::SIG_SETMASK, std::mem::transmute(&oset), PT_NULL as *mut libc::sigset_t);
 				list = (*list).next;
@@ -168,7 +167,7 @@ unsafe {
 
 			if kill_pid(pid, sig, 1) < 0 {
 				if *(libc::__errno_location()) == EINVAL {
-					r_sh_invalidsig(sigspec);
+					sh_invalidsig(sigspec);
 				} else {
 					kill_error(pid, *(libc::__errno_location()));
 				}
@@ -179,7 +178,7 @@ unsafe {
 			}
 		}
 		else {
-			r_sh_badpid((*((*list).word)).word);
+			sh_badpid((*((*list).word)).word);
 			list = (*list).next;
 			continue;
 		}

@@ -8,11 +8,9 @@ edition = "2018"
 
 [dependencies]
 libc = "0.2"
-nix = "0.23.0"
 rjobs = {path = "../jobs"}
-rread = {path = "../read"}
-rcommon = {path = "../common"}
-
+read = {path = "../read"}
+nix = "0.23.0"
 
 [lib]
 crate-type = ["staticlib","rlib"]

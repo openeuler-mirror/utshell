@@ -16,7 +16,7 @@ pub struct rlimit {
 
 #[repr(C)]
 #[derive(Copy,Clone)]
-pub struct WordDesc {
+pub struct WORD_DESC {
     pub word: *mut i8,
     pub flags:i32
 }
@@ -25,7 +25,7 @@ pub struct WordDesc {
 #[derive(Copy,Clone)]
 pub struct WORD_LIST {
     next: *mut WORD_LIST,
-    word: *mut WordDesc
+    word: *mut WORD_DESC
 }
 
 #[repr (C)]

@@ -1,7 +1,6 @@
 use std::ffi::CStr;
 use libc::{c_int, c_char, c_long, c_void};
 
-
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]

@@ -14,4 +14,3 @@ crate-type = ["staticlib","rlib"]
 [dependencies]
 libc = "0.2"
 nix = "0.23"
-rcommon = {path = "../common"}

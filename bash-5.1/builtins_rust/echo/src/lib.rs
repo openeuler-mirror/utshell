@@ -1,13 +1,14 @@
 extern crate libc;
 
-use libc::{c_char,c_int, strchr, putchar,clearerr,free,FILE, fprintf, c_void};
+use libc::{c_char,c_int, strchr, putchar,clearerr,strlen,free,FILE, fprintf, c_void};
 use std::ffi::{CString,CStr,};
+use std::ops::Index;
 // use std::io::{stdout, Write};
 use std::ptr::read_volatile;
 
 //结构体
 #[repr (C)]
-pub struct WordDesc{
+pub struct WORD_DESC{
     pub word:*mut c_char,
     pub flags:c_int,
 }
@@ -16,7 +17,7 @@ pub struct WordDesc{
 // #[derive(Copy,Clone)]
 pub struct WORD_LIST{
     pub next:*mut WORD_LIST,
-    pub word:*mut WordDesc,
+    pub word:*mut WORD_DESC,
 }
 
 
@@ -182,7 +183,7 @@ pub extern "C" fn r_echo_builtin(mut list:*mut WORD_LIST)->i32{
                 if do_v9 != 0{
                     s = temp;
                 
-                    for _ in 0..len{
+                    for t in 0..len{
                         putchar(*s as c_int );
                         s = (s as usize + 1) as *mut c_char;
                     }

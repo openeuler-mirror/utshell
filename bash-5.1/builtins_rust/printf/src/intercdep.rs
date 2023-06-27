@@ -4,17 +4,17 @@ pub struct word_desc {
     pub word: *mut c_char,
     pub flags: c_int,
 }
-pub type WordDesc = word_desc;
+pub type WORD_DESC = word_desc;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct word_list {
     pub next: *mut word_list,
-    pub word: *mut WordDesc,
+    pub word: *mut WORD_DESC,
 }
 pub type WORD_LIST = word_list;
 
-// pub type SHELL_VAR = variable;
+pub type SHELL_VAR = variable;
 
 pub type __intmax_t = c_long;
 pub type intmax_t = __intmax_t;

@@ -6,7 +6,7 @@ extern crate nix;
 use std::ffi::CString;
 use libc::c_long;
 #[repr(C)]
-pub struct WordDesc {
+pub struct WORD_DESC {
     pub word: *mut libc::c_char,
     pub flags: libc::c_int
 }
@@ -15,7 +15,7 @@ pub struct WordDesc {
 #[derive(Copy,Clone)]
 pub struct WORD_LIST {
     next: *mut WORD_LIST,
-    word: *mut WordDesc
+    word: *mut WORD_DESC
 }
 
 // 屏蔽警告。
@@ -79,7 +79,7 @@ pub extern "C" fn r_break_builtin(mut list :*mut WORD_LIST) -> i32 {
 
     if newbreak <= 0{
         #[warn(temporary_cstring_as_ptr)]
-            sh_erange ((*(*list).word).word, CString::new("loop count").unwrap().as_ptr() as * mut libc::c_char);
+            sh_erange ((*(*list).word).word, CString::new("loop count ").unwrap().as_ptr() as * mut libc::c_char);
             set_breaking (get_loop_level());
       return (EXECUTION_FAILURE!());
     }
