@@ -1,13 +1,20 @@
 use libc::{c_int, c_char, c_long, c_ulong, c_uint, size_t, c_void, PT_NULL, ssize_t};
 use nix::errno::errno;
-use std::{ffi::{CString, CStr}, ptr::null_mut};
+use std::{ffi::{CString, CStr}, ptr::null_mut,};
 //use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable,SHELL_VAR};
 
 include!(concat!("intercdep.rs"));
 
+#[no_mangle]
+pub static mut alrmbuf:sigjmp_buf = [__jmp_buf_tag{
+    __jmpbuf:[0;8],
+    __mask_was_saved:0,
+    __saved_mask:__sigset_t{__val:[0;16]},
+};1];
+
 static mut old_alrm : *mut SigHandler = PT_NULL as *mut SigHandler;
 
-static mut sigalrm_seen : c_int = 0;
+// static mut sigalrm_seen : c_int = 0;
 static mut reading : c_int = 0;
 static mut tty_modified : c_int = 0;
 
@@ -18,16 +25,28 @@ pub struct tty_save {
     attrs: libc::termios,
 }
 
-static mut termsave : Option<tty_save> =  None;
-static mut ptermsave: *mut c_void = PT_NULL as *mut c_void;
+// static mut termsave : Option<tty_save> =  None;
+static mut termsave:tty_save = tty_save{
+    fd:0,
+    attrs:libc::termios {
+         c_iflag: (0),
+         c_oflag: (0),
+         c_cflag: (0), 
+         c_lflag: (0), 
+         c_line: (0), 
+         c_cc: [0;32], 
+         c_ispeed: (0), 
+         c_ospeed: (0) 
+    }
+};
 
 static mut interactive : c_int = 0;
 static mut default_buffered_input : c_int = -1;
 
+
 #[no_mangle]
 pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
     println!("r_read_builtin call");
-    println!("11111111111111");
 
     let mut varname :*mut c_char = libc::PT_NULL as *mut c_char;
     let mut size : c_int = 0;
@@ -110,11 +129,11 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
 
 unsafe {
 
-    if termsave.is_none() {
-        let tmp: tty_save  = std::mem::zeroed();
-        termsave = Some(tmp);
-    }
-    ptermsave = std::mem::transmute(&termsave.unwrap());
+    // if termsave.is_none() {
+    //     let tmp: tty_save  = std::mem::zeroed();
+    //     termsave = Some(tmp);
+    // }
+    // ptermsave = std::mem::transmute(&termsave.unwrap());
 
     reset_internal_getopt();
     let opt_str = CString::new("ersa:d:i:n:p:t:u:N:").unwrap();
@@ -169,9 +188,12 @@ unsafe {
                     return EXECUTION_FAILURE;
                 }
             }
-            'd' => {delim = *list_optarg;
-                println!("-d");}
+            'd' => {
+                    delim = *list_optarg;
+                }
+               
             _ => {
+                // builtin_usage();
             r_builtin_usage ();
             return EX_USAGE;
             }
@@ -181,32 +203,38 @@ unsafe {
 
     list = loptend;
 
-    if have_timeout == 1 && tmsec == 0 && tmusec == 0 {
+    //-t
+    if have_timeout != 0 && tmsec == 0 && tmusec == 0 {
         return if input_avail(fd) != 0 {EXECUTION_SUCCESS} else {EXECUTION_FAILURE};
     }
 
     vflags = if assoc_expand_once != 0 {(VA_NOEXPAND | VA_ONEWORD) as c_int} else {0};
-
     if !list.is_null() &&
         legal_identifier((*(*list).word).word) == 0 &&
         valid_array_reference((*(*list).word).word, vflags) == 0 {
+            // sh_invalidid((*(*list).word).word);
             r_sh_invalidid((*(*list).word).word);
             return EXECUTION_FAILURE;
     }
 
-    ifs_chars = getifs();
+    //忽略界定符
+    if ignore_delim != 0{  //-N  ignore_delim = 1
+        delim = -1;
+    }
+
+    ifs_chars = getifs(); //ifs_chars is "\n"
     if ifs_chars.is_null() {
         ifs_chars = ifs_chars_null.as_ptr() as *mut c_char;
     }
 
     if ignore_delim != 0 {
-        delim = -1;
         ifs_chars = ifs_chars_null.as_ptr() as *mut c_char;
     }
 
     skip_ctlesc = 0;
     skip_ctlnul = 0;
     e = ifs_chars;
+
     loop {
         if *e == 0 {
             break;
@@ -228,6 +256,7 @@ unsafe {
         break 'out_assig_vars;
     }
 
+    //设置TMOUT后，TMOUT是默认读取时间
     let str_val = CString::new("TMOUT").unwrap();
     e = get_string_value(str_val.as_ptr());
     if have_timeout == 0 && !e.is_null() {
@@ -241,9 +270,10 @@ unsafe {
         }
     }
 
-    let frame_name = CString::new("read_builtin").unwrap();
+    let frame_name = CString::new("r_read_builtin").unwrap();    //有没有可能是r_read_builtin?
     begin_unwind_frame(frame_name.as_ptr() as *mut c_char);
 
+    
     if interactive == 0 && default_buffered_input >= 0 && fd_is_bash_input(fd) != 0 {
         sync_buffered_stream(default_buffered_input);
     }
@@ -253,6 +283,7 @@ unsafe {
         input_is_pipe = (libc::lseek(fd, 0, libc::SEEK_CUR) < 0 && (errno() == libc::ESPIPE)) as c_int;
     }
 
+    //如果设置 -p,-e,-s但输入不是终端，忽略
     if (!prompt.is_null() || edit != 0 || silent != 0) && input_is_tty == 0 {
         itext = PT_NULL as *mut c_char;
         edit = 0;
@@ -277,6 +308,7 @@ unsafe {
         if code != 0 {
             sigalrm_seen = 0;
             orig_input_string = PT_NULL as *mut c_char;
+            *input_string.offset(i as isize) = b'\0' as c_char;
             if i == 0 {
                 t = libc::malloc(1) as *mut c_char;
                 *t = b'\0' as c_char;
@@ -284,7 +316,6 @@ unsafe {
                 t = libc::strcpy( xmalloc(
                     (libc::strlen(input_string) + 1) as size_t) as *mut c_char, input_string);
             }
-
             run_unwind_frame(frame_name.as_ptr() as *mut c_char);
             input_string = t;
             retval = 128 + libc::SIGALRM;
@@ -304,11 +335,10 @@ unsafe {
             add_unwind_protect(bashline_reset_event_hook as *mut c_void,
                 PT_NULL as *mut c_char);
         }
-
         falarm(tmsec, tmusec);
     }
 
-    if nchars > 0 || delim != b'\n' as c_char {
+    if nchars > 0 || delim != b'\n' as c_char { //-d -n
         if edit != 0 {
             if nchars > 0 {
                 unwind_protect_mem(&mut rl_num_chars_to_read as *mut c_int, std::mem::size_of_val(&rl_num_chars_to_read) as c_int);
@@ -319,10 +349,13 @@ unsafe {
                 set_eol_delim(delim as c_int);
                 add_unwind_protect(reset_eol_delim as *mut c_void, PT_NULL as *mut c_char);
             }
-        } else if input_is_tty != 0 {
-            termsave.unwrap().fd = fd;
+        } else if input_is_tty != 0 { //-d  -n
+            // termsave.unwrap().fd = fd;
+            termsave.fd = fd;
             ttgetattr(fd, &mut ttattrs as *mut libc::termios);
-            termsave.unwrap().attrs = ttattrs;
+            // termsave.unwrap().attrs = ttattrs;
+            termsave.attrs = ttattrs;
+
             ttset = ttattrs;
             if silent != 0 {
                 i = ttfd_cbreak(fd, std::mem::transmute(&ttset));
@@ -334,16 +367,19 @@ unsafe {
                 sh_ttyerror(1);
             }
             tty_modified = 1;
-            add_unwind_protect(ttyrestore as *mut c_void, ptermsave);
+            // add_unwind_protect(ttyrestore as *mut c_void, ptermsave);
+            add_unwind_protect(ttyrestore as *mut c_void, &mut termsave);
             if interactive_shell == 0 {
                 initialize_terminating_signals();
             }
 
         }
-    } else if silent != 0 {
-        termsave.unwrap().fd = fd;
+    } else if silent != 0 { //-s
+        // termsave.unwrap().fd = fd;
+        termsave.fd = fd;
         ttgetattr(fd, &mut ttattrs as *mut libc::termios);
-        termsave.unwrap().attrs = ttattrs;
+        // termsave.unwrap().attrs = ttattrs;
+        termsave.attrs = ttattrs;
 
         ttset = ttattrs;
         i = ttfd_noecho(fd, std::mem::transmute(&ttset));
@@ -352,7 +388,8 @@ unsafe {
         }
 
         tty_modified = 1;
-        add_unwind_protect(ttyrestore as *mut c_void, ptermsave);
+        // add_unwind_protect(ttyrestore as *mut c_void, ptermsave);
+        add_unwind_protect(ttyrestore as *mut c_void, &mut termsave );
         if interactive_shell == 0 {
             initialize_terminating_signals();
         }
@@ -360,6 +397,7 @@ unsafe {
 
     save_instream = std::mem::zeroed();
     if edit != 0  && fd != 0 {
+
         if bash_readline_initialized == 0 {
             initialize_readline();
         }
@@ -378,8 +416,9 @@ unsafe {
         unbuffered_read = 1;
     }
 
-    if !prompt.is_null() && edit == 0 {
-        eprintln!("{}", CStr::from_ptr(prompt).to_str().unwrap());
+    if !prompt.is_null() && edit == 0 {  //-p no -e
+        // eprintln!("{}", CStr::from_ptr(prompt).to_str().unwrap());
+        eprint!("{}", CStr::from_ptr(prompt).to_str().unwrap());
 
     }
 
@@ -392,7 +431,7 @@ unsafe {
             siglongjmp (std::mem::transmute(&alrmbuf), 1);
         }
 
-        if edit != 0 {
+        if edit != 0 {   //没有设置-e edit等于0
             if !rlbuf.is_null() &&
                 *((rlbuf as usize + rlind as usize) as *mut c_char) == 0 &&
                 delim != 0 {
@@ -401,8 +440,14 @@ unsafe {
             }
             if rlbuf.is_null() {
                 reading = 1;
-                rlbuf = if prompt.is_null() {edit_line("".as_ptr() as *mut c_char, itext)}
-                        else {edit_line(prompt, itext)};
+                rlbuf = if prompt.is_null() {
+                            // edit_line("".as_ptr() as *mut c_char, itext)} 
+                            // let c_str = b'\0';   //  b'\0'代表的是空字符串，和String::from("")不是同一个东西。
+                            edit_line(b'\0' as *mut c_char,itext)    //  b'\0'代表的是空字符串，和String::from("")不是同一个东西。
+                        }
+                        else {
+                            edit_line(prompt, itext)
+                        };
                 reading = 0;
                 rlind = 0;
             }
@@ -425,16 +470,26 @@ unsafe {
             check_alrm();
             *(libc::__errno_location()) = 0;
             if unbuffered_read == 2 {
-                retval = if posixly_correct != 0 {zreadintr(fd, &mut c as *mut c_char, 1) as c_int}
-                        else {zreadn(fd, &mut c as *mut c_char, (nchars - nr) as usize) as c_int};
+                retval = if posixly_correct != 0 {
+                            zreadintr(fd, &mut c as *mut c_char, 1) as c_int
+                        }
+                        else {
+                            zreadn(fd, &mut c as *mut c_char, (nchars - nr) as usize) as c_int
+                        };
             } else if unbuffered_read != 0 {
-                retval = if posixly_correct != 0 {zreadintr(fd, &mut c as *mut c_char, 1) as c_int}
-                        else {zreadn(fd, &mut c as *mut c_char, 1) as c_int};
-            } else {
-                retval = if posixly_correct != 0 {zreadcintr(fd, &mut c as *mut c_char) as c_int}
-                        else {zreadc(fd, &mut c as *mut c_char) as c_int};
+                retval = if posixly_correct != 0 {
+                            zreadintr(fd, &mut c as *mut c_char, 1) as c_int}
+                        else {
+                            zread(fd, &mut c as *mut c_char, 1) as c_int};
+            } 
+            else {  
+                retval = if posixly_correct != 0 {
+                            zreadcintr(fd, &mut c as *mut c_char) as c_int
+                        }
+                        else { //-a  -t
+                            zreadc(fd, &mut c as *mut c_char) as c_int
+                        };
             }
-
             reading = 0;
 
             if retval <= 0 {
@@ -454,9 +509,9 @@ unsafe {
                 } else {
                     lastsig = 0;
                 }
-
                 if terminating_signal != 0 && tty_modified != 0 {
-                    ttyrestore();
+                    // ttyrestore();
+                    ttyrestore(&mut termsave);
                 }
                 check_alrm();
                 eof = 1;
@@ -484,7 +539,7 @@ unsafe {
             }
         }
 'out_add_char: loop {
-        if pass_next != 0 {
+        if pass_next != 0 {     
             pass_next = 0;
             if c == b'\n' as c_char {
                 if skip_ctlesc == 0 && i > 0 {i -= 1;}
@@ -502,10 +557,11 @@ unsafe {
                 *((input_string as usize + i as usize) as *mut c_char) = CTLESC;
                 i += 1;
             }
+
             continue 'get_input_string;
         }
 
-        if ignore_delim == 0 && c == delim {
+        if ignore_delim == 0 && c == delim { //-a
             break 'get_input_string;
         }
 
@@ -519,12 +575,14 @@ unsafe {
             i += 1;
         }
         break 'out_add_char;
-    }
+    }//out_add_char
+
         *((input_string as usize + i as usize) as *mut c_char) = c;
         i += 1;
         check_alrm();
 
         if mb_cur_max > 1 && is_basic(c) == 0 {
+
             *((input_string as usize + i as usize) as *mut c_char) = b'\0' as c_char;
 
             if edit != 0 {
@@ -540,13 +598,13 @@ unsafe {
             } else if locale_utf8locale == 0 || ((c as u8 & 0x80) != 0) {
                 i += read_mbchar(fd, input_string, i, c as c_int, unbuffered_read);
             }
-
-            nr += 1;
-            if nchars > 0 && nr >= nchars {
-                break 'get_input_string;
-            }
         }
-    }
+        nr += 1;
+        if nchars > 0 && nr >= nchars {
+            break 'get_input_string;
+        }
+        
+    } //get_input_string
 
     *((input_string as usize + i as usize) as *mut c_char) = b'\0' as c_char;
     check_alrm();
@@ -572,15 +630,25 @@ unsafe {
 
     if nchars > 0 || delim != b'\n' as c_char {
         if edit != 0 {
-
-        } else if input_is_tty != 0 {
-            ttyrestore();
+            if nchars > 0{
+                rl_num_chars_to_read = 0;
+            }
+            if delim != b'\n' as c_char{
+                reset_eol_delim(0 as *mut c_char);
+            }
+        } 
+        else if input_is_tty != 0 {
+            // ttyrestore();
+            ttyrestore(&mut termsave);
         }
-    } else if silent != 0 {
-        ttyrestore();
+    } 
+    else if silent != 0 {
+        // ttyrestore();
+        ttyrestore(&mut termsave);
     }
 
-    if unbuffered_read != 0 {
+    // if unbuffered_read != 0 {
+    if unbuffered_read == 0 {
         zsyncfd(fd);
     }
 
@@ -593,10 +661,11 @@ unsafe {
     retval = if eof != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
 
     break 'out_assig_vars;
-}
+} //out_assig_vars   
 
-    if !arrayname.is_null() {
-        if legal_identifier(arrayname) == 0 {
+    if !arrayname.is_null() {   //和-a有关
+        if legal_identifier(arrayname) == 0 {   //标签不符合规范
+            // sh_invalidid(arrayname);
 			r_sh_invalidid(arrayname);
 			libc::free(input_string as *mut c_void);
 			return EXECUTION_FAILURE;
@@ -630,10 +699,11 @@ unsafe {
 		}
 
         libc::free(input_string as *mut c_void);
+
 		return retval;
     }
 
-    if list.is_null() {
+    if list.is_null() { //和-d相关  -n 0可以退出，有显示
         if saw_escape != 0 {
 			let t = dequote_string(input_string);
 			var = bind_variable("REPLY".as_ptr() as *const c_char, t, 0);
@@ -667,6 +737,7 @@ unsafe {
 
         if legal_identifier(varname) == 0 &&
             valid_array_reference(varname, vflags) == 0 {
+            // sh_invalidid(varname);
             r_sh_invalidid(varname);
             libc::free(orig_input_string as *mut c_void);
 			return EXECUTION_FAILURE;
@@ -705,6 +776,7 @@ unsafe {
 
     if legal_identifier((*((*list).word)).word) == 0 &&
         valid_array_reference((*((*list).word)).word, vflags) == 0 {
+        // sh_invalidid((*((*list).word)).word);
         r_sh_invalidid((*((*list).word)).word);
         libc::free(orig_input_string as *mut c_void);
         return EXECUTION_FAILURE;
@@ -743,21 +815,31 @@ unsafe {
     }
     libc::free(orig_input_string as *mut c_void);
     return retval;
-}
+} //unsafe
 }
 
 /* ---------------------------------------------------------------------------------- */
 
-pub fn is_basic(c: i8) -> u32 {
-    let is_basic_table :[c_uint; 8] = [ 0x00001a00, 0xffffffef, 0xfffffffe, 0x7ffffffe, 0,0,0,0];
+// pub fn is_basic(c: i8) -> u32 {
+//     let is_basic_table :[c_uint; 8] = [ 0x00001a00, 0xffffffef, 0xfffffffe, 0x7ffffffe, 0,0,0,0];
 
-    let index = (c >> 5) as usize;
-    return (is_basic_table[index] >> (c & 31) ) & 1;
+//     let index = (c >> 5) as usize;
+//     return (is_basic_table[index] >> (c & 31) ) & 1;
+// }
+
+#[inline]
+unsafe extern "C" fn is_basic(mut c:libc::c_char)->libc::c_int{
+    return (*is_basic_table
+        .as_ptr()
+        .offset((c as libc::c_uchar as libc::c_int>>5 as libc::c_int)as isize)
+        >>(c as libc::c_uchar as libc::c_int & 31 as libc::c_int)
+        & 1 as libc::c_int as libc::c_uint) as libc::c_int;
 }
 
 pub fn bind_read_variable(name: *mut c_char, value: *mut c_char) -> * mut SHELL_VAR {
     let v: *mut SHELL_VAR;
 unsafe {
+    // v = builtin_bind_variable(name, value, 0);
 	v = r_builtin_bind_variable(name, value, 0);
 
     if v.is_null() {
@@ -840,6 +922,7 @@ fn check_alrm() {
     unsafe {
         if sigalrm_seen != 0 {
             siglongjmp (std::mem::transmute(&alrmbuf), 1);
+            // siglongjmp (&mut alrmbuf as *mut __jmp_buf_tag, 1);
         }
     }
 }
@@ -879,38 +962,78 @@ unsafe {
 	return (r1 != 0 || r2 != 0) as c_int;
 }
 
+// fn edit_line(p : *mut c_char, itext : *mut c_char) -> *mut c_char {
+// unsafe {
+// 	if bash_readline_initialized == 0 {
+// 		initialize_readline();
+//     }
+
+// 	old_attempted_completion_function = std::mem::transmute(rl_attempted_completion_function);
+//     rl_attempted_completion_function = std::mem::transmute(0 as usize);
+// 	bashline_set_event_hook();
+// 	if !itext.is_null() {
+// 		old_startup_hook = std::mem::transmute(rl_startup_hook);
+// 		rl_startup_hook = std::mem::transmute(set_itext as usize);
+// 		deftext = itext;
+// 	}
+
+// 	let mut ret = readline(p);
+
+// 	rl_attempted_completion_function = std::mem::transmute(old_attempted_completion_function);
+// 	old_attempted_completion_function = std::mem::transmute(0 as usize);
+// 	bashline_reset_event_hook();
+
+// 	if ret.is_null() {
+//         return ret;
+//     }
+
+//     let len:i32 = libc::strlen(ret) as i32;
+// 	ret = xrealloc(ret as *mut c_void, (len + 2) as usize) as *mut c_char;
+//     // *ret = delim;
+//     *ret.offset(len as isize) = delim;
+//     *((ret as usize + 1) as *mut c_char) = b'\0'  as c_char;
+
+// 	return ret;
+// }
+// }
+
+
 fn edit_line(p : *mut c_char, itext : *mut c_char) -> *mut c_char {
-unsafe {
-	if bash_readline_initialized == 0 {
-		initialize_readline();
-    }
-
-	old_attempted_completion_function = std::mem::transmute(rl_attempted_completion_function);
-    rl_attempted_completion_function = std::mem::transmute(0 as usize);
-	bashline_set_event_hook();
-	if !itext.is_null() {
-		old_startup_hook = std::mem::transmute(rl_startup_hook);
-		rl_startup_hook = std::mem::transmute(set_itext as usize);
-		deftext = itext;
-	}
-
-	let mut ret = readline(p);
-
-	rl_attempted_completion_function = std::mem::transmute(old_attempted_completion_function);
-	old_attempted_completion_function = std::mem::transmute(0 as usize);
-	bashline_reset_event_hook();
-
-	if ret.is_null() {
+    let mut len:i32;
+    unsafe {
+        if bash_readline_initialized == 0 {
+            initialize_readline();
+        }
+    
+        old_attempted_completion_function = std::mem::transmute(rl_attempted_completion_function);
+        rl_attempted_completion_function = std::mem::transmute(0 as usize);
+        bashline_set_event_hook();
+        if !itext.is_null() {
+            old_startup_hook = std::mem::transmute(rl_startup_hook);
+            rl_startup_hook = std::mem::transmute(set_itext as usize);
+            deftext = itext;
+        }
+    
+        let mut ret = readline(p);
+    
+        rl_attempted_completion_function = std::mem::transmute(old_attempted_completion_function);
+        old_attempted_completion_function = std::mem::transmute(0 as usize);
+        bashline_reset_event_hook();
+    
+        if ret.is_null() {
+            return ret;
+        }
+        
+        len = libc::strlen(ret) as i32;
+        ret = xrealloc(ret as *mut c_void, (len + 2) as usize) as *mut c_char;
+        *ret.offset(len as isize) = delim;
+        len += 1;
+        *ret.offset(len as isize) =  b'\0'  as c_char;
         return ret;
     }
+}
 
-    let len = libc::strlen(ret);
-	ret = xrealloc(ret as *mut c_void, len + 2) as *mut c_char;
-    *ret = delim;
-    *((ret as usize + 1) as *mut c_char) = b'\0'  as c_char;
-	return ret;
-}
-}
+
 
 fn sigalrm(s : c_int) {
 unsafe {
@@ -926,18 +1049,23 @@ unsafe {
 }
 }
 
-fn ttyrestore()
-{
-unsafe {
-    if termsave.is_none() {
-        let tmp: tty_save  = std::mem::zeroed();
-        termsave = Some(tmp);
-    }
+// fn ttyrestore()
+// {
+// unsafe {
+//     if termsave.is_none() {
+//         let tmp: tty_save  = std::mem::zeroed();
+//         termsave = Some(tmp);
+//     }
 
-    let ter = termsave.unwrap();
-	ttsetattr(ter.fd, std::mem::transmute(&(ter.attrs)));
-	tty_modified = 0;
-}
+//     let ter = termsave.unwrap();
+// 	ttsetattr(ter.fd, std::mem::transmute(&(ter.attrs)));
+// 	tty_modified = 0;
+// }
+// }
+
+unsafe extern "C" fn ttyrestore(mut ttp:*mut tty_save){
+    ttsetattr((*ttp).fd,&mut (*ttp).attrs);
+    tty_modified = 0 as libc::c_int;
 }
 
 #[no_mangle]
@@ -945,7 +1073,7 @@ pub extern "C" fn read_tty_cleanup()
 {
 unsafe {
     if tty_modified != 0 {
-        ttyrestore();
+        ttyrestore(&mut termsave);
     }
 }
 }
@@ -964,31 +1092,59 @@ static mut old_newline_ctype: c_int = 0;
 static mut old_newline_func: usize = 0;
 
 static mut delim_char: u8 = 0;
+// fn set_eol_delim(c: c_int)
+// {
+// unsafe {
+// 	if bash_readline_initialized == 0 {
+//         initialize_readline();
+//     }
+
+// 	let cmap = rl_get_keymap();
+//     let n = std::mem::size_of_val(&*cmap);
+//     let ret_pos = (b'M' & 0x1f) as usize * n;
+//     let c_pos = (c & 0x1f) as usize * n;
+
+// 	/* Save the old delimiter char binding */
+// 	old_newline_ctype = (*((cmap as usize + ret_pos) as Keymap)).tp as c_int;
+// 	old_newline_func = (*((cmap as usize + ret_pos) as Keymap)).function as usize;
+// 	old_delim_ctype =  (*((cmap as usize + c_pos) as Keymap)).tp as c_int;
+// 	old_delim_func = (*((cmap as usize + c_pos) as Keymap)).function as usize;
+
+// 	/* Change newline to self-insert */
+// 	(*((cmap as usize + ret_pos) as Keymap)).tp = ISFUNC as c_char;
+// 	(*((cmap as usize + ret_pos) as Keymap)).function = rl_insert;
+
+// 	/* Bind the delimiter character to accept-line. */
+// 	(*((cmap as usize + c_pos) as Keymap)).tp = ISFUNC as c_char;
+// 	(*((cmap as usize + c_pos) as Keymap)).function = rl_newline;
+
+// 	delim_char = c as u8;
+// }
+// }
+
 fn set_eol_delim(c: c_int)
 {
+    let mut cmap:Keymap;
 unsafe {
 	if bash_readline_initialized == 0 {
         initialize_readline();
     }
 
-	let cmap = rl_get_keymap();
-    let n = std::mem::size_of_val(&*cmap);
-    let ret_pos = (b'M' & 0x1f) as usize * n;
-    let c_pos = (c & 0x1f) as usize * n;
+	// let cmap = rl_get_keymap();
+    cmap = rl_get_keymap();
 
-	/* Save the old delimiter char binding */
-	old_newline_ctype = (*((cmap as usize + ret_pos) as Keymap)).tp as c_int;
-	old_newline_func = (*((cmap as usize + ret_pos) as Keymap)).function as usize;
-	old_delim_ctype =  (*((cmap as usize + c_pos) as Keymap)).tp as c_int;
-	old_delim_func = (*((cmap as usize + c_pos) as Keymap)).function as usize;
+    old_newline_ctype =  (*cmap.offset((b'M' as i32 & 0x1f) as isize)).tp as c_int;
+    old_newline_func  =  (*cmap.offset((b'M' as i32 & 0x1f) as isize)).function as usize;
+    old_delim_ctype   =  (*cmap.offset(c as isize)).tp as c_int;
+    old_delim_func    =  (*cmap.offset(c as isize)).function as usize;
 
-	/* Change newline to self-insert */
-	(*((cmap as usize + ret_pos) as Keymap)).tp = ISFUNC as c_char;
-	(*((cmap as usize + ret_pos) as Keymap)).function = rl_insert;
+    /* Change newline to self-insert */
+	(*cmap.offset((b'M' as i32 & 0x1f) as isize)).tp = ISFUNC as c_char;
+	(*cmap.offset((b'M' as i32 & 0x1f) as isize)).function = rl_insert;
 
 	/* Bind the delimiter character to accept-line. */
-	(*((cmap as usize + c_pos) as Keymap)).tp = ISFUNC as c_char;
-	(*((cmap as usize + c_pos) as Keymap)).function = rl_newline;
+	(*cmap.offset(c as isize)).tp = ISFUNC as c_char;
+	(*cmap.offset(c as isize)).function = rl_newline;
 
 	delim_char = c as u8;
 }
