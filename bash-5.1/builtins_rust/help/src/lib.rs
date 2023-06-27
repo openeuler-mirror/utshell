@@ -17,8 +17,8 @@ pub struct WordDesc {
 
 #[repr (C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -32,7 +32,7 @@ pub struct builtin {
    short_doc :*mut  libc::c_char,
    handle :*mut libc::c_char
 }
-type sh_builtin_func_t = fn(WORD_LIST) -> i32;
+type sh_builtin_func_t = fn(WordList) -> i32;
 
 #[repr(C)]
 struct FieldStruct {
@@ -92,14 +92,14 @@ macro_rules! EXIT_FAILURE{
 
 extern "C"{
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WORD_LIST , opts:*mut c_char)->i32;
+    fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
     //fn builtin_error(err:*const c_char,...);
     fn builtin_usage();
     fn show_shell_version(ver:i32);
     fn glob_pattern_p(pattern:*const c_char) -> i32;    
     fn zcatfd(fd : i32 ,id : i32, nn :*mut c_char) -> i32;
     fn zmapfd(fd : i32, name :*mut *mut libc::c_char, nn: *mut libc::c_char) -> i32;
-    fn sh_builtin_func_t(list :*mut WORD_LIST) -> i32;
+    fn sh_builtin_func_t(list :*mut WordList) -> i32;
     fn  builtin_address_internal(comand_name:*mut c_char, i:i32) -> *mut  builtin;
     fn termsig_handler (sig:i32); 
     fn throw_to_top_level();
@@ -108,7 +108,7 @@ extern "C"{
     fn xstrmatch (string1 : * mut libc::c_char, string2 : * mut libc::c_char, i : i8) -> i8;
     fn open(pathname : *const libc::c_char, oflag : i32) -> i32;
     fn wcwidth( c :libc::wchar_t) -> i32;
-    static mut loptend:*mut WORD_LIST;
+    static mut loptend:*mut WordList;
     static bash_copyright : *const c_char;
     static bash_license : *const c_char;
     static mut terminating_signal:i32;
@@ -121,7 +121,7 @@ extern "C"{
 }
 
 #[no_mangle]
-pub extern "C" fn r_help_builtin(mut list:*mut WORD_LIST)->i32 {
+pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
    
    // let mut i:i32;
     let mut plen:usize;
@@ -134,7 +134,7 @@ pub extern "C" fn r_help_builtin(mut list:*mut WORD_LIST)->i32 {
     let mut this_found:i32;
     let mut pattern:*mut c_char;
     let mut name:*mut c_char; 
-    let  l:*mut WORD_LIST= list;
+    let  l:*mut WordList= list;
     let  mut  i : i32;
     unsafe {
         reset_internal_getopt();
@@ -251,7 +251,7 @@ pub extern "C" fn r_help_builtin(mut list:*mut WORD_LIST)->i32 {
 
 
 #[no_mangle]
-pub extern "C" fn  r_help_null_builtin (mut list:*mut WORD_LIST) -> i32{
+pub extern "C" fn  r_help_null_builtin (mut list:*mut WordList) -> i32{
   unsafe {
     show_shell_version(0);
   }

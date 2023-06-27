@@ -25,7 +25,7 @@ static mut interactive : c_int = 0;
 static mut default_buffered_input : c_int = -1;
 
 #[no_mangle]
-pub extern "C" fn r_read_builtin(mut list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
     println!("r_read_builtin call");
 
     let mut varname :*mut c_char = libc::PT_NULL as *mut c_char;
@@ -94,7 +94,7 @@ pub extern "C" fn r_read_builtin(mut list: *mut WORD_LIST) -> i32 {
         ttset = std::mem::zeroed();
     }
 
-    let mut alist : *mut WORD_LIST;
+    let mut alist : *mut WordList;
 
     let mut vflags : c_int;
     let mut rlbuf : *mut c_char = null_mut();

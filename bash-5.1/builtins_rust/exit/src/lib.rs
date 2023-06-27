@@ -5,7 +5,7 @@ extern crate nix;
 use libc::c_char;
 use std::ffi::CString;
 
-use rjobs::{PROCESS, COMMAND, r_jobs_builtin, JLIST_STANDARD, WORD_LIST};
+use rjobs::{PROCESS, COMMAND, r_jobs_builtin, JLIST_STANDARD, WordList};
 
 #[repr(C)]
 pub struct JOB {
@@ -109,10 +109,10 @@ macro_rules! SYS_BASH_LOGOOUT {
 extern "C"{
     static mut interactive:i32;
     static mut login_shell:i32;
-    // static mut last_shell_builtin:*mut fn(v:*mut WORD_LIST)->i32;
-    static mut last_shell_builtin:extern  fn(v:*mut WORD_LIST)->i32;
-    // static mut this_shell_builtin:*mut fn(v:*mut WORD_LIST)->i32;
-    static mut this_shell_builtin:extern fn(v:*mut WORD_LIST)->i32;
+    // static mut last_shell_builtin:*mut fn(v:*mut WordList)->i32;
+    static mut last_shell_builtin:extern  fn(v:*mut WordList)->i32;
+    // static mut this_shell_builtin:*mut fn(v:*mut WordList)->i32;
+    static mut this_shell_builtin:extern fn(v:*mut WordList)->i32;
     static  js:jobstats ;
     static mut check_jobs_at_exit:i32;
     static mut jobs:*mut*mut JOB;
@@ -124,7 +124,7 @@ extern "C"{
     fn builtin_help();
     fn builtin_error(err:*const c_char,...);
     fn list_all_jobs(form:i32);
-    fn get_exitstat(list:*mut WORD_LIST) -> i32;
+    fn get_exitstat(list:*mut WordList) -> i32;
     fn jump_to_top_level(level:i32);
     fn maybe_execute_file(fname:*const c_char,force_noninteractive:i32)->i32;
 }
@@ -144,7 +144,7 @@ unsafe fn STREQ(a:*const c_char,b:*const c_char)->bool{
 static mut sourced_logout:i32 = 0;
 
 #[no_mangle]
-pub extern "C" fn r_exit_builtin(list:*mut WORD_LIST) -> i32{
+pub extern "C" fn r_exit_builtin(list:*mut WordList) -> i32{
     println!("r_exit_builtin");
     unsafe{
         let c_str = CString::new("--help").unwrap();
@@ -174,7 +174,7 @@ pub extern "C" fn r_exit_builtin(list:*mut WORD_LIST) -> i32{
 }
 
 #[no_mangle]
-pub extern "C" fn  r_logout_builtin(list:*mut WORD_LIST)->i32{
+pub extern "C" fn  r_logout_builtin(list:*mut WordList)->i32{
     unsafe{
         let c_str = CString::new("--help").unwrap();
         let c_ptr = c_str.as_ptr();
@@ -196,7 +196,7 @@ pub extern "C" fn  r_logout_builtin(list:*mut WORD_LIST)->i32{
 }
 
 #[no_mangle]
-pub extern "C" fn r_exit_or_logout(list:*mut WORD_LIST)->i32{
+pub extern "C" fn r_exit_or_logout(list:*mut WordList)->i32{
     // let stream:*mut libc::FILE;
     let  exit_value:i32;
     let  exit_immediate_okay:i32;

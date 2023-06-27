@@ -12,8 +12,8 @@ pub struct WordDesc {
 
 #[repr(C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -59,14 +59,14 @@ pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
     next:* mut PATTERN_LIST,
-    patterns:* mut WORD_LIST,
+    patterns:* mut WordList,
     action:*mut COMMAND,
     flags:libc::c_int
 }
@@ -106,7 +106,7 @@ pub struct connection {
 pub struct simple_com {
     flags:libc::c_int,
     line:libc::c_int,
-    words:*mut WORD_LIST,
+    words:*mut WordList,
     redirects:*mut REDIRECT
 }
 
@@ -131,7 +131,7 @@ pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -139,7 +139,7 @@ pub struct select_com {
 pub struct arith_com {
     flags:libc::c_int,
     line:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
@@ -147,16 +147,16 @@ pub struct cond_com {
     flags:libc::c_int,
     line:libc::c_int,
     type_c:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
 pub struct arith_for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    init:*mut WORD_LIST,
-    test:*mut WORD_LIST,
-    step:*mut WORD_LIST,
+    init:*mut WordList,
+    test:*mut WordList,
+    step:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -286,16 +286,16 @@ extern "C" {
     fn sh_getopt_restore_state (argv:*mut*mut c_char);
     static dollar_vars:[* mut c_char;10];
     fn sh_getopt (argc:i32, argv: * const*mut c_char, optstring: * const c_char)->i32;
-    static rest_of_args:* mut WORD_LIST;
+    static rest_of_args:* mut WordList;
     fn number_of_args ()->i32;
     fn strvec_create (i:i32)->*mut*mut c_char;
     static sh_optarg:* mut c_char;
     static sh_optopt:i32;
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WORD_LIST , opts:*mut c_char)->i32;
+    fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
     fn builtin_help ();
-    static mut loptend:*mut WORD_LIST;
-    fn make_builtin_argv (list:* mut WORD_LIST, ac:* mut i32)->*mut*mut c_char;
+    static mut loptend:*mut WordList;
+    fn make_builtin_argv (list:* mut WordList, ac:* mut i32)->*mut*mut c_char;
 }
 
 /* getopts_reset is magic code for when OPTIND is reset.  N is the
@@ -408,7 +408,7 @@ pub extern "C" fn r_dogetopts(argc:i32, argv:*mut*mut c_char)->i32
       sh_getopt_restore_state(&mut (dollar_vars[0] as * mut c_char));
       ret = sh_getopt(i, &dollar_vars[0], optstr);
     } else {
-      let mut words: * mut WORD_LIST;
+      let mut words: * mut WordList;
       let v:*mut*mut c_char;
 
       i = number_of_args() + 1; /* +1 for $0 */
@@ -515,7 +515,7 @@ pub extern "C" fn r_dogetopts(argc:i32, argv:*mut*mut c_char)->i32
 }
 
 #[no_mangle]
-pub extern "C" fn r_getopts_builtin(list: * mut WORD_LIST)->i32
+pub extern "C" fn r_getopts_builtin(list: * mut WordList)->i32
 {
   unsafe {
     let av:*mut*mut c_char;
@@ -538,7 +538,7 @@ pub extern "C" fn r_getopts_builtin(list: * mut WORD_LIST)->i32
 
       return EX_USAGE!();
     }
-    let llist: * mut WORD_LIST=loptend.clone();
+    let llist: * mut WordList=loptend.clone();
     av = make_builtin_argv(llist, &mut ac);
     ret = r_dogetopts(ac, av);
     libc::free(av as * mut c_void);

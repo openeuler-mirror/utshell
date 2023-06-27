@@ -107,8 +107,8 @@ extern "C" {
     fn initialize_shell_builtins();
     fn builtin_help();
     static mut list_optarg: *mut libc::c_char;
-    static mut loptend: *mut WORD_LIST;
-    fn internal_getopt(_: *const WORD_LIST, _: *const libc::c_char) -> i32;
+    static mut loptend: *mut WordList;
+    fn internal_getopt(_: *const WordList, _: *const libc::c_char) -> i32;
     fn reset_internal_getopt();
     fn find_in_path(
         _: *const libc::c_char,
@@ -141,10 +141,10 @@ pub struct word_list {
     pub next: *mut word_list,
     pub word: *mut WordDesc,
 }
-pub type WORD_LIST = word_list;
+pub type WordList = word_list;
 pub type sh_load_func_t = unsafe extern "C" fn(*mut libc::c_char) -> libc::c_int;
 pub type sh_unload_func_t = unsafe extern "C" fn(*mut libc::c_char) -> ();
-pub type sh_builtin_func_t = unsafe extern "C" fn(*mut WORD_LIST) -> libc::c_int;
+pub type sh_builtin_func_t = unsafe extern "C" fn(*mut WordList) -> libc::c_int;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct _list_of_strings {
@@ -174,7 +174,7 @@ pub struct _list_of_items {
 }
 pub type ITEMLIST = _list_of_items;
 #[no_mangle]
-pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WORD_LIST) -> i32 {
+pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
     let mut result: i32 = 0;
     let mut flags: i32 = 0;
     let mut opt: i32 = 0;
@@ -353,11 +353,11 @@ unsafe extern "C" fn enable_shell_command(
     return EXECUTION_SUCCESS;
 }
 unsafe extern "C" fn dyn_load_builtin(
-    mut list: *mut WORD_LIST,
+    mut list: *mut WordList,
     mut flags: libc::c_int,
     mut filename: *mut libc::c_char,
 ) -> libc::c_int {
-    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut l: *mut WordList = 0 as *mut WordList;
     let mut handle: *mut libc::c_void = 0 as *mut libc::c_void;
     let mut total: libc::c_int = 0;
     let mut size: libc::c_int = 0;

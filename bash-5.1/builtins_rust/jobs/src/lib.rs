@@ -3,19 +3,7 @@ extern crate nix;
 
 use libc::{c_char, c_long};
 use std::ffi::CString;
-
-#[repr(C)]
-pub struct WordDesc {
-    pub word: *mut libc::c_char,
-    pub flags:libc::c_int
-}
-
-#[repr(C)]
-#[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    pub next: *mut WORD_LIST,
-    pub word: *mut WordDesc
-}
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 
 #[repr(i8)]
 pub enum JOB_STATE {
@@ -77,14 +65,14 @@ pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
     next:* mut PATTERN_LIST,
-    patterns:* mut WORD_LIST,
+    patterns:* mut WordList,
     action:*mut COMMAND,
     flags:libc::c_int
 }
@@ -124,7 +112,7 @@ pub struct connection {
 pub struct simple_com {
     flags:libc::c_int,
     line:libc::c_int,
-    words:*mut WORD_LIST,
+    words:*mut WordList,
     redirects:*mut REDIRECT
 }
 
@@ -149,7 +137,7 @@ pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -157,7 +145,7 @@ pub struct select_com {
 pub struct arith_com {
     flags:libc::c_int,
     line:libc::c_int,
-    exp:*mut WORD_LIST  
+    exp:*mut WordList  
 }
 
 #[repr(C)]
@@ -165,16 +153,16 @@ pub struct cond_com {
     flags:libc::c_int,
     line:libc::c_int,
     type_c:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
 pub struct arith_for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    init:*mut WORD_LIST,
-    test:*mut WORD_LIST,
-    step:*mut WORD_LIST,
+    init:*mut WordList,
+    test:*mut WordList,
+    step:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -281,10 +269,6 @@ macro_rules! JLIST_CHANGED_ONLY {
    () => {3}
 }
 
-#[macro_export]
-macro_rules! EXECUTION_FAILURE {
-   () => {1}
-}
 
 #[macro_export]
 macro_rules! JSTATE_RUNNING {
@@ -296,15 +280,6 @@ macro_rules! JSTATE_STOPPED {
    () => {0x2}
 }
 
-#[macro_export]
-macro_rules! EX_USAGE {
-   () => {258}
-}
-
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-   () => {0}
-}
 
 #[macro_export]
 macro_rules! BLOCK_SIGNAL {
@@ -369,14 +344,14 @@ macro_rules! INVALID_JOB {
 extern "C" {
     fn list_running_jobs(format:i32);
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WORD_LIST , opts:*mut c_char)->i32;
+    fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
     fn builtin_error(err:*const c_char,...);
     fn builtin_usage();
-    static mut loptend:*mut WORD_LIST;
+    static mut loptend:*mut WordList;
     fn list_all_jobs(form:i32);
     fn list_stopped_jobs(form:i32);
     fn list_one_job (jjob:*mut JOB, format:i32, ignore:i32, job_index:i32);
-    fn get_job_spec (list:*mut WORD_LIST)->i32;
+    fn get_job_spec (list:*mut WordList)->i32;
     fn sh_badjob (str:*mut c_char);
     static jobs:*mut*mut JOB;
     fn discard_unwind_frame (str: * mut c_char);  
@@ -384,7 +359,7 @@ extern "C" {
     fn execute_command (command:* mut COMMAND)->i32;
     fn dispose_command (command:* mut COMMAND);
     fn make_bare_simple_command ()->* mut COMMAND;
-    fn copy_word_list (list:*mut WORD_LIST)->* mut WORD_LIST;
+    fn copy_word_list (list:*mut WordList)->* mut WordList;
     static  js:jobstats ;
     fn add_unwind_protect(_:unsafe extern "C" fn(command:* mut COMMAND),...);
     fn legal_number(str:* const c_char, result:* mut c_long)->i32;
@@ -393,13 +368,14 @@ extern "C" {
     fn nohup_job (job_index:i32);
     fn nohup_all_jobs (running_only:i32);
     fn delete_all_jobs(running_only:i32);
+    fn builtin_help();
  }
 
  #[no_mangle]
- pub extern "C" fn r_execute_list_with_replacements (list:*mut WORD_LIST)->i32{
+ pub extern "C" fn r_execute_list_with_replacements (list:*mut WordList)->i32{
   //println!("r_execute_list_with_replacements");
   unsafe{
-  let mut l:*mut WORD_LIST=list;
+  let mut l:*mut WordList=list;
   let mut job:i32;
   let result:i32;
   let command:*mut COMMAND;
@@ -439,7 +415,7 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern "C" fn r_jobs_builtin(list:*mut WORD_LIST)->i32 {
+pub extern "C" fn r_jobs_builtin(mut list:*mut WordList)->i32 {
     println!("r_jobs_builtin");
     let mut form:i32;
     let mut execute:i32=0;
@@ -461,9 +437,8 @@ pub extern "C" fn r_jobs_builtin(list:*mut WORD_LIST)->i32 {
 
     opt = internal_getopt (list, c_str_lpnxrs.as_ptr() as * mut c_char);
     while  opt != -1 {
-        let optu8:u8= opt as u8;
-        let optChar:char=char::from(optu8);
-        match optChar{
+        let opt_har:char= opt as u8 as char;
+        match opt_har{
             'l'=>{form = JLIST_LONG!();}
             'p'=>{form = JLIST_PID_ONLY!();}
             'n'=>{form = JLIST_CHANGED_ONLY!();}
@@ -478,12 +453,18 @@ pub extern "C" fn r_jobs_builtin(list:*mut WORD_LIST)->i32 {
             'r'=>{state = JSTATE_RUNNING!();}
             's'=>{state = JSTATE_STOPPED!();}
         _=>{
+            if opt == -99 {
+                builtin_help();
+                return EX_USAGE;
+            }
             builtin_usage ();
-            return EX_USAGE!();
+            return EX_USAGE;
         }              
         }
         opt = internal_getopt (list, c_str_lpnxrs.as_ptr() as * mut c_char);
     }
+
+    list = loptend;
 
     if execute != 0 {  
         return r_execute_list_with_replacements (loptend);
@@ -500,21 +481,22 @@ pub extern "C" fn r_jobs_builtin(list:*mut WORD_LIST)->i32 {
         return EXECUTION_SUCCESS!();
     }
 
-    let mut loptendt=*loptend;
-    while loptendt.next !=std::ptr::null_mut() {
+
+    while list !=std::ptr::null_mut() {
         BLOCK_CHILD !(Some(&mut set), Some(&mut oset));
-        job = get_job_spec (&mut loptendt);
+        job = get_job_spec (list);
 
         if (job == NO_JOB!()) || jobs  == std::ptr::null_mut() || get_job_by_jid !(job)  == std::ptr::null_mut() {
-            sh_badjob ((*loptendt.word).word);                 
+            sh_badjob ((*((*list).word)).word);                 
             any_failed+=1;
-        } else if (job != DUP_JOB!()) {
+        } else if job != DUP_JOB!() {
             list_one_job (0 as * mut JOB, form, 0, job);
         }
 
         UNBLOCK_CHILD !(Some(&oset));
-        loptendt = *loptendt.next;
-        }
+
+        list = (*list).next;
+    }
         if any_failed !=0 {
             return EXECUTION_FAILURE!();
         } else {
@@ -524,7 +506,7 @@ pub extern "C" fn r_jobs_builtin(list:*mut WORD_LIST)->i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn r_disown_builtin (list:* mut WORD_LIST)->libc::c_int {
+pub extern "C" fn r_disown_builtin (list:* mut WordList)->libc::c_int {
   let opt:i32;
   let mut job:i32=0;
   let mut retval:i32;
@@ -541,15 +523,18 @@ pub extern "C" fn r_disown_builtin (list:* mut WORD_LIST)->libc::c_int {
   let mut c_str_ahr = CString::new("ahr").unwrap(); // from a &str, creates a new allocation
   opt = internal_getopt (list, c_str_ahr.as_ptr() as * mut c_char);
   while  opt != -1 {
-    let optu8:u8= opt as u8;
-    let optChar:char=char::from(optu8);
-    match optChar{
+    let opt_char:char= opt as u8 as char;
+    match opt_char{
         'a'=>{all_jobs = 1;}
         'h'=>{nohup_only = 1;}
         'r'=>{running_jobs = 1;}
         _=>{
+            if opt == -99 {
+                builtin_help();
+                return EX_USAGE;
+            }
             builtin_usage ();
-            return EX_USAGE!();
+            return EX_USAGE;
         }
 	}
   }
@@ -619,7 +604,7 @@ pub extern "C" fn cmd_name() ->*const u8 {
 /*
 #[no_mangle]
 
-pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
+pub extern "C" fn run(list : *mut WordList)->i32 {
   return r_jobs_builtin(list);
 }
 */

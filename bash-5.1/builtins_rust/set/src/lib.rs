@@ -14,8 +14,8 @@ pub struct WordDesc {
 
 #[repr (C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -857,7 +857,7 @@ extern "C" {
    fn all_shell_functions () -> *mut *mut SHELL_VAR;
    fn num_posix_options() -> i32;
    fn find_flag(_: i32) -> *mut i32;
-   fn internal_getopt (list:*mut WORD_LIST , opts:*mut i8)->i32;
+   fn internal_getopt (list:*mut WordList , opts:*mut i8)->i32;
    fn get_posix_options(_: *mut i8) -> *mut i8;
    fn sh_chkwrite (_:i32)->i32;
    fn  reset_internal_getopt();
@@ -869,7 +869,7 @@ extern "C" {
    fn bash_history_enable();
    fn load_history();
    fn bash_history_disable();
-   fn remember_args (list:* mut WORD_LIST, argc:i32);
+   fn remember_args (list:* mut WordList, argc:i32);
    fn sh_invalidid (value:* mut i8);
    fn legal_identifier (_:*const i8) -> i32;
    fn unbind_array_element(_: *mut SHELL_VAR, _:*mut i8,_: i32) -> i32;
@@ -893,7 +893,7 @@ extern "C" {
      static mut history_lines_this_session : i32;
      static mut  rl_editing_mode : i32;
      static mut  list_optopt :i32;
-     static mut loptend:*mut WORD_LIST;
+     static mut loptend:*mut WordList;
      static assoc_expand_once:i32;
      static mut stdin : libc::FILE;
 }
@@ -1404,7 +1404,7 @@ unsafe fn reset_shell_options () {
 }
 
 #[no_mangle]
- pub extern "C" fn r_set_builtin (mut list: *mut WORD_LIST) -> i32 {
+ pub extern "C" fn r_set_builtin (mut list: *mut WordList) -> i32 {
   //println!("write  by huanhuan");
   let mut on_or_off : i32 ;
   let mut flag_name : i32 = 0;
@@ -1527,7 +1527,7 @@ unsafe fn reset_shell_options () {
            /* -+o option-name */
             //println!("optChar == 'o'");
             let mut option_name : *mut i8 = 0 as *mut i8 ;
-            let mut opt : *mut WORD_LIST = 0 as *mut WORD_LIST;
+            let mut opt : *mut WordList = 0 as *mut WordList;
             unsafe {opt = (*list).next;}
             if opt == std::ptr::null_mut(){
               //println!("opt is  null");
@@ -1643,7 +1643,7 @@ unsafe fn reset_shell_options () {
 }
 
 #[no_mangle]
-pub  extern "C"  fn r_unset_builtin(mut list: *mut WORD_LIST) -> i32 {
+pub  extern "C"  fn r_unset_builtin(mut list: *mut WordList) -> i32 {
   let mut unset_function: i32 = 0;
   let mut unset_variable: i32 = 0;
   let mut unset_array: i32 = 0;

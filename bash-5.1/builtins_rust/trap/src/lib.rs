@@ -1,13 +1,13 @@
 use std::{ffi::CString};
 
 use libc::{c_int, c_char, c_void, PT_NULL};
-use rcommon::{r_builtin_usage,r_display_signal_list,WORD_LIST,r_sh_invalidsig,r_sh_chkwrite};
+use rcommon::{r_builtin_usage,r_display_signal_list,WordList,r_sh_invalidsig,r_sh_chkwrite};
 
 include!(concat!("intercdep.rs"));
 
 
 #[no_mangle]
-pub extern "C" fn r_trap_builtin(mut list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_trap_builtin(mut list: *mut WordList) -> i32 {
     println!("r_trap_builtin call");
 
     let mut list_signal_names: c_int = 0;
@@ -35,7 +35,7 @@ unsafe {
     opt = DSIG_NOCASE | DSIG_SIGPREFIX;
 
     if list_signal_names != 0 {
-        return r_sh_chkwrite(r_display_signal_list(PT_NULL as *mut WORD_LIST, 1));
+        return r_sh_chkwrite(r_display_signal_list(PT_NULL as *mut WordList, 1));
     } else if display != 0 || list.is_null() {
         initialize_terminating_signals();
         get_all_original_signals();
@@ -152,7 +152,7 @@ unsafe fn showtrap(i: c_int, show_default: c_int)
     }
 }
 
-unsafe fn display_traps(mut list: *mut WORD_LIST, show_all: c_int) -> c_int
+unsafe fn display_traps(mut list: *mut WordList, show_all: c_int) -> c_int
 {
     if list.is_null() {
         for i in 0..BASH_NSIG {

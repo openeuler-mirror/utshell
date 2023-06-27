@@ -48,11 +48,11 @@ static mut vblen: c_int = 0;
 static mut retval: c_int = 0;
 static mut tw: c_long = 0;
 
-static mut garglist: *mut WORD_LIST = PT_NULL as *mut WORD_LIST;
-static mut orig_arglist: *mut WORD_LIST = PT_NULL as *mut WORD_LIST;
+static mut garglist: *mut WordList = PT_NULL as *mut WordList;
+static mut orig_arglist: *mut WordList = PT_NULL as *mut WordList;
 
 #[no_mangle]
-pub extern "C" fn r_printf_builtin(mut list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_printf_builtin(mut list: *mut WordList) -> i32 {
     println!("r_printf_builtin call");
 
     let mut ch: c_int;

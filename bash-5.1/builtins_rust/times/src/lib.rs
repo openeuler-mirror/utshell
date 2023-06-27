@@ -3,7 +3,7 @@ use rcommon::{r_sh_chkwrite};
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
-pub extern "C" fn r_times_builtin(list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_times_builtin(list: *mut WordList) -> i32 {
     println!("r_times_builtin call");
 
 unsafe {

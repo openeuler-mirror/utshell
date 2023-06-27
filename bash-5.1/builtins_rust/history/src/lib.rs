@@ -1,7 +1,7 @@
 use std::{ffi::{CString, CStr}, io::Write};
 
 use libc::{size_t, c_int, c_char, c_long, c_void, PT_NULL};
-use rcommon::{r_builtin_usage,r_sh_erange,r_sh_restricted,r_sh_chkwrite,r_get_numeric_arg,WORD_LIST};
+use rcommon::{r_builtin_usage,r_sh_erange,r_sh_restricted,r_sh_chkwrite,r_get_numeric_arg,WordList};
 
 include!(concat!("intercdep.rs"));
 
@@ -15,7 +15,7 @@ pub const CFLAG: c_int = 0x40;
 pub const DFLAG: c_int = 0x80;
 
 #[no_mangle]
-pub extern "C" fn r_history_builtin(mut list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_history_builtin(mut list: *mut WordList) -> i32 {
     println!("r_history_builtin call");
 
     let mut flags: c_int = 0;
@@ -231,7 +231,7 @@ unsafe fn quit()
     }
 }
 
-unsafe fn display_history(list: *mut WORD_LIST) -> c_int
+unsafe fn display_history(list: *mut WordList) -> c_int
 {
     let mut limit:c_long = 0;
     let mut histtimefmt: *mut c_char;
@@ -285,7 +285,7 @@ unsafe fn display_history(list: *mut WORD_LIST) -> c_int
     return EXECUTION_SUCCESS;
 }
 
-fn push_history(list: *mut WORD_LIST) {
+fn push_history(list: *mut WordList) {
 unsafe {
     if remember_on_history != 0 && hist_last_line_pushed == 0 &&
         (hist_last_line_added != 0 || (current_command_line_count > 0 && current_command_first_line_saved != 0 && command_oriented_history != 0)) &&
@@ -301,7 +301,7 @@ unsafe {
 }
 }
 
-fn expand_and_print_history(mut list: *mut WORD_LIST) -> c_int
+fn expand_and_print_history(mut list: *mut WordList) -> c_int
 {
 unsafe {
 

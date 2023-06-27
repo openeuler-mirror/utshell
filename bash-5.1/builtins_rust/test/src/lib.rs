@@ -1,9 +1,9 @@
 use libc::{c_int, c_char, c_void};
-use rcommon::{r_make_builtin_argv,WORD_LIST};
+use rcommon::{r_make_builtin_argv,WordList};
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
-pub extern "C" fn r_test_builtin(list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_test_builtin(list: *mut WordList) -> i32 {
     println!("r_test_builtin call");
 
     let result: c_int;

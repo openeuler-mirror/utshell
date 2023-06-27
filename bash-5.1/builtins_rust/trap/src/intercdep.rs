@@ -13,7 +13,7 @@
 //     pub next: *mut word_list,
 //     pub word: *mut WordDesc,
 // }
-// pub type WORD_LIST = word_list;
+// pub type WordList = word_list;
 
 pub type SigHandler = unsafe extern "C" fn(arg1: c_int);
 
@@ -35,12 +35,12 @@ pub const SUBSHELL_RESETTRAP: c_int = 0x80;
 
 extern "C" {
     pub fn reset_internal_getopt();
-    pub fn internal_getopt(list: *mut WORD_LIST, opts: *mut c_char) -> c_int;
+    pub fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> c_int;
     pub fn builtin_usage();
     pub fn builtin_error(format: *const c_char, ...);
 
     pub fn sh_chkwrite(s: c_int) -> c_int;
-    pub fn display_signal_list(list: *mut WORD_LIST, forcecols: c_int) -> c_int;
+    pub fn display_signal_list(list: *mut WordList, forcecols: c_int) -> c_int;
     pub fn initialize_terminating_signals();
     pub fn get_all_original_signals();
     pub fn free_trap_strings();
@@ -61,7 +61,7 @@ extern "C" {
     pub fn sh_invalidsig(s: *mut c_char);
 
     pub static mut list_optarg : *mut libc::c_char;
-    pub static mut loptend : *mut WORD_LIST;
+    pub static mut loptend : *mut WordList;
 
     pub static trap_list: [*mut c_char; BASH_NSIG as usize];
     pub static posixly_correct: c_int;

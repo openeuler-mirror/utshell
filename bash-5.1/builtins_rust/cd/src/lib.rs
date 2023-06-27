@@ -12,8 +12,8 @@ pub struct WordDesc {
 
 #[repr(C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -77,14 +77,14 @@ pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
     next:* mut PATTERN_LIST,
-    patterns:* mut WORD_LIST,
+    patterns:* mut WordList,
     action:*mut COMMAND,
     flags:libc::c_int
 }
@@ -124,7 +124,7 @@ pub struct connection {
 pub struct simple_com {
     flags:libc::c_int,
     line:libc::c_int,
-    words:*mut WORD_LIST,
+    words:*mut WordList,
     redirects:*mut REDIRECT
 }
 
@@ -149,7 +149,7 @@ pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -157,7 +157,7 @@ pub struct select_com {
 pub struct arith_com {
     flags:libc::c_int,
     line:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
@@ -165,16 +165,16 @@ pub struct cond_com {
     flags:libc::c_int,
     line:libc::c_int,
     type_c:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
 pub struct arith_for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    init:*mut WORD_LIST,
-    test:*mut WORD_LIST,
-    step:*mut WORD_LIST,
+    init:*mut WordList,
+    test:*mut WordList,
+    step:*mut WordList,
     action:*mut COMMAND  
 }
 
@@ -337,7 +337,7 @@ macro_rules! errno {
 extern "C" {
     fn builtin_error(err:*const c_char,...);
     
-    static mut loptend:*mut WORD_LIST;
+    static mut loptend:*mut WordList;
 
     static mut array_needs_making:i32;
     fn bind_variable ( lhs:*const c_char, rhs:* mut c_char, i:i32)->* mut SHELL_VAR;
@@ -353,7 +353,7 @@ extern "C" {
     static no_symbolic_links:i32;
     
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WORD_LIST , opts:*mut c_char)->i32;
+    fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
     fn builtin_usage();
     static cdable_vars:i32;
     static  interactive:i32;
@@ -492,7 +492,7 @@ pub extern "C" fn r_resetxattr () {
 }
 
 #[no_mangle]
-pub extern "C" fn r_cd_builtin (mut list:*mut WORD_LIST)->i32 {
+pub extern "C" fn r_cd_builtin (mut list:*mut WordList)->i32 {
   let mut dirname:*mut c_char=std::ptr::null_mut();
   let cdpath:*mut c_char;
   let mut path:*mut c_char;
@@ -668,7 +668,7 @@ pub extern "C" fn r_cd_builtin (mut list:*mut WORD_LIST)->i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn r_pwd_builtin (list:* mut WORD_LIST)->i32 {
+pub extern "C" fn r_pwd_builtin (list:* mut WordList)->i32 {
   let mut directory:* mut c_char;
   let mut opt:i32;
   let mut pflag:i32;
@@ -856,7 +856,7 @@ pub extern "C" fn cmd_name() ->*const u8 {
    return b"cd" as *const u8;
 }
 #[no_mangle]
-pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
+pub extern "C" fn run(list : *mut WordList)->i32 {
   return r_cd_builtin(list);
 }
 */

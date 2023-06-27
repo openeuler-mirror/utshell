@@ -15,8 +15,8 @@ pub struct WordDesc{
 
 #[repr (C)]
 #[derive(Debug)]
-pub struct WORD_LIST{
-    pub next:*mut WORD_LIST,
+pub struct WordList{
+    pub next:*mut WordList,
     pub word:*mut WordDesc,
 }
 
@@ -181,10 +181,10 @@ macro_rules! S_IXUGO {
 //C库
 extern "C" {
 
-    static mut loptend:*mut WORD_LIST;
+    static mut loptend:*mut WordList;
 
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WORD_LIST,  opts:*mut c_char)->i32;
+    fn internal_getopt (list:*mut WordList,  opts:*mut c_char)->i32;
     fn builtin_usage();
     // fn read_octal(string:*mut c_char)->i32;
     fn sh_erange(s:*mut c_char,desc:*mut c_char);
@@ -218,7 +218,7 @@ unsafe fn member(c:*mut c_char,s:*mut c_char) -> bool{
 /* Set or display the mask used by the system when creating files.  Flag
    of -S means display the umask in a symbolic mode. */
 
-pub extern "C" fn r_umask_builtin(mut list:*mut WORD_LIST) ->i32{
+pub extern "C" fn r_umask_builtin(mut list:*mut WordList) ->i32{
     println!("r_umask_builtin");
     let mut print_symbolically:i32;
     let mut opt:i32;
@@ -463,7 +463,7 @@ extern "C" fn r_parse_symbolic_mode(mode:*mut c_char,initial_bits:i32)->i32{
    by chmod.  If the -S argument is given, then print the umask in a
    symbolic form. */
 
-extern "C" fn r_symbolic_umask(list:*mut WORD_LIST)->i32{
+extern "C" fn r_symbolic_umask(list:*mut WordList)->i32{
     let mut um:i32;
     let bits:i32;
     

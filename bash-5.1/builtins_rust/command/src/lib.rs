@@ -1,7 +1,7 @@
 use std::ffi::*;
 
 extern "C" {
-    fn copy_word_list(_: *mut WORD_LIST) -> *mut WORD_LIST;
+    fn copy_word_list(_: *mut WordList) -> *mut WordList;
     fn begin_unwind_frame(_: *mut libc::c_char);
     fn run_unwind_frame(_: *mut libc::c_char);
     fn add_unwind_protect();
@@ -9,8 +9,8 @@ extern "C" {
     fn make_bare_simple_command() -> *mut COMMAND;
     fn execute_command(_: *mut COMMAND) -> libc::c_int;
     static mut restricted: libc::c_int;
-    static mut loptend: *mut WORD_LIST;
-    fn internal_getopt(_: *mut WORD_LIST, _: *const libc::c_char) -> libc::c_int;
+    static mut loptend: *mut WordList;
+    fn internal_getopt(_: *mut WordList, _: *const libc::c_char) -> libc::c_int;
     fn reset_internal_getopt();
     fn builtin_usage();
     fn sh_notfound(_: *mut libc::c_char);
@@ -69,7 +69,7 @@ pub struct word_list {
     pub next: *mut word_list,
     pub word: *mut WordDesc,
 }
-pub type WORD_LIST = word_list;
+pub type WordList = word_list;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub union REDIRECTEE {
@@ -135,9 +135,9 @@ pub struct subshell_com {
 pub struct arith_for_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
-    pub init: *mut WORD_LIST,
-    pub test: *mut WORD_LIST,
-    pub step: *mut WORD_LIST,
+    pub init: *mut WordList,
+    pub test: *mut WordList,
+    pub step: *mut WordList,
     pub action: *mut COMMAND,
 }
 #[derive(Copy, Clone)]
@@ -155,7 +155,7 @@ pub struct cond_com {
 pub struct arith_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
-    pub exp: *mut WORD_LIST,
+    pub exp: *mut WordList,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -163,7 +163,7 @@ pub struct select_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
     pub name: *mut WordDesc,
-    pub map_list: *mut WORD_LIST,
+    pub map_list: *mut WordList,
     pub action: *mut COMMAND,
 }
 #[derive(Copy, Clone)]
@@ -186,7 +186,7 @@ pub struct function_def {
 pub struct simple_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
-    pub words: *mut WORD_LIST,
+    pub words: *mut WordList,
     pub redirects: *mut REDIRECT,
 }
 #[derive(Copy, Clone)]
@@ -225,7 +225,7 @@ pub type PATTERN_LIST = pattern_list;
 #[repr(C)]
 pub struct pattern_list {
     pub next: *mut pattern_list,
-    pub patterns: *mut WORD_LIST,
+    pub patterns: *mut WordList,
     pub action: *mut COMMAND,
     pub flags: libc::c_int,
 }
@@ -235,7 +235,7 @@ pub struct for_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
     pub name: *mut WordDesc,
-    pub map_list: *mut WORD_LIST,
+    pub map_list: *mut WordList,
     pub action: *mut COMMAND,
 }
 
@@ -300,7 +300,7 @@ pub const CMD_STDPATH :i32 = 0x4000;
 pub const CMD_TRY_OPTIMIZING :i32 = 0x8000;
 
 #[no_mangle]
-pub unsafe extern "C" fn command_builtin(mut list: *mut WORD_LIST) -> libc::c_int {
+pub unsafe extern "C" fn command_builtin(mut list: *mut WordList) -> libc::c_int {
     let mut result: libc::c_int = 0;
     let mut verbose: libc::c_int = 0;
     let mut use_standard_path: libc::c_int = 0;

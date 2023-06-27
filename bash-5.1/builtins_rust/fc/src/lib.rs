@@ -12,8 +12,8 @@ pub struct WordDesc {
 
 #[repr(C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -77,14 +77,14 @@ pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
     next:* mut PATTERN_LIST,
-    patterns:* mut WORD_LIST,
+    patterns:* mut WordList,
     action:*mut COMMAND,
     flags:libc::c_int
 }
@@ -124,7 +124,7 @@ pub struct connection {
 pub struct simple_com {
     flags:libc::c_int,
     line:libc::c_int,
-    words:*mut WORD_LIST,
+    words:*mut WordList,
     redirects:*mut REDIRECT
 }
 
@@ -149,7 +149,7 @@ pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -157,7 +157,7 @@ pub struct select_com {
 pub struct arith_com {
     flags:libc::c_int,
     line:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
@@ -165,16 +165,16 @@ pub struct cond_com {
     flags:libc::c_int,
     line:libc::c_int,
     type_c:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
 pub struct arith_for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    init:*mut WORD_LIST,
-    test:*mut WORD_LIST,
-    step:*mut WORD_LIST,
+    init:*mut WordList,
+    test:*mut WordList,
+    step:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -375,10 +375,10 @@ pub union Functions {
 
 extern "C" {
     fn reset_internal_getopt();
-    static mut loptend:*mut WORD_LIST;
-    static mut lcurrent:*mut WORD_LIST;
+    static mut loptend:*mut WordList;
+    static mut lcurrent:*mut WordList;
     fn legal_number (str1:*const c_char,result:* mut c_long)->i32;
-    fn internal_getopt (list:*mut WORD_LIST , opts:*mut c_char)->i32;
+    fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
     static list_optarg:*mut c_char;
     fn builtin_usage();
     fn history_list ()->*mut * mut HIST_ENTRY;
@@ -423,7 +423,7 @@ pub extern "C" fn r_set_verbose_flag (){
 }
 
 #[no_mangle]
-pub extern "C" fn r_fc_number (list:* mut WORD_LIST)->i32
+pub extern "C" fn r_fc_number (list:* mut WordList)->i32
 {
   let mut s:*mut c_char;
 
@@ -500,7 +500,7 @@ unsafe fn STREQN ( a:* const c_char, b:* const c_char, n:i32)->bool {
 }
 
 #[no_mangle]
-pub extern "C" fn r_fc_builtin (list:* mut WORD_LIST)->i32
+pub extern "C" fn r_fc_builtin (list:* mut WordList)->i32
 {
   let mut i:i32;
   let mut sep:*mut c_char;
@@ -558,7 +558,7 @@ pub extern "C" fn r_fc_builtin (list:* mut WORD_LIST)->i32
     ret= ret && (opt !=-1);
   }
 
-  let mut llist:* mut WORD_LIST = loptend.clone();
+  let mut llist:* mut WordList = loptend.clone();
 
   if ename != std::ptr::null_mut() && char::from(*ename as u8 ) == '-' && char::from(*((ename as usize +4) as * mut c_char) as u8 )== '\0'{
     execute = 1;
@@ -1201,7 +1201,7 @@ pub extern "C" fn cmd_name() ->*const u8 {
    return b"fc" as *const u8;
 }
 #[no_mangle]
-pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
+pub extern "C" fn run(list : *mut WordList)->i32 {
   return r_fc_builtin(list);
 }
 */

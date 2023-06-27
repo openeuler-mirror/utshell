@@ -3,7 +3,7 @@ use std::ffi::CStr;
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
-pub extern "C" fn r_builtin_builtin(mut list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_builtin_builtin(mut list: *mut WordList) -> i32 {
     unsafe{
         let mut function: Option::<sh_builtin_func_t> = None;
         let mut command: &CStr = CStr::from_ptr((*(*list).word).word as *mut c_char);

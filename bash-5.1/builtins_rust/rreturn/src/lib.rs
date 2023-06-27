@@ -1,9 +1,9 @@
 use libc::{c_int, c_char, c_long, c_ulong};
-use rcommon::{r_get_exitstat,WORD_LIST};
+use rcommon::{r_get_exitstat,WordList};
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
-pub extern "C" fn r_return_builtin(list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_return_builtin(list: *mut WordList) -> i32 {
     println!("r_return_builtin call");
 
 unsafe {

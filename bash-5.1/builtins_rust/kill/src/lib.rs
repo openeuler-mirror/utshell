@@ -1,13 +1,13 @@
 use std::{ffi::{CString, CStr}};
 use libc::{c_int, c_uint, c_char, c_long, c_void, PT_NULL};
 
-// use rcommon::{r_builtin_usage,r_sh_invalidsig,r_sh_badpid,r_sh_badjob,r_get_job_spec,r_display_signal_list,WORD_LIST};
+// use rcommon::{r_builtin_usage,r_sh_invalidsig,r_sh_badpid,r_sh_badjob,r_get_job_spec,r_display_signal_list,WordList};
 
 include!(concat!("intercdep.rs"));
 
 
 #[no_mangle]
-pub extern "C" fn r_kill_builtin(mut list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_kill_builtin(mut list: *mut WordList) -> i32 {
     println!("r_kill_builtin call");
 
 unsafe {

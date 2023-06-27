@@ -23,8 +23,8 @@ extern "C" {
     fn sh_notfound(_: *mut libc::c_char);
     fn sh_chkwrite(_: libc::c_int) -> libc::c_int;
     fn builtin_help();
-    static mut loptend: *mut WORD_LIST;
-    fn internal_getopt(_: *mut WORD_LIST, _: *mut libc::c_char) -> libc::c_int;
+    static mut loptend: *mut WordList;
+    fn internal_getopt(_: *mut WordList, _: *mut libc::c_char) -> libc::c_int;
     fn reset_internal_getopt();
 }
 pub type size_t = libc::c_ulong;
@@ -42,7 +42,7 @@ pub struct word_list {
     pub next: *mut word_list,
     pub word: *mut WordDesc,
 }
-pub type WORD_LIST = word_list;
+pub type WordList = word_list;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct bucket_contents {
@@ -78,7 +78,7 @@ use rcommon::r_builtin_usage;
 
 
 #[no_mangle]
-pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WORD_LIST) -> libc::c_int {
+pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int {
     println!("alias_builtin run!");
     let mut any_failed = 0;
     let mut offset = 0;
@@ -173,7 +173,7 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WORD_LIST) -> libc::c_in
     return if any_failed != 0 { rcommon::EXECUTION_FAILURE!()} else { EXECUTION_SUCCESS};
 }
 #[no_mangle]
-pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WORD_LIST) -> libc::c_int {
+pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WordList) -> libc::c_int {
     let mut alias: *mut alias_t = 0 as *mut alias_t;
     let mut opt: libc::c_int = 0;
     let mut aflag: libc::c_int = 0;

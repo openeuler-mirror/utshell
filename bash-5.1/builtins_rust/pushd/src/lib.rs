@@ -12,8 +12,8 @@ pub struct WordDesc {
 
 #[repr(C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -59,14 +59,14 @@ pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
     next:* mut PATTERN_LIST,
-    patterns:* mut WORD_LIST,
+    patterns:* mut WordList,
     action:*mut COMMAND,
     flags:libc::c_int
 }
@@ -106,7 +106,7 @@ pub struct connection {
 pub struct simple_com {
     flags:libc::c_int,
     line:libc::c_int,
-    words:*mut WORD_LIST,
+    words:*mut WordList,
     redirects:*mut REDIRECT
 }
 
@@ -131,7 +131,7 @@ pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -139,7 +139,7 @@ pub struct select_com {
 pub struct arith_com {
     flags:libc::c_int,
     line:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
@@ -147,16 +147,16 @@ pub struct cond_com {
     flags:libc::c_int,
     line:libc::c_int,
     type_c:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
 pub struct arith_for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    init:*mut WORD_LIST,
-    test:*mut WORD_LIST,
-    step:*mut WORD_LIST,
+    init:*mut WordList,
+    test:*mut WordList,
+    step:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -254,12 +254,12 @@ extern "C" {
   fn builtin_usage();
   fn sh_invalidnum (value:* mut c_char);
   fn legal_number (str1:* const c_char, num:* mut libc::c_long)->i32;
-  fn cd_builtin (list:*mut WORD_LIST)->i32;
+  fn cd_builtin (list:*mut WordList)->i32;
   fn polite_directory_format (path:* mut c_char)->* mut c_char;
   fn sh_erange (str1:* mut c_char, str2:* mut c_char);
-  fn make_word_list (w: * mut WordDesc , l: * mut WORD_LIST)->* mut WORD_LIST;
+  fn make_word_list (w: * mut WordDesc , l: * mut WordList)->* mut WordList;
   fn make_word (w:*const c_char)->* mut WordDesc;
-  fn dispose_words (l: * mut WORD_LIST);
+  fn dispose_words (l: * mut WordList);
   fn strvec_resize (c:* mut * mut c_char, s:i32)->* mut * mut c_char;
   fn get_string_value (w:*const c_char)-> * mut c_char;
   fn sh_chkwrite (i:i32)->i32;
@@ -290,9 +290,9 @@ unsafe fn savestring(x:* const c_char)->* mut c_char
 }
 
 #[no_mangle]
-pub extern "C" fn r_pushd_builtin (listt:* mut WORD_LIST)->i32
+pub extern "C" fn r_pushd_builtin (listt:* mut WordList)->i32
 {
-	let orig_list:* mut WORD_LIST;
+	let orig_list:* mut WordList;
 	let mut temp:* mut c_char;
 	let current_directory:* mut c_char;
 	let mut top:* mut c_char;
@@ -303,7 +303,7 @@ pub extern "C" fn r_pushd_builtin (listt:* mut WORD_LIST)->i32
 	let mut direction:c_char;
 
 	unsafe {
-  let mut list:* mut WORD_LIST=listt.clone();
+  let mut list:* mut WordList=listt.clone();
 	orig_list = list.clone();
 
 	if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISHELP((*((*list).word)).word) {
@@ -479,7 +479,7 @@ pub extern "C" fn r_pushd_builtin (listt:* mut WORD_LIST)->i32
    If LIST is non-null it should consist of a word +N or -N, which says
    what element to delete from the stack.  The default is the top one. */
 #[no_mangle]
-pub extern "C" fn r_popd_builtin (listt:* mut WORD_LIST)->i32 {
+pub extern "C" fn r_popd_builtin (listt:* mut WordList)->i32 {
 let mut i:i32;
 let mut which:libc::c_long;
 let mut flags:i32;
@@ -487,7 +487,7 @@ let mut direction:c_char;
 let mut which_word:* mut c_char;
 
 unsafe {
-let mut list:* mut WORD_LIST=listt.clone();
+let mut list:* mut WordList=listt.clone();
 if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISHELP((*((*list).word)).word) { 
   builtin_help ();
   return EX_USAGE!();
@@ -589,7 +589,7 @@ if (direction == '+' as c_char && which == 0) ||
 
 /* Print the current list of directories on the directory stack. */
 #[no_mangle]
-pub extern "C" fn r_dirs_builtin (listt:* mut WORD_LIST)->i32
+pub extern "C" fn r_dirs_builtin (listt:* mut WordList)->i32
 {
   let mut flags:i32=0;
   let mut desired_index:i32=-1;
@@ -600,7 +600,7 @@ pub extern "C" fn r_dirs_builtin (listt:* mut WORD_LIST)->i32
   let mut w:* mut c_char=CString::new("").unwrap().as_ptr() as * mut c_char;
 
   unsafe {
-    let mut list:* mut WORD_LIST=listt.clone();
+    let mut list:* mut WordList=listt.clone();
     if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISHELP((*((*list).word)).word) {
       builtin_help ();
       return EX_USAGE!();
@@ -765,8 +765,8 @@ pub extern "C" fn r_clear_directory_stack ()
 pub extern "C" fn r_cd_to_string (name:* mut c_char)->i32
 {
   unsafe {
-    let tlist:* mut WORD_LIST;
-    let dir:* mut WORD_LIST;
+    let tlist:* mut WordList;
+    let dir:* mut WordList;
     let result:i32;
 
     dir = make_word_list (make_word (name), std::ptr::null_mut());
@@ -914,10 +914,10 @@ pub extern "C" fn r_set_dirstack_element (ind:libc::c_long, sign:i32, value:* mu
 }
 
 #[no_mangle]
-pub extern "C" fn r_get_directory_stack (flags:i32)->* mut WORD_LIST
+pub extern "C" fn r_get_directory_stack (flags:i32)->* mut WordList
 {
   let mut i:i32;
-  let mut ret:* mut WORD_LIST;
+  let mut ret:* mut WordList;
   let mut d:* mut c_char;
   let t:* mut c_char;
   unsafe {
@@ -957,7 +957,7 @@ pub extern "C" fn r_get_directory_stack (flags:i32)->* mut WORD_LIST
   if i !=0 {
     libc::free (d as * mut c_void);
   }
-  return ret;	/* was (REVERSE_LIST (ret, (WORD_LIST *)); */
+  return ret;	/* was (REVERSE_LIST (ret, (WordList *)); */
   }
 }
 
@@ -967,6 +967,6 @@ pub extern "C" fn cmd_name() ->*const u8 {
 }
 
 #[no_mangle]
-pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
+pub extern "C" fn run(list : *mut WordList)->i32 {
   return r_pushd_builtin(list);
 }

@@ -13,8 +13,8 @@ pub struct WordDesc {
 
 #[repr(C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -60,14 +60,14 @@ pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
     next:* mut PATTERN_LIST,
-    patterns:* mut WORD_LIST,
+    patterns:* mut WordList,
     action:*mut COMMAND,
     flags:libc::c_int
 }
@@ -107,7 +107,7 @@ pub struct connection {
 pub struct simple_com {
     flags:libc::c_int,
     line:libc::c_int,
-    words:*mut WORD_LIST,
+    words:*mut WordList,
     redirects:*mut REDIRECT
 }
 
@@ -132,7 +132,7 @@ pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -140,7 +140,7 @@ pub struct select_com {
 pub struct arith_com {
     flags:libc::c_int,
     line:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
@@ -148,16 +148,16 @@ pub struct cond_com {
     flags:libc::c_int,
     line:libc::c_int,
     type_c:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
 pub struct arith_for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    init:*mut WORD_LIST,
-    test:*mut WORD_LIST,
-    step:*mut WORD_LIST,
+    init:*mut WordList,
+    test:*mut WordList,
+    step:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -484,15 +484,15 @@ extern "C" {
     fn find_variable (str:*const c_char)->* mut SHELL_VAR;
     fn find_global_variable (str:*const c_char)->* mut SHELL_VAR;
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WORD_LIST , opts:*mut c_char)->i32;
+    fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
     static mut list_opttype:i32;
     static mut array_needs_making:i32;
     fn builtin_usage();
-    static mut loptend:*mut WORD_LIST;
+    static mut loptend:*mut WordList;
     fn show_local_var_attributes (v:i32, nodefs:i32)->i32;
     fn show_all_var_attributes (v:i32, nodefs:i32)->i32;
-    fn set_builtin (list:*mut WORD_LIST)->i32;
-    fn set_or_show_attributes (list:*mut WORD_LIST, attribute:i32, nodefs:i32)->i32;
+    fn set_builtin (list:*mut WordList)->i32;
+    fn set_or_show_attributes (list:*mut WordList, attribute:i32, nodefs:i32)->i32;
     fn sh_chkwrite (ret:i32)->i32;
     fn show_func_attributes (name:* mut c_char, nodefs:i32)->i32;
     fn show_localname_attributes (name:* mut c_char, nodefs:i32)->i32;
@@ -542,7 +542,7 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern "C" fn r_declare_builtin (list:* mut WORD_LIST)->i32
+pub extern "C" fn r_declare_builtin (list:* mut WordList)->i32
 {
   return r_declare_internal (list, 0);
 }
@@ -552,7 +552,7 @@ unsafe fn STREQ( a:* const c_char, b:* const c_char)->bool {
 }
 
 #[no_mangle]
-pub extern "C" fn r_local_builtin (list:* mut WORD_LIST)->i32
+pub extern "C" fn r_local_builtin (list:* mut WordList)->i32
 {
   unsafe {
       /* Catch a straight `local --help' before checking function context */
@@ -661,7 +661,7 @@ unsafe fn noassign_p(var:*mut SHELL_VAR) ->i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn r_declare_internal (list:* mut WORD_LIST, local_var:i32)->i32
+pub extern "C" fn r_declare_internal (list:* mut WordList, local_var:i32)->i32
 {
   let mut flags_on:i32=0;
   let mut flags_off:i32=0;
@@ -750,7 +750,7 @@ pub extern "C" fn r_declare_internal (list:* mut WORD_LIST, local_var:i32)->i32
 		internal_getopt (list, DECLARE_OPTS() as * mut c_char);
   }
 
-  let mut llist:* mut WORD_LIST = loptend.clone();
+  let mut llist:* mut WordList = loptend.clone();
 
   /* If there are no more arguments left, then we just want to show
      some variables. */
@@ -1548,6 +1548,6 @@ pub extern "C" fn cmd_name() ->*const u8 {
 }
 
 #[no_mangle]
-pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
+pub extern "C" fn run(list : *mut WordList)->i32 {
   return r_declare_builtin(list);
 }

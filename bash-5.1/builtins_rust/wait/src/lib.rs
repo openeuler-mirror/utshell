@@ -8,10 +8,10 @@ use std::ffi::{CString,};
 use nix::sys::signal::{SigSet};
 
 use rjobs::{PROCESS,COMMAND, BLOCK_CHILD, UNBLOCK_CHILD};
-// use rjobs::WORD_LIST;
+// use rjobs::WordList;
 use rread::{SHELL_VAR,sh_var_value_func_t,sh_var_assign_func_t,
     sigjmp_buf,__jmp_buf_tag,__sigset_t,__sigsetjmp,};
-use rcommon::{r_builtin_unbind_variable,r_builtin_usage,r_get_job_spec,WORD_LIST};
+use rcommon::{r_builtin_unbind_variable,r_builtin_usage,r_get_job_spec,WordList};
 
 
 
@@ -202,7 +202,7 @@ pub type procenv_t=sigjmp_buf;
 extern "C" {
     static mut wait_signal_received:i32;
     // static mut wait_intr_flag:i32;
-    static mut loptend:*mut WORD_LIST;
+    static mut loptend:*mut WordList;
     static  js:jobstats ;
     static mut jobs:*mut*mut JOB;
     static list_optarg:*mut c_char;
@@ -211,11 +211,11 @@ extern "C" {
     static posixly_correct:i32;
 
     // fn sigsetjmp(env:sigjmp_buf,val:c_int)->i32;
-    fn internal_getopt (list:*mut WORD_LIST,  opts:*mut c_char)->i32;
+    fn internal_getopt (list:*mut WordList,  opts:*mut c_char)->i32;
     // fn builtin_usage();
     fn legal_number(string:*const c_char,result:*mut c_long)->i32;
     fn get_job_by_pid(pid:pid_t,block:i32,procp:*mut *mut PROCESS)->i32;
-    // fn get_job_spec(list:*mut WORD_LIST)->i32;
+    // fn get_job_spec(list:*mut WordList)->i32;
     fn sh_badjob(str:*mut c_char);
     fn reset_internal_getopt();
     fn legal_identifier(name:*const c_char)->i32;
@@ -257,7 +257,7 @@ pub static mut wait_intr_buf:procenv_t = [__jmp_buf_tag{
 
 //rust
 #[no_mangle]
-pub extern  "C" fn r_wait_builtin(mut list:*mut WORD_LIST)->i32{
+pub extern  "C" fn r_wait_builtin(mut list:*mut WordList)->i32{
     let mut status:i32;
     let code:i32;
     let mut opt:i32;
@@ -471,14 +471,14 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WORD_LIST)->i32{
 
 
 #[no_mangle]
-extern "C" fn r_set_waitlist(list:*mut WORD_LIST) -> i32{
+extern "C" fn r_set_waitlist(list:*mut WordList) -> i32{
     let mut set:SigSet = SigSet::empty();
     let mut oset:SigSet = SigSet::empty();
     let mut job:i32;
     let mut r:i32;
     let mut njob:i32;
     let mut pid:intmax_t=0;
-    let mut l:*mut WORD_LIST;
+    let mut l:*mut WordList;
 
     unsafe{
         BLOCK_CHILD!(Some(&mut set),Some(&mut oset));
