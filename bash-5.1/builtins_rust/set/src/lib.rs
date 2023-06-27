@@ -7,7 +7,7 @@ use std::ptr;
 use std::mem;
 use std::io;
 #[repr(C)]
-pub struct WORD_DESC {
+pub struct WordDesc {
     pub word: *mut i8,
     pub flags:i32
 }
@@ -16,7 +16,7 @@ pub struct WORD_DESC {
 #[derive(Copy,Clone)]
 pub struct WORD_LIST {
     next: *mut WORD_LIST,
-    word: *mut WORD_DESC
+    word: *mut WordDesc
 }
 
 #[macro_export]
@@ -1279,7 +1279,7 @@ unsafe fn print_all_shell_variables (){
     }
 }
 
-unsafe fn set_shellopts () {
+pub unsafe fn r_set_shellopts () {
   //println!("set shellopts  by huanhuan");
   let mut value : *mut  i8;
   let mut tflag : [i8;N_O_OPTIONS!()] = [0 as i8 ;N_O_OPTIONS!()];
@@ -1391,7 +1391,7 @@ unsafe fn initialize_shell_options (no_shellopts : i32) {
     }
 
   /* Set up the $SHELLOPTS variable. */
-  set_shellopts ();
+  r_set_shellopts ();
 }
 
 unsafe fn reset_shell_options () {
@@ -1590,7 +1590,7 @@ unsafe fn reset_shell_options () {
             };
             if r != EXECUTION_SUCCESS!() {
               unsafe {
-                set_shellopts ()
+                r_set_shellopts ()
               };
               return (r);
             }
@@ -1603,7 +1603,7 @@ unsafe fn reset_shell_options () {
          unsafe {
            sh_invalidopt (s.as_ptr() as *mut i8);
            builtin_usage ();
-            set_shellopts ();
+            r_set_shellopts ();
          }
          return EXECUTION_FAILURE!();
          }
@@ -1636,7 +1636,7 @@ unsafe fn reset_shell_options () {
    
   if opts_changed != 0 {
      unsafe {
-        set_shellopts();
+        r_set_shellopts();
     }
   }
   return rv;
