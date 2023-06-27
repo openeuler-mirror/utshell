@@ -47,10 +47,6 @@ unsafe {
             }
             'p' => flags |= PFLAG,
             _ => {
-                if opt == -99 {
-                    builtin_help();
-                    return EX_USAGE;
-                }
             r_builtin_usage ();
             return EX_USAGE;
             }
@@ -58,6 +54,9 @@ unsafe {
         opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
     }
     list = loptend;
+
+    let c_tmp = if *delete_arg == b'-' as c_char {(delete_arg as usize + 1) as *mut c_char} else {delete_arg};
+    range = libc::strchr(c_tmp, b'-' as c_int);
 
     opt = flags & (AFLAG | RFLAG | WFLAG | NFLAG);
     if opt != 0 && opt != AFLAG && opt != RFLAG && opt != WFLAG && opt != NFLAG {
@@ -83,16 +82,14 @@ unsafe {
             return expand_and_print_history(list);
         }
         return r_sh_chkwrite(EXECUTION_SUCCESS);
-    } else if (flags & DFLAG) != 0 {
-        let c_tmp = if *delete_arg == b'-' as c_char {delete_arg.offset(1 as isize ) as *mut c_char} else {delete_arg};
-        range = libc::strchr(c_tmp, b'-' as c_int);
-
-            printf(b"AAAAAAArange=%u,   c_tmp=%s\n" as *const u8 as *const i8, range, c_tmp);
-        if  !range.is_null() {
-            printf(b"AAAAAAArange=%s\n" as *const u8 as *const i8, range);
-
-            let mut delete_start: c_long = 0;
-            let mut delete_end: c_long = 0;
+    } else if (flags & PFLAG) != 0 {
+        if !list.is_null() {
+            return expand_and_print_history(list);
+        }
+        return r_sh_chkwrite(EXECUTION_SUCCESS);
+    } else if (flags & DFLAG) != 0 && !range.is_null() {
+        let mut delete_start: c_long = 0;
+        let mut delete_end: c_long = 0;
 
         *range = b'\0' as c_char;
         range = (range as usize + 1) as *mut c_char;
@@ -133,11 +130,9 @@ unsafe {
         if where_history() > history_length {
             history_set_pos(history_length);
         }
-
         return if result != 0 {EXECUTION_SUCCESS} else {EXECUTION_FAILURE};
-        }
-     else if (flags & DFLAG) != 0 {
-        if legal_number(delete_arg, &mut delete_offset) == 0 {
+    } else if (flags & DFLAG) != 0 {
+        if legal_number(delete_arg, std::mem::transmute(&delete_offset)) == 0 {
             r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;
         }
@@ -145,24 +140,24 @@ unsafe {
         if *delete_arg == b'-' as c_char && delete_offset < 0 {
             let ind = history_length + delete_offset as c_int;
             if ind < history_base {
-                r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
+                r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
                 return EXECUTION_FAILURE;
             }
             opt = ind + history_base;
         } else if delete_offset < history_base as c_long ||
             (delete_offset >= (history_base + history_length) as c_long) {
-            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
+            r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;
         } else {
             opt = delete_offset as c_int;
         }
+
         result = bash_delete_histent(opt - history_base);
         if where_history() > history_length {
             history_set_pos(history_length);
         }
         return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
-    }
-} else if (flags & (AFLAG | RFLAG | NFLAG | WFLAG | CFLAG)) == 0 {
+    } else if (flags & (AFLAG | RFLAG | NFLAG | WFLAG | CFLAG)) == 0 {
         result = display_history(list);
         return r_sh_chkwrite(result);
     }
@@ -174,6 +169,7 @@ unsafe {
         r_sh_restricted(filename);
         return EXECUTION_FAILURE;
     }
+
     if (flags & AFLAG) != 0 {
         result = maybe_append_history(filename);
     } else if (flags & WFLAG) != 0 {
@@ -251,45 +247,37 @@ unsafe fn display_history(list: *mut WordList) -> c_int
     } else {
         limit = -1;
     }
+
     let hlist = history_list();
 
     if !hlist.is_null() {
         let mut i: c_long = 0;
-        while !(*hlist.offset(i as isize)).is_null() {
+        while !((hlist as usize + (i * 8) as usize) as *mut HIST_ENTRY).is_null() {
             i += 1;
         }
 
         i = if 0 <= limit && limit < i {i - limit} else {0};
 
-        histtimefmt = get_string_value(b"HISTTIMEFORMAT\0" as *const u8 as *const c_char);
+        histtimefmt = get_string_value("HISTTIMEFORMAT\0".as_ptr() as *const c_char);
 
-        while !(*hlist.offset(i as isize)).is_null() {
-            if terminating_signal != 0 {
-                termsig_handler(terminating_signal);
-            }
-            if interrupt_state != 0 {
-                throw_to_top_level();
-            }
-            timestr = if !histtimefmt.is_null() && *histtimefmt as libc::c_int != 0 {
-                histtime(*hlist.offset(i as isize), histtimefmt)
+        while !((hlist as usize + (i * 8) as usize) as *mut HIST_ENTRY).is_null(){
+            quit();
+
+            if !histtimefmt.is_null() && *histtimefmt != 0 {
+                timestr = histtime((hlist as usize + (i * 8) as usize) as *mut HIST_ENTRY, histtimefmt);
             } else {
-                0 as *mut libc::c_void as *mut libc::c_char
-            };
-            printf(
-                b"%5d%c %s%s\n\0" as *const u8 as *const libc::c_char,
-                i + history_base as c_long,
-                if !((**hlist.offset(i as isize)).data).is_null() {
-                    '*' as i32
-                } else {
-                    ' ' as i32
-                },
-                if !timestr.is_null() && *timestr as libc::c_int != 0 {
-                    timestr
-                } else {
-                    b"\0" as *const u8 as *const libc::c_char
-                },
-                (**hlist.offset(i as isize)).line,
-            );
+                timestr = PT_NULL as *mut c_char;
+            }
+
+            let data = (*((hlist as usize + (i * 8) as usize) as *mut HIST_ENTRY)).data;
+            let line = (*((hlist as usize + (i * 8) as usize) as *mut HIST_ENTRY)).line;
+            let s_timestr = CString::from_raw(timestr).into_string().unwrap();
+            println!("{:>5}{} {}{}",
+                i as c_int + history_base,
+                if !data.is_null() {"*"} else {" "},
+                if !timestr.is_null() && *timestr != 0 {s_timestr} else {"".to_owned()},
+                CString::from_raw(line).into_string().unwrap()
+                );
             i += 1;
         }
     }
@@ -298,12 +286,10 @@ unsafe fn display_history(list: *mut WordList) -> c_int
 }
 
 fn push_history(list: *mut WordList) {
-    println!("push_history!!!!");
 unsafe {
     if remember_on_history != 0 && hist_last_line_pushed == 0 &&
         (hist_last_line_added != 0 || (current_command_line_count > 0 && current_command_first_line_saved != 0 && command_oriented_history != 0)) &&
         bash_delete_last_history() == 0 {
-
         return;
     }
 

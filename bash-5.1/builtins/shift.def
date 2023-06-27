@@ -49,8 +49,6 @@ $END
 
 int print_shift_error;
 
-extern r_shift_builtin(WORD_LIST *);
-
 /* Shift the arguments ``left''.  Shift DOLLAR_VARS down then take one
    off of REST_OF_ARGS and place it into DOLLAR_VARS[9].  If LIST has
    anything in it, it is a number which says where to start the
@@ -59,8 +57,6 @@ int
 shift_builtin (list)
      WORD_LIST *list;
 {
-  r_shift_builtin(list);
-
   intmax_t times;
   int itimes, nargs;
 

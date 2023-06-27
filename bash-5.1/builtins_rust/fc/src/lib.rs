@@ -3,7 +3,19 @@ extern crate nix;
 
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString, i32, io::{Write, stdout}, ops::Add, string, u32};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage};
+
+#[repr(C)]
+pub struct WordDesc {
+    pub word: *mut libc::c_char,
+    pub flags:libc::c_int
+}
+
+#[repr(C)]
+#[derive(Copy,Clone)]
+pub struct WordList {
+    next: *mut WordList,
+    word: *mut WordDesc
+}
 
 #[repr(i8)]
 pub enum JOB_STATE {
@@ -249,6 +261,20 @@ pub struct HIST_ENTRY {
     data:*mut fn()
 }
 
+#[macro_export]
+macro_rules! EXECUTION_FAILURE {
+   () => {1}
+}
+
+#[macro_export]
+macro_rules! EX_USAGE {
+   () => {258}
+}
+
+#[macro_export]
+macro_rules! EXECUTION_SUCCESS {
+   () => {0}
+}
 
 #[macro_export]
 macro_rules! ISHELP {
@@ -387,7 +413,6 @@ extern "C" {
     fn run_unwind_frame (filename:* mut c_char);
     static mut echo_input_at_read:i32;
     static mut verbose_flag:i32;
-    fn builtin_help();
 }
 
 #[no_mangle]
@@ -523,12 +548,8 @@ pub extern "C" fn r_fc_builtin (list:* mut WordList)->i32
 	    's'=>{execute = 1;}
       'e'=>{ename = list_optarg;}
       _=>{
-        if opt == -99 {
-          builtin_help();
-          return EX_USAGE;
-      }
-      r_builtin_usage();
-      return EX_USAGE;
+        builtin_usage ();
+	      return EX_USAGE!();
       }
 	  }
     loptend = lcurrent;

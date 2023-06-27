@@ -3,10 +3,22 @@ extern crate libc;
 use libc::{c_char,c_int};
 use std::ffi::{CString};
 use rcommon::{r_read_octal};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 
 
 //结构体
+#[repr (C)]
+#[derive(Debug)]
+pub struct WordDesc{
+    pub word:*mut c_char,
+    pub flags:c_int,
+}
+
+#[repr (C)]
+#[derive(Debug)]
+pub struct WordList{
+    pub next:*mut WordList,
+    pub word:*mut WordDesc,
+}
 
 
 //枚举
@@ -20,6 +32,20 @@ macro_rules! mode_t {
     };
 }
 
+#[macro_export]
+macro_rules! EX_USAGE{
+    () => { 258 }
+}
+
+#[macro_export]
+macro_rules! EXECUTION_FAILURE {
+    () => { 1 };
+}
+
+#[macro_export]
+macro_rules! EXECUTION_SUCCESS{
+    () => { 0 }
+}
 
 #[macro_export]
 macro_rules! S_IREAD{
@@ -213,7 +239,7 @@ pub extern "C" fn r_umask_builtin(mut list:*mut WordList) ->i32{
                 'S' => {print_symbolically = print_symbolically +1;}
                 'p' => {pflag = pflag + 1;}
                 _ => { builtin_usage();
-                    return EX_USAGE;
+                    return EX_USAGE!();
                 }
             }
 

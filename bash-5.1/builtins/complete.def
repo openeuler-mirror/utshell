@@ -365,13 +365,11 @@ build_actions (list, flagp, actp, optp)
   return (opt_given ? EXECUTION_SUCCESS : EXECUTION_FAILURE);
 }
 
-int r_complete_builtin ( WORD_LIST *list);
 /* Add, remove, and display completion specifiers. */
 int
 complete_builtin (list)
      WORD_LIST *list;
 {
-return r_complete_builtin (list);
   int opt_given, rval;
   unsigned long acts, copts;
   COMPSPEC *cs;

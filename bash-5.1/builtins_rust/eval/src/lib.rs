@@ -3,12 +3,39 @@ extern crate rcommon;
 
 use libc::{c_char,c_int};
 use std::ffi::{CString};
-use rcommon::{r_no_options};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{r_no_options,WordList};
+
+// #[repr(C)]
+// #[derive(Copy, Clone)]
+// pub struct word_desc {
+//     pub word: *mut c_char,
+//     pub flags: c_int,
+// }
+// pub type WordDesc = word_desc;
+
+// #[repr(C)]
+// #[derive(Copy, Clone)]
+// pub struct word_list {
+//     pub next: *mut word_list,
+//     pub word: *mut WordDesc,
+// }
+// pub type WordList = word_list;
+
+#[macro_export]
+macro_rules! EX_USAGE {
+    () => {258}
+}
 
 #[macro_export]
 macro_rules! SEVAL_NOHIST {
     () => {0x004}
+}
+
+#[macro_export]
+macro_rules! EXECUTION_SUCCESS {
+  () => {
+    0
+  }
 }
 
 
@@ -26,7 +53,7 @@ pub extern "C" fn r_eval_builtin(mut list:*mut WordList)->i32{
     
     unsafe{
         if r_no_options(list) != 0{
-            return EX_USAGE;
+            return EX_USAGE!();
         }
 
         list = loptend;

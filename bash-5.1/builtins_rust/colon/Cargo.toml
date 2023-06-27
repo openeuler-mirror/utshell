@@ -11,4 +11,3 @@ name = "rcolon"
 
 [dependencies]
 libc = "0.2"
-rcommon = {path ="../common"}

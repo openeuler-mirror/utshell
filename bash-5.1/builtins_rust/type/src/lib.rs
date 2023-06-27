@@ -5,7 +5,6 @@ use libc::c_void;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::ptr;
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 
 #[macro_export]
 macro_rules! CDESC_ALL{
@@ -65,12 +64,25 @@ macro_rules! CHECK_HELPOPT {
   ($l:expr) => {
     if $l  !=std::ptr::null_mut() && (*$l).word !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) == 0 {
       builtin_help ();
-      return EX_USAGE;
+      return EX_USAGE!();
     }
   }
 }
 
+#[macro_export]
+macro_rules! EX_USAGE {
+   () => {258}
+}
 
+#[macro_export]
+macro_rules! EXECUTION_SUCCESS {
+   () => {0}
+}
+
+#[macro_export]
+macro_rules! EXECUTION_FAILURE {
+   () => {1}
+}
 
 #[macro_export]
 macro_rules!  FS_EXECABLE{
@@ -111,6 +123,19 @@ macro_rules!  SIZEOFWORD{
     }  
 }
 
+#[repr(C)]
+#[derive(Copy,Clone)]
+pub struct WordDesc {
+    pub word: *mut i8,
+    pub flags:i32
+}
+
+#[repr (C)]
+#[derive(Copy,Clone)]
+pub struct WordList {
+    next: *mut WordList,
+    word: *mut WordDesc
+}
 
 #[repr(C)]
 pub struct SHELL_VAR {
@@ -443,11 +468,11 @@ pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
             _ =>{
                 if opt == -99 {
                     builtin_usage();
-                    return EX_USAGE;
+                    return EX_USAGE!();
                 }
                 unsafe {
                 builtin_usage ();
-                return EX_USAGE;
+                return EX_USAGE!();
                 }
             }
         } 

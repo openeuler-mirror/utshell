@@ -12,13 +12,13 @@ pub extern "C" fn r_builtin_builtin(mut list: *mut WordList) -> i32 {
         }
         list = loptend;
         if list.is_null() {
-            return EXECUTION_SUCCESS!();
+            return EXECUTION_SUCCESS;
         }
 
         function = find_shell_builtin(command.as_ptr() as *mut c_char);
         if function.is_none() {
             sh_notbuiltin(command.as_ptr() as *mut c_char);
-            return EXECUTION_FAILURE!();
+            return EXECUTION_FAILURE;
         } else {
             this_command_name = command.as_ptr() as *mut c_char;
             this_shell_builtin = function;

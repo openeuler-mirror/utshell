@@ -1,6 +1,5 @@
-use std::ffi::CStr;
 use std::{ffi::CString};
-use libc::{size_t, c_int, c_uint, c_char, c_long, c_void, PT_NULL, c_ulong, strchr, };
+use libc::{size_t, c_int, c_uint, c_char, c_long, c_void, PT_NULL, c_ulong, strchr};
 
 use rcommon::{r_builtin_usage,r_sh_invalidid,r_sh_wrerror,r_builtin_bind_variable,SHELL_VAR};
 
@@ -51,13 +50,6 @@ static mut tw: c_long = 0;
 
 static mut garglist: *mut WordList = PT_NULL as *mut WordList;
 static mut orig_arglist: *mut WordList = PT_NULL as *mut WordList;
-
-unsafe fn  savestring(x:* mut c_char)->* mut c_char
-{
-  let str1:* mut c_char=libc::malloc(1 + libc::strlen (x as * const c_char)) as * mut c_char;
-  return libc::strcpy(str1,x as * const c_char);
-}
-
 
 #[no_mangle]
 pub extern "C" fn r_printf_builtin(mut list: *mut WordList) -> i32 {
@@ -176,35 +168,27 @@ unsafe {
     'outer: loop {
         tw = 0;
         fmt = format;
-
         while *fmt != 0 {
             precision = 0;
             fieldwidth = 0;
             have_fieldwidth = 0;
             have_precision = 0;
 
-            if *fmt == b'\\' as c_char {               
+            if *fmt == b'\\' as c_char {
                 fmt = (fmt as usize + 1) as *mut c_char;
-                
                 let mut mbch: [i8;25] = [0; 25];
                 let mut mblen: c_int = 0;
                 fmt = (fmt as usize + tescape(fmt, mbch.as_ptr() as *mut c_char, std::mem::transmute(&mblen), PT_NULL as *mut c_int) as usize) as *mut c_char;
                 let mut mbind = 0;
-               
                 while mbind < mblen {
                     PC(mbch[mbind as usize] as u8);
-                    mbind += 1;
                 }
                 fmt = (fmt as usize - 1) as *mut c_char;
-            
-                fmt = (fmt as usize + 1) as *mut c_char;
                 continue;
             }
 
             if *fmt != b'%' as c_char {
                 PC(*fmt as u8);
-
-                fmt = (fmt as usize + 1) as *mut c_char;
                 continue;
             }
 
@@ -212,8 +196,6 @@ unsafe {
             fmt = (fmt as usize + 1) as *mut c_char;
             if *fmt == b'%' as c_char {
                 PC(b'%');
-
-                fmt = (fmt as usize + 1) as *mut c_char;
                 continue;
             }
 
@@ -444,8 +426,6 @@ unsafe {
                         fmt = start;
                         libc::free(timefmt as *mut c_void);
                         PC(*fmt as u8);
-
-                        fmt = (fmt as usize + 1) as *mut c_char;
                         continue;
                     }
                     if *timefmt == b'\0' as c_char {
@@ -527,8 +507,7 @@ unsafe {
                     let xp: *mut c_char;
                     let p = getstr();
                     if !p.is_null() && *p == 0 {
-                        xp = savestring(b"''\0".as_ptr() as *mut c_char);
-                        //xp = savestring(b"''\0".as_ptr() as *const c_char);
+                        xp = savestring(b"''\0".as_ptr() as *const c_char);
                     } else if ansic_shouldquote(p) != 0 {
                         xp = ansic_quote(p, 0, PT_NULL as *mut c_int);
                     } else {
@@ -1235,4 +1214,3 @@ unsafe fn asciicode() -> c_long
 
     return ch;
 }
-

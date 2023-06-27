@@ -60,14 +60,12 @@ $END
 extern size_t confstr PARAMS((int, char *, size_t));
 #endif
 
-int r_command_builtin ( WORD_LIST *list);
 /* Run the commands mentioned in LIST without paying attention to shell
    functions. */
 int
 command_builtin (list)
      WORD_LIST *list;
 {
-return r_command_builtin ( list);
   int result, verbose, use_standard_path, opt;
   COMMAND *command;
 

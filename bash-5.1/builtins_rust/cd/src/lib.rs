@@ -1,10 +1,21 @@
 extern crate  libc;
 extern crate nix;
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 
 use libc::{c_char, c_long, c_void};
 use std::{ffi::{CString, CStr}};
 
+#[repr(C)]
+pub struct WordDesc {
+    pub word: *mut libc::c_char,
+    pub flags:libc::c_int
+}
+
+#[repr(C)]
+#[derive(Copy,Clone)]
+pub struct WordList {
+    next: *mut WordList,
+    word: *mut WordDesc
+}
 
 #[repr(i8)]
 pub enum JOB_STATE {
@@ -235,6 +246,20 @@ pub struct SHELL_VAR {
   context:i32			/* Which context this variable belongs to. */
 }
 
+#[macro_export]
+macro_rules! EXECUTION_FAILURE {
+   () => {1}
+}
+
+#[macro_export]
+macro_rules! EX_USAGE {
+   () => {258}
+}
+
+#[macro_export]
+macro_rules! EXECUTION_SUCCESS {
+   () => {0}
+}
 
 #[macro_export]
 macro_rules! DUP_JOB {
@@ -500,7 +525,7 @@ pub extern "C" fn r_cd_builtin (mut list:*mut WordList)->i32 {
         'e'=>{eflag = 1;}
           _=>{
               builtin_usage ();
-              return EX_USAGE;
+              return EX_USAGE!();
             }
       }
       opt =internal_getopt (list, c_str_elp.as_ptr() as * mut c_char);
@@ -661,7 +686,7 @@ pub extern "C" fn r_pwd_builtin (list:* mut WordList)->i32 {
           pflag = 1;}
 	    'L'=>{verbatim_pwd = 0;}
       _=>{builtin_usage ();
-          return EX_USAGE;
+          return EX_USAGE!();
         }
 	  }
     opt = internal_getopt (list, c_str_lp.as_ptr() as * mut c_char);
@@ -825,3 +850,13 @@ pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr
   }
 }
 
+/*
+#[no_mangle]
+pub extern "C" fn cmd_name() ->*const u8 {
+   return b"cd" as *const u8;
+}
+#[no_mangle]
+pub extern "C" fn run(list : *mut WordList)->i32 {
+  return r_cd_builtin(list);
+}
+*/

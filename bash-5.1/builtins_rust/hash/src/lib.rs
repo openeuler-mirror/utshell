@@ -7,10 +7,9 @@ use std::ffi::{CStr,CString};
 use std::io::{stdout, Write};
 use rread::{SHELL_VAR};
 use rcommon::{r_find_shell_builtin,r_builtin_usage};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+
 //struct
 //结构体
-/* 
 #[repr (C)]
 pub struct WordDesc{
     pub word:*mut c_char,
@@ -23,7 +22,7 @@ pub struct WordList{
     pub next:*mut WordList,
     pub word:*mut WordDesc,
 }
-*/
+
 type PTR_T=c_void;
 #[repr (C)]
 pub struct bucket_contents{
@@ -51,7 +50,21 @@ pub struct _pathdata{
 type PATH_DATA = _pathdata;
 //enum
 
+//macro
+#[macro_export]
+macro_rules! EXECUTION_SUCCESS {
+    () => { 0 }
+}
 
+#[macro_export]
+macro_rules! EXECUTION_FAILURE{
+    () => { 1 }
+}
+
+#[macro_export]
+macro_rules! EX_USAGE {
+    () => { 258 }
+}
 
 #[macro_export]
 macro_rules! PARAMS {
@@ -127,7 +140,7 @@ extern "C"{
     fn builtin_error(format:*const c_char,...);
     fn reset_internal_getopt();
     fn internal_getopt(list:*mut WordList,opts:*mut c_char)->i32;
-
+    fn builtin_usage();
     fn sh_needarg(s:*mut c_char);
     fn phash_flush();
     fn sh_restricted(s:*mut c_char);
@@ -143,7 +156,6 @@ extern "C"{
     fn hash_walk(table:*mut HASH_TABLE,func:*mut hash_wfunc);
     fn phash_search(filename:*const c_char)->*mut c_char;
     fn printable_filename(f:*mut c_char,flage:i32)->*mut c_char;
-    fn builtin_help();
 }
 
 //rust
@@ -188,15 +200,12 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
                 'r' => expunge_hash_table = 1,
                 't' => list_targets = 1,
                  _  => {
-                    if opt == -99 {
-                        builtin_help();
-                        return EX_USAGE;
-                    }
                      r_builtin_usage();
-                     return EX_USAGE;
+                     return EX_USAGE!();
                  }
 
             }
+
             opt = internal_getopt(list,opts.as_ptr() as *mut c_char);
         }
 
@@ -209,13 +218,12 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
             if delete != 0{
                 temp = CString::new("-d").unwrap();
                 temp_ptr = temp.as_ptr() as *mut c_char;
-                sh_needarg(temp_ptr);
             }
             else{
                 temp = CString::new("-t").unwrap();
                 temp_ptr = temp.as_ptr() as *mut c_char;
-                sh_needarg(temp_ptr);
             }
+            sh_needarg(temp_ptr);
             return EXECUTION_FAILURE!();
         }
         

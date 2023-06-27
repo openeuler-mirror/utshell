@@ -1,4 +1,20 @@
-use rcommon::{WordList};
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct word_desc {
+    pub word: *mut c_char,
+    pub flags: c_int,
+}
+pub type WordDesc = word_desc;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct word_list {
+    pub next: *mut word_list,
+    pub word: *mut WordDesc,
+}
+pub type WordList = word_list;
+
+// pub type SHELL_VAR = variable;
 
 pub type __intmax_t = c_long;
 pub type intmax_t = __intmax_t;
@@ -73,7 +89,7 @@ extern "C" {
 
     pub fn xmalloc(bytes: size_t) -> *mut c_void;
     pub fn xrealloc(p: *mut c_void, bytes: size_t) -> *mut c_void;
-    //pub fn savestring(s: *const c_char) -> *mut c_char;
+    pub fn savestring(s: *const c_char) -> *mut c_char;
     pub fn ansic_shouldquote(s: *const c_char) -> c_int;
     pub fn ansic_quote(str: *mut c_char, flags: c_int, rlen: *mut c_int) -> *mut c_char;
     pub fn sh_backslash_quote(string: *mut c_char, table: *mut c_char, flags: c_int) -> *mut c_char;
@@ -99,4 +115,3 @@ extern "C" {
 
     pub static shell_start_time: libc::time_t;
 }
-

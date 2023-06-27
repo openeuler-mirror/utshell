@@ -153,9 +153,6 @@ unsafe fn mapfile(fd: c_int, line_count_goal: c_long, origin: c_long, nskip: c_l
     let mut unbuffered_read: c_int;
 
     let entry = find_or_make_array_variable(array_name, 1);
-    // let entry_test = *entry;
-    // println!("entry:{:#?}",entry_test);
-
     if entry.is_null() || ((*entry).attributes & att_readonly) != 0 || ((*entry).attributes & att_noassign) != 0 {
         if !entry.is_null() && ((*entry).attributes & att_readonly) != 0 {
             err_readonly(array_name);

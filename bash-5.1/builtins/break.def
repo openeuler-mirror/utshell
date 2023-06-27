@@ -144,4 +144,27 @@ check_loop_level ()
   return (loop_level);
 }
 
-
+extern void  set_loop_level(int i)
+{
+   loop_level = i;
+}
+extern int get_loop_level(void )
+{
+  return loop_level;
+}
+extern void  set_continuing(int i)
+{
+   continuing = i;
+}
+extern int get_continuing()
+{
+    return continuing;
+}
+extern void  set_breaking(int i)
+{
+   breaking = i ;
+}
+extern int get_breaking()
+{
+   return  breaking;
+}

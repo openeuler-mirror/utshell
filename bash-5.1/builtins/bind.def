@@ -108,7 +108,6 @@ static int unbind_keyseq PARAMS((char *));
 #define XXFLAG	0x2000
 
 extern int r_bind_builtin(WORD_LIST *);
-extern int r_unbind_builtin(WORD_LIST *);
 
 int
 bind_builtin (list)
@@ -153,7 +152,6 @@ static int
 unbind_command (name)
      char *name;
 {
-//return r_unbind_builtin(name);
   rl_command_func_t *function;
 
   function = rl_named_function (name);

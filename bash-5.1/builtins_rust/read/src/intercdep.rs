@@ -1,4 +1,22 @@
-use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable,WordList,WordDesc};
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct word_desc {
+    pub word: *mut c_char,
+    pub flags: c_int,
+}
+pub type WordDesc = word_desc;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct word_list {
+    pub next: *mut word_list,
+    pub word: *mut WordDesc,
+}
+pub type WordList = word_list;
+
+use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable};
+//use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable,SHELL_VAR};
 pub type SHELL_VAR = rcommon::SHELL_VAR;
 
 pub type __intmax_t = c_long;
@@ -115,7 +133,7 @@ extern "C" {
     pub static terminating_signal : c_int;
     pub static trapped_signal_received : c_int;
 
-    // pub static mut alrmbuf: sigjmp_buf;
+    pub static mut alrmbuf: sigjmp_buf;
 
     pub static mut rl_instream: *mut libc::FILE;
 
@@ -303,11 +321,3 @@ pub struct array_element {
     pub prev: *mut array_element,
 }
 pub type ARRAY_ELEMENT = array_element;
-
-
-extern "C" {
-    static is_basic_table:[libc::c_uint;0];
-    static mut sigalrm_seen:libc::c_int;
-    // static mut tty_modified:libc::c_int ;
-    // fn is_basic(c:libc::c_char)->libc::c_int;
-}

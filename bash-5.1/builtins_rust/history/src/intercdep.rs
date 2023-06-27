@@ -31,7 +31,6 @@ pub struct _hist_entry {
 pub type HIST_ENTRY = _hist_entry;
 
 extern "C" {
-    pub fn printf(_: *const libc::c_char, _: ...) -> libc::c_int;
     pub fn reset_internal_getopt();
     pub fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> c_int;
     pub fn builtin_usage();
@@ -68,7 +67,7 @@ extern "C" {
 
     pub fn sh_erange(s: *mut c_char, desc: *mut c_char);
     pub fn sh_restricted(s: *mut c_char) -> c_void;
-    fn builtin_help();
+
     pub static mut list_optarg : *mut libc::c_char;
     pub static mut loptend : *mut WordList;
 

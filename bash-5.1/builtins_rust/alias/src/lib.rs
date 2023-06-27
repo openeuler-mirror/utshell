@@ -1,8 +1,5 @@
 use std::ffi::CStr;
-
-//extern crate rcommon;
 use rcommon::r_sh_notfound;
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage};
 
 extern "C" {
     fn free(__ptr: *mut libc::c_void);
@@ -15,12 +12,12 @@ extern "C" {
     fn legal_alias_name(_: *const libc::c_char, _: libc::c_int) -> libc::c_int;
     fn sh_single_quote(_: *const libc::c_char) -> *mut libc::c_char;
     static mut posixly_correct: libc::c_int;
-    static mut aliases: *mut HashTable;
-    fn find_alias(_: *mut libc::c_char) -> *mut AliasT;
+    static mut aliases: *mut HASH_TABLE;
+    fn find_alias(_: *mut libc::c_char) -> *mut alias_t;
     fn add_alias(_: *mut libc::c_char, _: *mut libc::c_char);
     fn remove_alias(_: *mut libc::c_char) -> libc::c_int;
     fn delete_all_aliases();
-    fn all_aliases() -> *mut *mut AliasT;
+    fn all_aliases() -> *mut *mut alias_t;
     fn builtin_error(_: *const libc::c_char, _: ...);
     fn builtin_usage();
     fn sh_notfound(_: *mut libc::c_char);
@@ -30,8 +27,22 @@ extern "C" {
     fn internal_getopt(_: *mut WordList, _: *mut libc::c_char) -> libc::c_int;
     fn reset_internal_getopt();
 }
-pub type SizeT = libc::c_ulong;
+pub type size_t = libc::c_ulong;
 
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct word_desc {
+    pub word: *mut libc::c_char,
+    pub flags: libc::c_int,
+}
+pub type WordDesc = word_desc;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct word_list {
+    pub next: *mut word_list,
+    pub word: *mut WordDesc,
+}
+pub type WordList = word_list;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct bucket_contents {
@@ -41,15 +52,15 @@ pub struct bucket_contents {
     pub khash: libc::c_uint,
     pub times_found: libc::c_int,
 }
-pub type BucketContents = bucket_contents;
+pub type BUCKET_CONTENTS = bucket_contents;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct hash_table {
-    pub bucket_array: *mut *mut BucketContents,
+    pub bucket_array: *mut *mut BUCKET_CONTENTS,
     pub nbuckets: libc::c_int,
     pub nentries: libc::c_int,
 }
-pub type HashTable = hash_table;
+pub type HASH_TABLE = hash_table;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct alias {
@@ -57,23 +68,26 @@ pub struct alias {
     pub value: *mut libc::c_char,
     pub flags: libc::c_char,
 }
-pub type AliasT = alias;
+pub type alias_t = alias;
 
 pub static AL_REUSABLE:i32 = 0x01;
-
+pub static EX_USAGE:i32 = 258;
+//extern crate rcommon;
+use rcommon::EXECUTION_SUCCESS;
+use rcommon::r_builtin_usage;
 
 
 #[no_mangle]
 pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int {
     println!("alias_builtin run!");
-    let mut any_failed;
-    let mut offset;
-    let mut pflag ;
-    let mut dflags ;
-    let  alias_list: *mut *mut AliasT;
-    let mut t: *mut AliasT;
-    let mut name: *mut libc::c_char;
-    let mut value: *mut libc::c_char;
+    let mut any_failed = 0;
+    let mut offset = 0;
+    let mut pflag = 0;
+    let mut dflags = 0;
+    let mut alias_list: *mut *mut alias_t;
+    let mut t: *mut alias_t;
+    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
     dflags = if posixly_correct != 0 { 0 as libc::c_int } else { 0x1 as libc::c_int };
     pflag = 0 as libc::c_int;
     reset_internal_getopt();
@@ -103,11 +117,11 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int
     list = loptend;
     if list.is_null() || pflag != 0 {
         if aliases.is_null() {
-            return EXECUTION_SUCCESS!();
+            return EXECUTION_SUCCESS;
         }
         alias_list = all_aliases();
         if alias_list.is_null() {
-            return EXECUTION_SUCCESS!();
+            return EXECUTION_SUCCESS;
         }
         offset = 0;
         while !(*alias_list.offset(offset as isize)).is_null() {
@@ -116,7 +130,7 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int
         }
         free(alias_list as *mut libc::c_void);
         if list.is_null() {
-            return sh_chkwrite(EXECUTION_SUCCESS!());
+            return sh_chkwrite(EXECUTION_SUCCESS);
         }
     }
     any_failed = 0;
@@ -156,14 +170,13 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int
         }
         list = (*list).next;
     }
-    return if any_failed != 0 {EXECUTION_FAILURE!()} else { EXECUTION_SUCCESS!()};
+    return if any_failed != 0 { rcommon::EXECUTION_FAILURE!()} else { EXECUTION_SUCCESS};
 }
 #[no_mangle]
 pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WordList) -> libc::c_int {
-    println!("alias_builtin run!");
-    let mut alias: *mut AliasT;
-    let mut opt: libc::c_int;
-    let mut aflag: libc::c_int;
+    let mut alias: *mut alias_t = 0 as *mut alias_t;
+    let mut opt: libc::c_int = 0;
+    let mut aflag: libc::c_int = 0;
     aflag = 0 as libc::c_int;
     reset_internal_getopt();
     loop {
@@ -210,8 +223,8 @@ pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WordList) -> libc::c_i
     }
     return if aflag != 0 { 1 as libc::c_int } else { 0 as libc::c_int };
 }
-unsafe extern "C" fn print_alias( alias: *mut AliasT,  flags: libc::c_int) {
-    let value: *mut libc::c_char;
+unsafe extern "C" fn print_alias(mut alias: *mut alias_t, mut flags: libc::c_int) {
+    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
     value = sh_single_quote((*alias).value);
     if flags & 0x1 as libc::c_int != 0 {
         printf(

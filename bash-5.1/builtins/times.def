@@ -57,17 +57,11 @@ $END
 
 #include "common.h"
 
-
-extern r_times_builtin(WORD_LIST *);
-
 /* Print the totals for system and user time used. */
 int
 times_builtin (list)
      WORD_LIST *list;
 {
-
-  return r_times_builtin(list);
-
 #if defined (HAVE_GETRUSAGE) && defined (HAVE_TIMEVAL) && defined (RUSAGE_SELF)
   struct rusage self, kids;
 

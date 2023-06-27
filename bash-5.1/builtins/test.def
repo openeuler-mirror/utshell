@@ -130,16 +130,10 @@ $END
 #include "common.h"
 
 /* TEST/[ builtin. */
-
-extern r_test_builtin(WORD_LIST *);
-
 int
 test_builtin (list)
      WORD_LIST *list;
 {
-
-  return r_test_builtin(list);
-
   char **argv;
   int argc, result;
 

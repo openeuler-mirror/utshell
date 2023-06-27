@@ -4,7 +4,6 @@ use libc::c_char;
 use std::path::Path;
 use libloading::Library;
 use rcmd::*;
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 /*
 #define ENABLED  1
 #define DISABLED 2
@@ -28,6 +27,8 @@ pub const NFLAG: i32 = 0x08;
 pub const PFLAG: i32 = 0x10;
 pub const SFLAG: i32 = 0x20;
 
+pub const EX_USAGE: i32 = 258;
+pub const EXECUTION_FAILURE:i32 = 1;
 
 // Flags describing various things about a builtin. 
 //#define BUILTIN_ENABLED 0x01	/* This builtin is enabled. */
@@ -49,6 +50,12 @@ pub const POSIX_BUILTIN :i32 = 0x20;
 pub const LOCALVAR_BUILTIN :i32 = 0x40;
 pub const REQUIRES_BUILTIN :i32 = 0x80;
 
+/*
+#define EXECUTION_FAILURE 1
+#define EXECUTION_SUCCESS 0
+ */
+//pub const EXECUTION_FAILURE :i32 = 1;
+pub const EXECUTION_SUCCESS :i32 = 0;
 
 /* The MODE argument to `dlopen' contains one of the following: */
 // #define RTLD_LAZY	0x00001	/* Lazy function call binding.  */
@@ -121,6 +128,20 @@ extern "C" {
     fn dlerror() -> *mut libc::c_char;
 }
 pub type size_t = libc::c_ulong;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct word_desc {
+    pub word: *mut libc::c_char,
+    pub flags: libc::c_int,
+}
+pub type WordDesc = word_desc;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct word_list {
+    pub next: *mut word_list,
+    pub word: *mut WordDesc,
+}
+pub type WordList = word_list;
 pub type sh_load_func_t = unsafe extern "C" fn(*mut libc::c_char) -> libc::c_int;
 pub type sh_unload_func_t = unsafe extern "C" fn(*mut libc::c_char) -> ();
 pub type sh_builtin_func_t = unsafe extern "C" fn(*mut WordList) -> libc::c_int;
@@ -201,7 +222,7 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
     // 如果是严格模式，就直接返回EXECUTION_FAILURE，命令结束。
     if restricted != 0 && flags & (FFLAG|DFLAG) != 0 {
         sh_restricted (0 as *mut c_char);
-        return EXECUTION_FAILURE!();
+        return EXECUTION_FAILURE;
     }
 
     // 配置filter，通过flag和PFLAG，后者表示打印，
@@ -249,8 +270,8 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
     // 否则判断-D,-D含义是删除以 -f 选项加载的内建
         while !list.is_null() {
             opt = dyn_unload_builtin((*(*list).word).word);
-            if opt == EXECUTION_FAILURE!() {
-                result = EXECUTION_FAILURE!();
+            if opt == EXECUTION_FAILURE {
+                result = EXECUTION_FAILURE;
             }
             list = (*list).next;
         }
@@ -260,9 +281,9 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
     // 不带-N -F -D，且选项不为空的其他
         while !list.is_null() {
             opt = enable_shell_command((*(*list).word).word, flags & NFLAG);
-            if opt == EXECUTION_FAILURE!() {
+            if opt == EXECUTION_FAILURE {
                 sh_notbuiltin((*(*list).word).word);
-                result = EXECUTION_FAILURE!();
+                result = EXECUTION_FAILURE;
             }
             list = (*list).next;
         }
@@ -308,7 +329,7 @@ unsafe extern "C" fn enable_shell_command(
     let mut b: *mut builtin = 0 as *mut builtin;
     b = builtin_address_internal(name, 1);
     if b.is_null() {
-        return EXECUTION_FAILURE!();
+        return EXECUTION_FAILURE;
     }
     if disable_p != 0 {
         (*b).flags &= !(BUILTIN_ENABLED);
@@ -319,7 +340,7 @@ unsafe extern "C" fn enable_shell_command(
         }
     } else if restricted != 0 && (*b).flags & BUILTIN_ENABLED == 0 {
         sh_restricted(0 as *mut libc::c_void as *mut libc::c_char);
-        return EXECUTION_FAILURE!();
+        return EXECUTION_FAILURE;
     } else {
         (*b).flags |= BUILTIN_ENABLED;
         if !set_cmd_enable(CStr::from_ptr(name).to_string_lossy().into_owned(), true) {
@@ -329,7 +350,7 @@ unsafe extern "C" fn enable_shell_command(
     } 
     set_itemlist_dirty(&mut it_enabled);
     set_itemlist_dirty(&mut it_disabled);
-    return EXECUTION_SUCCESS!();
+    return EXECUTION_SUCCESS;
 }
 unsafe extern "C" fn dyn_load_builtin(
     mut list: *mut WordList,

@@ -1,9 +1,9 @@
 extern crate  libc;
 extern crate nix;
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,GETOPT_HELP, r_builtin_usage};
+
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
-/*
+
 #[repr(C)]
 pub struct WordDesc {
     pub word: *mut libc::c_char,
@@ -16,7 +16,7 @@ pub struct WordList {
     next: *mut WordList,
     word: *mut WordDesc
 }
- */
+
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
     cm_connection, cm_function_def, cm_until, cm_group,
@@ -212,6 +212,20 @@ pub struct SHELL_VAR {
   context:i32
 }
 
+#[macro_export]
+macro_rules! EXECUTION_FAILURE {
+   () => {1}
+}
+
+#[macro_export]
+macro_rules! EX_USAGE {
+   () => {258}
+}
+
+#[macro_export]
+macro_rules! EXECUTION_SUCCESS {
+   () => {0}
+}
 
 #[macro_export]
 macro_rules! EX_MISCERROR {
@@ -253,6 +267,12 @@ macro_rules! G_ARG_MISSING {
   }
 }
 
+#[macro_export]
+macro_rules! GETOPT_HELP {
+  () => {
+    -99
+  }
+}
 
 extern "C" {
     fn unbind_variable_noref (name: * const c_char)->i32;
@@ -352,7 +372,7 @@ pub extern "C" fn r_dogetopts(argc:i32, argv:*mut*mut c_char)->i32
     let mut argvv:*mut*mut c_char=argv;
     if argcc < 3 {
       builtin_usage();
-      return EX_USAGE;
+      return EX_USAGE!();
     }
 
     /* argv[0] is "getopts". */
@@ -504,7 +524,7 @@ pub extern "C" fn r_getopts_builtin(list: * mut WordList)->i32
 
     if list == std::ptr::null_mut() {
       builtin_usage();
-      return EX_USAGE;
+      return EX_USAGE!();
     }
 
     reset_internal_getopt();
@@ -516,7 +536,7 @@ pub extern "C" fn r_getopts_builtin(list: * mut WordList)->i32
         builtin_usage();
       }
 
-      return EX_USAGE;
+      return EX_USAGE!();
     }
     let llist: * mut WordList=loptend.clone();
     av = make_builtin_argv(llist, &mut ac);

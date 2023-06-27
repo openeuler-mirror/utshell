@@ -3,8 +3,19 @@ extern crate nix;
 
 use libc::{c_char, c_int, c_ulong, c_void};
 use std::{ffi::CString};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 
+#[repr(C)]
+pub struct WordDesc {
+    pub word: *mut c_char,
+    pub flags:c_int
+}
+
+#[repr(C)]
+#[derive(Copy,Clone)]
+pub struct WordList {
+    next: *mut WordList,
+    word: *mut WordDesc
+}
 
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -308,6 +319,22 @@ pub struct STRINGLIST {
   list_len:c_int,
 }
 
+#[macro_export]
+macro_rules! EXECUTION_FAILURE {
+   () => {1}
+}
+
+#[macro_export]
+macro_rules! EX_USAGE {
+   () => {258}
+}
+
+#[macro_export]
+macro_rules! EXECUTION_SUCCESS {
+  () => {
+    0
+  }
+}
 
 #[macro_export]
 macro_rules! CA_ALIAS {
@@ -698,7 +725,7 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
               } else {
                 sh_invalidopt (CString::new("-r").unwrap().as_ptr() as * mut c_char);
                 builtin_usage ();
-                return EX_USAGE;
+                return EX_USAGE!();
               }
             }
             'p'=>{
@@ -707,7 +734,7 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
               } else {
                 sh_invalidopt (CString::new("-p").unwrap().as_ptr() as * mut c_char);
                 builtin_usage ();
-                return EX_USAGE;
+                return EX_USAGE!();
               }
             }
             'a'=>{
@@ -750,7 +777,7 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
               ind = r_find_compopt (list_optarg);
               if ind < 0 {
                   sh_invalidoptname (list_optarg);
-                  return EX_USAGE;
+                  return EX_USAGE!();
               }
               let compopts:CompoptArray=CompoptArray::new();
               copts |= compopts.compoptArr[ind as usize].optflag;
@@ -759,7 +786,7 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
               ind = r_find_compact (list_optarg);
               if ind < 0 {
                  builtin_error (CString::new("%s: invalid action name").unwrap().as_ptr(), list_optarg);
-                 return EX_USAGE;
+                 return EX_USAGE!();
               }
               let compacts:CompactsArray=CompactsArray::new();
               acts |= compacts.compactsArr[ind as usize].actflag;
@@ -773,7 +800,7 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
               } else {
                 sh_invalidopt (CString::new("-D").unwrap().as_ptr() as * mut c_char);
                 builtin_usage ();
-                return EX_USAGE;
+                return EX_USAGE!();
               }
            }
            'E'=>{
@@ -782,7 +809,7 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
             } else {
               sh_invalidopt (CString::new("-E").unwrap().as_ptr() as * mut c_char);
               builtin_usage ();
-              return EX_USAGE;
+              return EX_USAGE!();
             }
            }
            'I'=>{
@@ -791,7 +818,7 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
             } else {
               sh_invalidopt (CString::new("-I").unwrap().as_ptr() as * mut c_char);
               builtin_usage ();
-              return EX_USAGE;
+              return EX_USAGE!();
             }
            }
            'F'=>{
@@ -800,7 +827,7 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
               w.flags = 0;
               if check_identifier (&mut w, posixly_correct) == 0 || libc::strpbrk (Farg, shell_break_chars()) != std::ptr::null_mut() {
                   sh_invalidid (Farg);
-                  return EX_USAGE;
+                  return EX_USAGE!();
               }
            }
            'G'=>{
@@ -823,7 +850,7 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
            }
            _=>{
             builtin_usage ();
-            return EX_USAGE;
+            return EX_USAGE!();
           }
         }
         opt=internal_getopt(list, CString::new("abcdefgjko:prsuvA:G:W:P:S:X:F:C:DEI").unwrap().as_ptr() as * mut c_char);
@@ -877,7 +904,7 @@ pub extern "C" fn r_complete_builtin (listt: *mut WordList)->i32
     /* Build the actions from the arguments.  Also sets the [A-Z]arg variables
       as a side effect if they are supplied as options. */
     rval = r_build_actions (list, &mut oflags, &mut acts, &mut copts);
-    if rval == EX_USAGE {
+    if rval == EX_USAGE!() {
       return rval;
     }
 
@@ -923,7 +950,7 @@ pub extern "C" fn r_complete_builtin (listt: *mut WordList)->i32
 
     if wl == std::ptr::null_mut() && list == std::ptr::null_mut() && opt_given !=0 {
         builtin_usage ();
-        return EX_USAGE;
+        return EX_USAGE!();
     }
 
     /* If we get here, we need to build a compspec and add it for each
@@ -1170,7 +1197,7 @@ pub extern "C" fn r_compgen_builtin (listt:* mut WordList)->i32
     /* Build the actions from the arguments.  Also sets the [A-Z]arg variables
       as a side effect if they are supplied as options. */
     rval = r_build_actions (list, std::ptr::null_mut(), &mut acts, &mut copts);
-    if rval == EX_USAGE {
+    if rval == EX_USAGE!() {
         return rval;
     }
 
@@ -1287,7 +1314,7 @@ pub extern "C" fn r_compopt_builtin (listt:* mut WordList)->i32
                 oind = r_find_compopt (list_optarg);
                 if oind < 0 {
                     sh_invalidoptname (list_optarg);
-                    return EX_USAGE;
+                    return EX_USAGE!();
                 }
                 let compopts:CompoptArray=CompoptArray::new();
                 *opts |= compopts.compoptArr[oind as usize].optflag as i32;
@@ -1303,7 +1330,7 @@ pub extern "C" fn r_compopt_builtin (listt:* mut WordList)->i32
             }
             _=>{
               builtin_usage ();
-              return EX_USAGE;
+              return EX_USAGE!();
             }
         }
         opt = internal_getopt (list, CString::new("+o:DEI").unwrap().as_ptr() as * mut c_char);
@@ -1376,3 +1403,12 @@ pub extern "C" fn r_compopt_builtin (listt:* mut WordList)->i32
   }
 }
 
+#[no_mangle]
+pub extern "C" fn cmd_name() ->*const u8 {
+   return b"complete" as *const u8;
+}
+
+#[no_mangle]
+pub extern "C" fn run(list : *mut WordList)->i32 {
+  return r_complete_builtin(list);
+}

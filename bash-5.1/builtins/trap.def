@@ -97,15 +97,10 @@ static int display_traps PARAMS((WORD_LIST *, int));
 #define REVERT 1		/* Revert to this signals original value. */
 #define IGNORE 2		/* Ignore this signal. */
 
-extern r_trap_builtin(WORD_LIST *);
-
 int
 trap_builtin (list)
      WORD_LIST *list;
 {
-
-  return r_trap_builtin(list);
-
   int list_signal_names, display, result, opt;
 
   list_signal_names = display = 0;

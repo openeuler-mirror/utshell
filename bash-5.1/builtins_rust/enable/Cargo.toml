@@ -12,4 +12,3 @@ crate-type = ["staticlib","rlib"]
 libc = "0.2"
 libloading = "0.7"
 rcmd = {path="../cmd"}
-rcommon = {path="../common"}
