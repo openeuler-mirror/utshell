@@ -3,7 +3,6 @@ name = "rsbash"
 version = "0.1.0"
 edition = "2018"
 
-
 [lib]
 name = "rsbash"
 crate-type = ["cdylib"]
@@ -29,8 +28,6 @@ members=[
  "builtins_rust/colon",
  "builtins_rust/echo",
  "builtins_rust/complete",
-
- "builtins_rust/set",
  "builtins_rust/shopt",
  "builtins_rust/alias",
  "builtins_rust/caller",
@@ -40,12 +37,12 @@ members=[
  "builtins_rust/cmd",
  "builtins_rust/enable",
  "builtins_rust/declare",
- "builtins_rust/setattr",
  "builtins_rust/command",
  "builtins_rust/hash",
  "builtins_rust/break_1",
  "builtins_rust/type",
  "builtins_rust/ulimit",
+ "builtins_rust/set",
  "builtins_rust/bind",
  "builtins_rust/echo",
  "builtins_rust/hash",
@@ -63,37 +60,40 @@ members=[
  "builtins_rust/times",
  "builtins_rust/trap",
  "builtins_rust/setattr",
+ "builtins_rust/source",
 ]
 
 [dependencies]
  libc = "0.2"
- read = {path = "./builtins_rust/read"}
- history = {path = "./builtins_rust/history"}
+ rread = {path = "./builtins_rust/read"}
+ rhistory = {path = "./builtins_rust/history"}
  rkill = {path = "./builtins_rust/kill"}
  rlet = {path = "./builtins_rust/rlet"}
- mapfile = {path = "./builtins_rust/mapfile"}
- printf = {path = "./builtins_rust/printf"}
+ rsource = {path = "./builtins_rust/source"}
+ rmapfile = {path = "./builtins_rust/mapfile"}
+ rprintf = {path = "./builtins_rust/printf"}
  rreturn = {path = "./builtins_rust/rreturn"}
- shift = {path = "./builtins_rust/shift"}
- times = {path = "./builtins_rust/times"}
+ rshift = {path = "./builtins_rust/shift"}
+ rtimes = {path = "./builtins_rust/times"}
  rsuspend = {path = "./builtins_rust/suspend"}
- test = {path = "./builtins_rust/test"}
- trap = {path = "./builtins_rust/trap"}
- setattr = {path = "./builtins_rust/setattr"}
+ rtest = {path = "./builtins_rust/test"}
+ rtrap = {path = "./builtins_rust/trap"}
+ rsetattr = {path = "./builtins_rust/setattr"}
  rcolon = {path = "./builtins_rust/colon"}
- builtin = {path = "./builtins_rust/builtin"}
- alias= {path = "./builtins_rust/alias"}
- exit = {path = "./builtins_rust/exit"}
+ rbuiltin = {path = "./builtins_rust/builtin"}
+ ralias= {path = "./builtins_rust/alias"}
+ rexit = {path = "./builtins_rust/exit"}
  rhelp = {path = "./builtins_rust/help"}
  rcaller = {path = "./builtins_rust/caller"}
  reval = {path = "./builtins_rust/eval"}
  rexec = {path = "./builtins_rust/exec"}
  rcommon = {path = "./builtins_rust/common"}
  rcmd = {path = "builtins_rust/cmd"}
- enable = {path = "builtins_rust/enable"}
+ renable = {path = "builtins_rust/enable"}
  rbreak = {path = "builtins_rust/break_1"} 
  rulimit = {path = "builtins_rust/ulimit"} 
  rtype = {path = "builtins_rust/type"} 
+ rset = {path = "builtins_rust/set"} 
  rbind = {path = "./builtins_rust/bind"}
  recho = {path = "./builtins_rust/echo"}
  rhash = {path = "./builtins_rust/hash"}

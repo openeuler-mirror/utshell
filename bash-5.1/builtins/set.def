@@ -176,6 +176,9 @@ static const char * const off = "off";
 
 static int previous_option_value;
 
+extern int r_set_builtin PARAMS((WORD_LIST *));
+extern int r_unset_builtin PARAMS((WORD_LIST *));
+
 /* A struct used to match long options for set -o to the corresponding
    option letter or internal variable.  The functions can be called to
    dynamically generate values.  If you add a new variable name here
@@ -187,7 +190,7 @@ const struct {
   int *variable;
   setopt_set_func_t *set_func;
   setopt_get_func_t *get_func;
-} o_options[] = {
+} o_optionsd[] = {
   { "allexport",  'a', (int *)NULL, (setopt_set_func_t *)NULL, (setopt_get_func_t *)NULL },
 #if defined (BRACE_EXPANSION)
   { "braceexpand",'B', (int *)NULL, (setopt_set_func_t *)NULL, (setopt_get_func_t *)NULL  },
@@ -234,15 +237,15 @@ const struct {
   {(char *)NULL, 0 , (int *)NULL, (setopt_set_func_t *)NULL, (setopt_get_func_t *)NULL },
 };
 
-#define N_O_OPTIONS	(sizeof (o_options) / sizeof (o_options[0]))
+#define N_O_OPTIONS	(sizeof (o_optionsd) / sizeof (o_optionsd[0]))
 
 #define GET_BINARY_O_OPTION_VALUE(i, name) \
-  ((o_options[i].get_func) ? (*o_options[i].get_func) (name) \
-			   : (*o_options[i].variable))
+  ((o_optionsd[i].get_func) ? (*o_optionsd[i].get_func) (name) \
+			   : (*o_optionsd[i].variable))
 
 #define SET_BINARY_O_OPTION_VALUE(i, onoff, name) \
-  ((o_options[i].set_func) ? (*o_options[i].set_func) (onoff, name) \
-			   : (*o_options[i].variable = (onoff == FLAG_ON)))
+  ((o_optionsd[i].set_func) ? (*o_optionsd[i].set_func) (onoff, name) \
+			   : (*o_optionsd[i].variable = (onoff == FLAG_ON)))
 
 static int
 find_minus_o_option (name)
@@ -250,8 +253,8 @@ find_minus_o_option (name)
 {
   register int i;
 
-  for (i = 0; o_options[i].name; i++)
-    if (STREQ (name, o_options[i].name))
+  for (i = 0; o_optionsd[i].name; i++)
+    if (STREQ (name, o_optionsd[i].name))
       return i;
   return -1;
 }
@@ -267,9 +270,9 @@ minus_o_option_value (name)
   if (i < 0)
     return (-1);
 
-  if (o_options[i].letter)
+  if (o_optionsd[i].letter)
     {
-      on_or_off = find_flag (o_options[i].letter);
+      on_or_off = find_flag (o_optionsd[i].letter);
       return ((on_or_off == FLAG_UNKNOWN) ? -1 : *on_or_off);
     }
   else
@@ -296,24 +299,30 @@ list_minus_o_opts (mode, reusable)
   register int	i;
   int *on_or_off, value;
 
-  for (i = 0; o_options[i].name; i++)
-    {
-      if (o_options[i].letter)
-	{
-	  value = 0;
-	  on_or_off = find_flag (o_options[i].letter);
-	  if (on_or_off == FLAG_UNKNOWN)
-	    on_or_off = &value;
-	  if (mode == -1 || mode == *on_or_off)
-	    print_minus_o_option (o_options[i].name, *on_or_off, reusable);
-	}
-      else
-	{
-	  value = GET_BINARY_O_OPTION_VALUE (i, o_options[i].name);
-	  if (mode == -1 || mode == value)
-	    print_minus_o_option (o_options[i].name, value, reusable);
-	}
-    }
+  for (i = 0; o_optionsd[i].name; i++)
+  {
+      if (o_optionsd[i].letter)
+	    {
+	      value = 0;
+	      on_or_off = find_flag (o_optionsd[i].letter);
+	      if (on_or_off == FLAG_UNKNOWN)
+	      on_or_off = &value;
+	      if (mode == -1 || mode == *on_or_off)
+        {
+         printf("now i  is  %d, value  is  %d, gflag  is %d \n, ",i,*on_or_off , reusable );
+         print_minus_o_option (o_optionsd[i].name, *on_or_off, reusable);
+        }
+	        
+	    }
+      else{
+	      value = GET_BINARY_O_OPTION_VALUE (i, o_optionsd[i].name);
+	      if (mode == -1 || mode == value)
+        {
+          printf("now ==== i  is  %d,value  is  %d gflag is %d \n",i,value ,reusable);
+	        print_minus_o_option (o_optionsd[i].name, value, reusable);
+        }
+	    }
+  }
 }
 
 char **
@@ -323,8 +332,8 @@ get_minus_o_opts ()
   int i;
 
   ret = strvec_create (N_O_OPTIONS + 1);
-  for (i = 0; o_options[i].name; i++)
-    ret[i] = o_options[i].name;
+  for (i = 0; o_optionsd[i].name; i++)
+    ret[i] = o_optionsd[i].name;
   ret[i] = (char *)NULL;
   return ret;
 }
@@ -339,12 +348,12 @@ get_current_options ()
   /* Make the buffer big enough to hold the set -o options and the shopt
      options modified by posix mode. */
   temp = (char *)xmalloc (1 + N_O_OPTIONS + posixopts);
-  for (i = 0; o_options[i].name; i++)
+  for (i = 0; o_optionsd[i].name; i++)
     {
-      if (o_options[i].letter)
-	temp[i] = *(find_flag (o_options[i].letter));
+      if (o_optionsd[i].letter)
+	temp[i] = *(find_flag (o_optionsd[i].letter));
       else
-	temp[i] = GET_BINARY_O_OPTION_VALUE (i, o_options[i].name);
+	temp[i] = GET_BINARY_O_OPTION_VALUE (i, o_optionsd[i].name);
     }
 
   /* Add the shell options that are modified by posix mode to the end of the
@@ -363,23 +372,23 @@ set_current_options (bitmap)
   if (bitmap == 0)
     return;
 
-  for (i = 0; o_options[i].name; i++)
+  for (i = 0; o_optionsd[i].name; i++)
     {
       v = bitmap[i] ? FLAG_ON : FLAG_OFF;
-      if (o_options[i].letter)
+      if (o_optionsd[i].letter)
 	{
 	  /* We should not get FLAG_UNKNOWN here */
-	  on_or_off = find_flag (o_options[i].letter);
+	  on_or_off = find_flag (o_optionsd[i].letter);
 	  cv = *on_or_off ? FLAG_ON : FLAG_OFF;
 	  if (v != cv)
-	    change_flag (o_options[i].letter, v);
+	    change_flag (o_optionsd[i].letter, v);
 	}
       else
 	{
-	  cv = GET_BINARY_O_OPTION_VALUE (i, o_options[i].name);
+	  cv = GET_BINARY_O_OPTION_VALUE (i, o_optionsd[i].name);
 	  cv = cv ? FLAG_ON : FLAG_OFF;
 	  if (v != cv)
-	    SET_BINARY_O_OPTION_VALUE (i, v, o_options[i].name);
+	    SET_BINARY_O_OPTION_VALUE (i, v, o_optionsd[i].name);
 	}
     }
 
@@ -490,21 +499,23 @@ set_minus_o_option (on_or_off, option_name)
   register int i;
 
   i = find_minus_o_option (option_name);
+  printf ("option_name is  %s",option_name);
+  printf("i  is  %d",i);
   if (i < 0)
     {
       sh_invalidoptname (option_name);
       return (EX_USAGE);
     }
 
-  if (o_options[i].letter == 0)
+  if (o_optionsd[i].letter == 0)
     {
-      previous_option_value = GET_BINARY_O_OPTION_VALUE (i, o_options[i].name);
+      previous_option_value = GET_BINARY_O_OPTION_VALUE (i, o_optionsd[i].name);
       SET_BINARY_O_OPTION_VALUE (i, on_or_off, option_name);
       return (EXECUTION_SUCCESS);
     }
   else
     {
-      if ((previous_option_value = change_flag (o_options[i].letter, on_or_off)) == FLAG_ERROR)
+      if ((previous_option_value = change_flag (o_optionsd[i].letter, on_or_off)) == FLAG_ERROR)
 	{
 	  sh_invalidoptname (option_name);
 	  return (EXECUTION_FAILURE);
@@ -547,33 +558,38 @@ set_shellopts ()
   int vsize, i, vptr, *ip, exported;
   SHELL_VAR *v;
 
-  for (vsize = i = 0; o_options[i].name; i++)
+  for (vsize = i = 0; o_optionsd[i].name; i++)
     {
       tflag[i] = 0;
-      if (o_options[i].letter)
+      if (o_optionsd[i].letter)
 	{
-	  ip = find_flag (o_options[i].letter);
+	  ip = find_flag (o_optionsd[i].letter);
 	  if (ip && *ip)
 	    {
-	      vsize += strlen (o_options[i].name) + 1;
+	      vsize += strlen (o_optionsd[i].name) + 1;
+    //printf("1111 now  i is %d vsize is %d\n",i,vsize);
 	      tflag[i] = 1;
 	    }
 	}
-      else if (GET_BINARY_O_OPTION_VALUE (i, o_options[i].name))
+      else if (GET_BINARY_O_OPTION_VALUE (i, o_optionsd[i].name))
 	{
-	  vsize += strlen (o_options[i].name) + 1;
+	  vsize += strlen (o_optionsd[i].name) + 1;
+    //printf("22222 now i is %d vsize is %d",i,vsize);
+
 	  tflag[i] = 1;
 	}
     }
+  //printf("vsize==  is  %d\n",i);
+  //printf("vsize  is  %d\n",vsize);
 
   value = (char *)xmalloc (vsize + 1);
 
-  for (i = vptr = 0; o_options[i].name; i++)
+  for (i = vptr = 0; o_optionsd[i].name; i++)
     {
       if (tflag[i])
 	{
-	  strcpy (value + vptr, o_options[i].name);
-	  vptr += strlen (o_options[i].name);
+	  strcpy (value + vptr, o_optionsd[i].name);
+	  vptr += strlen (o_optionsd[i].name);
 	  value[vptr++] = ':';
 	}
     }
@@ -674,135 +690,162 @@ int
 set_builtin (list)
      WORD_LIST *list;
 {
+  printf("def set_builtin \n");
+  return r_set_builtin(list);  
   int on_or_off, flag_name, force_assignment, opts_changed, rv, r;
   register char *arg;
   char s[3];
 
   if (list == 0)
     {
+      printf("list == 0 \n");
       print_all_shell_variables ();
       return (sh_chkwrite (EXECUTION_SUCCESS));
     }
-
+  printf("list != 0 \n");
   /* Check validity of flag arguments. */
   rv = EXECUTION_SUCCESS;
   reset_internal_getopt ();
+  printf( "reset_internal_getopt() \n");
   while ((flag_name = internal_getopt (list, optflags)) != -1)
-    {
-      switch (flag_name)
-	{
-	  case 'i':	/* don't allow set -i */
-	    s[0] = list_opttype;
-	    s[1] = 'i';
-	    s[2] = '\0';
-	    sh_invalidopt (s);
-	    builtin_usage ();
-	    return (EX_USAGE);
-	  CASE_HELPOPT;
-	  case '?':
-	    builtin_usage ();
-	    return (list_optopt == '?' ? EXECUTION_SUCCESS : EX_USAGE);
-	  default:
-	    break;
-	}
-    }
+  {
+      printf("flag_name = 0 \n");
+      switch (flag_name){
+	      case 'i':	/* don't allow set -i */
+	        s[0] = list_opttype;
+	        s[1] = 'i';
+	        s[2] = '\0';
+	        sh_invalidopt (s);
+	        builtin_usage ();
+	        return (EX_USAGE);
+	      CASE_HELPOPT;
+	      case '?':
+          printf("entr show  help\n");
+	        builtin_usage ();
+	        return (list_optopt == '?' ? EXECUTION_SUCCESS : EX_USAGE);
+	      default:
+           printf("entr default help\n");
+	          break;
+	    }
+  }
     
   /* Do the set command.  While the list consists of words starting with
      '-' or '+' treat them as flags, otherwise, start assigning them to
      $1 ... $n. */
   for (force_assignment = opts_changed = 0; list; )
     {
+    printf("force_assignment = opts_changed = 0 \n");
       arg = list->word->word;
 
       /* If the argument is `--' or `-' then signal the end of the list
 	 and remember the remaining arguments. */
-      if (arg[0] == '-' && (!arg[1] || (arg[1] == '-' && !arg[2])))
-	{
-	  list = list->next;
+  
+    if (arg[0] == '-' && (!arg[1] || (arg[1] == '-' && !arg[2])))
+    {
+       printf("arg[0] == '-' %d  && (!arg[1]  %d || (arg[1] == '-' %d && !arg[2] %d)) \n",
+              arg[0] == '-',!arg[1],arg[1] == '-' ,!arg[2] );
+       list = list->next;
 
-	  /* `set --' unsets the positional parameters. */
-	  if (arg[1] == '-')
-	    force_assignment = 1;
+	     /* `set --' unsets the positional parameters. */
+	     if (arg[1] == '-'){
+       printf("arg[1] == '-' \n");
+       force_assignment = 1;
+       printf("force_assignment = 1\n");
+    }
+	    
 
 	  /* Until told differently, the old shell behaviour of
 	     `set - [arg ...]' being equivalent to `set +xv [arg ...]'
 	     stands.  Posix.2 says the behaviour is marked as obsolescent. */
 	  else
 	    {
+        printf("arg[1] != '-' \n");
 	      change_flag ('x', '+');
 	      change_flag ('v', '+');
 	      opts_changed = 1;
 	    }
-
 	  break;
 	}
-
-      if ((on_or_off = *arg) && (on_or_off == '-' || on_or_off == '+'))
+  
+  printf("on_or_off is  %d", *arg);
+  if ((on_or_off = *arg) && (on_or_off == '-' || on_or_off == '+'))
 	{
-	  while (flag_name = *++arg)
-	    {
+    printf("(on_or_off = *arg) && (on_or_off == '-' || on_or_off == '+')\n");
+	  while (flag_name = *++arg){
+        printf("flag_name = *++arg \n");
 	      if (flag_name == '?')
-		{
-		  builtin_usage ();
-		  return (EXECUTION_SUCCESS);
-		}
-	      else if (flag_name == 'o') /* -+o option-name */
-		{
-		  char *option_name;
-		  WORD_LIST *opt;
-
-		  opt = list->next;
-
-		  if (opt == 0)
-		    {
-		      list_minus_o_opts (-1, (on_or_off == '+'));
-		      rv = sh_chkwrite (rv);
-		      continue;
+         {
+		      builtin_usage ();
+		      return (EXECUTION_SUCCESS);
 		    }
+        else if (flag_name == 'o') /* -+o option-name */
+        {
+          printf("flag_name == 'o'\n");
+		      char *option_name;
+		      WORD_LIST *opt;
+		      opt = list->next;
+		      if (opt == 0){
+            printf("opt == 0 \n");
+		        list_minus_o_opts (-1, (on_or_off == '+'));
+		        rv = sh_chkwrite (rv);
+		        continue;
+		      }
 
-		  option_name = opt->word->word;
+          printf("option_name ==== \n");
+		      option_name = opt->word->word;
 
-		  if (option_name == 0 || *option_name == '\0' ||
-		      *option_name == '-' || *option_name == '+')
-		    {
-		      list_minus_o_opts (-1, (on_or_off == '+'));
-		      continue;
+		      if (option_name == 0 || *option_name == '\0' ||
+		          *option_name == '-' || *option_name == '+'){
+            printf(" option_name == 0 || *option_name == '\0' \n");
+		        list_minus_o_opts (-1, (on_or_off == '+'));
+		        continue;
+		      }
+		      list = list->next; /* Skip over option name. */
+
+		      opts_changed = 1;
+		      if ((r = set_minus_o_option (on_or_off, option_name)) != EXECUTION_SUCCESS){
+            printf(" r != EXECUTION_SUCCESS \n");
+		        set_shellopts ();
+		        return (r);
+		        }
 		    }
-		  list = list->next; /* Skip over option name. */
-
-		  opts_changed = 1;
-		  if ((r = set_minus_o_option (on_or_off, option_name)) != EXECUTION_SUCCESS)
-		    {
-		      set_shellopts ();
-		      return (r);
-		    }
-		}
 	      else if (change_flag (flag_name, on_or_off) == FLAG_ERROR)
-		{
-		  s[0] = on_or_off;
-		  s[1] = flag_name;
-		  s[2] = '\0';
-		  sh_invalidopt (s);
-		  builtin_usage ();
-		  set_shellopts ();
-		  return (EXECUTION_FAILURE);
-		}
+		    {
+          printf("change_flag (flag_name, on_or_off) == FLAG_ERROR \n"); 
+		      s[0] = on_or_off;
+		      s[1] = flag_name;
+		      s[2] = '\0';
+		      sh_invalidopt (s);
+		      builtin_usage ();
+		      set_shellopts ();
+		      return (EXECUTION_FAILURE);
+		    }
 	      opts_changed = 1;
-	    }
+	  }
 	}
-      else
+
+ else
 	{
+    printf ("else 222222222222.......\n");
 	  break;
 	}
-      list = list->next;
-    }
+  list = list->next;
+}
 
   /* Assigning $1 ... $n */
   if (list || force_assignment)
+  {  
+    printf ("list || force_assignment \n");
     remember_args (list, 1);
+  }
+    
   /* Set up new value of $SHELLOPTS */
   if (opts_changed)
-    set_shellopts ();
+  {
+      printf ("opts_changed \n");
+      set_shellopts ();
+  }
+    
   return (rv);
 }
 
@@ -834,6 +877,8 @@ int
 unset_builtin (list)
   WORD_LIST *list;
 {
+  printf("enter unset opt\n");
+  return r_unset_builtin(list);
   int unset_function, unset_variable, unset_array, opt, nameref, any_failed;
   int global_unset_func, global_unset_var, vflags, valid_id;
   char *name, *tname;
@@ -885,6 +930,7 @@ unset_builtin (list)
 #endif
 
       name = list->word->word;
+      printf("now  get  name  is %s", name);
 
       unset_function = global_unset_func;
       unset_variable = global_unset_var;
