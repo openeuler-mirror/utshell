@@ -1,7 +1,9 @@
 use std::ffi::CStr;
-use rcommon::r_sh_notfound;
 
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+//extern crate rcommon;
+use rcommon::r_sh_notfound;
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage};
+
 extern "C" {
     fn free(__ptr: *mut libc::c_void);
     fn dcgettext(
@@ -59,8 +61,6 @@ pub type AliasT = alias;
 
 pub static AL_REUSABLE:i32 = 0x01;
 
-//extern crate rcommon;
-use rcommon::r_builtin_usage;
 
 
 #[no_mangle]

@@ -8,7 +8,9 @@ use std::ptr::read_volatile;
 use nix::errno::errno;
 
 include!(concat!("lib_readline_keymaps.rs"));
-pub static EXECUTION_SUCCESS:i32 = 0;
+
+include!(concat!("command.rs"));
+
 //struct
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -600,25 +602,7 @@ pub type QSFUNC = unsafe extern "C" fn(*const c_void,*const c_void)->i32;
 
 pub static EX_SUCCESS:i32 = 0;
 pub static EX_USAGE:i32 = 258;
-///////
-pub static EX_BADUSAGE:i32	= 2;
-
-pub static EX_MISCERROR:i32 = 2;
-
-pub static EX_RETRYFAIL:i32 = 124;
-pub static EX_WEXPCOMSUB:i32 = 125;
-pub static EX_BINARY_FILE :i32 = 126;
-pub static EX_NOEXEC: i32 = 126;
-pub static EX_NOINPUT:i32 = 126;
-pub static EX_NOTFOUND:i32 = 127;
-
-pub static EX_SHERRBASE:i32 = 256;	/* all special error values are > this. */
-
-pub static EX_BADSYNTAX:i32 = 257;	/* shell syntax error */
-pub static EX_REDIRFAIL:i32 =	259;	/* redirection failed */
-pub static EX_BADASSIGN	:i32 = 260;	/* variable assignment error */
-pub static EX_EXPFAIL:i32=	261;/* word expansion failed */
-pub static EX_DISKFALLBACK:i32 = 262;	/* fall back to disk command from builtin */
+include!("./shell.rs");
 
 //extern C
 extern "C"{
@@ -1769,20 +1753,3 @@ pub extern "C" fn r_builtin_unbind_variable(vname:*const c_char)->i32{
     }
 }
 
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-
-    // #[test]
-    // fn no_args(){
-    //     let c_str = CString::new("123");
-    //     let c_ptr = c_str.as_
-    //     r_sh_invalidnum("12");
-    // }
-}

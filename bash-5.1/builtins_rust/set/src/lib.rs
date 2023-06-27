@@ -6,18 +6,7 @@ use std::ffi::CString;
 use std::ptr;
 use std::mem;
 use std::io;
-#[repr(C)]
-pub struct WordDesc {
-    pub word: *mut i8,
-    pub flags:i32
-}
-
-#[repr (C)]
-#[derive(Copy,Clone)]
-pub struct WordList {
-    next: *mut WordList,
-    word: *mut WordDesc
-}
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 
 #[macro_export]
 macro_rules! FLAG_UNKNOWN {
@@ -259,20 +248,6 @@ pub struct variable {
 //     }
 // }
 
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-   () => {0}
-}
-
-#[macro_export]
-macro_rules! EXECUTION_FAILURE{
-    () => {-1}
-}
-
-#[macro_export]
-macro_rules! EX_USAGE{
-   () => {258}
-}
 
 #[macro_export]
 macro_rules! FLAG_ERROR{
@@ -1239,7 +1214,7 @@ unsafe fn set_minus_o_option (on_or_off : i32, option_name : *mut i8) -> i32 {
   //println!("i  is  {}",i);
   if i < 0{
       sh_invalidoptname (option_name);
-      return EX_USAGE!();
+      return EX_USAGE;
     }
 
   if o_options[i as usize].letter == 0{
@@ -1445,7 +1420,7 @@ unsafe fn reset_shell_options () {
             sh_invalidopt (s.as_ptr() as *mut i8);
             builtin_usage();
           }
-          return EX_USAGE!();}
+          return EX_USAGE;}
       '?' => {
         unsafe {
           builtin_usage ();
@@ -1454,14 +1429,14 @@ unsafe fn reset_shell_options () {
             return EXECUTION_SUCCESS!();
           }
           else {
-            return EX_USAGE!();
+            return EX_USAGE;
           }
         }
       _ => {
         if opt == -99 {
           unsafe {
           builtin_usage ();
-          return EX_USAGE!();
+          return EX_USAGE;
           }
         }
       }
@@ -1672,7 +1647,7 @@ pub  extern "C"  fn r_unset_builtin(mut list: *mut WordList) -> i32 {
         'n'=>{nameref = 1;}
         _=>{
           builtin_usage ();
-          return EX_USAGE!();
+          return EX_USAGE;
         }
       }
       opt =internal_getopt (list, c_str_fnv.as_ptr() as * mut i8);

@@ -6,7 +6,8 @@ use libc::c_char;
 use std::ffi::CString;
 
 use rjobs::{PROCESS, COMMAND, r_jobs_builtin, JLIST_STANDARD };
-use rcommon::{ WordList};
+
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 
 #[repr(C)]
 pub struct JOB {
@@ -58,20 +59,6 @@ pub enum JOB_STATE {
 }
 
 //宏
-#[macro_export]
-macro_rules! EX_USAGE {
-    () => { 258 }
-}
-
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-    () => { 0 }
-}
-
-#[macro_export]
-macro_rules! EXECUTION_FAILURE{
-    () => { 1 }
-}
 
 #[macro_export]
 macro_rules! get_job_by_jid {
@@ -153,7 +140,7 @@ pub extern "C" fn r_exit_builtin(list:*mut WordList) -> i32{
         if list != std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && 
            STREQ((*(*list).word).word, c_ptr){
                builtin_help();
-               return EX_USAGE!();
+               return EX_USAGE;
         }
 
         if interactive != 0 {
@@ -182,7 +169,7 @@ pub extern "C" fn  r_logout_builtin(list:*mut WordList)->i32{
         if list != std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && 
            STREQ((*(*list).word).word, c_ptr){
                builtin_help();
-               return EX_USAGE!();
+               return EX_USAGE;
         }
 
         if login_shell == 0{
@@ -269,16 +256,4 @@ pub extern "C" fn r_bash_logout(){
         }
     }
 
-}
-
-
-
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
 }

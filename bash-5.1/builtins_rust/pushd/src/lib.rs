@@ -4,18 +4,7 @@ extern crate nix;
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
 
-#[repr(C)]
-pub struct WordDesc {
-    pub word: *mut libc::c_char,
-    pub flags:libc::c_int
-}
-
-#[repr(C)]
-#[derive(Copy,Clone)]
-pub struct WordList {
-    next: *mut WordList,
-    word: *mut WordDesc
-}
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -34,22 +23,23 @@ enum r_instruction {
     r_move_input, r_move_output, r_move_input_word, r_move_output_word,
     r_append_err_and_out
 }
-
+/*
 #[repr(C)]
 #[derive(Copy,Clone)]
 pub union REDIRECTEE {
     dest:libc::c_int,
     filename:* mut WordDesc
 }
+*/
 
 #[repr(C)]
 pub union REDIRECT {
   next:*mut REDIRECT,
-  redirector:REDIRECTEE,
+  redirector:libc::c_int,
   rflags:libc::c_int,
   flags:libc::c_int,
   instruction:r_instruction,
-  redirectee:REDIRECTEE,
+  redirectee:libc::c_int,
   here_doc_eof:*mut c_char
 }
 
@@ -201,22 +191,6 @@ pub struct COMMAND {
     value:VALUE_COMMAND
 }
 
-#[macro_export]
-macro_rules! EXECUTION_FAILURE {
-   () => {1}
-}
-
-#[macro_export]
-macro_rules! EX_USAGE {
-   () => {258}
-}
-
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-  () => {
-    0
-  }
-}
 
 #[macro_export]
 macro_rules! NOCD {
@@ -308,7 +282,7 @@ pub extern "C" fn r_pushd_builtin (listt:* mut WordList)->i32
 
 	if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISHELP((*((*list).word)).word) {
 		builtin_help ();
-		return EX_USAGE!();
+		return EX_USAGE;
 	}
 
 	if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISOPTION ((*((*list).word)).word, '-' as c_char) {
@@ -356,7 +330,7 @@ pub extern "C" fn r_pushd_builtin (listt:* mut WordList)->i32
         if legal_number (((*((*list).word)).word as usize +1) as * mut c_char, &mut num) == 0 {
           sh_invalidnum ((*((*list).word)).word);
           builtin_usage ();
-          return EX_USAGE!();
+          return EX_USAGE;
         }
 
         if direction == '-' as c_char {
@@ -371,7 +345,7 @@ pub extern "C" fn r_pushd_builtin (listt:* mut WordList)->i32
       } else if *((*((*list).word)).word)== '-' as c_char {
           sh_invalidopt ((*((*list).word)).word);
           builtin_usage ();
-          return EX_USAGE!();
+          return EX_USAGE;
       } else {
           break;
       }
@@ -490,7 +464,7 @@ unsafe {
 let mut list:* mut WordList=listt.clone();
 if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISHELP((*((*list).word)).word) { 
   builtin_help ();
-  return EX_USAGE!();
+  return EX_USAGE;
 }
 
 which_word = std::ptr::null_mut();
@@ -510,17 +484,17 @@ while list != std::ptr::null_mut() {
         if legal_number ((((*((*list).word)).word as usize + 1) as * mut c_char), & mut which) == 0 {
           sh_invalidnum ((*((*list).word)).word);
           builtin_usage ();
-          return EX_USAGE!();
+          return EX_USAGE;
         }
         which_word = (*((*list).word)).word;
       } else if *((*((*list).word)).word) == '-' as c_char {
         sh_invalidopt ((*((*list).word)).word);
         builtin_usage ();
-        return EX_USAGE!();
+        return EX_USAGE;
       } else if (*((*list).word)).word != std::ptr::null_mut() {
         builtin_error (CString::new("%s: invalid argument").unwrap().as_ptr() as * mut c_char, (*((*list).word)).word);
         builtin_usage ();
-        return EX_USAGE!();
+        return EX_USAGE;
     } else {
       break;
     }
@@ -603,7 +577,7 @@ pub extern "C" fn r_dirs_builtin (listt:* mut WordList)->i32
     let mut list:* mut WordList=listt.clone();
     if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISHELP((*((*list).word)).word) {
       builtin_help ();
-      return EX_USAGE!();
+      return EX_USAGE;
     }
 
     while  list != std::ptr::null_mut() {
@@ -624,7 +598,7 @@ pub extern "C" fn r_dirs_builtin (listt:* mut WordList)->i32
 	      if legal_number (w, &mut i) == 0 {
           sh_invalidnum ((*((*list).word)).word);
           builtin_usage ();
-          return EX_USAGE!();
+          return EX_USAGE;
         }
 
         if *((*((*list).word)).word) == '+' as c_char {
@@ -637,7 +611,7 @@ pub extern "C" fn r_dirs_builtin (listt:* mut WordList)->i32
 	    } else	{
         sh_invalidopt ((*((*list).word)).word);
         builtin_usage ();
-        return EX_USAGE!();
+        return EX_USAGE;
 	    }
       list=(*list).next
     }

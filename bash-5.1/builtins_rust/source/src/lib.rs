@@ -3,19 +3,8 @@ extern crate nix;
 
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 
-#[repr(C)]
-pub struct WordDesc {
-    pub word: *mut libc::c_char,
-    pub flags:libc::c_int
-}
-
-#[repr(C)]
-#[derive(Copy,Clone)]
-pub struct WordList {
-    next: *mut WordList,
-    word: *mut WordDesc
-}
 
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -34,22 +23,23 @@ enum r_instruction {
     r_move_input, r_move_output, r_move_input_word, r_move_output_word,
     r_append_err_and_out
 }
-
+/*
 #[repr(C)]
 #[derive(Copy,Clone)]
 pub union REDIRECTEE {
     dest:libc::c_int,
     filename:* mut WordDesc
 }
+*/
 
 #[repr(C)]
 pub union REDIRECT {
   next:*mut REDIRECT,
-  redirector:REDIRECTEE,
+  redirector:libc::c_int,
   rflags:libc::c_int,
   flags:libc::c_int,
   instruction:r_instruction,
-  redirectee:REDIRECTEE,
+  redirectee:libc::c_int,
   here_doc_eof:*mut c_char
 }
 
@@ -201,15 +191,6 @@ pub struct COMMAND {
     value:VALUE_COMMAND
 }
 
-#[macro_export]
-macro_rules! EXECUTION_FAILURE {
-   () => {1}
-}
-
-#[macro_export]
-macro_rules! EX_USAGE {
-   () => {258}
-}
 
 #[macro_export]
 macro_rules! ARGS_SETBLTIN {
@@ -319,7 +300,7 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
   let x:* mut c_char;
   unsafe {
   if no_options (list) !=0{
-    return EX_USAGE!();
+    return EX_USAGE;
   }
 
   let mut  llist:* mut WordList = loptend.clone();
@@ -327,7 +308,7 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
   if list == std::ptr::null_mut() {
     builtin_error (CString::new("filename argument required").unwrap().as_ptr());
     builtin_usage ();
-    return EX_USAGE!();
+    return EX_USAGE;
   }
 
   if restricted !=0 && libc::strchr ((*(*llist).word).word, '/' as libc::c_int) != std::ptr::null_mut() {
