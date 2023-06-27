@@ -10,7 +10,7 @@ edition = "2018"
 libc = "0.2"
 nix = "0.23.0"
 rjobs = {path = "../jobs"}
-read = {path = "../read"}
+rread = {path = "../read"}
 rcommon = {path = "../common"}
 
 
