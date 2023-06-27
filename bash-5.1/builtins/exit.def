@@ -53,10 +53,13 @@ extern int check_jobs_at_exit;
 static int exit_or_logout PARAMS((WORD_LIST *));
 static int sourced_logout;
 
+int r_exit_builtin ( WORD_LIST *list);
 int
 exit_builtin (list)
      WORD_LIST *list;
 {
+printf("exit_builtin\n");
+r_exit_builtin(list);
   CHECK_HELPOPT (list);
 
   if (interactive)
@@ -77,11 +80,14 @@ Exits a login shell with exit status N.  Returns an error if not executed
 in a login shell.
 $END
 
+int r_logout_builtin ( WORD_LIST *list);
 /* How to logout. */
 int
 logout_builtin (list)
      WORD_LIST *list;
 {
+printf("LOGOUT_BUILTIN\n");
+  r_logout_builtin(list);
   CHECK_HELPOPT (list);
 
   if (login_shell == 0 /* && interactive */)

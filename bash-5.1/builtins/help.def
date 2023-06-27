@@ -88,10 +88,20 @@ static void show_longdoc PARAMS((int));
 /* Print out a list of the known functions in the shell, and what they do.
    If LIST is supplied, print out the list which matches for each pattern
    specified. */
+extern int r_help_builtin ( WORD_LIST *list);
+extern int r_help_null_builtin ( WORD_LIST *list);
 int
 help_builtin (list)
      WORD_LIST *list;
 {
+   if (list)
+  {
+      return r_help_builtin(list);
+  }
+  else 
+  {
+      return r_help_null_builtin(list);
+  }
   register int i;
   char *pattern, *name;
   int plen, match_found, sflag, dflag, mflag, m, pass, this_found;
