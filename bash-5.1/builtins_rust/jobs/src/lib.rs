@@ -601,10 +601,3 @@ pub extern "C" fn r_disown_builtin (list:* mut WordList)->libc::c_int {
 pub extern "C" fn cmd_name() ->*const u8 {
    return b"jobs" as *const u8;
 }
-/*
-#[no_mangle]
-
-pub extern "C" fn run(list : *mut WordList)->i32 {
-  return r_jobs_builtin(list);
-}
-*/

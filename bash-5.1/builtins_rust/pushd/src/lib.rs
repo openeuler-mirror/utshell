@@ -935,12 +935,3 @@ pub extern "C" fn r_get_directory_stack (flags:i32)->* mut WordList
   }
 }
 
-#[no_mangle]
-pub extern "C" fn cmd_name() ->*const u8 {
-   return b"pushd" as *const u8;
-}
-
-#[no_mangle]
-pub extern "C" fn run(list : *mut WordList)->i32 {
-  return r_pushd_builtin(list);
-}

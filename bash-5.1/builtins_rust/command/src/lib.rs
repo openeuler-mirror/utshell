@@ -284,7 +284,7 @@ pub const CMD_STDPATH :i32 = 0x4000;
 pub const CMD_TRY_OPTIMIZING :i32 = 0x8000;
 
 #[no_mangle]
-pub unsafe extern "C" fn command_builtin(mut list: *mut WordList) -> libc::c_int {
+pub unsafe extern "C" fn r_command_builtin(mut list: *mut WordList) -> libc::c_int {
     let mut result: libc::c_int = 0;
     let mut verbose: libc::c_int = 0;
     let mut use_standard_path: libc::c_int = 0;

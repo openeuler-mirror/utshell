@@ -95,6 +95,7 @@ extern "C"{
     static mut static_shell_builtin : [builtin ; 100];
     static  shell_builtins:*mut  builtin;
     static  mut current_builtin :*mut builtin;
+    fn builtin_help();
 }
 
 #[no_mangle]
@@ -129,9 +130,12 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
            's'=> {sflag = 1; break;}
             _=>{
                 unsafe {
-                  
-                builtin_usage ();
-                return EX_USAGE;
+                  if i == -99 {
+                    builtin_help();
+                    return EX_USAGE;
+                  }
+                  builtin_usage ();
+                  return EX_USAGE;
                 }
             }
         } 

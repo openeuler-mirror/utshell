@@ -1,10 +1,8 @@
 extern crate  libc;
 extern crate nix;
 
-//use rcommon::{ EX_USAGE,EXECUTION_FAILURE, EXECUTION_SUCCESS };
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString, i32, io::{Write, stdout}, ops::Add, string, u32};
-
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage};
 
 #[repr(i8)]

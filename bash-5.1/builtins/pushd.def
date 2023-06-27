@@ -169,10 +169,13 @@ static int get_dirstack_index PARAMS((intmax_t, int, int *));
 #define LONGFORM	0x04
 #define CLEARSTAK	0x08
 
+int r_pushd_builtin ( WORD_LIST *list);
+
 int
 pushd_builtin (list)
      WORD_LIST *list;
 {
+return r_pushd_builtin(list);
   WORD_LIST *orig_list;
   char *temp, *current_directory, *top;
   int j, flags, skipopt;
@@ -312,13 +315,15 @@ pushd_builtin (list)
     }
 }
 
+int
+r_popd_builtin (
+     WORD_LIST *list);
 /* Pop the directory stack, and then change to the new top of the stack.
    If LIST is non-null it should consist of a word +N or -N, which says
    what element to delete from the stack.  The default is the top one. */
-int
-popd_builtin (list)
-     WORD_LIST *list;
+int popd_builtin ( WORD_LIST *list)
 {
+return r_popd_builtin(list);
   register int i;
   intmax_t which;
   int flags;
