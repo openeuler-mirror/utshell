@@ -20,6 +20,9 @@ members=[
  "builtins_rust/getopts",
  "builtins_rust/colon",
  "builtins_rust/builtin",
+ "builtins_rust/exit",
+ "builtins_rust/help",
+ "builtins_rust/alias",
 ]
 
 [dependencies]
@@ -38,3 +41,6 @@ read = {path = "./builtins_rust/read"}
 #trap = {path = "./builtins_rust/trap"}
 rcolon = {path = "./builtins_rust/colon"}
  builtin = {path = "./builtins_rust/builtin"}
+ #alias= {path = "./builtins_rust/alias"}
+ exit = {path = "./builtins_rust/exit"}
+ rhelp = {path = "./builtins_rust/help"}

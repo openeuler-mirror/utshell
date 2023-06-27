@@ -138,7 +138,7 @@ LOCAL_DEFS = @LOCAL_DEFS@
 LOCALE_DEFS = -DLOCALEDIR='"$(localedir)"' -DPACKAGE='"$(PACKAGE)"'
 
 LOCAL_LIBS = @LOCAL_LIBS@
-LIBS = $(BUILTINS_LIB) $(LIBRARIES) @LIBS@ -lrt -lpthread -L./target/debug  -lrjobs -lrread -lrcd -lrfg_bg -lrfc -lrgetopts -lrcolon -lrbuiltin
+LIBS = $(BUILTINS_LIB) $(LIBRARIES) @LIBS@ -lrt -lpthread -L./target/debug  -lrjobs -lrread -lrcd -lrfg_bg -lrfc -lrgetopts -lrcolon -lrbuiltin -lrexit -lrhelp -lralias
 
 LIBS_FOR_BUILD = 
 
@@ -574,7 +574,7 @@ OTHER_INSTALLED_DOCS = CHANGES COMPAT NEWS POSIX RBASH README
 LOADABLES_DIR = ${top_builddir}/examples/loadables
 
 RUST_DIR = $(top_builddir)/builtins_rust
-RUST_BUILTINS_DIRS = $(RUST_DIR)/jobs $(RUST_DIR)/read $(RUST_DIR)/cd $(RUST_DIR)/fc $(RUST_DIR)/fg_bg $(RUST_DIR)/getopts $(RUST_DIR)/colon $(RUST_DIR)/builtin
+RUST_BUILTINS_DIRS = $(RUST_DIR)/jobs $(RUST_DIR)/read $(RUST_DIR)/cd $(RUST_DIR)/fc $(RUST_DIR)/fg_bg $(RUST_DIR)/getopts $(RUST_DIR)/colon $(RUST_DIR)/builtin $(RUST_DIR)/exit $(RUST_DIR)/help $(RUST_DIR)/alias
 #RUST_TARGET_LIB = $(top_builddir)/target/debug/librjobs.a $(top_builddir)/target/debug/librread.a
 
 

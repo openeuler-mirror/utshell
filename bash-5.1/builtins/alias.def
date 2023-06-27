@@ -64,12 +64,14 @@ $END
 #define AL_REUSABLE	0x01
 
 static void print_alias PARAMS((alias_t *, int));
+extern int r_alias_builtin ( register WORD_LIST *list);
 
 /* Hack the alias command in a Korn shell way. */
 int
 alias_builtin (list)
      WORD_LIST *list;
 {
+  return r_alias_builtin(list);
   int any_failed, offset, pflag, dflags;
   alias_t **alias_list, *t;
   char *name, *value;
@@ -166,10 +168,12 @@ $END
 
 #if defined (ALIAS)
 /* Remove aliases named in LIST from the aliases database. */
+extern int r_unalias_builtin ( register WORD_LIST *list);
 int
 unalias_builtin (list)
      register WORD_LIST *list;
 {
+return r_unalias_builtin (list);
   register alias_t *alias;
   int opt, aflag;
 

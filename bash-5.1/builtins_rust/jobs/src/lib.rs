@@ -13,8 +13,8 @@ pub struct WORD_DESC {
 #[repr(C)]
 #[derive(Copy,Clone)]
 pub struct WORD_LIST {
-    next: *mut WORD_LIST,
-    word: *mut WORD_DESC
+    pub next: *mut WORD_LIST,
+    pub word: *mut WORD_DESC
 }
 
 #[repr(i8)]

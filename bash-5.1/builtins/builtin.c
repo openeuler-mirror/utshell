@@ -16,7 +16,7 @@
 #include "common.h"
 #include "bashgetopt.h"
 
-extern int r_builtin_builtin (WORD_LIST *list);
+extern int r_builtin_builtin ( WORD_LIST *list);
 
 /* Run the command mentioned in list directly, without going through the
    normal alias/function/builtin/filename lookup process. */
