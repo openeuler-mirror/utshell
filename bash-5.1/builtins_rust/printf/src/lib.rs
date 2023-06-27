@@ -1,6 +1,8 @@
 use std::{ffi::CString};
 use libc::{size_t, c_int, c_uint, c_char, c_long, c_void, PT_NULL, c_ulong, strchr};
 
+use rcommon::{r_builtin_usage,r_sh_invalidid,r_sh_wrerror,r_builtin_bind_variable,SHELL_VAR};
+
 include!(concat!("intercdep.rs"));
 
 macro_rules! IS_DIGITAL {
@@ -71,7 +73,7 @@ unsafe {
     let PRETURN = |out_val: c_int| {
         QUIT();
         if vflag != 0 {
-            let v = builtin_bind_variable(vname, vbuf, 0);
+            let v = r_builtin_bind_variable(vname, vbuf, 0);
             stupidly_hack_special_variables(vname);
             if v.is_null() || ((*v).attributes & att_readonly) != 0 || ((*v).attributes & att_noassign) != 0 {
                 return EXECUTION_FAILURE;
@@ -96,7 +98,7 @@ unsafe {
         }
         QUIT();
         if libc::ferror(stdout) != 0 {
-            sh_wrerror();
+            r_sh_wrerror();
             libc::clearerr(stdout);
             return EXECUTION_FAILURE;
         }
@@ -125,12 +127,12 @@ unsafe {
                         *vbuf = 0;
                     }
                 } else {
-                    sh_invalidid(vname);
+                    r_sh_invalidid(vname);
                     return EX_USAGE;
                 }
             }
             _ => {
-            builtin_usage ();
+            r_builtin_usage ();
             return EX_USAGE;
             }
         }
@@ -139,12 +141,12 @@ unsafe {
     list = loptend;
 
     if list.is_null() {
-        builtin_usage();
+        r_builtin_usage();
         return EX_USAGE;
     }
 
     if vflag != 0 && !((*(*list).word).word.is_null()) && *(*(*list).word).word == b'\0' as c_char {
-        let v = builtin_bind_variable(vname, "\0".as_ptr() as *mut c_char, 0);
+        let v = r_builtin_bind_variable(vname, "\0".as_ptr() as *mut c_char, 0);
         stupidly_hack_special_variables(vname);
         return if v.is_null() || ((*v).attributes & att_readonly) != 0 || ((*v).attributes & att_noassign) != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
     }
@@ -317,7 +319,7 @@ unsafe {
                     PF();
                     QUIT();
                     if libc::ferror(stdout) != 0 {
-                        sh_wrerror();
+                        r_sh_wrerror();
                         libc::clearerr(stdout);
                         return EXECUTION_FAILURE;
                     }
@@ -393,7 +395,7 @@ unsafe {
                     PF();
                     QUIT();
                     if libc::ferror(stdout) != 0 {
-                        sh_wrerror();
+                        r_sh_wrerror();
                         libc::clearerr(stdout);
                         return EXECUTION_FAILURE;
                     }
@@ -462,7 +464,7 @@ unsafe {
                     n = printstr(start, timebuf.as_ptr() as *mut c_char, libc::strlen(timebuf.as_ptr()) as c_int, fieldwidth, precision);
                     if n < 0 {
                         if libc::ferror(stdout) == 0 {
-                            sh_wrerror();
+                            r_sh_wrerror();
                             libc::clearerr(stdout);
                         }
                         return PRETURN(EXECUTION_FAILURE);
@@ -474,7 +476,7 @@ unsafe {
                         if legal_identifier(var) != 0 {
                             bind_var_to_int(var, tw);
                         } else {
-                            sh_invalidid(var);
+                            r_sh_invalidid(var);
                             return PRETURN(EXECUTION_FAILURE);
                         }
                     }
@@ -489,7 +491,7 @@ unsafe {
                         r = printstr(start, xp, rlen, fieldwidth, precision);
                         if r < 0 {
                             if libc::ferror(stdout) == 0 {
-                                sh_wrerror();
+                                r_sh_wrerror();
                                 libc::clearerr(stdout);
                             }
                             retval = EXECUTION_FAILURE;
@@ -515,7 +517,7 @@ unsafe {
                         r = printstr(start, xp, libc::strlen(xp) as c_int, fieldwidth, precision);
                         if r < 0 {
                             if libc::ferror(stdout) == 0 {
-                                sh_wrerror();
+                                r_sh_wrerror();
                                 libc::clearerr(stdout);
                             }
                             libc::free(xp as *mut c_void);
@@ -596,7 +598,7 @@ unsafe {
                     PF();
                     QUIT();
                     if libc::ferror(stdout) != 0 {
-                        sh_wrerror();
+                        r_sh_wrerror();
                         libc::clearerr(stdout);
                         return EXECUTION_FAILURE;
                     }
@@ -672,7 +674,7 @@ unsafe {
                     PF();
                     QUIT();
                     if libc::ferror(stdout) != 0 {
-                        sh_wrerror();
+                        r_sh_wrerror();
                         libc::clearerr(stdout);
                         return EXECUTION_FAILURE;
                     }
@@ -748,7 +750,7 @@ unsafe {
                     PF();
                     QUIT();
                     if libc::ferror(stdout) != 0 {
-                        sh_wrerror();
+                        r_sh_wrerror();
                         libc::clearerr(stdout);
                         return EXECUTION_FAILURE;
                     }

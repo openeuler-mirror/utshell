@@ -6,6 +6,7 @@ use libc::{c_char,c_int, strchr,free,c_void,strerror,EISDIR};
 use std::ffi::{CStr,CString};
 use std::io::{stdout, Write};
 use rread::{SHELL_VAR};
+use rcommon::{r_find_shell_builtin,r_builtin_usage};
 
 //struct
 //结构体
@@ -91,6 +92,19 @@ macro_rules! HASH_ENTRIES {
     };
 }
 
+fn HASH_ENTRIES(ht:*mut HASH_TABLE)->i32{
+    unsafe{
+        if ht != std::ptr::null_mut(){
+            return (*ht).nentries;
+        }
+        else{
+            return 0;
+        }
+    }
+
+
+}
+
 #[macro_export]
 macro_rules! pathdata {
     ($x:expr) => {
@@ -150,6 +164,7 @@ extern "C"{
    commands. */
 #[no_mangle]
 pub extern "C" fn r_hash_builtin(mut list:*mut WORD_LIST)->i32{
+    println!("r_hash_builtin");
     let mut expunge_hash_table:i32;
     let mut list_targets:i32;
     let mut list_portably:i32;
@@ -185,7 +200,7 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WORD_LIST)->i32{
                 'r' => expunge_hash_table = 1,
                 't' => list_targets = 1,
                  _  => {
-                     builtin_usage();
+                     r_builtin_usage();
                      return EX_USAGE!();
                  }
 
@@ -198,14 +213,17 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WORD_LIST)->i32{
 
         /* hash -t requires at least one argument. */
         if list == std::ptr::null_mut() && (delete != 0 || list_targets != 0) {
-            let mut temp:*mut c_char;
+            let temp:CString;
+            let temp_ptr:*mut c_char;
             if delete != 0{
-                temp = CString::new("-d").unwrap().as_ptr() as *mut c_char;
+                temp = CString::new("-d").unwrap();
+                temp_ptr = temp.as_ptr() as *mut c_char;
             }
             else{
-                temp = CString::new("-t").unwrap().as_ptr() as *mut c_char;
+                temp = CString::new("-t").unwrap();
+                temp_ptr = temp.as_ptr() as *mut c_char;
             }
-            sh_needarg(temp);
+            sh_needarg(temp_ptr);
             return EXECUTION_FAILURE!();
         }
         
@@ -257,12 +275,12 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WORD_LIST)->i32{
             }
             else if pathname != std::ptr::null_mut(){
                 if is_directory(pathname) != 0{
-                    let c_err = CString::new("%s:%s");
-                    builtin_error(c_err.unwrap().as_ptr(),pathname,strerror(EISDIR));
-                    let c_err = CString::new("%s: is a directory").unwrap().as_ptr();
-                    builtin_error(c_err ,pathname,strerror(EISDIR));
 
-                    opt = EXECUTION_FAILURE!();
+                    let c_err = CString::new("%s:%s").unwrap();
+                    let c_err_ptr = c_err.as_ptr();
+                    builtin_error(c_err_ptr,pathname,strerror(EISDIR));
+                    opt = EXECUTION_SUCCESS!();
+
                 }
                 else{
                     phash_insert(w,pathname,0,0);
@@ -292,8 +310,9 @@ extern "C" fn r_add_hashed_command(w:*mut c_char,quiet:i32)->i32{
     rv = 0;
 
     unsafe{
-        // if find_function(w) == std::ptr::null_mut() && find_shell_builtin(w) == std::ptr::null_mut(){
         if find_function(w).is_null() && find_shell_builtin(w).is_null(){
+        // if find_function(w).is_null() && r_find_shell_builtin(w).is_null(){
+            // println!("1111");
             phash_remove(w);
             full_path = find_user_command(w);
             if full_path != std::ptr::null_mut() && executable_file(full_path) != 0{
@@ -316,7 +335,9 @@ extern "C" fn r_add_hashed_command(w:*mut c_char,quiet:i32)->i32{
 extern "C" fn r_print_hash_info(item:*mut BUCKET_CONTENTS)->i32{
     
     unsafe{
-        println!("{:04}\t{}",(*item).times_found,*(*pathdata!(item)).path);
+        let path_string = CStr::from_ptr((*pathdata!(item)).path).to_str().unwrap();//.to_owned()
+        println!("{:04}\t{}",(*item).times_found,path_string);
+        // println!("{:04}\t{}",(*item).times_found,*(*pathdata!(item)).path);
     }//unsafe
     0
 }
@@ -329,7 +350,9 @@ extern "C" fn r_print_portable_hash_info(item:*mut BUCKET_CONTENTS)->i32{
     unsafe{
         fp = printable_filename((*pathdata!(item)).path,1);
         f = printable_filename((*item).key,1);
-        println!("builtin hash -p {} {}",*fp,*f);
+        let fp_string = CStr::from_ptr(fp).to_str().unwrap();//.to_owned()
+        let f_string = CStr::from_ptr(f).to_str().unwrap();//.to_owned()
+        println!("builtin hash -p {} {}",fp_string,f_string);
 
         if fp != (*pathdata!(item)).path{
             free(fp as *mut c_void);
@@ -344,7 +367,9 @@ extern "C" fn r_print_portable_hash_info(item:*mut BUCKET_CONTENTS)->i32{
 #[no_mangle]
 extern "C" fn r_print_hashed_commands(fmt:i32)->i32{
     unsafe{
+
         if hashed_filenames.is_null() || hash_entries(hashed_filenames) == 0 {
+
             return 0;
         }
         if fmt == 0{
@@ -388,13 +413,17 @@ extern "C" fn r_list_hashed_filename_targets(list:*mut WORD_LIST,fmt:i32)->i32{
                 continue;
             }
             if fmt != 0{
-                println!("builtin hash -p {} {}",*target,*(*(*l).word).word)
+                let target_string = CStr::from_ptr(target).to_str().unwrap();//.to_owned()
+                let c_str = CStr::from_ptr((*(*l).word).word).to_str().unwrap();
+                println!("builtin hash -p {} {}",target_string,c_str)
             }
             else{
                 if multiple != 0{
-                    print!("{}\t",*((*(*l).word).word));
+                    let c_str = CStr::from_ptr((*(*l).word).word).to_str().unwrap();
+                    print!("{}\t",c_str);
                 }
-                println!("{}",*target);
+                let target_str = CStr::from_ptr(target).to_str().unwrap();
+                println!("{}",target_str);
             }
             free(target as *mut c_void);
             l = (*l).next;

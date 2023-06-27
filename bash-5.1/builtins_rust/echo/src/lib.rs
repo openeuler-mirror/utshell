@@ -1,8 +1,7 @@
 extern crate libc;
 
-use libc::{c_char,c_int, strchr, putchar,clearerr,strlen,free,FILE, fprintf, c_void};
+use libc::{c_char,c_int, strchr, putchar,clearerr,free,FILE, fprintf, c_void};
 use std::ffi::{CString,CStr,};
-use std::ops::Index;
 // use std::io::{stdout, Write};
 use std::ptr::read_volatile;
 
@@ -183,7 +182,7 @@ pub extern "C" fn r_echo_builtin(mut list:*mut WORD_LIST)->i32{
                 if do_v9 != 0{
                     s = temp;
                 
-                    for t in 0..len{
+                    for _ in 0..len{
                         putchar(*s as c_int );
                         s = (s as usize + 1) as *mut c_char;
                     }

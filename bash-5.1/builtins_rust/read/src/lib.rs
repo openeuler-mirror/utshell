@@ -1,6 +1,7 @@
 use libc::{c_int, c_char, c_long, c_ulong, c_uint, size_t, c_void, PT_NULL, ssize_t};
 use nix::errno::errno;
 use std::{ffi::{CString, CStr}, ptr::null_mut};
+use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable,SHELL_VAR};
 
 include!(concat!("intercdep.rs"));
 
@@ -169,7 +170,7 @@ unsafe {
             }
             'd' => delim = *list_optarg,
             _ => {
-            builtin_usage ();
+            r_builtin_usage ();
             return EX_USAGE;
             }
         }
@@ -187,7 +188,7 @@ unsafe {
     if !list.is_null() &&
         legal_identifier((*(*list).word).word) == 0 &&
         valid_array_reference((*(*list).word).word, vflags) == 0 {
-            sh_invalidid((*(*list).word).word);
+            r_sh_invalidid((*(*list).word).word);
             return EXECUTION_FAILURE;
     }
 
@@ -594,7 +595,7 @@ unsafe {
 
     if !arrayname.is_null() {
         if legal_identifier(arrayname) == 0 {
-			sh_invalidid(arrayname);
+			r_sh_invalidid(arrayname);
 			libc::free(input_string as *mut c_void);
 			return EXECUTION_FAILURE;
 		}
@@ -664,7 +665,7 @@ unsafe {
 
         if legal_identifier(varname) == 0 &&
             valid_array_reference(varname, vflags) == 0 {
-            sh_invalidid(varname);
+            r_sh_invalidid(varname);
             libc::free(orig_input_string as *mut c_void);
 			return EXECUTION_FAILURE;
         }
@@ -702,7 +703,7 @@ unsafe {
 
     if legal_identifier((*((*list).word)).word) == 0 &&
         valid_array_reference((*((*list).word)).word, vflags) == 0 {
-        sh_invalidid((*((*list).word)).word);
+        r_sh_invalidid((*((*list).word)).word);
         libc::free(orig_input_string as *mut c_void);
         return EXECUTION_FAILURE;
     }
@@ -755,7 +756,7 @@ pub fn is_basic(c: i8) -> u32 {
 pub fn bind_read_variable(name: *mut c_char, value: *mut c_char) -> * mut SHELL_VAR {
     let v: *mut SHELL_VAR;
 unsafe {
-	v = builtin_bind_variable(name, value, 0);
+	v = r_builtin_bind_variable(name, value, 0);
 
     if v.is_null() {
         return  v;

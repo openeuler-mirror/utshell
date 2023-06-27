@@ -1,4 +1,5 @@
 use libc::{c_int, c_char, c_long, PT_NULL};
+use rcommon::{r_sh_erange,};
 
 include!(concat!("intercdep.rs"));
 
@@ -24,7 +25,7 @@ unsafe {
         return EXECUTION_SUCCESS;
     } else if times < 0 {
         let s = if list.is_null() {PT_NULL as *mut c_char} else {(*(*list).word).word};
-        sh_erange(s,"shift count\0".as_ptr() as *mut c_char);
+        r_sh_erange(s,"shift count\0".as_ptr() as *mut c_char);
         return EXECUTION_FAILURE;
     }
 
@@ -32,7 +33,7 @@ unsafe {
     if times > nargs {
         if print_shift_error != 0 {
             let s = if list.is_null() {PT_NULL as *mut c_char} else {(*(*list).word).word};
-            sh_erange(s,"shift count\0".as_ptr() as *mut c_char);
+            r_sh_erange(s,"shift count\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;
         }
     } else if times == nargs {

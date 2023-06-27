@@ -1,4 +1,6 @@
 use std::ffi::CStr;
+use rcommon::r_sh_notfound;
+
 extern "C" {
     fn free(__ptr: *mut libc::c_void);
     fn dcgettext(
