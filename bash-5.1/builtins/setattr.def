@@ -76,6 +76,7 @@ int
 export_builtin (list)
      register WORD_LIST *list;
 {
+  return r_export_builtin(list);
   return (set_or_show_attributes (list, att_exported, 0));
 }
 
@@ -107,6 +108,7 @@ int
 readonly_builtin (list)
      register WORD_LIST *list;
 {
+  return r_readonly_builtin(list);
   return (set_or_show_attributes (list, att_readonly, 0));
 }
 
@@ -120,7 +122,7 @@ readonly_builtin (list)
    ATTRIBUTE.  An arg of `-n' says to remove the attribute from the the
    remaining names in LIST (doesn't work for readonly). */
 int
-set_or_show_attributes (list, attribute, nodefs)
+__set_or_show_attributes (list, attribute, nodefs)
      register WORD_LIST *list;
      int attribute, nodefs;
 {
@@ -350,7 +352,7 @@ set_or_show_attributes (list, attribute, nodefs)
 /* Show all variable variables (v == 1) or functions (v == 0) with
    attributes. */
 int
-show_all_var_attributes (v, nodefs)
+__show_all_var_attributes (v, nodefs)
      int v, nodefs;
 {
   SHELL_VAR **variable_list, *var;
@@ -374,7 +376,7 @@ show_all_var_attributes (v, nodefs)
 /* Show all local variable variables with their attributes. This shows unset
    local variables (all_local_variables called with 0 argment). */
 int
-show_local_var_attributes (v, nodefs)
+__show_local_var_attributes (v, nodefs)
      int v, nodefs;
 {
   SHELL_VAR **variable_list, *var;
@@ -396,7 +398,7 @@ show_local_var_attributes (v, nodefs)
 }
 
 int
-var_attribute_string (var, pattr, flags)
+__var_attribute_string (var, pattr, flags)
      SHELL_VAR *var;
      int pattr;
      char *flags;	/* filled in with attributes */
@@ -468,7 +470,7 @@ var_attribute_string (var, pattr, flags)
    or `readonly') instead of `declare', and doesn't print function defs
    when called by `export' or `readonly'. */
 int
-show_var_attributes (var, pattr, nodefs)
+__show_var_attributes (var, pattr, nodefs)
      SHELL_VAR *var;
      int pattr, nodefs;
 {
@@ -522,7 +524,7 @@ show_var_attributes (var, pattr, nodefs)
 }
 
 int
-show_name_attributes (name, nodefs)
+__show_name_attributes (name, nodefs)
      char *name;
      int nodefs;
 {
@@ -540,7 +542,7 @@ show_name_attributes (name, nodefs)
 }
 
 int
-show_localname_attributes (name, nodefs)
+__show_localname_attributes (name, nodefs)
      char *name;
      int nodefs;
 {
@@ -558,7 +560,7 @@ show_localname_attributes (name, nodefs)
 }
 
 int
-show_func_attributes (name, nodefs)
+__show_func_attributes (name, nodefs)
      char *name;
      int nodefs;
 {
@@ -576,7 +578,7 @@ show_func_attributes (name, nodefs)
 }
 
 void
-set_var_attribute (name, attribute, undo)
+__set_var_attribute (name, attribute, undo)
      char *name;
      int attribute, undo;
 {

@@ -1,4 +1,3 @@
-
 use std::ffi::CStr;
 extern "C" {
     fn free(__ptr: *mut libc::c_void);
@@ -229,5 +228,4 @@ unsafe extern "C" fn print_alias(mut alias: *mut alias_t, mut flags: libc::c_int
 
     println!("{}={}", CStr::from_ptr((*alias).name).to_string_lossy().into_owned(), CStr::from_ptr(value).to_string_lossy().into_owned());
     free(value as *mut libc::c_void);
-
 }

@@ -33,12 +33,13 @@ extern "C" {
     static mut loption :*mut WORD_LIST;
     pub fn no_options(list: *mut WORD_LIST) -> c_int;
     pub fn builtin_address(command: *const c_char) -> extern "C" fn(w:*mut WORD_LIST) ->i32;
-    pub static mut loptend : *mut WORD_LIST;
 
-    /*
-    pub fn print_timeval(fp: *mut libc::FILE, tvp: *mut libc::timeval);
-    pub fn sh_chkwrite(s: c_int) -> c_int;
+    static mut this_command_name: *mut libc::c_char;
 
-    pub static stdout: *mut libc::FILE;
-    */
+    fn sh_notbuiltin(_: *mut libc::c_char);
+    fn find_shell_builtin(_: *mut libc::c_char) -> Option::<sh_builtin_func_t>;
+    static mut this_shell_builtin: Option::<sh_builtin_func_t>;
+    static mut loptend: *mut WORD_LIST;
 }
+
+pub type sh_builtin_func_t = unsafe extern "C" fn(*mut WORD_LIST) -> i32;

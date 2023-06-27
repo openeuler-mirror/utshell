@@ -23,6 +23,10 @@ members=[
  "builtins_rust/exit",
  "builtins_rust/help",
  "builtins_rust/alias",
+ "builtins_rust/cmd",
+ "builtins_rust/enable",
+ "builtins_rust/declare",
+ "builtins_rust/setattr",
 ]
 
 [dependencies]
@@ -39,8 +43,11 @@ read = {path = "./builtins_rust/read"}
 #suspend = {path = "./builtins_rust/suspend"}
 # test = {path = "./builtins_rust/test"}
 #trap = {path = "./builtins_rust/trap"}
+#setattr = {path = "./builtins_rust/setattr"}
 rcolon = {path = "./builtins_rust/colon"}
  builtin = {path = "./builtins_rust/builtin"}
  #alias= {path = "./builtins_rust/alias"}
  exit = {path = "./builtins_rust/exit"}
  rhelp = {path = "./builtins_rust/help"}
+ rcmd = {path = "builtins_rust/cmd"}
+ enable = {path = "builtins_rust/enable"}

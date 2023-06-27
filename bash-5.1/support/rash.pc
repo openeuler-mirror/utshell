@@ -1,4 +1,4 @@
-# rash.pc.in
+# rush.pc.in
 
 prefix=/usr/local
 exec_prefix=${prefix}
