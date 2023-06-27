@@ -10,7 +10,7 @@ pub enum Option<T> {
 }
 
 #[repr(C)]
-pub struct WordDesc {
+pub struct WORD_DESC {
     pub word: *mut libc::c_char,
     pub flags:libc::c_int
 }
@@ -19,7 +19,7 @@ pub struct WordDesc {
 #[derive(Copy,Clone)]
 pub struct WORD_LIST {
     next: *mut WORD_LIST,
-    word: *mut WordDesc
+    word: *mut WORD_DESC
 }
 
 #[repr (C)]

@@ -8,7 +8,7 @@ use rcommon::{r_read_octal};
 //结构体
 #[repr (C)]
 #[derive(Debug)]
-pub struct WordDesc{
+pub struct WORD_DESC{
     pub word:*mut c_char,
     pub flags:c_int,
 }
@@ -17,7 +17,7 @@ pub struct WordDesc{
 #[derive(Debug)]
 pub struct WORD_LIST{
     pub next:*mut WORD_LIST,
-    pub word:*mut WordDesc,
+    pub word:*mut WORD_DESC,
 }
 
 

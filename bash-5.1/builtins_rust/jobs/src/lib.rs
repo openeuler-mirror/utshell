@@ -5,7 +5,7 @@ use libc::{c_char, c_long};
 use std::ffi::CString;
 
 #[repr(C)]
-pub struct WordDesc {
+pub struct WORD_DESC {
     pub word: *mut libc::c_char,
     pub flags:libc::c_int
 }
@@ -14,7 +14,7 @@ pub struct WordDesc {
 #[derive(Copy,Clone)]
 pub struct WORD_LIST {
     pub next: *mut WORD_LIST,
-    pub word: *mut WordDesc
+    pub word: *mut WORD_DESC
 }
 
 #[repr(i8)]
@@ -57,7 +57,7 @@ pub struct PROCESS {
 #[derive(Copy,Clone)]
 pub union REDIRECTEE {
     dest:libc::c_int,			/* Place to redirect REDIRECTOR to, or ... */
-    filename:* mut WordDesc 		/* filename to redirect to. */
+    filename:* mut WORD_DESC 		/* filename to redirect to. */
 }
 
 #[repr(C)]
@@ -76,7 +76,7 @@ pub union REDIRECT {
 pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    name:*mut WordDesc,
+    name:*mut WORD_DESC,
     map_list:*mut WORD_LIST,
     action:*mut COMMAND
 }
@@ -93,7 +93,7 @@ pub struct PATTERN_LIST {
 pub struct case_com {
     flags:libc::c_int,
     line:libc::c_int,
-    word:*mut WordDesc,
+    word:*mut WORD_DESC,
     clauses:*mut PATTERN_LIST
 }
 
@@ -132,7 +132,7 @@ pub struct simple_com {
 pub struct function_def {
     flags:libc::c_int,
     line:libc::c_int,
-    name:*mut WordDesc,
+    name:*mut WORD_DESC,
     command:*mut COMMAND,
     source_file:*mut c_char
 }
@@ -148,7 +148,7 @@ pub struct group_com {
 pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
-    name:*mut WordDesc,
+    name:*mut WORD_DESC,
     map_list:*mut WORD_LIST,
     action:*mut COMMAND
 }

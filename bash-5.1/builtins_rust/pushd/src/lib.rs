@@ -5,7 +5,7 @@ use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
 
 #[repr(C)]
-pub struct WordDesc {
+pub struct WORD_DESC {
     pub word: *mut libc::c_char,
     pub flags:libc::c_int
 }
@@ -14,7 +14,7 @@ pub struct WordDesc {
 #[derive(Copy,Clone)]
 pub struct WORD_LIST {
     next: *mut WORD_LIST,
-    word: *mut WordDesc
+    word: *mut WORD_DESC
 }
 
 #[repr(u8)]
@@ -39,7 +39,7 @@ enum r_instruction {
 #[derive(Copy,Clone)]
 pub union REDIRECTEE {
     dest:libc::c_int,
-    filename:* mut WordDesc
+    filename:* mut WORD_DESC
 }
 
 #[repr(C)]
@@ -58,7 +58,7 @@ pub union REDIRECT {
 pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    name:*mut WordDesc,
+    name:*mut WORD_DESC,
     map_list:*mut WORD_LIST,
     action:*mut COMMAND
 }
@@ -75,7 +75,7 @@ pub struct PATTERN_LIST {
 pub struct case_com {
     flags:libc::c_int,
     line:libc::c_int,
-    word:*mut WordDesc,
+    word:*mut WORD_DESC,
     clauses:*mut PATTERN_LIST
 }
 
@@ -114,7 +114,7 @@ pub struct simple_com {
 pub struct function_def {
     flags:libc::c_int,
     line:libc::c_int,
-    name:*mut WordDesc,
+    name:*mut WORD_DESC,
     command:*mut COMMAND,
     source_file:*mut c_char
 }
@@ -130,7 +130,7 @@ pub struct group_com {
 pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
-    name:*mut WordDesc,
+    name:*mut WORD_DESC,
     map_list:*mut WORD_LIST,
     action:*mut COMMAND
 }
@@ -257,8 +257,8 @@ extern "C" {
   fn cd_builtin (list:*mut WORD_LIST)->i32;
   fn polite_directory_format (path:* mut c_char)->* mut c_char;
   fn sh_erange (str1:* mut c_char, str2:* mut c_char);
-  fn make_word_list (w: * mut WordDesc , l: * mut WORD_LIST)->* mut WORD_LIST;
-  fn make_word (w:*const c_char)->* mut WordDesc;
+  fn make_word_list (w: * mut WORD_DESC , l: * mut WORD_LIST)->* mut WORD_LIST;
+  fn make_word (w:*const c_char)->* mut WORD_DESC;
   fn dispose_words (l: * mut WORD_LIST);
   fn strvec_resize (c:* mut * mut c_char, s:i32)->* mut * mut c_char;
   fn get_string_value (w:*const c_char)-> * mut c_char;

@@ -62,19 +62,19 @@ pub struct word_desc {
     pub word: *mut libc::c_char,
     pub flags: libc::c_int,
 }
-pub type WordDesc = word_desc;
+pub type WORD_DESC = word_desc;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct word_list {
     pub next: *mut word_list,
-    pub word: *mut WordDesc,
+    pub word: *mut WORD_DESC,
 }
 pub type WORD_LIST = word_list;
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub union REDIRECTEE {
     pub dest: libc::c_int,
-    pub filename: *mut WordDesc,
+    pub filename: *mut WORD_DESC,
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -146,7 +146,7 @@ pub struct cond_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
     pub type_0: libc::c_int,
-    pub op: *mut WordDesc,
+    pub op: *mut WORD_DESC,
     pub left: *mut cond_com,
     pub right: *mut cond_com,
 }
@@ -162,7 +162,7 @@ pub struct arith_com {
 pub struct select_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
-    pub name: *mut WordDesc,
+    pub name: *mut WORD_DESC,
     pub map_list: *mut WORD_LIST,
     pub action: *mut COMMAND,
 }
@@ -177,7 +177,7 @@ pub struct group_com {
 pub struct function_def {
     pub flags: libc::c_int,
     pub line: libc::c_int,
-    pub name: *mut WordDesc,
+    pub name: *mut WORD_DESC,
     pub command: *mut COMMAND,
     pub source_file: *mut libc::c_char,
 }
@@ -217,7 +217,7 @@ pub struct while_com {
 pub struct case_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
-    pub word: *mut WordDesc,
+    pub word: *mut WORD_DESC,
     pub clauses: *mut PATTERN_LIST,
 }
 pub type PATTERN_LIST = pattern_list;
@@ -234,7 +234,7 @@ pub struct pattern_list {
 pub struct for_com {
     pub flags: libc::c_int,
     pub line: libc::c_int,
-    pub name: *mut WordDesc,
+    pub name: *mut WORD_DESC,
     pub map_list: *mut WORD_LIST,
     pub action: *mut COMMAND,
 }
@@ -262,8 +262,7 @@ pub const CDESC_STDPATH: i32 = 0x100;
 pub const EX_USAGE :i32= 258;
 pub const EXECUTION_SUCCESS:i32 = 0;
 pub const EXECUTION_FAILURE:i32 = 1;
-
-pub const const_command_builtin:&CStr =unsafe{ CStr::from_bytes_with_nul_unchecked(b"command_builtin\0")};//.unwrap();
+pub const const_command_builtin: &CStr = CStr::from_bytes_with_nul(b"command_builtin\0").unwrap();
 //#define COMMAND_BUILTIN_FLAGS (CMD_NO_FUNCTIONS | CMD_INHIBIT_EXPANSION | CMD_COMMAND_BUILTIN | (use_standard_path ? CMD_STDPATH : 0))
 //#define CMD_WANT_SUBSHELL  0x01	/* User wants a subshell: ( command ) */
 //#define CMD_FORCE_SUBSHELL 0x02	/* Shell needs to force a subshell. */

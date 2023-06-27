@@ -7,7 +7,7 @@ use std::ptr::read_volatile;
 
 //结构体
 #[repr (C)]
-pub struct WordDesc{
+pub struct WORD_DESC{
     pub word:*mut c_char,
     pub flags:c_int,
 }
@@ -16,7 +16,7 @@ pub struct WordDesc{
 // #[derive(Copy,Clone)]
 pub struct WORD_LIST{
     pub next:*mut WORD_LIST,
-    pub word:*mut WordDesc,
+    pub word:*mut WORD_DESC,
 }
 
 

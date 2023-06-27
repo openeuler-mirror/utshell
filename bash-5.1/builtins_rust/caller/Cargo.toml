@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 libc = "0.2"
-rread = {path="../read"}
+read = {path="../read"}
 
 [lib]
 crate-type = ["staticlib","lib"]

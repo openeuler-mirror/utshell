@@ -1,7 +1,7 @@
 use libc::{c_int, c_char, c_long, c_ulong, c_uint, size_t, c_void, PT_NULL, ssize_t};
 use nix::errno::errno;
 use std::{ffi::{CString, CStr}, ptr::null_mut};
-//use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable,SHELL_VAR};
+use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable,SHELL_VAR};
 
 include!(concat!("intercdep.rs"));
 

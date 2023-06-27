@@ -5,13 +5,13 @@ pub struct word_desc {
     pub word: *mut c_char,
     pub flags: c_int,
 }
-pub type WordDesc = word_desc;
+pub type WORD_DESC = word_desc;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct word_list {
     pub next: *mut word_list,
-    pub word: *mut WordDesc,
+    pub word: *mut WORD_DESC,
 }
 pub type WORD_LIST = word_list;
 
@@ -53,7 +53,7 @@ pub type command_type = c_uint;
 #[derive(Copy, Clone)]
 pub union REDIRECTEE {
     pub dest: c_int,
-    pub filename: *mut WordDesc,
+    pub filename: *mut WORD_DESC,
 }
 
 pub type r_instruction = c_uint;
@@ -115,7 +115,7 @@ pub type PATTERN_LIST = pattern_list;
 pub struct case_com {
     pub flags: c_int,
     pub line: c_int,
-    pub word: *mut WordDesc,
+    pub word: *mut WORD_DESC,
     pub clauses: *mut PATTERN_LIST,
 }
 
@@ -125,7 +125,7 @@ pub type CASE_COM = case_com;
 pub struct for_com {
     pub flags: c_int,
     pub line: c_int,
-    pub name: *mut WordDesc,
+    pub name: *mut WORD_DESC,
     pub map_list: *mut WORD_LIST,
     pub action: *mut COMMAND,
 }
@@ -148,7 +148,7 @@ pub type ARITH_FOR_COM = arith_for_com;
 pub struct select_com {
     pub flags: c_int,
     pub line: c_int,
-    pub name: *mut WordDesc,
+    pub name: *mut WORD_DESC,
     pub map_list: *mut WORD_LIST,
     pub action: *mut COMMAND,
 }
@@ -188,7 +188,7 @@ pub struct cond_com {
     pub flags: c_int,
     pub line: c_int,
     pub type_: c_int,
-    pub op: *mut WordDesc,
+    pub op: *mut WORD_DESC,
     pub left: *mut cond_com,
     pub right: *mut cond_com,
 }
@@ -209,7 +209,7 @@ pub type SIMPLE_COM = simple_com;
 pub struct function_def {
     pub flags: c_int,
     pub line: c_int,
-    pub name: *mut WordDesc,
+    pub name: *mut WORD_DESC,
     pub command: *mut COMMAND,
     pub source_file: *mut c_char,
 }
@@ -359,10 +359,10 @@ extern "C" {
     pub fn assignment(string: *const c_char, flags: c_int) -> c_int;
     pub fn legal_identifier(arg1: *const c_char) -> c_int;
     pub fn sh_invalidid(s: *mut c_char);
-    pub fn make_word(string: *const c_char) -> *mut WordDesc;
-    pub fn make_word_list(word: *mut WordDesc, wlink: *mut WORD_LIST) -> *mut WORD_LIST;
+    pub fn make_word(string: *const c_char) -> *mut WORD_DESC;
+    pub fn make_word_list(word: *mut WORD_DESC, wlink: *mut WORD_LIST) -> *mut WORD_LIST;
     pub fn declare_builtin(list:* mut WORD_LIST) -> c_int;
-    pub fn dispose_word(w: *mut WordDesc);
+    pub fn dispose_word(w: *mut WORD_DESC);
     pub fn do_assignment_no_expand(string: *mut c_char) -> c_int;
 
     pub fn all_shell_functions() -> *mut *mut SHELL_VAR;

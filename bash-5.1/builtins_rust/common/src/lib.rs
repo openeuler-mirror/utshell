@@ -16,13 +16,13 @@ pub struct word_desc {
     pub word: *mut c_char,
     pub flags: c_int,
 }
-pub type WordDesc = word_desc;
+pub type WORD_DESC = word_desc;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct word_list {
     pub next: *mut word_list,
-    pub word: *mut WordDesc,
+    pub word: *mut WORD_DESC,
 }
 pub type WORD_LIST = word_list;
 
@@ -78,7 +78,7 @@ pub struct COMMAND {
 #[derive(Copy,Clone)]
 pub union REDIRECTEE {
     dest:libc::c_int,           /* Place to redirect REDIRECTOR to, or ... */
-    filename:* mut WordDesc        /* filename to redirect to. */
+    filename:* mut WORD_DESC        /* filename to redirect to. */
 }
 
 #[repr(u8)]
@@ -109,7 +109,7 @@ pub union REDIRECT {
 pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    name:*mut WordDesc,
+    name:*mut WORD_DESC,
     map_list:*mut WORD_LIST,
     action:*mut COMMAND
 }
@@ -117,7 +117,7 @@ pub struct for_com {
 pub struct case_com {
     flags:libc::c_int,
     line:libc::c_int,
-    word:*mut WordDesc,
+    word:*mut WORD_DESC,
     clauses:*mut PATTERN_LIST
 }
 
@@ -161,7 +161,7 @@ pub struct simple_com {
 pub struct function_def {
     flags:libc::c_int,
     line:libc::c_int,
-    name:*mut WordDesc,
+    name:*mut WORD_DESC,
     command:*mut COMMAND,
     source_file:*mut c_char
 }
@@ -175,7 +175,7 @@ pub struct group_com {
 pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
-    name:*mut WordDesc,
+    name:*mut WORD_DESC,
     map_list:*mut WORD_LIST,
     action:*mut COMMAND
 }
@@ -599,26 +599,9 @@ pub type QSFUNC = unsafe extern "C" fn(*const c_void,*const c_void)->i32;
 
 
 pub static EX_SUCCESS:i32 = 0;
-pub static EX_USAGE:i32 = 258;
-///////
-pub static EX_BADUSAGE:i32	= 2;
+pub static EX_USAGE:i32 = -99;
+pub static EX_:i32 = 0;
 
-pub static EX_MISCERROR:i32 = 2;
-
-pub static EX_RETRYFAIL:i32 = 124;
-pub static EX_WEXPCOMSUB:i32 = 125;
-pub static EX_BINARY_FILE :i32 = 126;
-pub static EX_NOEXEC: i32 = 126;
-pub static EX_NOINPUT:i32 = 126;
-pub static EX_NOTFOUND:i32 = 127;
-
-pub static EX_SHERRBASE:i32 = 256;	/* all special error values are > this. */
-
-pub static EX_BADSYNTAX:i32 = 257;	/* shell syntax error */
-pub static EX_REDIRFAIL:i32 =	259;	/* redirection failed */
-pub static EX_BADASSIGN	:i32 = 260;	/* variable assignment error */
-pub static EX_EXPFAIL:i32=	261;/* word expansion failed */
-pub static EX_DISKFALLBACK:i32 = 262;	/* fall back to disk command from builtin */
 
 //extern C
 extern "C"{

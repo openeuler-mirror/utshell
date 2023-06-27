@@ -10,7 +10,7 @@ use rcommon::{r_builtin_usage,r_sh_chkwrite};
 
 //struct
 #[repr (C)]
-pub struct WordDesc{
+pub struct WORD_DESC{
     pub word:*mut c_char,
     pub flags:c_int,
 }
@@ -19,7 +19,7 @@ pub struct WordDesc{
 // #[derive(Copy,Clone)]
 pub struct WORD_LIST{
     pub next:*mut WORD_LIST,
-    pub word:*mut WordDesc,
+    pub word:*mut WORD_DESC,
 }
 #[repr (C)]
 pub struct _keymap_entry{
