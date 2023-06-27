@@ -100,7 +100,7 @@ extern "C"{
 
 #[no_mangle]
 pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
-   
+
    // let mut i:i32;
     let mut plen:usize;
     let mut match_found:i32;
@@ -125,9 +125,9 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
         let optu8:u8= i as u8;
         let optChar:char=char::from(optu8);
         match optChar{
-           'd'=> {dflag = 1; break;}
-           'm'=> {mflag = 1; break;}
-           's'=> {sflag = 1; break;}
+           'd'=> {dflag = 1; }
+           'm'=> {mflag = 1; }
+           's'=> {sflag = 1; }
             _=>{
                 unsafe {
                   if i == -99 {
@@ -139,12 +139,23 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
                 }
             }
         } 
+        unsafe{
+          i = internal_getopt (list, c_str_dms.as_ptr() as * mut c_char);    
+        }
+    }
+    if list == std::ptr::null_mut(){
+      unsafe {
+        show_shell_version (0);
+      }
+      show_builtin_command_help ();
+      return EXECUTION_SUCCESS!();
     }
    unsafe {
-   let  pattern = glob_pattern_p ((*(*list).word).word);
-   if (pattern == 1){
+    let mut  pattern = 0;
+   pattern =  glob_pattern_p ((*(*list).word).word);
+   if pattern == 1 {
        println!("Shell commands matching keyword, Shell commands matching keyword");
-       if  (*list).next !=std::ptr::null_mut() {
+       if  list != std::ptr::null_mut() && (*list).next !=std::ptr::null_mut() {
             println!("Shell commands matching keywords");
        }
        else {
@@ -152,7 +163,8 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
        }
        println!("{:?} ,",list);
    }
-   let mut loptendt=*list;
+  //  let mut  loptendt=*list;
+
    let mut match_found = 0;
    let mut pattern:*mut c_char =  0 as *mut libc::c_char;
    while list !=std::ptr::null_mut() {
