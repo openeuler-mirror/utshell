@@ -27,6 +27,7 @@ static mut default_buffered_input : c_int = -1;
 #[no_mangle]
 pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
     println!("r_read_builtin call");
+    println!("11111111111111");
 
     let mut varname :*mut c_char = libc::PT_NULL as *mut c_char;
     let mut size : c_int = 0;
@@ -168,7 +169,8 @@ unsafe {
                     return EXECUTION_FAILURE;
                 }
             }
-            'd' => delim = *list_optarg,
+            'd' => {delim = *list_optarg;
+                println!("-d");}
             _ => {
             r_builtin_usage ();
             return EX_USAGE;

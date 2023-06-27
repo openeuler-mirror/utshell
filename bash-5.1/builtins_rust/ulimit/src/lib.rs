@@ -5,6 +5,7 @@ use std::ffi::CStr;
 use std::ffi::CString;
 use std::ptr;
 use std::mem;
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 
 
 #[derive(Copy, Clone)]
@@ -14,19 +15,6 @@ pub struct rlimit {
     pub rlim_max: rlim_t,
 }
 
-#[repr(C)]
-#[derive(Copy,Clone)]
-pub struct WordDesc {
-    pub word: *mut i8,
-    pub flags:i32
-}
-
-#[repr (C)]
-#[derive(Copy,Clone)]
-pub struct WordList {
-    next: *mut WordList,
-    word: *mut WordDesc
-}
 
 #[repr (C)]
 #[derive(Copy,Clone)]
@@ -125,20 +113,6 @@ macro_rules! RLIM_SAVED_MAX{
     }
 }
 
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-   () => {0}
-}
-
-#[macro_export]
-macro_rules! EXECUTION_FAILURE {
-   () => {1}
-}
-
-#[macro_export]
-macro_rules! EX_USAGE {
-   () => {258}
-}
 
 #[deny(missing_fragment_specifier)]
 #[macro_export]
@@ -510,17 +484,17 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
             'H' => { mode = mode | LIMIT_HARD!();}
             '?'=> {   
                  builtin_help();
-                 return  EX_USAGE!();
+                 return  EX_USAGE;
             }
             //  => {
             //     builtin_usage();
-            //     return EX_USAGE!();
+            //     return EX_USAGE;
             // }
             _ => {
                 //println!("enter switch default,opt  is {}",opt);
                 if opt == -99 {
                     builtin_usage();
-                    return EX_USAGE!();
+                    return EX_USAGE;
                 }
                 if ncmd >= cmdlistsz {
                     cmdlistsz = cmdlistsz * 2 ;
@@ -616,7 +590,7 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
             (*cmdlist.offset(d as isize)).cmd, 
             strerror(*__errno_location()) as *const i8);
         }
-        return EX_USAGE!();
+        return EX_USAGE;
       }
   }
 

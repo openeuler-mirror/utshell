@@ -142,6 +142,7 @@ extern "C"{
     fn strvec_len(array:*mut *mut  c_char)->i32;
     fn rl_parse_and_bind(string:*mut c_char)->i32;
     fn strvec_search(array:*mut *mut c_char,name:*mut c_char)->i32;
+    fn builtin_help();
 }
 
 
@@ -246,7 +247,10 @@ pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
                 }
                 'X' => flags |= XXFLAG!(),
                 _  => {
-
+                    if opt == -99 {
+                        builtin_help();
+                        return EX_USAGE;
+                    }
                     r_builtin_usage();
 
                     return_code = EX_USAGE;

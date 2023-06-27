@@ -3,19 +3,7 @@ extern crate nix;
 
 use libc::{c_char, c_long};
 use std::{ffi::CString, ops::Add};
-
-#[repr(C)]
-pub struct WordDesc {
-    pub word: *mut libc::c_char,
-    pub flags:libc::c_int
-}
-
-#[repr(C)]
-#[derive(Copy,Clone)]
-pub struct WordList {
-    next: *mut WordList,
-    word: *mut WordDesc
-}
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage};
 
 #[repr(i8)]
 pub enum JOB_STATE {
@@ -53,21 +41,16 @@ pub struct PROCESS {
     command:*mut c_char
 }
 
-#[repr(C)]
-#[derive(Copy,Clone)]
-pub union REDIRECTEE {
-    dest:libc::c_int,			/* Place to redirect REDIRECTOR to, or ... */
-    filename:* mut WordDesc 		/* filename to redirect to. */
-}
+
 
 #[repr(C)]
 pub union REDIRECT {
   next:*mut REDIRECT,	/* Next element, or NULL. */
-  redirector:REDIRECTEE, 	/* Descriptor or varname to be redirected. */
+  redirector:libc::c_int, 	/* Descriptor or varname to be redirected. */
   rflags:libc::c_int,			/* Private flags for this redirection */
   flags:libc::c_int,			/* Flag value for `open'. */
   instruction:r_instruction, /* What to do with the information. */
-  redirectee:REDIRECTEE,	/* File descriptor or filename */
+  redirectee:libc::c_int,	/* File descriptor or filename */
   here_doc_eof:*mut c_char		/* The word that appeared in <<foo. */
 }
 
@@ -256,20 +239,6 @@ pub struct jobstats {
     j_lastasync:* mut JOB	/* last async job allocated by stop_pipeline */
 }
 
-#[macro_export]
-macro_rules! EXECUTION_FAILURE {
-   () => {1}
-}
-
-#[macro_export]
-macro_rules! EX_USAGE {
-   () => {258}
-}
-
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-   () => {0}
-}
 
 #[macro_export]
 macro_rules! BLOCK_SIGNAL {
@@ -345,7 +314,7 @@ macro_rules! CHECK_HELPOPT {
   ($l:expr) => {
     if $l  !=std::ptr::null_mut() && (*$l).word !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) == 0 {
       builtin_help ();
-      return EX_USAGE!();
+      return EX_USAGE;
     }
   }
 }
@@ -379,7 +348,7 @@ pub extern "C" fn  r_fg_builtin (list:*mut WordList)->i32 {
     }
 
     if no_options (list) !=0 {
-      return EX_USAGE!();
+      return EX_USAGE;
     } 
     
     /* If the last arg on the line is '&', then start this job in the
@@ -419,7 +388,7 @@ pub extern "C" fn  r_bg_builtin (list:*mut WordList)->i32 {
   }
 
   if no_options (list) !=0 {
-    return EX_USAGE!();
+    return EX_USAGE;
   }
     
   /* This relies on the fact that fg_bg() takes a WordList *, but only acts

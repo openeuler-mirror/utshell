@@ -2,9 +2,8 @@ extern crate rcommon;
 use std::ffi::*;
 use rset::r_set_shellopts;
 use libc::*;
-use rcommon::WordDesc;
-use rcommon::WordList;
 
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 /*
 /* First, the user-visible attributes */
 #define att_exported	0x0000001	/* export to environment */
@@ -913,11 +912,8 @@ static UFLAG:i32 = 0x02;
 static QFLAG:i32 = 0x04;
 static OFLAG:i32 = 0x08;
 static PFLAG:i32 = 0x10;
-static EX_USAGE:i32 = 258;
 static SETOPT:i32 = 1;
 static UNSETOPT:i32 = 0;
-static EXECUTION_SUCCESS : i32 = 0;
-static EXECUTION_FAILURE :i32 = 1;
 
 static mut ON: *const libc::c_char = b"on\0" as *const u8 as *const libc::c_char;
 static mut OFF: *const libc::c_char = b"off\0" as *const u8 as *const libc::c_char;
@@ -972,7 +968,7 @@ pub unsafe extern "C" fn r_shopt_builtin(mut list: *mut WordList) -> i32 {
                 5 as i32,
             ),
         );
-        return EXECUTION_FAILURE;
+        return EXECUTION_FAILURE!();
     }
 
     if (flags & OFLAG != 0) &&( (flags & (SFLAG | UFLAG)) == 0) // shopt -o
@@ -1092,12 +1088,12 @@ unsafe extern "C" fn toggle_shopts(
     let mut rval: i32;
     let  v: *mut ShellVar;
     l = list;
-    rval = EXECUTION_SUCCESS;
+    rval = EXECUTION_SUCCESS!();
     while !l.is_null() {
         ind = find_shopt((*(*l).word).word);
         if ind < 0 {
             shopt_error((*(*l).word).word);
-            rval = EXECUTION_FAILURE;
+            rval = EXECUTION_FAILURE!();
         } else {
             *SHOPT_VARS[ind as usize].value = mode;
             if (SHOPT_VARS[ind as usize].set_func).is_some() {
@@ -1157,7 +1153,7 @@ unsafe extern "C" fn r_list_shopts(
     let mut i;
     let mut val = 0;
     let mut rval =0;
-    rval = EXECUTION_SUCCESS;
+    rval = EXECUTION_SUCCESS!();
     if (flags & QFLAG) ==0 {
         if list.is_null() {
             for item in SHOPT_VARS {
@@ -1166,18 +1162,18 @@ unsafe extern "C" fn r_list_shopts(
                     print_shopt(item.name, val, flags);
               }
             }
-            return sh_chkwrite(EXECUTION_SUCCESS);
+            return sh_chkwrite(EXECUTION_SUCCESS!());
         }
         l = list;
         while !l.is_null() {
             i = find_shopt((*(*l).word).word);
             if i < 0 {
                 shopt_error((*(*l).word).word);
-                rval = EXECUTION_FAILURE;
+                rval = EXECUTION_FAILURE!();
             } else {
                 val = *SHOPT_VARS[i as usize].value;
                 if val == 0 {
-                    rval = EXECUTION_FAILURE;
+                    rval = EXECUTION_FAILURE!();
                 }
                 print_shopt((*(*l).word).word, val, flags);
             }
@@ -1200,7 +1196,7 @@ unsafe extern "C" fn list_some_shopts(
             print_shopt(item.name, *item.value, flags);
         }
     }
-    return sh_chkwrite(EXECUTION_SUCCESS);
+    return sh_chkwrite(EXECUTION_SUCCESS!());
 }
 
 unsafe extern "C" fn r_list_shopt_o_options(
@@ -1209,12 +1205,12 @@ unsafe extern "C" fn r_list_shopt_o_options(
 ) -> i32 {
     let mut l: *mut WordList = 0 as *mut WordList;
     let mut val: i32 = 0;
-    let mut rval: i32 = EXECUTION_SUCCESS;
+    let mut rval: i32 = EXECUTION_SUCCESS!();
     if list.is_null() {
         if flags & QFLAG == 0 {
             list_minus_o_opts(-1, flags & PFLAG);
         }
-        return sh_chkwrite(EXECUTION_SUCCESS);
+        return sh_chkwrite(EXECUTION_SUCCESS!());
     }
     l = list;
 
@@ -1222,10 +1218,10 @@ unsafe extern "C" fn r_list_shopt_o_options(
         val = minus_o_option_value((*(*l).word).word);
         if val == -1 {
             sh_invalidoptname((*(*l).word).word);
-            rval = EXECUTION_FAILURE;
+            rval = EXECUTION_FAILURE!();
         } else {
             if val == 0 {
-                rval = EXECUTION_FAILURE;
+                rval = EXECUTION_FAILURE!();
             }
             if flags & QFLAG == 0  {
                 if flags & PFLAG != 0 {
@@ -1256,7 +1252,7 @@ unsafe extern "C" fn list_some_o_options(
     if flags & QFLAG == 0 {
         list_minus_o_opts(mode, flags & PFLAG);
     }
-    return sh_chkwrite(EXECUTION_SUCCESS);
+    return sh_chkwrite(EXECUTION_SUCCESS!());
 }
 unsafe extern "C" fn set_shopt_o_options(
     mode: i32,
@@ -1267,7 +1263,7 @@ unsafe extern "C" fn set_shopt_o_options(
     let mut l: *mut WordList;
     let mut rval: i32 ;
     l = list;
-    rval = EXECUTION_SUCCESS;
+    rval = EXECUTION_SUCCESS!();
     while !l.is_null() {
         if set_minus_o_option(mode, (*(*l).word).word) == 1 as i32 {
             rval = 1 as i32;
@@ -1468,7 +1464,7 @@ pub unsafe extern "C" fn r_shopt_listopt(
         *SHOPT_VARS[i as usize].value,
         if reusable != 0 { PFLAG } else { 0 },
     );
-    return sh_chkwrite(EXECUTION_SUCCESS);
+    return sh_chkwrite(EXECUTION_SUCCESS!());
 }
 #[no_mangle]
 pub unsafe extern "C" fn r_set_bashopts() {

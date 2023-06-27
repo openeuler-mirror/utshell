@@ -4,10 +4,11 @@ extern crate rcommon;
 
 use libc::{c_char,c_int, strlen, strcpy, size_t, c_void, free};
 use std::ffi::{CString,CStr};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 use nix::errno::errno;
 use rcommon::r_sh_restricted;
 
-
+/*
 #[repr (C)]
 #[derive(Copy,Clone)]
 pub struct WordDesc{
@@ -21,8 +22,8 @@ pub struct WordList{
     pub next:*mut WordList,
     pub word:*mut WordDesc,
 }
-
-#[repr (C)]
+*/
+#[repr(C)]
 struct redirect{
     next:*mut redirect,
     redirector:REDIRECTEE,
@@ -40,69 +41,27 @@ union REDIRECTEE {
     filename:*mut WordDesc,
 }
 
-#[repr(i8)]  //i8 or C ???????
-enum r_instruction {
-    r_output_direction,
-    r_input_direction, 
-    r_inputa_direction,
-
-    r_appending_to, 
-    r_reading_until, 
-    r_reading_string,
-
-    r_duplicating_input, 
-    r_duplicating_output,
-    r_deblank_reading_until,
-
-    r_close_this,
-    r_err_and_out, 
-    r_input_output,
-    r_output_force,
-
-    r_duplicating_input_word,
-    r_duplicating_output_word,
-
-    r_move_input, 
-    r_move_output,
-    r_move_input_word,
-    r_move_output_word,
-
-    r_append_err_and_out
-}
-  
-
-
-//macro
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-   () => {0}
-}
-
-#[macro_export]
-macro_rules! EXECUTION_FAILURE {
-    () => { 1 };
-}
-
-#[macro_export]
-macro_rules! EX_USAGE {
-    () => { 258 }
-}
-
-#[macro_export]
-macro_rules! EX_NOEXEC {
-    () => { 126 }
-}
-
-#[macro_export]
-macro_rules! EX_NOTFOUND {
-    () => { 127 }
-}
-
-#[macro_export]
-macro_rules! SUBSHELL_PAREN {
-    () => { 0x02 }
-}
-
+pub type r_instruction = libc::c_uint;
+pub const r_append_err_and_out: r_instruction = 19;
+pub const r_move_output_word: r_instruction = 18;
+pub const r_move_input_word: r_instruction = 17;
+pub const r_move_output: r_instruction = 16;
+pub const r_move_input: r_instruction = 15;
+pub const r_duplicating_output_word: r_instruction = 14;
+pub const r_duplicating_input_word: r_instruction = 13;
+pub const r_output_force: r_instruction = 12;
+pub const r_input_output: r_instruction = 11;
+pub const r_err_and_out: r_instruction = 10;
+pub const r_close_this: r_instruction = 9;
+pub const r_deblank_reading_until: r_instruction = 8;
+pub const r_duplicating_output: r_instruction = 7;
+pub const r_duplicating_input: r_instruction = 6;
+pub const r_reading_string: r_instruction = 5;
+pub const r_reading_until: r_instruction = 4;
+pub const r_appending_to: r_instruction = 3;
+pub const r_inputa_direction: r_instruction = 2;
+pub const r_input_direction: r_instruction = 1;
+pub const r_output_direction: r_instruction = 0;
 
 #[macro_export]
 macro_rules! savestring {
@@ -120,7 +79,6 @@ macro_rules! FREE {
     }
 }
 
-
 extern "C" {
     // static errno:i32;
     static mut exec_argv0:*mut c_char;
@@ -135,12 +93,12 @@ extern "C" {
     static job_control:i32;
     static interactive:i32;
     static default_buffered_input:i32;
-    // static no_exit_on_failed_exec:i32;
-
+    static no_exit_on_failed_exec:i32;
+    fn builtin_help();
     fn xmalloc(n:size_t)->*mut c_void;
     fn reset_internal_getopt();
     fn internal_getopt(list:*mut WordList,opts:*mut c_char)->i32;
-    fn builtin_usage();
+    // fn builtin_usage();
     fn dispose_redirects(list:*mut REDIRECT);
     // fn sh_restricted(s:*mut c_char);
     fn strvec_from_word_list(list:*mut WordList,alloc:i32,starting_index:i32,ip:*mut i32)->*mut *mut c_char;
@@ -168,10 +126,6 @@ extern "C" {
     fn initialize_signals(reinit:i32);
     fn restart_job_control();
 }
-
-
-pub static no_exit_on_failed_exec:i32 = 0;  
-
 
 /* If the user wants this to look like a login shell, then
    prepend a `-' onto NAME and return the new name. */
@@ -205,16 +159,15 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WordList)->i32{
 
     println!("r_exec_builtin");
 
+
     unsafe{
-        loop{
+        exec_argv0 = std::ptr::null_mut() as *mut c_char;
 
-            exec_argv0 = std::ptr::null_mut() as *mut c_char;
-
-            reset_internal_getopt();
+        reset_internal_getopt();
     
+        loop{
             let c_str = CString::new("cla:").unwrap();
-            let c_ptr = c_str.as_ptr() as *mut c_char;
-            opt = internal_getopt(list,c_ptr);
+            opt = internal_getopt(list,c_str.as_ptr() as *mut c_char);
             while opt != -1{
                 let optu8 = opt as u8;
                 let opt_char = char::from(optu8);
@@ -223,12 +176,16 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WordList)->i32{
                     'l' => login = 1,
                     'a' => argv0 = list_optarg,
                     _  => {
-                        builtin_usage();
-                        return EX_USAGE!();
+                        if opt == -99 {
+                            builtin_help();
+                            return EX_USAGE;
+                        }
+                        r_builtin_usage();
+                        return EX_USAGE;
                     }
                 }
     
-                opt = internal_getopt(list,c_ptr);
+                opt = internal_getopt(list,c_str.as_ptr() as *mut c_char);
             }
     
             list = loptend;
@@ -264,11 +221,11 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WordList)->i32{
                     let c_str = CString::new("%s: cannot execute: %s").unwrap();
                     let c_ptr = c_str.as_ptr();
                     builtin_error(c_ptr,*args.offset(0),strerror(errno()));
-                    exit_value = EX_NOEXEC!();
+                    exit_value = EX_NOEXEC;
                 }
                 else{   
                     sh_notfound(*args.offset(0));
-                    exit_value = EX_NOTFOUND!();
+                    exit_value = EX_NOTFOUND;
                 }
                 //goto failed_exec;
                 break;
@@ -347,7 +304,7 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WordList)->i32{
                 adjust_shell_level(1);
             }
     
-            if exit_value == EX_NOTFOUND!(){
+            if exit_value == EX_NOTFOUND{
                 //goto failed_exec;
                 break;
             }
@@ -355,7 +312,7 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WordList)->i32{
                 let c_str = CString::new("%s: cannot execute: %s").unwrap();
                 let c_ptr = c_str.as_ptr();
                 builtin_error(c_ptr,command,strerror(errno()));
-                exit_value = EX_NOEXEC!();
+                exit_value = EX_NOEXEC;
             }
             else{
                 file_error(command);
@@ -393,20 +350,3 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WordList)->i32{
 }
 
 
-
-
-
-
-
-
-
-
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}

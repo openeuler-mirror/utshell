@@ -55,8 +55,6 @@ unsafe {
     }
     list = loptend;
 
-    let c_tmp = if *delete_arg == b'-' as c_char {(delete_arg as usize + 1) as *mut c_char} else {delete_arg};
-    range = libc::strchr(c_tmp, b'-' as c_int);
 
     opt = flags & (AFLAG | RFLAG | WFLAG | NFLAG);
     if opt != 0 && opt != AFLAG && opt != RFLAG && opt != WFLAG && opt != NFLAG {
@@ -82,12 +80,10 @@ unsafe {
             return expand_and_print_history(list);
         }
         return r_sh_chkwrite(EXECUTION_SUCCESS);
-    } else if (flags & PFLAG) != 0 {
-        if !list.is_null() {
-            return expand_and_print_history(list);
-        }
-        return r_sh_chkwrite(EXECUTION_SUCCESS);
-    } else if (flags & DFLAG) != 0 && !range.is_null() {
+    } else if (flags & DFLAG) != 0 {
+        let c_tmp = if *delete_arg == b'-' as c_char {(delete_arg as usize + 1) as *mut c_char} else {delete_arg};
+        range = libc::strchr(c_tmp, b'-' as c_int);
+        if  !range.is_null() {
         let mut delete_start: c_long = 0;
         let mut delete_end: c_long = 0;
 
@@ -130,7 +126,9 @@ unsafe {
         if where_history() > history_length {
             history_set_pos(history_length);
         }
+
         return if result != 0 {EXECUTION_SUCCESS} else {EXECUTION_FAILURE};
+        }
     } else if (flags & DFLAG) != 0 {
         if legal_number(delete_arg, std::mem::transmute(&delete_offset)) == 0 {
             r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
@@ -140,13 +138,13 @@ unsafe {
         if *delete_arg == b'-' as c_char && delete_offset < 0 {
             let ind = history_length + delete_offset as c_int;
             if ind < history_base {
-                r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
+                r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
                 return EXECUTION_FAILURE;
             }
             opt = ind + history_base;
         } else if delete_offset < history_base as c_long ||
             (delete_offset >= (history_base + history_length) as c_long) {
-            r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
+            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;
         } else {
             opt = delete_offset as c_int;

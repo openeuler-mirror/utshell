@@ -9,7 +9,7 @@ edition = "2018"
 libc="*"
 nix="*"
 lazy_static = "1.4.0"
-
+rcommon = {path ="../common"}
 [lib]
 crate-type = ["staticlib","rlib"]
 name = "rset"

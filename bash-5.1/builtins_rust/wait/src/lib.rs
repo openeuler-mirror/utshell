@@ -12,7 +12,7 @@ use rjobs::{PROCESS,COMMAND, BLOCK_CHILD, UNBLOCK_CHILD};
 use rread::{SHELL_VAR,sh_var_value_func_t,sh_var_assign_func_t,
     sigjmp_buf,__jmp_buf_tag,__sigset_t,__sigsetjmp,};
 use rcommon::{r_builtin_unbind_variable,r_builtin_usage,r_get_job_spec,WordList};
-
+use rcommon::{ WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN};
 
 
 //结构体
@@ -85,24 +85,6 @@ pub enum JOB_STATE {
 
 
 //宏
-#[macro_export]
-macro_rules! EX_USAGE{      /* syntax error in usage */
-    () => { 258 }
-}
-
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-    () => { 
-        0 
-    };
-}
-
-#[macro_export]
-macro_rules! EXECUTION_FAILURE {
-    () => { 
-        1 
-    };
-}
 
 #[macro_export]
 macro_rules! J_WAITING {
@@ -293,7 +275,7 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WordList)->i32{
                 'p' => vname = list_optarg,
                  _  => {
                      r_builtin_usage();
-                     return EX_USAGE!();
+                     return EX_USAGE;
                  } 
             }
             
