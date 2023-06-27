@@ -309,7 +309,7 @@ list_minus_o_opts (mode, reusable)
 	      on_or_off = &value;
 	      if (mode == -1 || mode == *on_or_off)
         {
-         printf("now i  is  %d, value  is  %d, gflag  is %d \n, ",i,*on_or_off , reusable );
+         //printf("now i  is  %d, value  is  %d, gflag  is %d \n, ",i,*on_or_off , reusable );
          print_minus_o_option (o_optionsd[i].name, *on_or_off, reusable);
         }
 	        
@@ -318,7 +318,7 @@ list_minus_o_opts (mode, reusable)
 	      value = GET_BINARY_O_OPTION_VALUE (i, o_optionsd[i].name);
 	      if (mode == -1 || mode == value)
         {
-          printf("now ==== i  is  %d,value  is  %d gflag is %d \n",i,value ,reusable);
+          //printf("now ==== i  is  %d,value  is  %d gflag is %d \n",i,value ,reusable);
 	        print_minus_o_option (o_optionsd[i].name, value, reusable);
         }
 	    }
@@ -499,8 +499,8 @@ set_minus_o_option (on_or_off, option_name)
   register int i;
 
   i = find_minus_o_option (option_name);
-  printf ("option_name is  %s",option_name);
-  printf("i  is  %d",i);
+  //printf ("option_name is  %s",option_name);
+  //printf("i  is  %d",i);
   if (i < 0)
     {
       sh_invalidoptname (option_name);
