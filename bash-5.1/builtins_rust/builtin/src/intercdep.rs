@@ -1,24 +1,5 @@
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct word_desc {
-    pub word: *mut c_char,
-    pub flags: c_int,
-}
-pub type WordDesc = word_desc;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct word_list {
-    pub next: *mut word_list,
-    pub word: *mut WordDesc,
-}
-
-pub type WordList = word_list;
-pub const EX_USAGE: c_int = 258;
-pub const EXECUTION_SUCCESS :c_int = 0;
-pub const EXECUTION_FAILURE :c_int = 1;
-
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 
 extern "C" {
     static mut loption :*mut WordList;

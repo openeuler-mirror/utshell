@@ -7,20 +7,8 @@ use std::{ffi::{CString,CStr}};
 use std::fs::File;
 use nix::errno::errno;
 use rcommon::{r_builtin_usage,r_sh_chkwrite};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 
-//struct
-#[repr (C)]
-pub struct WordDesc{
-    pub word:*mut c_char,
-    pub flags:c_int,
-}
-
-#[repr (C)]
-// #[derive(Copy,Clone)]
-pub struct WordList{
-    pub next:*mut WordList,
-    pub word:*mut WordDesc,
-}
 #[repr (C)]
 pub struct _keymap_entry{
     pub Type:c_char,
@@ -30,24 +18,6 @@ type KEYMAP_ENTRY = _keymap_entry;
 type Keymap = *mut KEYMAP_ENTRY;
 type rl_command_func_t = extern fn(c_int,c_int)->c_int;
 //emun
-
-
-
-//macro
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-   () => {0}
-}
-
-#[macro_export]
-macro_rules! EXECUTION_FAILURE {
-    () => { 1 };
-}
-
-#[macro_export]
-macro_rules! EX_USAGE {
-    () => { 258 }
-}
 
 #[macro_export]
 macro_rules! LFLAG {
@@ -121,17 +91,13 @@ macro_rules! ANYOTHERKEY{
     () => { KEYMAP_SIZE!() - 1}
 }
 
-// #[macro_export]
-// macro_rules! unwind_protect_var {
-//     ($X:expr) => {
-        
-//         unwind_protect_mem($X as *mut c_char,std::intrinsics::size_of(File));
-//         // std::mem::size_of::<& REPL>()
-//     };
-// }
 
-//extern "C"
 extern "C"{
+    fn dcgettext(
+        __domainname: *const libc::c_char,
+        __msgid: *const libc::c_char,
+        __category: libc::c_int,
+    ) -> *mut libc::c_char;
     static no_line_editing:i32;
     static bash_readline_initialized:i32;
     static mut rl_outstream:*mut File;
@@ -198,9 +164,14 @@ pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
 
     unsafe{
         if no_line_editing != 0{
-            let s_str = String::from("line editing not enabled");
-            let s_ptr = s_str.as_ptr() as *const c_char;
-            builtin_warning(s_ptr);
+        builtin_warning(
+            dcgettext(
+                0 as *const libc::c_char,
+                CString::new("line editing not enabled").unwrap().as_ptr() as *const libc::c_char,
+                5 as libc::c_int,
+            ),
+        );
+
         }
 
         kmap = std::ptr::null_mut();
@@ -218,14 +189,19 @@ pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
         if bash_readline_initialized == 0{
             initialize_readline();
         }
-        let bind_str = String::from("bind_builtin");
-        let bind_ptr = bind_str.as_ptr() as *mut c_char;
-        begin_unwind_frame(bind_ptr);
-        //这里是瞎写的！！！！！
-        // unwind_protect_var!(rl_outstream);
-        // unwind_protect_mem(rl_outstream as *mut c_char,8);
-        unwind_protect_mem(std::mem::transmute(rl_outstream), std::mem::size_of_val(&rl_outstream) as c_int);
-
+        let bind_str = CString::new("bind_builtin").unwrap();
+       // let bind_ptr = bind_str.as_ptr() as *mut c_char;
+        begin_unwind_frame(bind_str.as_ptr() as *mut c_char);
+/*
+        unwind_protect_mem(
+            std::mem::transmute(rl_outstream), 
+            std::mem::size_of_val(&rl_outstream) as c_int
+        );
+*/
+    unwind_protect_mem(
+        &mut rl_outstream as *mut *mut File as *mut libc::c_char,
+        ::std::mem::size_of::<*mut File>() as libc::c_ulong as libc::c_int,
+    );
 
         rl_outstream = stdout;
         reset_internal_getopt();
@@ -270,15 +246,14 @@ pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
                 }
                 'X' => flags |= XXFLAG!(),
                 _  => {
-                    println!("111");
-                    // builtin_usage();
+
                     r_builtin_usage();
-                    // BIND_RETURN!(EX_USAGE!());
-                    return_code = EX_USAGE!();
+
+                    return_code = EX_USAGE;
                     if !saved_keymap.is_null(){
                         rl_set_keymap(saved_keymap);
                     }
-                    run_unwind_frame(bind_ptr );
+                    run_unwind_frame(bind_str.as_ptr() as *mut c_char);
                     if return_code < 0 {
                         return_code  = EXECUTION_FAILURE!();
                     }
@@ -303,7 +278,7 @@ pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
                 if !saved_keymap.is_null(){
                     rl_set_keymap(saved_keymap);
                 }
-                run_unwind_frame(bind_ptr );
+                run_unwind_frame(bind_str.as_ptr() as *mut c_char );
                 if return_code < 0 {
                     return_code  = EXECUTION_FAILURE!();
                 }
@@ -354,7 +329,7 @@ pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
                 if !saved_keymap.is_null(){
                     rl_set_keymap(saved_keymap);
                 }
-                run_unwind_frame(bind_ptr );
+                run_unwind_frame(bind_str.as_ptr() as *mut c_char);
                 if return_code < 0 {
                     return_code  = EXECUTION_FAILURE!();
                 }
@@ -376,7 +351,7 @@ pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
             if !saved_keymap.is_null(){
                 rl_set_keymap(saved_keymap);
             }
-            run_unwind_frame(bind_ptr );
+            run_unwind_frame(bind_str.as_ptr() as *mut c_char );
             if return_code < 0 {
                 return_code  = EXECUTION_FAILURE!();
             }
@@ -441,7 +416,7 @@ pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
         if !saved_keymap.is_null(){
             rl_set_keymap(saved_keymap);
         }
-        run_unwind_frame(bind_ptr);
+        run_unwind_frame(bind_str.as_ptr() as *mut c_char);
 
         if return_code < 0{
             return_code = EXECUTION_FAILURE!();
@@ -465,8 +440,7 @@ extern "C" fn r_query_bindings(name:*mut c_char)->i32{
         function = rl_named_function(name);
         if function.is_null(){
             let c_str = CString::new("%s: unknow function name").unwrap();
-            let c_ptr= c_str.as_ptr();
-            builtin_error(c_ptr,name);
+            builtin_error(c_str.as_ptr(),name);
             return EXECUTION_FAILURE!();
         }
 
@@ -511,8 +485,8 @@ extern "C" fn r_unbind_command(name:*mut c_char)->i32{
         function = rl_named_function(name);
         if function.is_null(){
             let c_str = CString::new("`%s':unknown function name").unwrap();
-            let c_ptr = c_str.as_ptr();
-            builtin_error(c_ptr,name);
+
+            builtin_error(c_str.as_ptr(),name);
             return EXECUTION_FAILURE!();
         }
 
@@ -532,8 +506,8 @@ extern "C" fn r_unbind_keyseq(seq:*mut c_char)->i32{
         if rl_translate_keyseq(seq,kseq,&mut kslen) != 0{
             free(kseq as *mut c_void);
             let c_str = CString::new("`%s': cannot unbind").unwrap();
-            let c_ptr = c_str.as_ptr();
-            builtin_error(c_ptr, seq);
+
+            builtin_error(c_str.as_ptr(), seq);
             return EXECUTION_FAILURE!();
         }
         //可能存在错误
@@ -567,13 +541,3 @@ extern "C" fn r_unbind_keyseq(seq:*mut c_char)->i32{
     }
 } 
 
-
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}

@@ -7,7 +7,7 @@ use std::mem::size_of;
 use std::ptr::read_volatile;
 use nix::errno::errno;
 
-
+include!(concat!("lib_readline_keymaps.rs"));
 pub static EXECUTION_SUCCESS:i32 = 0;
 //struct
 #[repr(C)]
