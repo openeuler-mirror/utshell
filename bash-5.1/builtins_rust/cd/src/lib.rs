@@ -500,7 +500,7 @@ pub extern "C" fn r_cd_builtin (mut list:*mut WordList)->i32 {
         'e'=>{eflag = 1;}
           _=>{
               builtin_usage ();
-              return EX_USAGE!();
+              return EX_USAGE;
             }
       }
       opt =internal_getopt (list, c_str_elp.as_ptr() as * mut c_char);
@@ -661,7 +661,7 @@ pub extern "C" fn r_pwd_builtin (list:* mut WordList)->i32 {
           pflag = 1;}
 	    'L'=>{verbatim_pwd = 0;}
       _=>{builtin_usage ();
-          return EX_USAGE!();
+          return EX_USAGE;
         }
 	  }
     opt = internal_getopt (list, c_str_lp.as_ptr() as * mut c_char);

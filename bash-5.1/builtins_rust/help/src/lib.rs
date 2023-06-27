@@ -3,23 +3,11 @@ extern crate nix;
 extern crate std;
 use libc::{c_char,  c_void ,putchar, free};
 use std::{ffi::{CString,CStr}, i32, io::{Read, stdout, Write}, mem, string, u32};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 
 pub enum Option<T> {
     None,
     Some(T),
-}
-
-#[repr(C)]
-pub struct WordDesc {
-    pub word: *mut libc::c_char,
-    pub flags:libc::c_int
-}
-
-#[repr (C)]
-#[derive(Copy,Clone)]
-pub struct WordList {
-    next: *mut WordList,
-    word: *mut WordDesc
 }
 
 #[repr (C)]
@@ -37,17 +25,6 @@ type sh_builtin_func_t = fn(WordList) -> i32;
 #[repr(C)]
 struct FieldStruct {
     name : *mut  c_char,
-}
-
-
-#[macro_export]
-macro_rules! EXECUTION_SUCCESS {
-   () => {0}
-}
-
-#[macro_export]
-macro_rules! EXECUTION_FAILURE{
-    () => {-1}
 }
 
 #[macro_export]
@@ -152,8 +129,9 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
            's'=> {sflag = 1; break;}
             _=>{
                 unsafe {
+                  
                 builtin_usage ();
-                return EX_USAGE!();
+                return EX_USAGE;
                 }
             }
         } 

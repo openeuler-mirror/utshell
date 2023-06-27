@@ -61,23 +61,13 @@ macro_rules! CHECK_HELPOPT {
     ($l:expr) => {
         if $l != std::ptr::null_mut() && (*($l)).word != std::ptr::null_mut() && ISHELP((*(*($l)).word).word) == true{
             builtin_help();
-            return EX_USAGE!();
+            return EX_USAGE;
         }
     };
 }
 
-// #[macro_export]
-// macro_rules! ISHELP {
-//     ($s:expr) => {
-//         let s_str = CString::new("--help").unwrap().as_ptr();
-//         STREQ( ($s),s_str);
-//     };
-// }
-
-
-
 type arrayind_t = intmax_t;
-//extern c
+
 extern "C" {
     static loptend:*mut WordList;
 
@@ -157,7 +147,7 @@ pub extern "C" fn r_caller_builtin(mut list:*mut WordList)->i32{
         }
       
         if no_options(list) != 0{
-            return EX_USAGE!();
+            return EX_USAGE;
         }
 
         list = loptend;     /* skip over possible `--' */
@@ -209,7 +199,7 @@ pub extern "C" fn r_caller_builtin(mut list:*mut WordList)->i32{
         else{
             sh_invalidnum((*(*list).word).word);
             builtin_usage();
-            return EX_USAGE!();
+            return EX_USAGE;
         }
 
         return EXECUTION_SUCCESS!();
@@ -217,43 +207,3 @@ pub extern "C" fn r_caller_builtin(mut list:*mut WordList)->i32{
 }
 
 
-
-/*
-#ifdef LOADABLE_BUILTIN
-static char *caller_doc[] = {
-N_("Returns the context of the current subroutine call.\n\
-    \n\
-    Without EXPR, returns \"$line $filename\".  With EXPR, returns\n\
-    \"$line $subroutine $filename\"; this extra information can be used to\n\
-    provide a stack trace.\n\
-    \n\
-    The value of EXPR indicates how many call frames to go back before the\n\
-    current one; the top frame is frame 0."),
-  (char *)NULL
-};
-
-struct builtin caller_struct = {
-        "caller",
-        caller_builtin,
-        BUILTIN_ENABLED,
-        caller_doc,
-        "caller [EXPR]",
-        0
-};
-
-*/
-
-
-
-
-
-
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}

@@ -89,7 +89,7 @@ extern "C" {
 
     pub fn xmalloc(bytes: size_t) -> *mut c_void;
     pub fn xrealloc(p: *mut c_void, bytes: size_t) -> *mut c_void;
-    pub fn savestring(s: *const c_char) -> *mut c_char;
+    //pub fn savestring(s: *const c_char) -> *mut c_char;
     pub fn ansic_shouldquote(s: *const c_char) -> c_int;
     pub fn ansic_quote(str: *mut c_char, flags: c_int, rlen: *mut c_int) -> *mut c_char;
     pub fn sh_backslash_quote(string: *mut c_char, table: *mut c_char, flags: c_int) -> *mut c_char;
@@ -115,3 +115,4 @@ extern "C" {
 
     pub static shell_start_time: libc::time_t;
 }
+

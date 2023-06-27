@@ -78,11 +78,16 @@ $END
 #include "../shell.h"
 #include "common.h"
 
+extern r_let_builtin(WORD_LIST *);
+
 /* Arithmetic LET function. */
 int
 let_builtin (list)
      WORD_LIST *list;
 {
+
+  return r_let_builtin(list);
+
   intmax_t ret;
   int expok;
 

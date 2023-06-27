@@ -30,6 +30,7 @@ pub type sh_var_value_func_t =
 >;
 
 #[repr(C)]
+#[derive(Debug)]
 #[derive(Copy, Clone)]
 pub struct variable {
     pub name: *mut c_char,
