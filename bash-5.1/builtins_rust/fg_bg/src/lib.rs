@@ -12,8 +12,8 @@ pub struct WordDesc {
 
 #[repr(C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -77,14 +77,14 @@ pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
     next:* mut PATTERN_LIST,
-    patterns:* mut WORD_LIST,
+    patterns:* mut WordList,
     action:*mut COMMAND,
     flags:libc::c_int
 }
@@ -124,7 +124,7 @@ pub struct connection {
 pub struct simple_com {
     flags:libc::c_int,
     line:libc::c_int,
-    words:*mut WORD_LIST,
+    words:*mut WordList,
     redirects:*mut REDIRECT
 }
 
@@ -149,7 +149,7 @@ pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -157,7 +157,7 @@ pub struct select_com {
 pub struct arith_com {
     flags:libc::c_int,
     line:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
@@ -165,16 +165,16 @@ pub struct cond_com {
     flags:libc::c_int,
     line:libc::c_int,
     type_c:libc::c_int,
-    exp:*mut WORD_LIST  
+    exp:*mut WordList  
 }
 
 #[repr(C)]
 pub struct arith_for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    init:*mut WORD_LIST,
-    test:*mut WORD_LIST,
-    step:*mut WORD_LIST,
+    init:*mut WordList,
+    test:*mut WordList,
+    step:*mut WordList,
     action:*mut COMMAND  
 }
 
@@ -352,14 +352,14 @@ macro_rules! CHECK_HELPOPT {
 
 extern "C" {  
     fn builtin_error(err:*const c_char,...);  
-    fn get_job_spec (list:*mut WORD_LIST)->i32;
+    fn get_job_spec (list:*mut WordList)->i32;
     fn sh_badjob (str:*mut c_char);
     static jobs:*mut*mut JOB;    
     static  js:jobstats ;
     
-    static mut loptend:*mut WORD_LIST; 
+    static mut loptend:*mut WordList; 
     fn sh_nojobs (str:*mut c_char);
-    fn no_options (list:*mut WORD_LIST)->i32;
+    fn no_options (list:*mut WordList)->i32;
     fn builtin_help ();
     static mut job_control:i32;
     static mut last_asynchronous_pid:i32;
@@ -368,7 +368,7 @@ extern "C" {
 
 /* How to bring a job into the foreground. */
 #[no_mangle]
-pub extern "C" fn  r_fg_builtin (list:*mut WORD_LIST)->i32 {
+pub extern "C" fn  r_fg_builtin (list:*mut WordList)->i32 {
   let fg_bit:i32;
   unsafe {
     CHECK_HELPOPT! (list);
@@ -388,7 +388,7 @@ pub extern "C" fn  r_fg_builtin (list:*mut WORD_LIST)->i32 {
     if loptend  == std::ptr::null_mut() {
       return r_fg_bg (loptend, 1);
     } else {
-      let mut t:WORD_LIST=*loptend;
+      let mut t:WordList=*loptend;
       while  t.next !=std::ptr::null_mut() {
         t=*(t.next);
       }
@@ -408,7 +408,7 @@ pub extern "C" fn  r_fg_builtin (list:*mut WORD_LIST)->i32 {
 
 /* How to put a job into the background. */
 #[no_mangle]
-pub extern "C" fn  r_bg_builtin (list:*mut WORD_LIST)->i32 {
+pub extern "C" fn  r_bg_builtin (list:*mut WordList)->i32 {
   let mut r:i32;
   unsafe {
   CHECK_HELPOPT !(list);
@@ -422,7 +422,7 @@ pub extern "C" fn  r_bg_builtin (list:*mut WORD_LIST)->i32 {
     return EX_USAGE!();
   }
     
-  /* This relies on the fact that fg_bg() takes a WORD_LIST *, but only acts
+  /* This relies on the fact that fg_bg() takes a WordList *, but only acts
      on the first member (if any) of that list. */
   r = EXECUTION_SUCCESS!();
 
@@ -431,7 +431,7 @@ pub extern "C" fn  r_bg_builtin (list:*mut WORD_LIST)->i32 {
   }
   
   if loptend  !=std::ptr::null_mut() {
-      let mut t:WORD_LIST=*loptend;
+      let mut t:WordList=*loptend;
       while t.next !=std::ptr::null_mut() {
         if r_fg_bg (&mut t, 0) == EXECUTION_FAILURE!() {
           r = EXECUTION_FAILURE!();
@@ -447,7 +447,7 @@ pub extern "C" fn  r_bg_builtin (list:*mut WORD_LIST)->i32 {
 
 /* How to put a job into the foreground/background. */
 #[no_mangle]
-pub extern "C" fn r_fg_bg (list:*mut WORD_LIST, foreground:i32)->i32{
+pub extern "C" fn r_fg_bg (list:*mut WordList, foreground:i32)->i32{
   
   let mut set:nix::sys::signal::SigSet=nix::sys::signal::SigSet::empty();
   let mut oset:nix::sys::signal::SigSet =nix::sys::signal::SigSet::empty();
@@ -515,7 +515,7 @@ pub extern "C" fn cmd_name() ->*const u8 {
    return b"fg" as *const u8;
 }
 #[no_mangle]
-pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
+pub extern "C" fn run(list : *mut WordList)->i32 {
   return r_fg_builtin(list);
 }
 */

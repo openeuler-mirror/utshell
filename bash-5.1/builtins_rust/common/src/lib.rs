@@ -24,7 +24,7 @@ pub struct word_list {
     pub next: *mut word_list,
     pub word: *mut WordDesc,
 }
-pub type WORD_LIST = word_list;
+pub type WordList = word_list;
 
 #[repr (C)]
 pub struct builtin{
@@ -110,7 +110,7 @@ pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 #[repr(C)]
@@ -124,7 +124,7 @@ pub struct case_com {
 #[repr(C)]
 pub struct PATTERN_LIST {
     next:* mut PATTERN_LIST,
-    patterns:* mut WORD_LIST,
+    patterns:* mut WordList,
     action:*mut COMMAND,
     flags:libc::c_int
 }
@@ -154,7 +154,7 @@ pub struct connection {
 pub struct simple_com {
     flags:libc::c_int,
     line:libc::c_int,
-    words:*mut WORD_LIST,
+    words:*mut WordList,
     redirects:*mut REDIRECT
 }
 #[repr(C)]
@@ -176,14 +176,14 @@ pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 #[repr(C)]
 pub struct arith_com {
     flags:libc::c_int,
     line:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
@@ -191,15 +191,15 @@ pub struct cond_com {
     flags:libc::c_int,
     line:libc::c_int,
     type_c:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 #[repr(C)]
 pub struct arith_for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    init:*mut WORD_LIST,
-    test:*mut WORD_LIST,
-    step:*mut WORD_LIST,
+    init:*mut WordList,
+    test:*mut WordList,
+    step:*mut WordList,
     action:*mut COMMAND
 }
 #[repr(C)]
@@ -594,7 +594,7 @@ pub enum JOB_STATE {
 }
 
 //type
-pub type sh_builtin_func_t = fn (*mut WORD_LIST)->i32;
+pub type sh_builtin_func_t = fn (*mut WordList)->i32;
 pub type QSFUNC = unsafe extern "C" fn(*const c_void,*const c_void)->i32;
 
 
@@ -630,7 +630,7 @@ extern "C"{
     static stdout:*mut FILE;
     static mut posparam_count:i32;
     static mut dollar_vars:[*mut c_char;10];
-    static mut rest_of_args:*mut WORD_LIST;
+    static mut rest_of_args:*mut WordList;
     static variable_context:i32;
     static running_trap:i32;
     static trap_saved_exit_value:i32;
@@ -649,20 +649,20 @@ extern "C"{
     fn executing_line_number()->i32;
     fn top_level_cleanup();
     fn jump_to_top_level(value:i32);
-    fn internal_getopt(list:*mut WORD_LIST,opts:*mut c_char)->i32;
+    fn internal_getopt(list:*mut WordList,opts:*mut c_char)->i32;
     fn reset_internal_getopt();
     fn termsig_handler(sig:i32);
     fn throw_to_top_level();
     fn fpurge(stream:*mut FILE) ->i32;
-    fn strvec_from_word_list(list:*mut WORD_LIST,alloc:i32,starting_index:i32,ip:*mut i32)->*mut *mut c_char;
+    fn strvec_from_word_list(list:*mut WordList,alloc:i32,starting_index:i32,ip:*mut i32)->*mut *mut c_char;
     fn xmalloc(n:size_t)->*mut c_void;
-    fn dispose_words(list:*mut WORD_LIST);
-    fn copy_word_list(list:*mut WORD_LIST)->*mut WORD_LIST;
+    fn dispose_words(list:*mut WordList);
+    fn copy_word_list(list:*mut WordList)->*mut WordList;
     fn list_length(list:*mut GENERIC_LIST)->i32;
     fn invalidate_cached_quoted_dollar_at();
-    fn set_builtin(list:*mut WORD_LIST)->i32;
+    fn set_builtin(list:*mut WordList)->i32;
     fn legal_number(string:*mut c_char,result:*mut c_long)->i32;
-    fn return_builtin(list:*mut WORD_LIST)->i32;
+    fn return_builtin(list:*mut WordList)->i32;
     fn getcwd(buf:*mut c_char,size:size_t)->*mut c_char;
     fn internal_error(format:*const c_char,...);
     fn strcasestr(s1:*const c_char,s2:*const c_char)->*mut c_char;
@@ -673,7 +673,7 @@ extern "C"{
     fn find_variable(_:*const c_char)->*mut SHELL_VAR;
     fn unbind_variable(name:*const c_char)->i32;
     fn signal_name(sig:i32)->*mut c_char;
-    fn kill_builtin(list:*mut WORD_LIST)->i32;
+    fn kill_builtin(list:*mut WordList)->i32;
     fn decode_signal(string:*mut c_char,flags:i32)->i32;
     fn builtin_help();
     
@@ -740,7 +740,7 @@ pub extern "C" fn r_builtin_usage(){
 /* Return if LIST is NULL else barf and jump to top_level.  Used by some
    builtins that do not accept arguments. */
 #[no_mangle]
-pub extern "C" fn r_no_args(list:*mut WORD_LIST){
+pub extern "C" fn r_no_args(list:*mut WordList){
     unsafe{
         if !list.is_null(){
             let c_str = CString::new("too many arguments").unwrap();
@@ -755,7 +755,7 @@ pub extern "C" fn r_no_args(list:*mut WORD_LIST){
 /* Check that no options were given to the currently-executing builtin,
    and return 0 if there were options. */
 #[no_mangle]
-pub extern "C" fn r_no_options(list:*mut WORD_LIST)->i32{
+pub extern "C" fn r_no_options(list:*mut WordList)->i32{
     let opt:i32;
 
     unsafe{
@@ -1009,11 +1009,11 @@ pub extern "C" fn r_sh_chkwrite(s:i32)->i32{
 /*                                                                  */
 /* **************************************************************** */
 
-/* Convert a WORD_LIST into a C-style argv.  Return the number of elements
+/* Convert a WordList into a C-style argv.  Return the number of elements
    in the list in *IP, if IP is non-null.  A convenience function for
    loadable builtins; also used by `test'. */
 #[no_mangle]
-pub extern "C" fn r_make_builtin_argv(list:*mut WORD_LIST,ip:*mut i32)->*mut *mut c_char{
+pub extern "C" fn r_make_builtin_argv(list:*mut WordList,ip:*mut i32)->*mut *mut c_char{
     let argv:*mut *mut c_char;
     unsafe{
         argv = strvec_from_word_list(list,0,1,ip);
@@ -1027,7 +1027,7 @@ pub extern "C" fn r_make_builtin_argv(list:*mut WORD_LIST,ip:*mut i32)->*mut *mu
    only discard the ones that are to be replaced.  Set POSPARAM_COUNT
    to the number of args assigned (length of LIST). */
 #[no_mangle]
-pub extern "C" fn r_remember_args(mut list:*mut WORD_LIST,destructive:i32){
+pub extern "C" fn r_remember_args(mut list:*mut WordList,destructive:i32){
     let mut i:i32;
     
     unsafe{
@@ -1065,7 +1065,7 @@ pub extern "C" fn r_remember_args(mut list:*mut WORD_LIST,destructive:i32){
  
 #[no_mangle]
 pub extern "C" fn r_shift_args(mut times:i32){
-    let mut temp:*mut WORD_LIST;
+    let mut temp:*mut WordList;
     // let mut count:i32;
 
     unsafe{
@@ -1157,7 +1157,7 @@ pub extern "C" fn r_set_dollar_vars_changed(){
    current command; if FATAL is 0, return an indication of an invalid
    number by setting *NUMOK == 0 and return -1. */
 #[no_mangle]
-pub extern "C" fn r_get_numeric_arg(mut list:*mut WORD_LIST,fatal:i32,count:*mut intmax_t)->i32{
+pub extern "C" fn r_get_numeric_arg(mut list:*mut WordList,fatal:i32,count:*mut intmax_t)->i32{
     let arg:*mut c_char;
     unsafe{
         if !count.is_null(){
@@ -1198,7 +1198,7 @@ pub extern "C" fn r_get_numeric_arg(mut list:*mut WORD_LIST,fatal:i32,count:*mut
 
 /* Get an eight-bit status value from LIST */
 #[no_mangle]
-pub extern "C" fn r_get_exitstat(mut list:*mut WORD_LIST)->i32{
+pub extern "C" fn r_get_exitstat(mut list:*mut WordList)->i32{
     let status:i32;
     let mut sval:intmax_t = 0;
     let arg:*mut c_char;
@@ -1394,7 +1394,7 @@ pub extern "C" fn r_get_job_by_name(name:*const c_char,flags:i32)->i32{
 
 /* Return the job spec found in LIST. */
 #[no_mangle]
-pub extern "C" fn r_get_job_spec(list:*mut WORD_LIST)->i32{
+pub extern "C" fn r_get_job_spec(list:*mut WordList)->i32{
     let mut word:*mut c_char;
     let job:i32;
     let mut jflags:i32;
@@ -1443,7 +1443,7 @@ pub extern "C" fn r_get_job_spec(list:*mut WORD_LIST)->i32{
 /*
  * NOTE:  `kill' calls this function with forcecols == 0
  */
-pub extern "C" fn r_display_signal_list(mut list:*mut WORD_LIST,forcecols:i32)->i32{
+pub extern "C" fn r_display_signal_list(mut list:*mut WordList,forcecols:i32)->i32{
     let mut i:i32;
     let mut column:i32;
     let mut name:*mut c_char;

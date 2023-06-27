@@ -1,12 +1,12 @@
 use libc::{c_int, c_char, c_long, PT_NULL};
-use rcommon::{r_no_args,WORD_LIST,r_builtin_usage};
+use rcommon::{r_no_args,WordList,r_builtin_usage};
 
 include!(concat!("intercdep.rs"));
 
 pub static mut old_cont: *mut SigHandler = PT_NULL as *mut SigHandler;
 
 #[no_mangle]
-pub extern "C" fn r_suspend_builtin(mut list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_suspend_builtin(mut list: *mut WordList) -> i32 {
     println!("r_suspend_builtin call");
 
     let mut opt: c_int;

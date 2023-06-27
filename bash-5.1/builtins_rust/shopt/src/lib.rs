@@ -1,6 +1,10 @@
+extern crate rcommon;
 use std::ffi::*;
 use rset::r_set_shellopts;
 use libc::*;
+use rcommon::WordDesc;
+use rcommon::WordList;
+
 /*
 /* First, the user-visible attributes */
 #define att_exported	0x0000001	/* export to environment */
@@ -168,20 +172,6 @@ extern "C" {
 }
 pub type SizeT = libc::c_ulong;
 pub type IntmaxT = libc::c_long;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct word_desc {
-    pub word: *mut libc::c_char,
-    pub flags: i32,
-}
-pub type WordDesc = word_desc;
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct word_list {
-    pub next: *mut word_list,
-    pub word: *mut WordDesc,
-}
-pub type WordList = word_list;
 
 pub type ArrayindT = intmax_t;
 #[derive(Copy, Clone)]
@@ -1273,7 +1263,7 @@ unsafe extern "C" fn set_shopt_o_options(
     list: *mut WordList,
     quiet: i32,
 ) -> i32 {
-    //let mut l: *mut WORD_LIST =0 as *mut WORD_LIST;
+    //let mut l: *mut WordList =0 as *mut WordList;
     let mut l: *mut WordList;
     let mut rval: i32 ;
     l = list;
@@ -1450,7 +1440,7 @@ pub unsafe extern "C" fn r_shopt_setopt(
     let  wl: *mut WordList;
     let  r: i32;
     wl = make_word_list(make_word(name), std::ptr::null_mut());
-    //wl = make_word_list(make_word(name), 0 as *mut libc::c_void as *mut WORD_LIST);
+    //wl = make_word_list(make_word(name), 0 as *mut libc::c_void as *mut WordList);
     r = toggle_shopts(mode, wl, 0);
     dispose_words(wl);
     return r;
@@ -1463,7 +1453,7 @@ pub unsafe extern "C" fn r_shopt_listopt(
     let mut i: i32 = 0;
     if name.is_null() {
         return r_list_shopts(
-           // 0 as *mut libc::c_void as *mut WORD_LIST,
+           // 0 as *mut libc::c_void as *mut WordList,
            std::ptr::null_mut(),
             if reusable != 0 { PFLAG } else { 0 },
         );

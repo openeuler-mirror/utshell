@@ -13,7 +13,7 @@
 //     pub next: *mut word_list,
 //     pub word: *mut WordDesc,
 // }
-// pub type WORD_LIST = word_list;
+// pub type WordList = word_list;
 
 pub const EXECUTION_SUCCESS : c_int = 0;
 pub const EXECUTION_FAILURE : c_int = 1;
@@ -32,7 +32,7 @@ pub type HIST_ENTRY = _hist_entry;
 
 extern "C" {
     pub fn reset_internal_getopt();
-    pub fn internal_getopt(list: *mut WORD_LIST, opts: *mut c_char) -> c_int;
+    pub fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> c_int;
     pub fn builtin_usage();
     pub fn builtin_error(format: *const c_char, ...);
 
@@ -53,9 +53,9 @@ extern "C" {
     pub fn read_history(filename: *const c_char) -> c_int;
     pub fn read_history_range(filename: *const c_char, from: c_int, to: c_int) -> c_int;
     pub fn strftime(s: *mut c_char, maxsize:size_t, format: *const c_char, timeptr: *const libc::tm) -> size_t;
-    pub fn get_numeric_arg(list: *mut WORD_LIST, fatal: c_int, count: *mut c_long) -> c_int;
+    pub fn get_numeric_arg(list: *mut WordList, fatal: c_int, count: *mut c_long) -> c_int;
 
-    pub fn string_list(list: *mut WORD_LIST) -> *mut c_char;
+    pub fn string_list(list: *mut WordList) -> *mut c_char;
 
     pub fn sh_chkwrite(s: c_int) -> c_int;
     pub fn get_string_value(var_name: *const c_char) -> *mut c_char;
@@ -69,7 +69,7 @@ extern "C" {
     pub fn sh_restricted(s: *mut c_char) -> c_void;
 
     pub static mut list_optarg : *mut libc::c_char;
-    pub static mut loptend : *mut WORD_LIST;
+    pub static mut loptend : *mut WordList;
 
     pub static mut remember_on_history: c_int;
     pub static mut hist_last_line_pushed: c_int;

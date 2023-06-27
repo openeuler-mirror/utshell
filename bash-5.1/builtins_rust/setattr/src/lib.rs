@@ -3,19 +3,19 @@ use libc::{c_int, c_uint, c_char, c_long, PT_NULL, c_void};
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
-pub extern "C" fn r_export_builtin(list: *mut WORD_LIST) -> c_int {
+pub extern "C" fn r_export_builtin(list: *mut WordList) -> c_int {
     println!("r_export_builtin call");
     return set_or_show_attributes(list, att_exported, 0);
 }
 
 #[no_mangle]
-pub extern "C" fn r_readonly_builtin(list: *mut WORD_LIST) -> c_int {
+pub extern "C" fn r_readonly_builtin(list: *mut WordList) -> c_int {
     println!("r_readonly_builtin call");
     return set_or_show_attributes(list, att_readonly, 0);
 }
 
 #[no_mangle]
-pub extern "C" fn set_or_show_attributes(mut list: *mut WORD_LIST, mut attribute: c_int, nodefs: c_int) -> c_int {
+pub extern "C" fn set_or_show_attributes(mut list: *mut WordList, mut attribute: c_int, nodefs: c_int) -> c_int {
     let mut assign_error: c_int = 0;
     let mut any_failed: c_int = 0;
     let mut undo: c_int = 0;
@@ -26,8 +26,8 @@ pub extern "C" fn set_or_show_attributes(mut list: *mut WORD_LIST, mut attribute
     let mut var: *mut SHELL_VAR;
     let mut assign: c_int;
     let mut aflags: c_int;
-    let mut tlist: *mut WORD_LIST;
-    let mut nlist: *mut WORD_LIST;
+    let mut tlist: *mut WordList;
+    let mut nlist: *mut WordList;
     let mut w: *mut WordDesc;
 unsafe {
     reset_internal_getopt();
@@ -109,7 +109,7 @@ unsafe {
 
                 if arrays_only != 0 || assoc_only != 0 {
                     tlist = (*list).next;
-                    (*list).next = PT_NULL as *mut WORD_LIST;
+                    (*list).next = PT_NULL as *mut WordList;
 
                     let mut optw: [u8;8] = [0;8];
                     optw[0] = b'-';
@@ -219,7 +219,7 @@ unsafe {
 }
 
 #[no_mangle]
-pub extern "C" fn show_all_var_attributes(list: *mut WORD_LIST, v: c_int, nodefs: c_int) -> c_int {
+pub extern "C" fn show_all_var_attributes(list: *mut WordList, v: c_int, nodefs: c_int) -> c_int {
     let mut i = 0;
     let mut any_failed = 0;
     let mut var: *mut SHELL_VAR;

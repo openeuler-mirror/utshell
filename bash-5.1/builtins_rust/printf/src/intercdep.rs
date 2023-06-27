@@ -12,7 +12,7 @@ pub struct word_list {
     pub next: *mut word_list,
     pub word: *mut WordDesc,
 }
-pub type WORD_LIST = word_list;
+pub type WordList = word_list;
 
 // pub type SHELL_VAR = variable;
 
@@ -70,7 +70,7 @@ pub const att_noassign: c_int = 0x0004000;
 
 extern "C" {
     pub fn reset_internal_getopt();
-    pub fn internal_getopt(list: *mut WORD_LIST, opts: *mut c_char) -> c_int;
+    pub fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> c_int;
     pub fn builtin_usage();
     pub fn builtin_error(format: *const c_char, ...);
     pub fn builtin_warning(format: *const c_char, ...);
@@ -105,7 +105,7 @@ extern "C" {
     pub fn sh_wrerror() -> c_void;
 
     pub static mut list_optarg : *mut libc::c_char;
-    pub static mut loptend : *mut WORD_LIST;
+    pub static mut loptend : *mut WordList;
     pub static mut assoc_expand_once: c_int;
 
     pub static terminating_signal : c_int;

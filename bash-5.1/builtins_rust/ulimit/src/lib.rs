@@ -23,8 +23,8 @@ pub struct WordDesc {
 
 #[repr (C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -409,7 +409,7 @@ extern "C" {
     fn xrealloc(_: *mut libc::c_void, _: u64) -> *mut libc::c_void;
     fn all_digits(_: *const i8) -> i32;
     fn sh_chkwrite(_: i32) -> i32;
-    fn internal_getopt(_: *mut WORD_LIST, _: *mut i8) -> i32;
+    fn internal_getopt(_: *mut WordList, _: *mut i8) -> i32;
     fn strerror(_: i32) -> *mut i8;
     fn sprintf(_: *mut i8, _: *const i8, _: ...) -> i32;
     fn string_to_rlimtype(_: *mut i8 ) -> rlim_t;
@@ -429,7 +429,7 @@ extern "C" {
     fn getmaxchild() -> i64;
     fn print_rlimtype(_: rlim_t, _: i32);
     
-    static mut loptend: *mut WORD_LIST;
+    static mut loptend: *mut WordList;
     static mut list_optarg: *mut i8;
     static mut posixly_correct:i32 ;
     static mut current_user: user_info;
@@ -455,7 +455,7 @@ fn _findlim (opt:i32) -> i32{
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WORD_LIST) -> i32{
+pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
 
     //println!("enter ulimit set  by huanhuan");
     let mut  s : *mut i8;

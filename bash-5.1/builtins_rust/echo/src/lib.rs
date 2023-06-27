@@ -14,8 +14,8 @@ pub struct WordDesc{
 
 #[repr (C)]
 // #[derive(Copy,Clone)]
-pub struct WORD_LIST{
-    pub next:*mut WORD_LIST,
+pub struct WordList{
+    pub next:*mut WordList,
     pub word:*mut WordDesc,
 }
 
@@ -92,7 +92,7 @@ pub static mut xpg_echo:i32 = 0;    // 也有可能是1
    echo syntax from Version 9 Unix systems. */
 
 #[no_mangle]
-pub extern "C" fn r_echo_builtin(mut list:*mut WORD_LIST)->i32{
+pub extern "C" fn r_echo_builtin(mut list:*mut WordList)->i32{
     println!("r_echo_builtin");
     let mut display_return:i32;
     let mut do_v9:i32;

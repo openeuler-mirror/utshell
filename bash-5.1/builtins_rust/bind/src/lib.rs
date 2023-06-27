@@ -17,8 +17,8 @@ pub struct WordDesc{
 
 #[repr (C)]
 // #[derive(Copy,Clone)]
-pub struct WORD_LIST{
-    pub next:*mut WORD_LIST,
+pub struct WordList{
+    pub next:*mut WordList,
     pub word:*mut WordDesc,
 }
 #[repr (C)]
@@ -137,7 +137,7 @@ extern "C"{
     static mut rl_outstream:*mut File;
     static stdout:*mut File;
     static list_optarg:*mut c_char;
-    static loptend:*mut WORD_LIST;
+    static loptend:*mut WordList;
 
     fn builtin_warning(format:*const c_char,...);
     fn initialize_readline();
@@ -145,7 +145,7 @@ extern "C"{
     fn run_unwind_frame(tag:*mut c_char);
     fn unwind_protect_mem(var:*mut c_char,size:i32);
     fn reset_internal_getopt();
-    fn internal_getopt(list:*mut WORD_LIST,opts:*mut c_char)->i32;
+    fn internal_getopt(list:*mut WordList,opts:*mut c_char)->i32;
     // fn builtin_usage();
     fn rl_set_keymap(map:Keymap);
     // fn sh_chkwrite(s:i32)->i32;
@@ -180,7 +180,7 @@ extern "C"{
 
 
 #[no_mangle]
-pub extern "C" fn r_bind_builtin(mut list:*mut WORD_LIST)->i32{
+pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
     let mut return_code:i32;
     let mut kmap:Keymap;
     let mut saved_keymap:Keymap;

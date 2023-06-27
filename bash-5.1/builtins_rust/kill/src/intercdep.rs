@@ -1,4 +1,4 @@
-use rcommon::{r_builtin_usage,r_sh_invalidsig,r_sh_badpid,r_sh_badjob,r_get_job_spec,r_display_signal_list,WORD_LIST,WordDesc};
+use rcommon::{r_builtin_usage,r_sh_invalidsig,r_sh_badpid,r_sh_badjob,r_get_job_spec,r_display_signal_list,WordList,WordDesc};
 // #[repr(C)]
 // #[derive(Copy, Clone)]
 // pub struct word_desc {
@@ -13,7 +13,7 @@ use rcommon::{r_builtin_usage,r_sh_invalidsig,r_sh_badpid,r_sh_badjob,r_get_job_
 //     pub next: *mut word_list,
 //     pub word: *mut WordDesc,
 // }
-// pub type WORD_LIST = word_list;
+// pub type WordList = word_list;
 
 pub const EXECUTION_SUCCESS : c_int = 0;
 pub const EXECUTION_FAILURE : c_int = 1;
@@ -89,7 +89,7 @@ pub type COMMAND = command;
 #[derive(Copy, Clone)]
 pub struct pattern_list {
     pub next: *mut pattern_list,
-    pub patterns: *mut WORD_LIST,
+    pub patterns: *mut WordList,
     pub action: *mut COMMAND,
     pub flags: c_int,
 }
@@ -111,7 +111,7 @@ pub struct for_com {
     pub flags: c_int,
     pub line: c_int,
     pub name: *mut WordDesc,
-    pub map_list: *mut WORD_LIST,
+    pub map_list: *mut WordList,
     pub action: *mut COMMAND,
 }
 
@@ -121,9 +121,9 @@ pub type FOR_COM = for_com;
 pub struct arith_for_com {
     pub flags: c_int,
     pub line: c_int,
-    pub init: *mut WORD_LIST,
-    pub test: *mut WORD_LIST,
-    pub step: *mut WORD_LIST,
+    pub init: *mut WordList,
+    pub test: *mut WordList,
+    pub step: *mut WordList,
     pub action: *mut COMMAND,
 }
 
@@ -134,7 +134,7 @@ pub struct select_com {
     pub flags: c_int,
     pub line: c_int,
     pub name: *mut WordDesc,
-    pub map_list: *mut WORD_LIST,
+    pub map_list: *mut WordList,
     pub action: *mut COMMAND,
 }
 
@@ -163,7 +163,7 @@ pub type WHILE_COM = while_com;
 pub struct arith_com {
     pub flags: c_int,
     pub line: c_int,
-    pub exp: *mut WORD_LIST,
+    pub exp: *mut WordList,
 }
 
 pub type ARITH_COM = arith_com;
@@ -184,7 +184,7 @@ pub type COND_COM = cond_com;
 pub struct simple_com {
     pub flags: c_int,
     pub line: c_int,
-    pub words: *mut WORD_LIST,
+    pub words: *mut WordList,
     pub redirects: *mut REDIRECT,
 }
 
@@ -294,16 +294,16 @@ pub struct jobstats {
 
 extern "C" {
     pub fn reset_internal_getopt();
-    pub fn internal_getopt(list: *mut WORD_LIST, opts: *mut c_char) -> c_int;
+    pub fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> c_int;
 
-    pub fn get_job_spec(list: *mut WORD_LIST) -> c_int;
+    pub fn get_job_spec(list: *mut WordList) -> c_int;
 
     // pub fn builtin_usage();
     pub fn builtin_help();
     pub fn builtin_error(format: *const c_char, ...);
 
     pub fn legal_number(string: *mut c_char, result: c_long) -> c_int;
-    pub fn display_signal_list (list: *mut WORD_LIST, forcecols: c_int) -> c_int;
+    pub fn display_signal_list (list: *mut WordList, forcecols: c_int) -> c_int;
     pub fn decode_signal (string: *mut c_char, flags: c_int) -> c_int;
 
     pub fn sh_needarg(s: *mut c_char) -> c_void;
@@ -314,7 +314,7 @@ extern "C" {
     pub fn kill_pid(pid: libc::pid_t, sig: c_int, group: c_int) -> c_int;
 
     pub static mut list_optarg : *mut libc::c_char;
-    pub static mut loptend : *mut WORD_LIST;
+    pub static mut loptend : *mut WordList;
 
     pub static posixly_correct: c_int;
 

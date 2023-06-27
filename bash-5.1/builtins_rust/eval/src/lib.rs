@@ -3,7 +3,7 @@ extern crate rcommon;
 
 use libc::{c_char,c_int};
 use std::ffi::{CString};
-use rcommon::{r_no_options,WORD_LIST};
+use rcommon::{r_no_options,WordList};
 
 // #[repr(C)]
 // #[derive(Copy, Clone)]
@@ -19,7 +19,7 @@ use rcommon::{r_no_options,WORD_LIST};
 //     pub next: *mut word_list,
 //     pub word: *mut WordDesc,
 // }
-// pub type WORD_LIST = word_list;
+// pub type WordList = word_list;
 
 #[macro_export]
 macro_rules! EX_USAGE {
@@ -40,15 +40,15 @@ macro_rules! EXECUTION_SUCCESS {
 
 
 extern "C" {
-    static loptend:*mut WORD_LIST;
+    static loptend:*mut WordList;
 
-    // fn no_options(list:*mut WORD_LIST)->i32;
+    // fn no_options(list:*mut WordList)->i32;
     fn evalstring(string:*mut c_char,from_file:*const c_char,flag:i32)->i32;
-    fn string_list(list:*mut WORD_LIST)->*mut c_char;
+    fn string_list(list:*mut WordList)->*mut c_char;
 }
 
 #[no_mangle]
-pub extern "C" fn r_eval_builtin(mut list:*mut WORD_LIST)->i32{
+pub extern "C" fn r_eval_builtin(mut list:*mut WordList)->i32{
     println!("r_eval_builtin");
     
     unsafe{

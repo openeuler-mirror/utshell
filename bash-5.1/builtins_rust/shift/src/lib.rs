@@ -6,7 +6,7 @@ include!(concat!("intercdep.rs"));
 pub static print_shift_error: c_int = 0;
 
 #[no_mangle]
-pub extern "C" fn r_shift_builtin(list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_shift_builtin(list: *mut WordList) -> i32 {
     println!("r_shift_builtin call");
 
 unsafe {

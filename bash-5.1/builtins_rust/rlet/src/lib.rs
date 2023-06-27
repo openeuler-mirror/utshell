@@ -5,7 +5,7 @@ use libc::{c_int, c_char, c_long, c_void};
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
-pub extern "C" fn r_let_builtin(mut list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_let_builtin(mut list: *mut WordList) -> i32 {
     println!("r_let_builtin call");
 unsafe {
     let mut ret: c_long = 0;
@@ -39,7 +39,7 @@ unsafe {
 }
 
 #[no_mangle]
-pub extern "C" fn r_exp_builtin(mut list: *mut WORD_LIST) -> i32 {
+pub extern "C" fn r_exp_builtin(mut list: *mut WordList) -> i32 {
     println!("r_exp_builtin call");
 
 unsafe {

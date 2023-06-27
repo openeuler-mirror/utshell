@@ -24,16 +24,16 @@ pub struct word_list {
     pub next: *mut word_list,
     pub word: *mut WordDesc,
 }
-pub type WORD_LIST = word_list;
+pub type WordList = word_list;
 
 #[no_mangle]
-pub extern "C" fn r_colon_builtin(ignore:WORD_LIST)->i32 {
+pub extern "C" fn r_colon_builtin(ignore:WordList)->i32 {
     println!("in r_colon_builtin");
     0
 }
 
 #[no_mangle]
-pub extern "C" fn r_false_builtin(ignore: WORD_LIST) -> i32 {
+pub extern "C" fn r_false_builtin(ignore: WordList) -> i32 {
     println!("in r_false_builtin");
     1
 }

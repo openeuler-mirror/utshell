@@ -13,8 +13,8 @@ pub struct WordDesc {
 
 #[repr (C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -55,7 +55,7 @@ macro_rules! CHECK_HELPOPT {
 }
 
 extern "C" {
-    fn get_numeric_arg(list :*mut WORD_LIST, i: i32 , intmax :*mut intmax_t) -> i32;
+    fn get_numeric_arg(list :*mut WordList, i: i32 , intmax :*mut intmax_t) -> i32;
     fn builtin_help ();
     fn get_loop_level() -> i32;
     fn set_continuing(cont : i32);
@@ -67,7 +67,7 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern "C" fn r_break_builtin(mut list :*mut WORD_LIST) -> i32 {
+pub extern "C" fn r_break_builtin(mut list :*mut WordList) -> i32 {
     //println!("enter r_break_builtin");
     let  mut  newbreak : intmax_t = 1 as intmax_t;
     unsafe {
@@ -93,7 +93,7 @@ pub extern "C" fn r_break_builtin(mut list :*mut WORD_LIST) -> i32 {
   return (EXECUTION_SUCCESS!());
 }
 
-fn continue_builtin (list :*mut WORD_LIST) -> i32 {
+fn continue_builtin (list :*mut WordList) -> i32 {
     let mut newcont : intmax_t = 0 as intmax_t;
     unsafe {
         CHECK_HELPOPT! (list);

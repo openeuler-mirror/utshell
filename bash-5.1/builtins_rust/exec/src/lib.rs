@@ -17,8 +17,8 @@ pub struct WordDesc{
 
 #[repr (C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST{
-    pub next:*mut WORD_LIST,
+pub struct WordList{
+    pub next:*mut WordList,
     pub word:*mut WordDesc,
 }
 
@@ -125,7 +125,7 @@ extern "C" {
     // static errno:i32;
     static mut exec_argv0:*mut c_char;
     static list_optarg:*mut c_char;
-    static loptend:*mut WORD_LIST;
+    static loptend:*mut WordList;
     static mut redirection_undo_list:*mut REDIRECT;
     static restricted:i32;
     // static comsub_ignore_return:i32;
@@ -139,11 +139,11 @@ extern "C" {
 
     fn xmalloc(n:size_t)->*mut c_void;
     fn reset_internal_getopt();
-    fn internal_getopt(list:*mut WORD_LIST,opts:*mut c_char)->i32;
+    fn internal_getopt(list:*mut WordList,opts:*mut c_char)->i32;
     fn builtin_usage();
     fn dispose_redirects(list:*mut REDIRECT);
     // fn sh_restricted(s:*mut c_char);
-    fn strvec_from_word_list(list:*mut WORD_LIST,alloc:i32,starting_index:i32,ip:*mut i32)->*mut *mut c_char;
+    fn strvec_from_word_list(list:*mut WordList,alloc:i32,starting_index:i32,ip:*mut i32)->*mut *mut c_char;
     fn absolute_program(string:*const c_char)->i32;
     fn search_for_command(pathname:*const c_char,flags:i32)->*mut c_char;
     fn file_isdir(f:*const c_char)->i32;
@@ -190,7 +190,7 @@ extern "C" fn r_mkdashname(name:*mut c_char)->*mut c_char{
 
 
 #[no_mangle]
-pub extern "C" fn r_exec_builtin(mut list:*mut WORD_LIST)->i32{
+pub extern "C" fn r_exec_builtin(mut list:*mut WordList)->i32{
     let mut exit_value ;
     let mut cleanenv:i32 = 0;
     let mut login:i32 = 0;

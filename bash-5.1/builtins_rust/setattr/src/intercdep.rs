@@ -13,7 +13,7 @@ pub struct word_list {
     pub next: *mut word_list,
     pub word: *mut WordDesc,
 }
-pub type WORD_LIST = word_list;
+pub type WordList = word_list;
 
 pub type __intmax_t = c_long;
 pub type intmax_t = __intmax_t;
@@ -104,7 +104,7 @@ pub type COMMAND = command;
 #[derive(Copy, Clone)]
 pub struct pattern_list {
     pub next: *mut pattern_list,
-    pub patterns: *mut WORD_LIST,
+    pub patterns: *mut WordList,
     pub action: *mut COMMAND,
     pub flags: c_int,
 }
@@ -126,7 +126,7 @@ pub struct for_com {
     pub flags: c_int,
     pub line: c_int,
     pub name: *mut WordDesc,
-    pub map_list: *mut WORD_LIST,
+    pub map_list: *mut WordList,
     pub action: *mut COMMAND,
 }
 
@@ -136,9 +136,9 @@ pub type FOR_COM = for_com;
 pub struct arith_for_com {
     pub flags: c_int,
     pub line: c_int,
-    pub init: *mut WORD_LIST,
-    pub test: *mut WORD_LIST,
-    pub step: *mut WORD_LIST,
+    pub init: *mut WordList,
+    pub test: *mut WordList,
+    pub step: *mut WordList,
     pub action: *mut COMMAND,
 }
 
@@ -149,7 +149,7 @@ pub struct select_com {
     pub flags: c_int,
     pub line: c_int,
     pub name: *mut WordDesc,
-    pub map_list: *mut WORD_LIST,
+    pub map_list: *mut WordList,
     pub action: *mut COMMAND,
 }
 
@@ -178,7 +178,7 @@ pub type WHILE_COM = while_com;
 pub struct arith_com {
     pub flags: c_int,
     pub line: c_int,
-    pub exp: *mut WORD_LIST,
+    pub exp: *mut WordList,
 }
 
 pub type ARITH_COM = arith_com;
@@ -199,7 +199,7 @@ pub type COND_COM = cond_com;
 pub struct simple_com {
     pub flags: c_int,
     pub line: c_int,
-    pub words: *mut WORD_LIST,
+    pub words: *mut WordList,
     pub redirects: *mut REDIRECT,
 }
 
@@ -308,7 +308,7 @@ pub struct jobstats {
 }
 
 pub type sh_builtin_func_t =
-    unsafe extern "C" fn(arg1: *mut WORD_LIST) -> c_int;
+    unsafe extern "C" fn(arg1: *mut WordList) -> c_int;
 
 pub const att_exported: c_int = 0x0000001;
 pub const att_readonly: c_int = 0x0000002;
@@ -341,7 +341,7 @@ pub const FUNC_MULTILINE: c_int = 0x01;
 pub const FUNC_EXTERNAL: c_int = 0x02;
 
 extern "C" {
-    pub static mut loptend : *mut WORD_LIST;
+    pub static mut loptend : *mut WordList;
     pub static mut array_needs_making: c_int;
     pub static mut this_shell_builtin: sh_builtin_func_t;
     pub static mut posixly_correct: c_int;
@@ -351,7 +351,7 @@ extern "C" {
     pub static mut nameref_invalid_value: SHELL_VAR;
 
     pub fn reset_internal_getopt();
-    pub fn internal_getopt(list: *mut WORD_LIST, opts: *mut c_char) -> c_int;
+    pub fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> c_int;
     pub fn builtin_usage();
     pub fn builtin_error(arg1: *const c_char, ...);
     pub fn find_function(name: *const c_char) -> *mut SHELL_VAR;
@@ -360,8 +360,8 @@ extern "C" {
     pub fn legal_identifier(arg1: *const c_char) -> c_int;
     pub fn sh_invalidid(s: *mut c_char);
     pub fn make_word(string: *const c_char) -> *mut WordDesc;
-    pub fn make_word_list(word: *mut WordDesc, wlink: *mut WORD_LIST) -> *mut WORD_LIST;
-    pub fn declare_builtin(list:* mut WORD_LIST) -> c_int;
+    pub fn make_word_list(word: *mut WordDesc, wlink: *mut WordList) -> *mut WordList;
+    pub fn declare_builtin(list:* mut WordList) -> c_int;
     pub fn dispose_word(w: *mut WordDesc);
     pub fn do_assignment_no_expand(string: *mut c_char) -> c_int;
 

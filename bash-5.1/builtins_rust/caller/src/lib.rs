@@ -21,7 +21,7 @@ pub struct word_list {
     pub next: *mut word_list,
     pub word: *mut WordDesc,
 }
-pub type WORD_LIST = word_list;
+pub type WordList = word_list;
 
 
 //enum
@@ -119,13 +119,13 @@ macro_rules! CHECK_HELPOPT {
 type arrayind_t = intmax_t;
 //extern c
 extern "C" {
-    static loptend:*mut WORD_LIST;
+    static loptend:*mut WordList;
 
     fn builtin_help();
     fn find_variable(str:*const c_char)->*mut SHELL_VAR;
     fn array_reference(a:*mut ARRAY,i:arrayind_t)->*mut c_char;
     fn builtin_usage();
-    fn no_options(list:*mut WORD_LIST)->i32;
+    fn no_options(list:*mut WordList)->i32;
     fn legal_number(string:*mut c_char,result:*mut c_long)->i32;
     fn sh_invalidnum(s:*mut c_char);
 }
@@ -154,7 +154,7 @@ unsafe fn array_empty(a:*mut ARRAY)->bool{
 
 //rust
 #[no_mangle]
-pub extern "C" fn r_caller_builtin(mut list:*mut WORD_LIST)->i32{
+pub extern "C" fn r_caller_builtin(mut list:*mut WordList)->i32{
     let funcname_v:*mut SHELL_VAR ;
     let bash_source_v:*mut SHELL_VAR;
     let bash_lineno_v:*mut SHELL_VAR;

@@ -13,7 +13,7 @@ pub struct word_list {
     pub next: *mut word_list,
     pub word: *mut WordDesc,
 }
-pub type WORD_LIST = word_list;
+pub type WordList = word_list;
 
 pub const EXECUTION_SUCCESS : c_int = 0;
 pub const EXECUTION_FAILURE : c_int = 1;
@@ -32,7 +32,7 @@ pub struct _hist_entry {
 pub type HIST_ENTRY = _hist_entry;
 
 extern "C" {
-    pub fn string_list(list: *mut WORD_LIST) -> *mut c_char;
+    pub fn string_list(list: *mut WordList) -> *mut c_char;
 
     pub fn builtin_usage();
     pub fn builtin_help();
@@ -41,6 +41,6 @@ extern "C" {
     pub fn evalexp (expr: *mut c_char, flags: c_int, validp: *mut c_int) -> c_long;
 
     pub static mut list_optarg : *mut libc::c_char;
-    pub static mut loptend : *mut WORD_LIST;
+    pub static mut loptend : *mut WordList;
 
 }

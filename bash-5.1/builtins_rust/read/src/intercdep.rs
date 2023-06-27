@@ -13,7 +13,7 @@ pub struct word_list {
     pub next: *mut word_list,
     pub word: *mut WordDesc,
 }
-pub type WORD_LIST = word_list;
+pub type WordList = word_list;
 
 use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable};
 //use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable,SHELL_VAR};
@@ -105,21 +105,21 @@ extern "C" {
     pub fn reset_internal_getopt();
 
     pub fn internal_getopt(
-        arg1: *mut WORD_LIST,
+        arg1: *mut WordList,
         arg2: *mut c_char,
     ) -> c_int;
 
-    pub fn list_string(s: *mut c_char, t: *mut c_char, i: c_int) -> *mut WORD_LIST;
+    pub fn list_string(s: *mut c_char, t: *mut c_char, i: c_int) -> *mut WordList;
     pub fn dequote_string(s: *mut c_char) -> *mut c_char;
-    pub fn dequote_list(s: *mut WORD_LIST) -> *mut WORD_LIST;
-    pub fn word_list_remove_quoted_nulls(s: *mut WORD_LIST);
-    pub fn dispose_words(s: *mut WORD_LIST);
-    pub fn assign_array_var_from_word_list(var: *mut SHELL_VAR, list: *mut WORD_LIST, flags: c_int) -> *mut SHELL_VAR;
+    pub fn dequote_list(s: *mut WordList) -> *mut WordList;
+    pub fn word_list_remove_quoted_nulls(s: *mut WordList);
+    pub fn dispose_words(s: *mut WordList);
+    pub fn assign_array_var_from_word_list(var: *mut SHELL_VAR, list: *mut WordList, flags: c_int) -> *mut SHELL_VAR;
 
     pub fn builtin_usage();
 
     pub static mut list_optarg : *mut libc::c_char;
-    pub static mut loptend : *mut WORD_LIST;
+    pub static mut loptend : *mut WordList;
     pub static mut assoc_expand_once : c_int;
     pub static mut interactive_shell : c_int;
 

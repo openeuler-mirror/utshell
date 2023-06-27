@@ -132,8 +132,8 @@ pub struct WordDesc {
 
 #[repr (C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -156,7 +156,7 @@ pub struct alias {
     flags:i8 
 }
 
-type sh_builtin_func_t = fn(WORD_LIST) -> i32;
+type sh_builtin_func_t = fn(WordList) -> i32;
 type alias_t = alias;
 
 pub fn math(op: fn(i32, i32) -> i32, a: i32, b: i32) -> i32{
@@ -225,7 +225,7 @@ pub struct for_com {
     flags: i32 ,
     line: i32 ,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -246,7 +246,7 @@ pub struct case_com {
 #[repr(C)]
 pub struct PATTERN_LIST {
     next:* mut PATTERN_LIST,
-    patterns:* mut WORD_LIST,
+    patterns:* mut WordList,
     action:*mut COMMAND,
     flags:i32
 }
@@ -277,7 +277,7 @@ pub struct connection {
 pub struct simple_com {
     flags: i32 ,
     line: i32 ,
-    words:*mut WORD_LIST,
+    words:*mut WordList,
     redirects:*mut REDIRECT
 }
 
@@ -302,7 +302,7 @@ pub struct select_com {
     flags: i32 ,
     line: i32 ,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -310,7 +310,7 @@ pub struct select_com {
 pub struct arith_com {
     flags: i32 ,
     line: i32 ,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
@@ -318,16 +318,16 @@ pub struct cond_com {
     flags: i32 ,
     line: i32 ,
     type_c: i32 ,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
 pub struct arith_for_com {
     flags: i32 ,
     line: i32 ,
-    init:*mut WORD_LIST,
-    test:*mut WORD_LIST,
-    step:*mut WORD_LIST,
+    init:*mut WordList,
+    test:*mut WordList,
+    step:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -379,7 +379,7 @@ macro_rules! ABSPATH {
 
 extern "C" {
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WORD_LIST , opts:*mut i8)->i32;
+    fn internal_getopt (list:*mut WordList , opts:*mut i8)->i32;
     fn builtin_usage();
     fn sh_notfound (name:* mut i8);
     fn sh_chkwrite (ret:i32)->i32;
@@ -400,7 +400,7 @@ extern "C" {
     fn sh_makepath(path:*const i8, path1:*const i8, i: i32) -> *mut i8;
     //fn find_alias(alia : *mut i8) -> *mut alias_t;
     static  expand_aliases : i32;
-    static mut loptend:*mut WORD_LIST;
+    static mut loptend:*mut WordList;
     static posixly_correct:i32;
 }
 
@@ -409,12 +409,12 @@ unsafe fn function_cell(var:*mut SHELL_VAR) ->* mut COMMAND {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn r_type_builtin (mut list :*mut WORD_LIST) -> i32 {
+pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
     //println!("rtype  is run");
     let  mut dflags : i32;
     let mut any_failed: i32 = 0 ;
     let  mut opt : i32  = 0;
-    let mut this : *mut WORD_LIST;
+    let mut this : *mut WordList;
 
     dflags = CDESC_SHORTDESC!();	/* default */
     unsafe{

@@ -12,8 +12,8 @@ pub struct WordDesc {
 
 #[repr(C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -59,14 +59,14 @@ pub struct for_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
     next:* mut PATTERN_LIST,
-    patterns:* mut WORD_LIST,
+    patterns:* mut WordList,
     action:*mut COMMAND,
     flags:libc::c_int
 }
@@ -106,7 +106,7 @@ pub struct connection {
 pub struct simple_com {
     flags:libc::c_int,
     line:libc::c_int,
-    words:*mut WORD_LIST,
+    words:*mut WordList,
     redirects:*mut REDIRECT
 }
 
@@ -131,7 +131,7 @@ pub struct select_com {
     flags:libc::c_int,
     line:libc::c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -139,7 +139,7 @@ pub struct select_com {
 pub struct arith_com {
     flags:libc::c_int,
     line:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
@@ -147,16 +147,16 @@ pub struct cond_com {
     flags:libc::c_int,
     line:libc::c_int,
     type_c:libc::c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
 pub struct arith_for_com {
     flags:libc::c_int,
     line:libc::c_int,
-    init:*mut WORD_LIST,
-    test:*mut WORD_LIST,
-    step:*mut WORD_LIST,
+    init:*mut WordList,
+    test:*mut WordList,
+    step:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -239,8 +239,8 @@ extern "C" {
     fn pop_args ();
     fn set_dollar_vars_unchanged ();
     fn invalidate_cached_quoted_dollar_at ();
-    fn no_options (list:* mut WORD_LIST)->i32;
-    static mut loptend:*mut WORD_LIST;
+    fn no_options (list:* mut WordList)->i32;
+    static mut loptend:*mut WordList;
     fn builtin_usage();
     fn builtin_error(err:*const c_char,...);
     static mut restricted:i32;
@@ -262,8 +262,8 @@ extern "C" {
     fn push_dollar_vars ();
     static shell_compatibility_level:i32;
     fn init_bash_argv();
-    fn remember_args (list:* mut WORD_LIST, argc:i32);
-    fn push_args (list:* mut WORD_LIST);
+    fn remember_args (list:* mut WordList, argc:i32);
+    fn push_args (list:* mut WordList);
     static mut function_trace_mode:i32; 
     fn signal_is_trapped (sig:i32)->i32;
     fn signal_is_ignored (sig:i32)->i32;
@@ -311,7 +311,7 @@ unsafe fn DEBUG_TRAP()->i32
 }
 
 #[no_mangle]
-pub extern "C" fn r_source_builtin (list:* mut WORD_LIST)->i32
+pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
 {
   let mut result:i32;
   let mut filename:*mut c_char;
@@ -322,7 +322,7 @@ pub extern "C" fn r_source_builtin (list:* mut WORD_LIST)->i32
     return EX_USAGE!();
   }
 
-  let mut  llist:* mut WORD_LIST = loptend.clone();
+  let mut  llist:* mut WordList = loptend.clone();
 
   if list == std::ptr::null_mut() {
     builtin_error (CString::new("filename argument required").unwrap().as_ptr());
@@ -411,6 +411,6 @@ pub extern "C" fn cmd_name() ->*const u8 {
 }
 
 #[no_mangle]
-pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
+pub extern "C" fn run(list : *mut WordList)->i32 {
   return r_source_builtin(list);
 }

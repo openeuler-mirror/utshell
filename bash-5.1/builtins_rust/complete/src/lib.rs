@@ -12,8 +12,8 @@ pub struct WordDesc {
 
 #[repr(C)]
 #[derive(Copy,Clone)]
-pub struct WORD_LIST {
-    next: *mut WORD_LIST,
+pub struct WordList {
+    next: *mut WordList,
     word: *mut WordDesc
 }
 
@@ -59,14 +59,14 @@ pub struct for_com {
     flags:c_int,
     line:c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
     next:* mut PATTERN_LIST,
-    patterns:* mut WORD_LIST,
+    patterns:* mut WordList,
     action:*mut COMMAND,
     flags:c_int
 }
@@ -106,7 +106,7 @@ pub struct connection {
 pub struct simple_com {
     flags:c_int,
     line:c_int,
-    words:*mut WORD_LIST,
+    words:*mut WordList,
     redirects:*mut REDIRECT
 }
 
@@ -131,7 +131,7 @@ pub struct select_com {
     flags:c_int,
     line:c_int,
     name:*mut WordDesc,
-    map_list:*mut WORD_LIST,
+    map_list:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -139,7 +139,7 @@ pub struct select_com {
 pub struct arith_com {
     flags:c_int,
     line:c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
@@ -147,16 +147,16 @@ pub struct cond_com {
     flags:c_int,
     line:c_int,
     type_c:c_int,
-    exp:*mut WORD_LIST
+    exp:*mut WordList
 }
 
 #[repr(C)]
 pub struct arith_for_com {
     flags:c_int,
     line:c_int,
-    init:*mut WORD_LIST,
-    test:*mut WORD_LIST,
-    step:*mut WORD_LIST,
+    init:*mut WordList,
+    test:*mut WordList,
+    step:*mut WordList,
     action:*mut COMMAND
 }
 
@@ -576,7 +576,7 @@ macro_rules! RL_STATE_COMPLETING {
 
 extern "C" {
   fn reset_internal_getopt();
-  fn internal_getopt (list:*mut WORD_LIST , opts:*mut c_char)->i32;
+  fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
   fn sh_invalidopt (value:* mut c_char);
   fn sh_invalidid (value:* mut c_char);
   fn sh_invalidoptname (value:* mut c_char);
@@ -585,10 +585,10 @@ extern "C" {
   fn builtin_error(err:*const c_char,...);
   fn check_identifier (w:* mut WordDesc, f:i32)->i32;
   static mut posixly_correct:i32;
-  static mut loptend:*mut WORD_LIST;
-  fn make_word_list (w:* mut WordDesc, list:*mut WORD_LIST)->*mut WORD_LIST;
+  static mut loptend:*mut WordList;
+  fn make_word_list (w:* mut WordDesc, list:*mut WordList)->*mut WordList;
   fn make_bare_word (w:*const c_char)->* mut WordDesc;
-  fn dispose_words (list:*mut WORD_LIST);
+  fn dispose_words (list:*mut WordList);
   fn progcomp_flush ();
   fn compspec_create ()->* mut COMPSPEC;
   fn progcomp_insert (str:* mut c_char, c:* mut COMPSPEC)->i32;
@@ -702,7 +702,7 @@ pub extern "C" fn r_find_compopt (name:* mut c_char)->i32
 }
 
 #[no_mangle]
-pub extern "C" fn r_build_actions (list : *mut WORD_LIST, flagp:* mut _optflags, actp:* mut c_ulong, optp:* mut c_ulong)->i32
+pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, actp:* mut c_ulong, optp:* mut c_ulong)->i32
 {
   let mut opt:i32;
   let mut ind:i32;
@@ -867,7 +867,7 @@ pub extern "C" fn r_build_actions (list : *mut WORD_LIST, flagp:* mut _optflags,
 
 /* Add, remove, and display completion specifiers. */
 #[no_mangle]
-pub extern "C" fn r_complete_builtin (listt: *mut WORD_LIST)->i32
+pub extern "C" fn r_complete_builtin (listt: *mut WordList)->i32
 {
   let mut opt_given:i32=0;
   let mut rval:i32;
@@ -875,11 +875,11 @@ pub extern "C" fn r_complete_builtin (listt: *mut WORD_LIST)->i32
   let mut copts:c_ulong=0;
   let mut cs:* mut COMPSPEC;
   let mut oflags:_optflags=_optflags{pflag:0,rflag:0,Dflag:0,Eflag:0,Iflag:0};
-  let mut l: *mut WORD_LIST;
-  let mut wl: *mut WORD_LIST;
+  let mut l: *mut WordList;
+  let mut wl: *mut WordList;
 
   unsafe {
-    let mut list:* mut WORD_LIST=listt.clone();
+    let mut list:* mut WordList=listt.clone();
     if list == std::ptr::null_mut() {
         r_print_all_completions ();
         return EXECUTION_SUCCESS!();
@@ -989,9 +989,9 @@ pub extern "C" fn r_complete_builtin (listt: *mut WORD_LIST)->i32
 }
 
 #[no_mangle]
-pub extern "C" fn r_remove_cmd_completions (list: * mut WORD_LIST)->i32
+pub extern "C" fn r_remove_cmd_completions (list: * mut WordList)->i32
 {
-  let mut l:* mut WORD_LIST;
+  let mut l:* mut WordList;
   let mut ret:i32;
   unsafe {
     ret = EXECUTION_SUCCESS!();
@@ -1143,9 +1143,9 @@ pub extern "C" fn r_print_all_completions ()
 }
 
 #[no_mangle]
-pub extern "C" fn r_print_cmd_completions (list:* mut WORD_LIST)->i32
+pub extern "C" fn r_print_cmd_completions (list:* mut WordList)->i32
 {
-  let mut l:* mut WORD_LIST;
+  let mut l:* mut WordList;
   let mut cs:* mut COMPSPEC;
   let mut ret:i32;
 
@@ -1167,7 +1167,7 @@ pub extern "C" fn r_print_cmd_completions (list:* mut WORD_LIST)->i32
 }
 
 #[no_mangle]
-pub extern "C" fn r_compgen_builtin (listt:* mut WORD_LIST)->i32
+pub extern "C" fn r_compgen_builtin (listt:* mut WordList)->i32
 {
   let mut rval:i32;
   let mut acts:c_ulong=0;
@@ -1179,7 +1179,7 @@ pub extern "C" fn r_compgen_builtin (listt:* mut WORD_LIST)->i32
   let old_line:* mut c_char;
   let old_ind:i32;
   unsafe {
-    let mut list:* mut WORD_LIST=listt.clone();
+    let mut list:* mut WordList=listt.clone();
     if list == std::ptr::null_mut() {
       return EXECUTION_SUCCESS!();
     }
@@ -1277,7 +1277,7 @@ pub extern "C" fn r_compgen_builtin (listt:* mut WORD_LIST)->i32
 }
 
 #[no_mangle]
-pub extern "C" fn r_compopt_builtin (listt:* mut WORD_LIST)->i32
+pub extern "C" fn r_compopt_builtin (listt:* mut WordList)->i32
 {
   let mut opts_on:i32=0;
   let mut opts_off:i32=0;
@@ -1288,13 +1288,13 @@ pub extern "C" fn r_compopt_builtin (listt:* mut WORD_LIST)->i32
   let mut Dflag:i32=0;
   let mut Eflag:i32=0;
   let mut Iflag:i32=0;
-  let mut l:* mut WORD_LIST;
-  let mut wl:* mut WORD_LIST;
+  let mut l:* mut WordList;
+  let mut wl:* mut WordList;
   let mut cs:* mut COMPSPEC;
 
   ret = EXECUTION_SUCCESS!();
   unsafe {
-    let mut list:* mut WORD_LIST=listt.clone();
+    let mut list:* mut WordList=listt.clone();
     reset_internal_getopt ();
 
     opt = internal_getopt (list, CString::new("+o:DEI").unwrap().as_ptr() as * mut c_char);
@@ -1409,6 +1409,6 @@ pub extern "C" fn cmd_name() ->*const u8 {
 }
 
 #[no_mangle]
-pub extern "C" fn run(list : *mut WORD_LIST)->i32 {
+pub extern "C" fn run(list : *mut WordList)->i32 {
   return r_complete_builtin(list);
 }

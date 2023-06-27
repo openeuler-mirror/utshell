@@ -18,8 +18,8 @@ pub struct WordDesc{
 
 #[repr (C)]
 // #[derive(Copy,Clone)]
-pub struct WORD_LIST{
-    pub next:*mut WORD_LIST,
+pub struct WordList{
+    pub next:*mut WordList,
     pub word:*mut WordDesc,
 }
 
@@ -123,11 +123,11 @@ macro_rules! FREE {
 
 // type i32 hash_efunc PARAMS(*mut BUCKET_CONTENTS);
 type hash_wfunc = extern  fn(*mut BUCKET_CONTENTS)->i32;
-type sh_builtin_func_t = extern fn (*mut WORD_LIST)->i32;
+type sh_builtin_func_t = extern fn (*mut WordList)->i32;
 
 //extern c
 extern "C"{
-    static loptend:*mut WORD_LIST;
+    static loptend:*mut WordList;
     static hashing_enabled:i32;
     static list_optarg:*mut c_char;
     static this_command_name:*mut c_char;
@@ -139,7 +139,7 @@ extern "C"{
 
     fn builtin_error(format:*const c_char,...);
     fn reset_internal_getopt();
-    fn internal_getopt(list:*mut WORD_LIST,opts:*mut c_char)->i32;
+    fn internal_getopt(list:*mut WordList,opts:*mut c_char)->i32;
     fn builtin_usage();
     fn sh_needarg(s:*mut c_char);
     fn phash_flush();
@@ -163,7 +163,7 @@ extern "C"{
    not empty, then rehash (or hash in the first place) the specified
    commands. */
 #[no_mangle]
-pub extern "C" fn r_hash_builtin(mut list:*mut WORD_LIST)->i32{
+pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
     println!("r_hash_builtin");
     let mut expunge_hash_table:i32;
     let mut list_targets:i32;
@@ -388,11 +388,11 @@ extern "C" fn r_print_hashed_commands(fmt:i32)->i32{
 }
 
 #[no_mangle]
-extern "C" fn r_list_hashed_filename_targets(list:*mut WORD_LIST,fmt:i32)->i32{
+extern "C" fn r_list_hashed_filename_targets(list:*mut WordList,fmt:i32)->i32{
     let mut all_found:i32;
     let multiple:i32;
     let mut target:*mut c_char;
-    let mut l:*mut WORD_LIST;
+    let mut l:*mut WordList;
 
     all_found = 1;
   

@@ -13,7 +13,7 @@
 //     pub next: *mut word_list,
 //     pub word: *mut WordDesc,
 // }
-// pub type WORD_LIST = word_list;
+// pub type WordList = word_list;
 
 pub const EXECUTION_SUCCESS : c_int = 0;
 pub const EXECUTION_FAILURE : c_int = 1;
@@ -41,12 +41,12 @@ extern "C" {
     pub fn builtin_help();
     pub fn builtin_error(format: *const c_char, ...);
 
-    pub fn get_exitstat(list: *mut WORD_LIST) -> c_int;
+    pub fn get_exitstat(list: *mut WordList) -> c_int;
 
     pub fn siglongjmp(__env: *mut __jmp_buf_tag, __val: c_int);
 
     pub static mut list_optarg : *mut libc::c_char;
-    pub static mut loptend : *mut WORD_LIST;
+    pub static mut loptend : *mut WordList;
 
     pub static mut return_catch_value: c_int;
     pub static return_catch_flag: c_int;

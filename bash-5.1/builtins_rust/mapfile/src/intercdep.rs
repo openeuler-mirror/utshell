@@ -13,7 +13,7 @@ pub struct word_list {
     pub next: *mut word_list,
     pub word: *mut WordDesc,
 }
-pub type WORD_LIST = word_list;
+pub type WordList = word_list;
 
 pub type arrayind_t = c_long;
 
@@ -83,7 +83,7 @@ pub const att_noassign: c_int = 0x0004000;
 
 extern "C" {
     pub fn reset_internal_getopt();
-    pub fn internal_getopt(list: *mut WORD_LIST, opts: *mut c_char) -> c_int;
+    pub fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> c_int;
     pub fn builtin_usage();
     pub fn builtin_error(format: *const c_char, ...);
 
@@ -109,6 +109,6 @@ extern "C" {
     pub fn zgetline (fd: c_int, lineptr: *mut *mut c_char, n: *mut size_t, delim: c_int, unbuffered_read: c_int) -> ssize_t;
 
     pub static mut list_optarg : *mut libc::c_char;
-    pub static mut loptend : *mut WORD_LIST;
+    pub static mut loptend : *mut WordList;
 
 }
