@@ -59,11 +59,15 @@ $END
 #include "../bashansi.h"
 #include "../shell.h"
 
+extern r_colon_builtin(ignore);
+extern r_false_builtin(ignore);
 /* Return a successful result. */
 int
 colon_builtin (ignore)
      WORD_LIST *ignore;
 {
+  printf("colon builtin\n");
+  r_colon_builtin(ignore);
   return (0);
 }
 
@@ -72,5 +76,7 @@ int
 false_builtin (ignore)
      WORD_LIST *ignore;
 {
+  printf("in false builtin\n");
+  r_false_builtin(ignore);
   return (1);
 }
