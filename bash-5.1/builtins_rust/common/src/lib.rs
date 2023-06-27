@@ -3,8 +3,6 @@ extern crate libc;
 use libc::{c_char,c_int, c_void, FILE, size_t, intmax_t,c_long, strcmp};
 use libc::{isdigit,strerror, __errno_location, fflush, ferror,clearerr, free,strcpy,strlen,strncmp,atoi,qsort};
 use std::ffi::{CStr, CString};
-use std::intrinsics::transmute;
-use std::io::stderr;
 use std::mem::size_of;
 use std::ptr::read_volatile;
 use nix::errno::errno;
@@ -12,19 +10,21 @@ use nix::errno::errno;
 
 pub static EXECUTION_SUCCESS:i32 = 0;
 //struct
-#[repr (C)]
-#[derive(Copy,Clone)]
-pub struct WORD_DESC{
-    pub word:*mut c_char,
-    pub flags:c_int,
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct word_desc {
+    pub word: *mut c_char,
+    pub flags: c_int,
 }
+pub type WORD_DESC = word_desc;
 
-#[repr (C)]
-#[derive(Copy,Clone)]
-pub struct WORD_LIST{
-    pub next:*mut WORD_LIST,
-    pub word:*mut WORD_DESC,
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct word_list {
+    pub next: *mut word_list,
+    pub word: *mut WORD_DESC,
 }
+pub type WORD_LIST = word_list;
 
 #[repr (C)]
 pub struct builtin{
@@ -267,17 +267,17 @@ pub struct jobstats {
 
 #[repr(C)]
 pub struct SHELL_VAR {
-  name:*mut c_char,         /* Symbol that the user types. */
-  value:*mut c_char,            /* Value that is returned. */
-  exportstr:*mut c_char,    /* String for the environment. */
-  dynamic_value:*mut fn(v:* mut SHELL_VAR)->*mut SHELL_VAR, /* Function called to return a `dynamic'
+  pub name:*mut c_char,         /* Symbol that the user types. */
+  pub value:*mut c_char,            /* Value that is returned. */
+  pub exportstr:*mut c_char,    /* String for the environment. */
+  pub dynamic_value:*mut fn(v:* mut SHELL_VAR)->*mut SHELL_VAR, /* Function called to return a `dynamic'
                    value for a variable, like $SECONDS
                    or $RANDOM. */
-  assign_func:* mut fn(v:* mut SHELL_VAR,str1:* mut c_char,t:c_long,str2:* mut c_char)->*mut SHELL_VAR, /* Function called when this `special
+  pub assign_func:* mut fn(v:* mut SHELL_VAR,str1:* mut c_char,t:c_long,str2:* mut c_char)->*mut SHELL_VAR, /* Function called when this `special
                    variable' is assigned a value in
                    bind_variable. */
-  attributes:i32,       /* export, readonly, array, invisible... */
-  context:i32           /* Which context this variable belongs to. */
+  pub attributes:i32,       /* export, readonly, array, invisible... */
+  pub context:i32           /* Which context this variable belongs to. */
 }
 
 //macro
@@ -614,13 +614,12 @@ extern "C"{
     static mut posparam_count:i32;
     static mut dollar_vars:[*mut c_char;10];
     static mut rest_of_args:*mut WORD_LIST;
-    static test_of_args:*mut WORD_LIST;
     static variable_context:i32;
     static running_trap:i32;
     static trap_saved_exit_value:i32;
     static last_command_exit_value:i32;
     static no_symbolic_links:i32;
-    static bsah_getcwd_errstr:*const c_char;
+    // static bsah_getcwd_errstr:*const c_char;
     static js:jobstats;
     static jobs:*mut*mut JOB;
     static assoc_expand_once:i32;
@@ -638,7 +637,7 @@ extern "C"{
     fn termsig_handler(sig:i32);
     fn throw_to_top_level();
     fn fpurge(stream:*mut FILE) ->i32;
-    fn strvec_from_word_list(list:WORD_LIST,alloc:i32,starting_index:i32,ip:*mut i32)->*mut *mut c_char;
+    fn strvec_from_word_list(list:*mut WORD_LIST,alloc:i32,starting_index:i32,ip:*mut i32)->*mut *mut c_char;
     fn xmalloc(n:size_t)->*mut c_void;
     fn dispose_words(list:*mut WORD_LIST);
     fn copy_word_list(list:*mut WORD_LIST)->*mut WORD_LIST;
@@ -689,7 +688,7 @@ pub static mut this_shell_builtin:*mut sh_builtin_func_t = std::ptr::null_mut();
 
 #[no_mangle]
 fn r_builitin_error_prolog(){
-    let mut name:*mut c_char;
+    let name:*mut c_char;
 
     unsafe{
         name = get_name_for_error();
@@ -726,10 +725,13 @@ pub extern "C" fn r_builtin_usage(){
 #[no_mangle]
 pub extern "C" fn r_no_args(list:*mut WORD_LIST){
     unsafe{
-        let c_str = CString::new("too many arguments").unwrap().as_ptr();
-        builtin_error(c_str);
-        top_level_cleanup();
-        jump_to_top_level(DISCARD!());
+        if !list.is_null(){
+            let c_str = CString::new("too many arguments").unwrap();
+            let c_ptr = c_str.as_ptr();
+            builtin_error(c_ptr);
+            top_level_cleanup();
+            jump_to_top_level(DISCARD!());
+        } 
     }
 }
 
@@ -737,12 +739,13 @@ pub extern "C" fn r_no_args(list:*mut WORD_LIST){
    and return 0 if there were options. */
 #[no_mangle]
 pub extern "C" fn r_no_options(list:*mut WORD_LIST)->i32{
-    let mut opt:i32;
+    let opt:i32;
 
     unsafe{
         reset_internal_getopt();
-
-        opt = internal_getopt(list,std::ptr::null_mut());
+        let c_str = CString::new("").unwrap();
+        let c_ptr = c_str.as_ptr(); 
+        opt = internal_getopt(list,c_ptr as *mut i8);
         if opt != -1{
             if opt == GETOPT_HELP!(){
                 builtin_help();
@@ -758,16 +761,18 @@ pub extern "C" fn r_no_options(list:*mut WORD_LIST)->i32{
 #[no_mangle]
 pub extern "C" fn r_sh_needarg(s:*mut c_char){
     unsafe{
-        let c_str = CString::new("%s: option requires an argument").unwrap().as_ptr();
-        builtin_error(c_str,s);
+        let c_str = CString::new("%s: option requires an argument").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,s);
     }
 }
 
 #[no_mangle]
 pub extern "C" fn r_sh_neednumarg(s:*mut c_char){
     unsafe{
-        let c_str = CString::new("%s: numeric argument requited").unwrap().as_ptr();
-        builtin_error(c_str,s);
+        let c_str = CString::new("%s: numeric argument requited").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,s);
     }
 }
 
@@ -775,8 +780,9 @@ pub extern "C" fn r_sh_neednumarg(s:*mut c_char){
 #[no_mangle]
 pub extern "C" fn r_sh_notfound(s:*mut c_char){
     unsafe{
-        let c_str = CString::new("%s: not found").unwrap().as_ptr();
-        builtin_error(c_str,s);
+        let c_str = CString::new("%s: not found").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,s);
     }
 
 }
@@ -784,70 +790,82 @@ pub extern "C" fn r_sh_notfound(s:*mut c_char){
 /* Function called when one of the builtin commands detects an invalid
    option. */
 #[no_mangle]
-pub extern "C" fn r_sh_invalidop(s:*mut c_char){
+pub extern "C" fn r_sh_invalidopt(s:*mut c_char){
     unsafe{
-        let c_str = CString::new("%s: invalid option").unwrap().as_ptr();
-        builtin_error(c_str,s);
+        let c_str = CString::new("%s: invalid option").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,s);
     }
 }
 
 #[no_mangle]
 pub extern "C" fn r_sh_invalidoptname(s:*mut c_char){
     unsafe{
-        let c_str = CString::new("%s: invalid option name").unwrap().as_ptr();
-        builtin_error(c_str,s);
+        let c_str = CString::new("%s: invalid option name").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,s);
     }
 }
 
 #[no_mangle]
 pub extern "C" fn r_sh_invalidid(s:*mut c_char){
     unsafe{
-        let c_str = CString::new("`%s': not a valid identifier").unwrap().as_ptr();
-        builtin_error(c_str,s);
+        let c_str = CString::new("`%s': not a valid identifier").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,s);
     }
 }
 
 #[no_mangle]
 pub extern "C" fn r_sh_invalidnum(s:*mut c_char){
     unsafe{
-        let msg:*mut c_char;
+        // let msg:*mut c_char;
+        let mut msg = String::new();
+        let mut mag_ptr:*const c_char = std::ptr::null_mut();
 
         if *s == b'0' as i8 && isdigit(*s.offset(1) as c_int) != 0{
-            msg = CString::new("invalid octal number").unwrap().as_ptr() as *mut c_char;
+            msg.push_str("invalid octal number");
+            mag_ptr = msg.as_ptr() as *mut c_char;
         }
         else if *s == b'0' as i8 && *s.offset(1) == b'x' as i8{
-            msg = CString::new("invalid hex number").unwrap().as_ptr() as *mut c_char;
+            msg.push_str("invalid hex number");
+            mag_ptr = msg.as_ptr() as *mut c_char;
         }
         else {
-            msg = CString::new("invalid number").unwrap().as_ptr() as *mut c_char;
+            msg.push_str("invalid number");
+            mag_ptr = msg.as_ptr() as *mut c_char;
         }
 
-        let c_str = CString::new("%s: %s").unwrap().as_ptr();
-        builtin_error(c_str,s,msg);
+        let c_str = CString::new("%s: %s").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,s,mag_ptr);
     }
 }
 
 #[no_mangle]
 pub extern "C" fn r_sh_invalidsig(s:*mut c_char){
     unsafe{
-        let c_str = CString::new("%s: invalid signal specification").unwrap().as_ptr();
-        builtin_error(c_str,s);
+        let c_str = CString::new("%s: invalid signal specification").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,s);
     }
 }
 
 #[no_mangle]
 pub extern "C" fn r_sh_badpid(s:*mut c_char){
     unsafe{
-        let c_str = CString::new("`%s': not a pid or valid job spec").unwrap().as_ptr();
-        builtin_error(c_str,s);
+        let c_str = CString::new("`%s': not a pid or valid job spec").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,s);
     }
 }
 
 #[no_mangle]
 pub extern "C" fn r_sh_readonly(s:*mut c_char){
     unsafe{
-        let c_str = CString::new("%s: readonly variable").unwrap().as_ptr();
-        builtin_error(c_str,s);
+        let c_str = CString::new("%s: readonly variable").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,s);
     }
 }
 
@@ -855,19 +873,23 @@ pub extern "C" fn r_sh_readonly(s:*mut c_char){
 pub extern "C" fn r_sh_erange(s:*mut c_char,desc:*mut c_char){
     unsafe{
         if !s.is_null(){
-            let c_str = CString::new("%s: %s out of range").unwrap().as_ptr();
+            let c_str = CString::new("%s: %s out of range").unwrap();
+            let c_ptr = c_str.as_ptr();
             if !desc.is_null(){
-                builtin_error(c_str, s,desc);
+                builtin_error(c_ptr, s,desc);
             }
             else{
-                let desc_str = CString::new("argument").unwrap().as_ptr();
-                builtin_error(c_str, s,desc_str);
+                let desc_str = CString::new("argument").unwrap();
+                let desc_ptr = desc_str.as_ptr();
+                builtin_error(c_ptr, s,desc_ptr);
             }
         }
         else{
-            let c_str = CString::new("%s out of range").unwrap().as_ptr();
-            let desc_str = CString::new("argument").unwrap().as_ptr();
-            builtin_error(c_str,desc_str)
+            let c_str = CString::new("%s out of range").unwrap();
+            let c_ptr = c_str.as_ptr();
+            let desc_str = CString::new("argument").unwrap();
+            let desc_ptr = desc_str.as_ptr();
+            builtin_error(c_ptr,desc_ptr)
         }
     }
 }
@@ -875,8 +897,9 @@ pub extern "C" fn r_sh_erange(s:*mut c_char,desc:*mut c_char){
 #[no_mangle]
 pub extern "C" fn r_sh_badjob(s:*mut c_char){
     unsafe{
-        let c_str = CString::new("%s: no job control").unwrap().as_ptr();
-        builtin_error(c_str,s);
+        let c_str = CString::new("%s: no job control").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,s);
     }
 }
 
@@ -884,12 +907,14 @@ pub extern "C" fn r_sh_badjob(s:*mut c_char){
 pub extern "C" fn r_sh_nojobs(s:*mut c_char){
     unsafe{
         if !s.is_null(){
-            let c_str = CString::new("%s: no job control").unwrap().as_ptr();
-            builtin_error(c_str,s);
+            let c_str = CString::new("%s: no job control").unwrap();
+            let c_ptr = c_str.as_ptr();
+            builtin_error(c_ptr,s);
         }
         else{
-            let c_str = CString::new("no job control").unwrap().as_ptr();
-            builtin_error(c_str);
+            let c_str = CString::new("no job control").unwrap();
+            let c_ptr = c_str.as_ptr();
+            builtin_error(c_ptr);
         }
     }
 }
@@ -898,12 +923,14 @@ pub extern "C" fn r_sh_nojobs(s:*mut c_char){
 pub extern "C" fn r_sh_restricted(s:*mut c_char){
     unsafe{
         if !s.is_null(){
-            let c_str = CString::new("%s: restricted").unwrap().as_ptr();
-            builtin_error(c_str,s);
+            let c_str = CString::new("%s: restricted").unwrap();
+            let c_ptr = c_str.as_ptr();
+            builtin_error(c_ptr,s);
         }
         else{
-            let c_str = CString::new("restricted").unwrap().as_ptr();
-            builtin_error(c_str);
+            let c_str = CString::new("restricted").unwrap();
+            let c_ptr = c_str.as_ptr();
+            builtin_error(c_ptr);
         }
     }
 }
@@ -911,16 +938,18 @@ pub extern "C" fn r_sh_restricted(s:*mut c_char){
 #[no_mangle]
 pub extern "C" fn r_sh_notbuiltin(s:*mut c_char){
     unsafe{
-        let c_str = CString::new("%s: not a shell builtin").unwrap().as_ptr();
-        builtin_error(c_str,s);
+        let c_str = CString::new("%s: not a shell builtin").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,s);
     }
 }
 
 #[no_mangle]
 pub extern "C" fn r_sh_wrerror(){
     unsafe{
-        let c_str = CString::new("write error: %s").unwrap().as_ptr();
-        builtin_error(c_str,strerror(*__errno_location()));
+        let c_str = CString::new("write error: %s").unwrap();
+        let c_ptr = c_str.as_ptr();
+        builtin_error(c_ptr,strerror(*__errno_location()));
     }
 }
 
@@ -967,7 +996,7 @@ pub extern "C" fn r_sh_chkwrite(s:i32)->i32{
    in the list in *IP, if IP is non-null.  A convenience function for
    loadable builtins; also used by `test'. */
 #[no_mangle]
-pub extern "C" fn r_make_builtin_argv(list:WORD_LIST,ip:*mut i32)->*mut *mut c_char{
+pub extern "C" fn r_make_builtin_argv(list:*mut WORD_LIST,ip:*mut i32)->*mut *mut c_char{
     let argv:*mut *mut c_char;
     unsafe{
         argv = strvec_from_word_list(list,0,1,ip);
@@ -1153,9 +1182,9 @@ pub extern "C" fn r_get_numeric_arg(mut list:*mut WORD_LIST,fatal:i32,count:*mut
 /* Get an eight-bit status value from LIST */
 #[no_mangle]
 pub extern "C" fn r_get_exitstat(mut list:*mut WORD_LIST)->i32{
-    let mut status:i32;
+    let status:i32;
     let mut sval:intmax_t = 0;
-    let mut arg:*mut c_char;
+    let arg:*mut c_char;
 
     unsafe{
         if !list.is_null() && !(*list).word.is_null() && ISOPTION((*(*list).word).word,b'-' as i8){
@@ -1279,7 +1308,7 @@ pub extern "C" fn r_set_working_dierctory(name:*mut c_char){
 #[no_mangle]
 pub extern "C" fn r_get_job_by_name(name:*const c_char,flags:i32)->i32{
     let mut i:i32;
-    let mut wl:i32;
+    let wl:i32;
     let mut cl:i32;
     let mut match_0:i32;
     let mut job:i32;
@@ -1350,7 +1379,7 @@ pub extern "C" fn r_get_job_by_name(name:*const c_char,flags:i32)->i32{
 #[no_mangle]
 pub extern "C" fn r_get_job_spec(list:*mut WORD_LIST)->i32{
     let mut word:*mut c_char;
-    let mut job:i32;
+    let job:i32;
     let mut jflags:i32;
 
     unsafe{
@@ -1580,6 +1609,7 @@ extern "C" fn r_builtin_address_internal(name:*mut c_char,disabled_okay:i32)->*m
 /* Return the pointer to the function implementing builtin command NAME. */
 pub extern "C" fn r_find_shell_builtin(name:*mut c_char)->*mut sh_builtin_func_t{
     unsafe{
+        // println!("222");
         current_builtin = r_builtin_address_internal(name,0);
         if !current_builtin.is_null(){
             return (*current_builtin).function;
@@ -1662,11 +1692,11 @@ pub extern "C" fn r_initialize_shell_builtins(){
 /*                                                                  */
 /* **************************************************************** */
 #[no_mangle]
-pub extern "C" fn r_builtin_bind_variablel(name:*mut c_char,value:*mut c_char,flags:i32)->*mut SHELL_VAR{
+pub extern "C" fn r_builtin_bind_variable(name:*mut c_char,value:*mut c_char,flags:i32)->*mut SHELL_VAR{
     let mut v:*mut SHELL_VAR;
 
     unsafe{
-        let mut opt:i32;
+        let opt:i32;
         if assoc_expand_once != 0{
             opt = VA_NOEXPAND!() | VA_ONEWORD!();
         }
@@ -1700,7 +1730,7 @@ pub extern "C" fn r_builtin_bind_variablel(name:*mut c_char,value:*mut c_char,fl
 /* Like check_unbind_variable, but for use by builtins (only matters for
    error messages). */
 pub extern "C" fn r_builtin_unbind_variable(vname:*const c_char)->i32{
-    let mut v:*mut SHELL_VAR;
+    let v:*mut SHELL_VAR;
 
     unsafe{
         v = find_variable(vname);
@@ -1725,9 +1755,17 @@ pub extern "C" fn r_builtin_unbind_variable(vname:*const c_char)->i32{
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     #[test]
     fn it_works() {
         let result = 2 + 2;
         assert_eq!(result, 4);
     }
+
+    // #[test]
+    // fn no_args(){
+    //     let c_str = CString::new("123");
+    //     let c_ptr = c_str.as_
+    //     r_sh_invalidnum("12");
+    // }
 }

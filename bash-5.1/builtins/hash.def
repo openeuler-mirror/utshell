@@ -79,7 +79,8 @@ static int list_hashed_filename_targets PARAMS((WORD_LIST *, int));
 /* Print statistics on the current state of hashed commands.  If LIST is
    not empty, then rehash (or hash in the first place) the specified
    commands. */
-int r_hash_builtin (WORD_LIST *list);
+extern int r_hash_builtin(WORD_LIST *);
+
 int
 hash_builtin (list)
      WORD_LIST *list;
@@ -212,25 +213,6 @@ add_hashed_command (w, quiet)
      char *w;
      int quiet;
 {
-  int rv;
-  char *full_path;
-
-  rv = 0;
-  if (find_function (w) == 0 && find_shell_builtin (w) == 0)
-    {
-      phash_remove (w);
-      full_path = find_user_command (w);
-      if (full_path && executable_file (full_path))
-	phash_insert (w, full_path, dot_found_in_search, 0);
-      else
-	{
-	  if (quiet == 0)
-	    sh_notfound (w);
-	  rv++;
-	}
-      FREE (full_path);
-    }
-  return (rv);
 }
 
 /* Print information about current hashed info. */
@@ -238,37 +220,18 @@ static int
 print_hash_info (item)
      BUCKET_CONTENTS *item;
 {
-  printf ("%4d\t%s\n", item->times_found, pathdata(item)->path);
-  return 0;
 }
 
 static int
 print_portable_hash_info (item)
      BUCKET_CONTENTS *item;
 {
-  char *fp, *fn;
-
-  fp = printable_filename (pathdata(item)->path, 1);
-  fn = printable_filename (item->key, 1);
-  printf ("builtin hash -p %s %s\n", fp, fn);
-  if (fp != pathdata(item)->path)
-    free (fp);
-  if (fn != item->key)
-    free (fn);
-  return 0;
 }
 
 static int
 print_hashed_commands (fmt)
      int fmt;
 {
-  if (hashed_filenames == 0 || HASH_ENTRIES (hashed_filenames) == 0)
-    return (0);
-
-  if (fmt == 0)
-    printf (_("hits\tcommand\n"));
-  hash_walk (hashed_filenames, fmt ? print_portable_hash_info : print_hash_info);
-  return (1);
 }
 
 static int
@@ -276,32 +239,4 @@ list_hashed_filename_targets (list, fmt)
      WORD_LIST *list;
      int fmt;
 {
-  int all_found, multiple;
-  char *target;
-  WORD_LIST *l;
-
-  all_found = 1;
-  multiple = list->next != 0;
-
-  for (l = list; l; l = l->next)
-    {
-      target = phash_search (l->word->word);
-      if (target == 0)
-	{
-	  all_found = 0;
-	  sh_notfound (l->word->word);
-	  continue;
-	}
-      if (fmt)
-	printf ("builtin hash -p %s %s\n", target, l->word->word);
-      else
-	{
-	  if (multiple)
-	    printf ("%s\t", l->word->word);
-	  printf ("%s\n", target);
-	}
-      free (target);
-    }
-
-  return (all_found ? EXECUTION_SUCCESS : EXECUTION_FAILURE);
-}
+  }

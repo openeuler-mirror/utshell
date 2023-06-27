@@ -1,6 +1,7 @@
 use std::{ffi::CString};
 
 use libc::{c_int, c_char, c_void, PT_NULL};
+use rcommon::{r_builtin_usage,r_display_signal_list,WORD_LIST,r_sh_invalidsig,r_sh_chkwrite};
 
 include!(concat!("intercdep.rs"));
 
@@ -23,7 +24,7 @@ unsafe {
             'l' => list_signal_names += 1,
             'p' => display += 1,
             _ => {
-                builtin_usage ();
+                r_builtin_usage ();
                 return EX_USAGE;
             }
         }
@@ -34,11 +35,11 @@ unsafe {
     opt = DSIG_NOCASE | DSIG_SIGPREFIX;
 
     if list_signal_names != 0 {
-        return sh_chkwrite(display_signal_list(PT_NULL as *mut WORD_LIST, 1));
+        return r_sh_chkwrite(r_display_signal_list(PT_NULL as *mut WORD_LIST, 1));
     } else if display != 0 || list.is_null() {
         initialize_terminating_signals();
         get_all_original_signals();
-        return sh_chkwrite(display_traps(list, (display != 0 && posixly_correct != 0) as c_int));
+        return r_sh_chkwrite(display_traps(list, (display != 0 && posixly_correct != 0) as c_int));
     } else {
         let mut operation = SET;
         let first_arg = (*(*list).word).word;
@@ -53,7 +54,7 @@ unsafe {
         } else {
             list = (*list).next;
             if list.is_null() {
-                builtin_usage();
+                r_builtin_usage();
                 return EX_USAGE;
             } else if *first_arg == b'\0' as c_char {
                 operation = IGNORE;
@@ -71,7 +72,7 @@ unsafe {
         while !list.is_null() {
             sig = decode_signal((*(*list).word).word, opt);
             if sig == NO_SIG {
-                sh_invalidsig((*(*list).word).word);
+                r_sh_invalidsig((*(*list).word).word);
                 result = EXECUTION_FAILURE;
             } else {
                 match operation {
@@ -165,7 +166,7 @@ unsafe fn display_traps(mut list: *mut WORD_LIST, show_all: c_int) -> c_int
     while !list.is_null() {
         i = decode_signal((*(*list).word).word, DSIG_NOCASE | DSIG_SIGPREFIX);
         if i == NO_SIG {
-            sh_invalidsig((*(*list).word).word);
+            r_sh_invalidsig((*(*list).word).word);
             result = EXECUTION_FAILURE;
         } else {
             showtrap(i, show_all);

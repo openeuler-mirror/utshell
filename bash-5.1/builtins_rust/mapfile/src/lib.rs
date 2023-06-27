@@ -1,6 +1,7 @@
 use std::{ffi::CString};
 
 use libc::{size_t, ssize_t, c_int, c_uint, c_char, c_uchar, c_long, c_void, PT_NULL};
+use rcommon::{r_builtin_usage,r_sh_invalidid};
 
 include!(concat!("intercdep.rs"));
 
@@ -93,7 +94,7 @@ unsafe {
                 }
             }
             _ => {
-            builtin_usage ();
+            r_builtin_usage ();
             return EX_USAGE;
             }
         }
@@ -113,7 +114,7 @@ unsafe {
         array_name = (*(*list).word).word;
     }
     if legal_identifier(array_name) == 0 {
-        sh_invalidid(array_name);
+        r_sh_invalidid(array_name);
         return EXECUTION_FAILURE;
     }
 
