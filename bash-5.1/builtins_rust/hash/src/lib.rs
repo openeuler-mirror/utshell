@@ -11,7 +11,7 @@ use rcommon::{r_find_shell_builtin,r_builtin_usage};
 //struct
 //结构体
 #[repr (C)]
-pub struct WORD_DESC{
+pub struct WordDesc{
     pub word:*mut c_char,
     pub flags:c_int,
 }
@@ -20,7 +20,7 @@ pub struct WORD_DESC{
 // #[derive(Copy,Clone)]
 pub struct WORD_LIST{
     pub next:*mut WORD_LIST,
-    pub word:*mut WORD_DESC,
+    pub word:*mut WordDesc,
 }
 
 type PTR_T=c_void;
