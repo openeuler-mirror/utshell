@@ -400,17 +400,19 @@ pub extern "C" fn r_set_verbose_flag (){
 #[no_mangle]
 pub extern "C" fn r_fc_number (list:* mut WordList)->i32
 {
-  let mut s:*mut c_char;
+  let mut s:*mut c_char = 0 as *mut i8;
 
   if list == std::ptr::null_mut(){
     return 0;
   }
 
   unsafe {
-    s = (*(*list).word).word;
-    if char::from(*s as u8 ) == '-' {
-      s=(s as u8 +1) as *mut c_char;
+    if (*list).word != std::ptr::null_mut() {
+      s = (*(*list).word).word;
+      if char::from(*s as u8 ) == '-' {
+          s= s.offset(1) ;
     }
+  } 
     return legal_number (s, std::ptr::null_mut());
   }
 }
@@ -536,7 +538,6 @@ pub extern "C" fn r_fc_builtin (list:* mut WordList)->i32
     opt = internal_getopt (list, CString::new(":e:lnrs").unwrap().as_ptr() as * mut c_char);
     ret= ret && (opt !=-1);
   }
-
   let mut llist:* mut WordList = loptend.clone();
 
   if ename != std::ptr::null_mut() && char::from(*ename as u8 ) == '-' && char::from(*((ename as usize +4) as * mut c_char) as u8 )== '\0'{
