@@ -864,7 +864,8 @@ unsafe fn get_cmd_type (command : *mut i8) -> CMDType{
         types = CMDType::SuspendCmd;
     }
 
-    else if libc::strcmp(command,b"test\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"test\0" as *const u8 as *const i8 as *mut i8)  == 0 
+    || libc::strcmp(command,b"[\0" as *const u8 as *const i8 as *mut i8)== 0 {
         types = CMDType::TestCmd;
     }
  
