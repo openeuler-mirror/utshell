@@ -82,7 +82,7 @@ extern "C"{
     fn throw_to_top_level();
     fn default_columns() -> usize;
     fn wcsnwidth (chaa : * mut libc::wchar_t, size :i32, i: i32) -> i32;
-    fn xstrmatch (string1 : * mut libc::c_char, string2 : * mut libc::c_char, i : i8) -> i8;
+    fn xstrmatch (string1 : * mut libc::c_char, string2 : * mut libc::c_char, i : libc::c_char) -> libc::c_char;
     fn open(pathname : *const libc::c_char, oflag : i32) -> i32;
     fn wcwidth( c :libc::wchar_t) -> i32;
     static mut loptend:*mut WordList;
@@ -320,7 +320,7 @@ fn show_longdoc(i : i32){
        // usefile = usefile && unsafe{*((doc as usize + 8 as  usize)as *mut *mut libc::c_char) as *mut libc::c_char} == std::ptr::null_mut();
         //usefile = usefile && ((doc as usize + 8 as  usize) as * mut c_char) == std::ptr::null_mut();
          //usefile = usefile && (*(doc as usize + 8 as usize) as *mut libc::c_char )as char== '/' as char ;
-        //usefile = doc!= std::ptr::null_mut() && *((doc as usize + ) as * mut c_char)== '/' as i8 && (doc as usize +4)as * mut c_char == std::ptr::null_mut() as * mut c_char; 
+        //usefile = doc!= std::ptr::null_mut() && *((doc as usize + ) as * mut c_char)== '/' as libc::c_char && (doc as usize +4)as * mut c_char == std::ptr::null_mut() as * mut c_char; 
     }
    // let usefile = (doc!= std::ptr::null_mut() && char::from(unsafe {*((doc + 4*8) as usize ) as * mut c_char) as u8 })== '/');
     if usefile {
@@ -357,7 +357,7 @@ fn show_desc (name : *mut c_char, i :i32){
     let mut j :i32;
     let r :i32;
     let mut doc : *mut *mut libc::c_char;
-    let mut  line : *mut i8 = 0  as *mut i8 ;
+    let mut  line : *mut libc::c_char = 0  as *mut libc::c_char ;
     let mut fd : i32;
     let mut usefile : bool;
     
@@ -366,18 +366,18 @@ fn show_desc (name : *mut c_char, i :i32){
        doc = builtin1.long_doc;
    }
    // usefile = (doc && doc[0] && *doc[0] == '/' && doc[1] == (char *)NULL);
-    usefile = doc!= std::ptr::null_mut() && unsafe {*doc as *mut i8} != std::ptr::null_mut();
-    usefile = usefile && unsafe {**doc as i8 } == '/' as i8;
-    //usefile = usefile && unsafe {*(doc as usize + 8 as usize) as *mut i8} != std::ptr::null_mut();
+    usefile = doc!= std::ptr::null_mut() && unsafe {*doc as *mut libc::c_char} != std::ptr::null_mut();
+    usefile = usefile && unsafe {**doc as libc::c_char } == '/' as libc::c_char;
+    //usefile = usefile && unsafe {*(doc as usize + 8 as usize) as *mut libc::c_char} != std::ptr::null_mut();
    if usefile {
    
-          fd = open_helpfile (unsafe {*doc as *mut i8 });
+          fd = open_helpfile (unsafe {*doc as *mut libc::c_char });
           if (fd < 0){
               //无返回值
               return ();
           }
            unsafe {
-               r = zmapfd (fd, *(line as *mut i8) as *mut *mut i8 ,(doc as *mut i8));
+               r = zmapfd (fd, *(line as *mut libc::c_char) as *mut *mut libc::c_char ,(doc as *mut libc::c_char));
                libc::close (fd);
           }
       /* XXX - handle errors if zmapfd returns < 0 */
@@ -386,7 +386,7 @@ fn show_desc (name : *mut c_char, i :i32){
   {
       if doc!= std::ptr::null_mut() {
           unsafe {
-              line = *doc as *mut i8;
+              line = *doc as *mut libc::c_char;
           }
       }
       else{
@@ -430,8 +430,8 @@ fn show_manpage (name : *mut c_char, i : i32){
         doc = builtin1.long_doc;
     }
     //*doc = (*((shell_builtins as usize + i as usize) as *mut builtin).long_doc as *mut libc::c_char);
-    usefile = doc!= std::ptr::null_mut() && unsafe {*doc as *mut i8} != std::ptr::null_mut();
-    usefile = usefile && unsafe {**doc as i8 } == '/' as i8;
+    usefile = doc!= std::ptr::null_mut() && unsafe {*doc as *mut libc::c_char} != std::ptr::null_mut();
+    usefile = usefile && unsafe {**doc as libc::c_char } == '/' as libc::c_char;
 
     if usefile{
    
@@ -451,7 +451,7 @@ fn show_manpage (name : *mut c_char, i : i32){
      
         if doc!= std::ptr::null_mut(){
           unsafe { 
-            line = *doc as *mut i8;
+            line = *doc as *mut libc::c_char;
           }
         }
         else{
@@ -596,18 +596,18 @@ fn show_builtin_command_help (){
     let  height : i32 = 76;
     let mut width : usize;
     let mut t :*mut libc::c_char;
-    let mut blurb:[i8;128] = ['0' as  i8;128];
+    let mut blurb:[libc::c_char;128] = ['0' as  libc::c_char;128];
     println!("help  command  edit by huanhuan.");
     println!("{}",("These shell commands are defined internally.  Type `help' to see this list.\n Type `help name' to find out more about the function `name'.\n Use `info bash' to find out more about the shell in general.\n Use `man -k' or `info' to find out more about commands not in this list.\n A star (*) next to a name means that the command is disabled.\n"));
 
-    let ref2: &mut i8= &mut blurb[0];
+    let ref2: &mut libc::c_char= &mut blurb[0];
 
     unsafe {
     width = default_columns();
   }
   width /= 2;
-  if width > (std::mem::size_of::<i8>()*128) {
-    width = std::mem::size_of::<i8>()*128;
+  if width > (std::mem::size_of::<libc::c_char>()*128) {
+    width = std::mem::size_of::<libc::c_char>()*128;
   }
   if width <= 3{
     width = 40;
@@ -620,13 +620,13 @@ fn show_builtin_command_help (){
         QUIT();
       }
       if MB_CUR_MAX!() > 1 {
-       let ptr2: *mut i8 = ref2 as *mut i8;
+       let ptr2: *mut libc::c_char = ref2 as *mut libc::c_char;
        wdispcolumn (i,  ptr2,128, width as i32, height);
   }
 }
 }
 //#endif /* HELP_BUILTIN */
-fn strmatch (pattern : *mut libc::c_char, string : *mut libc::c_char, flags : i8) -> i8
+fn strmatch (pattern : *mut libc::c_char, string : *mut libc::c_char, flags : libc::c_char) -> libc::c_char
 {
   if ((string as usize)as * mut c_char != std::ptr::null_mut()) || ((pattern as usize)as * mut c_char != std::ptr::null_mut()){
      return FNM_NOMATCH!();

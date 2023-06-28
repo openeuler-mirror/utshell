@@ -402,7 +402,7 @@ extern "C" fn r_parse_symbolic_mode(mode:*mut c_char,initial_bits:i32)->i32{
 
             /* Now perform the operation or return an error for a
              bad permission string. */
-            if *s != 0 || *s == ',' as i8{
+            if *s != 0 || *s == ',' as libc::c_char{
                 if who != 0{
                     perm &= who;
                 }
@@ -420,7 +420,7 @@ extern "C" fn r_parse_symbolic_mode(mode:*mut c_char,initial_bits:i32)->i32{
                     /* No other values are possible. */ 
                     _ => { }
                 }
-                if *s == '\0' as i8{
+                if *s == '\0' as libc::c_char{
                     break;
                 }
                 else {

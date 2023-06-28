@@ -307,7 +307,7 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
   let mut  llist:* mut WordList = loptend.clone();
 
   if list == std::ptr::null_mut() {
-    builtin_error (b"filename argument required\0" as *const u8 as *const i8 as *mut i8 );
+    builtin_error (b"filename argument required\0" as *const u8 as *const libc::c_char as *mut libc::c_char );
     builtin_usage ();
     return EX_USAGE;
   }
@@ -345,7 +345,7 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
     }
   }
 
-  begin_unwind_frame (b"source\0" as *const u8 as *const i8 as *mut i8);
+  begin_unwind_frame (b"source\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
   let xf:Functions=Functions{f_xfree :xfree};
   add_unwind_protect (xf, filename);
 
@@ -381,7 +381,7 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
 
   result = source_file (filename, (list !=std::ptr::null_mut() && (*list).next !=std::ptr::null_mut()) as i32);
 
-  run_unwind_frame (b"source\0" as *const u8 as *const i8 as *mut i8);
+  run_unwind_frame (b"source\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
 
   return result;
   }
