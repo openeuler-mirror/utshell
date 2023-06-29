@@ -15,7 +15,7 @@ crate-type = ["staticlib","rlib"]
 rdeclare = {path = "../declare"}
 
 [dependencies]
-libc = "0.2"
-nix = "0.23"
+libc = "*"
+nix = "*"
 rdeclare = {path = "../declare"}
 rcommon = {path = "../common"}

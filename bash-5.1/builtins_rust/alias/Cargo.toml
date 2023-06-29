@@ -10,7 +10,7 @@ name = "ralias"
 crate-type = ["staticlib","rlib"]
 
 [dependencies]
-libc = "0.2"
+libc = "*"
 rcmd = {path="../cmd"}
 rcommon= {path="../common"}
-# nix = "0.23"
+# nix = "*"

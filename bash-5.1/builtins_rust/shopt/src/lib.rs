@@ -1082,7 +1082,7 @@ unsafe extern "C" fn toggle_shopts(
      list: *mut WordList,
      _quiet: i32,
 ) -> i32 {
-    //printf(CString::new(" set command: %s mode=%d").expect("").as_ptr() ,(*(*list).word).word, mode);
+    // printf(CString::new(" set command: %s mode=%d").expect("").as_ptr() ,(*(*list).word).word, mode);
     let mut l: *mut WordList;
     let mut ind:i32;
     let mut rval: i32;

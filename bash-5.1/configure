@@ -20510,7 +20510,7 @@ fi
 # this should be packaged into a script accessible via ${srcdir}/support
 case "$srcdir" in
 .)	;;
-*)	for d in doc tests support lib examples; do	# dirs
+*)	for d in doc tests support lib ; do	# dirs
 		test -d $d || mkdir $d
 	done
 	for ld in readline glob tilde malloc sh termcap; do	# libdirs

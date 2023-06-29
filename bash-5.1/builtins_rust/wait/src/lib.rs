@@ -15,7 +15,7 @@ use rcommon::{r_builtin_unbind_variable,r_builtin_usage,r_get_job_spec,WordList}
 use rcommon::{ WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN};
 
 
-//结构体
+// 结构体
 #[repr(C)]
 pub struct procstat{
     pub pid:pid_t,
