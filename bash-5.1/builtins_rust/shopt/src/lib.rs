@@ -926,7 +926,7 @@ pub unsafe extern "C" fn r_shopt_builtin(mut list: *mut WordList) -> i32 {
     reset_internal_getopt();
     let psuoq = CString::new("psuoq").expect("CString::new failed");
     loop {
-        opt = internal_getopt( list, psuoq.as_ptr() as *mut i8);
+        opt = internal_getopt( list, psuoq.as_ptr() as *mut libc::c_char);
         if !(opt != -(1 as i32)) {
             break;
         }

@@ -695,201 +695,201 @@ impl Factory for SimpleFactory {
     }
 }
 
-unsafe fn get_cmd_type (command : *mut i8) -> CMDType{
+unsafe fn get_cmd_type (command : *mut libc::c_char) -> CMDType{
     let mut types = CMDType::HelpCmd;
-    if libc::strcmp(command, b"alias\0" as *const u8 as *const i8 as *mut i8) == 0{
+    if libc::strcmp(command, b"alias\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0{
         types = CMDType::AliasCmd;
     }
-    if libc::strcmp(command, b"unalias\0" as *const u8 as *const i8 as *mut i8) == 0{
+    if libc::strcmp(command, b"unalias\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0{
         types = CMDType::UnAliasCmd;
     }
-    else if libc::strcmp(command, b"bind\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"bind\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::BindCmd;
     }
-    else if libc::strcmp(command, b"break\0" as *const u8 as *const i8 as *mut i8) == 0 {
+    else if libc::strcmp(command, b"break\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::BreakCmd;
     }
-    else if libc::strcmp(command, b"continue\0" as *const u8 as *const i8 as *mut i8) == 0 {
+    else if libc::strcmp(command, b"continue\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::ContinueCmd;
     }
-    else if libc::strcmp(command, b"builtin\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"builtin\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::BuiltinCmd;
     }
-    else if libc::strcmp(command, b"caller\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"caller\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::CallerCmd;
     }
-    else if libc::strcmp(command, b"cd\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"cd\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::CdCmd;
     }
-    else if libc::strcmp(command, b"pwd\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"pwd\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::PwdCmd;
     }
-    else if libc::strcmp(command,  b":\0" as *const u8 as *const i8 as *mut i8)  == 0
-    || libc::strcmp(command,  b"true\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,  b":\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0
+    || libc::strcmp(command,  b"true\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::ColonCmd;
     }
-    else if libc::strcmp(command,  b"false\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,  b"false\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::FalseCmd;
     }
-    else if libc::strcmp(command,  b"command\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,  b"command\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::CommandCmd;
     }
-    else if libc::strcmp(command, b"common\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"common\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::CommonCmd;
     }
-    else if libc::strcmp(command, b"complete\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"complete\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::CompleteCmd;
     }
-    else if libc::strcmp(command, b"compopt\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"compopt\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::CompoptCmd;
     }
-    else if libc::strcmp(command, b"compgen\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"compgen\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::CompgenCmd;
     }
-    else if libc::strcmp(command,b"declare\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"declare\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::DeclareCmd;
     }
-    else if libc::strcmp(command,b"local\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"local\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::LocalCmd;
     }
-    else if libc::strcmp(command,b"echo\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"echo\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::EchoCmd;
     }
    
-    else if libc::strcmp(command,b"enable\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"enable\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::EnableCmd;
     }
-    else if libc::strcmp(command,b"eval\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"eval\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::EvalCmd;
     }
 
-    else if libc::strcmp(command,b"exec\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"exec\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::ExecCmd;
     }
   
-    else if libc::strcmp(command,b"exit\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"exit\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::ExitCmd;
     }
-    else if libc::strcmp(command,b"logout\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"logout\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::LogoutCmd;
     }
-    else if libc::strcmp(command,b"fc\0" as *const u8 as *const i8 as *mut i8) == 0 {
+    else if libc::strcmp(command,b"fc\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::FcCmd;
     }
    
-    else if libc::strcmp(command,b"fg\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"fg\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::FgCmd;
     }
-    else if libc::strcmp(command,b"bg\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"bg\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::BgCmd;
     }
     
-    else if libc::strcmp(command,b"getopts\0" as *const u8 as *const i8 as *mut i8) == 0 {
+    else if libc::strcmp(command,b"getopts\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::GetoptsCmd;
     }
 
-    else if libc::strcmp(command, b"hash\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"hash\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::HashCmd;
     }
-    else if libc::strcmp(command,b"help\0" as *const u8 as *const i8 as * mut i8) == 0 {
+    else if libc::strcmp(command,b"help\0" as *const u8 as *const libc::c_char as * mut libc::c_char) == 0 {
         types = CMDType::HelpCmd;
     }
-    else if libc::strcmp(command,b"history\0" as *const u8 as *const i8 as *mut i8) == 0 {
+    else if libc::strcmp(command,b"history\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::HistoryCmd;
     }
-    else if libc::strcmp(command,b"jobs\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"jobs\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::JobsCmd;
     }
-    else if libc::strcmp(command, b"kill\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"kill\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::KillCmd;
     }
-    else if libc::strcmp(command, b"mapfile\0" as *const u8 as *const i8 as *mut i8)  == 0 ||
-    libc::strcmp(command, b"readarray\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"mapfile\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0 ||
+    libc::strcmp(command, b"readarray\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::MapfileCmd;;
     }
-    else if libc::strcmp(command,b"printf\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"printf\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::PrintfCmd;
     }
-    else if libc::strcmp(command,b"pushd\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"pushd\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::PushdCmd;
     }
-    else if libc::strcmp(command,b"dirs\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"dirs\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::DirsCmd;
     }
-    else if libc::strcmp(command,b"popd\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"popd\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::PopdCmd;
     }
-    else if libc::strcmp(command, b"read\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"read\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::ReadCmd;
     }
 
-    else if libc::strcmp(command, b"let\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"let\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::LetCmd;
     }
    
-    else if libc::strcmp(command,b"return\0" as *const u8 as *const i8 as *mut i8) == 0 {
+    else if libc::strcmp(command,b"return\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::ReturnCmd;
     }
-    else if libc::strcmp(command,b"set\0" as *const u8 as *const i8 as *mut i8) == 0 
-    || libc::strcmp(command,b"typeset\0" as *const u8 as *const i8 as *mut i8) == 0 {
+    else if libc::strcmp(command,b"set\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 
+    || libc::strcmp(command,b"typeset\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::SetCmd;
     }
-    else if libc::strcmp(command,b"unset\0" as *const u8 as *const i8 as *mut i8) == 0 {
+    else if libc::strcmp(command,b"unset\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::UnSetCmd;
     }
-    else if libc::strcmp(command,b"setattr\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"setattr\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::SetattrCmd;
     }
 
-    else if libc::strcmp(command,b"readonly\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"readonly\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::ReadonlyCmd;
     }
-    else if libc::strcmp(command,b"export\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"export\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::ExportCmd;
     }
-    else if libc::strcmp(command,b"shift\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"shift\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::ShiftCmd;
     }
  
-    else if libc::strcmp(command,b"shopt\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command,b"shopt\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::ShoptCmd;
     }
   
-    else if libc::strcmp(command,b"source\0"  as *const u8 as *const i8 as *mut i8) == 0 
-     || libc::strcmp(command,b".\0"  as *const u8 as *const i8 as *mut i8)== 0  {
+    else if libc::strcmp(command,b"source\0"  as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 
+     || libc::strcmp(command,b".\0"  as *const u8 as *const libc::c_char as *mut libc::c_char)== 0  {
         types = CMDType::SourceCmd;
     }
  
-    else if libc::strcmp(command, b"suspend\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command, b"suspend\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::SuspendCmd;
     }
 
-    else if libc::strcmp(command,b"test\0" as *const u8 as *const i8 as *mut i8)  == 0 
-    || libc::strcmp(command,b"[\0" as *const u8 as *const i8 as *mut i8)== 0 {
+    else if libc::strcmp(command,b"test\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0 
+    || libc::strcmp(command,b"[\0" as *const u8 as *const libc::c_char as *mut libc::c_char)== 0 {
         types = CMDType::TestCmd;
     }
  
  
-    else if libc::strcmp(command ,b"times\0" as *const u8 as *const i8 as *mut i8) == 0 {
+    else if libc::strcmp(command ,b"times\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::TimesCmd;
     }
-    else if libc::strcmp(command ,b"trap\0" as *const u8 as *const i8 as *mut i8) == 0 {
+    else if libc::strcmp(command ,b"trap\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::TrapCmd;
     }
     
-    else if libc::strcmp(command ,b"type\0" as *const u8 as *const i8 as *mut i8) == 0 {
+    else if libc::strcmp(command ,b"type\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::TypeCmd;
     }
 
-    else if libc::strcmp(command ,b"ulimit\0" as *const u8 as *const i8 as *mut i8)  == 0{
+    else if libc::strcmp(command ,b"ulimit\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::UlimitCmd;
     }
   
-    else if libc::strcmp(command ,b"umask\0" as *const u8 as *const i8 as *mut i8 ) == 0{ 
+    else if libc::strcmp(command ,b"umask\0" as *const u8 as *const libc::c_char as *mut libc::c_char ) == 0{ 
         types = CMDType::UmaskCmd;
     }
     
-    else if libc::strcmp(command , b"wait\0" as *const u8 as *const i8 as *mut i8) == 0 {
+    else if libc::strcmp(command , b"wait\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::WaitCmd;
     }
     
@@ -897,7 +897,7 @@ unsafe fn get_cmd_type (command : *mut i8) -> CMDType{
 }
 
 #[no_mangle]
-pub extern "C" fn r_exec_cmd(command : *mut i8, mut list :*mut WordList) -> i32 {
+pub extern "C" fn r_exec_cmd(command : *mut libc::c_char, mut list :*mut WordList) -> i32 {
 
     println!("enter r_exec_cmd");
     unsafe {
