@@ -344,7 +344,9 @@ extern "C" {
     fn same_file (path1:*const c_char, path2:*const c_char, stp1:*mut libc::stat, stp2:*mut libc::stat)->i32;
     fn make_absolute (str1:*const c_char, dot_path:*const c_char)->* mut c_char;
     fn sh_canonpath (path:* mut c_char, flags:i32)->* mut c_char;
-    fn set_working_directory (path:* mut c_char);       
+    fn set_working_directory (path:* mut c_char);   
+    fn builtin_help();
+    
 }
 
 pub static mut xattrfd:i32=-1;
@@ -499,6 +501,10 @@ pub extern "C" fn r_cd_builtin (mut list:*mut WordList)->i32 {
         'L'=>{no_symlinks = 0;} 
         'e'=>{eflag = 1;}
           _=>{
+            if opt == -99 {
+              builtin_help();
+              return EX_USAGE;
+          }
               builtin_usage ();
               return EX_USAGE;
             }
@@ -660,7 +666,12 @@ pub extern "C" fn r_pwd_builtin (list:* mut WordList)->i32 {
       'P'=>{verbatim_pwd =1;
           pflag = 1;}
 	    'L'=>{verbatim_pwd = 0;}
-      _=>{builtin_usage ();
+      _=>{
+        if opt == -99 {
+          builtin_help();
+          return EX_USAGE;
+      }
+      builtin_usage ();
           return EX_USAGE;
         }
 	  }

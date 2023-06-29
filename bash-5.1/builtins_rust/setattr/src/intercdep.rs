@@ -345,6 +345,7 @@ extern "C" {
     pub fn reset_internal_getopt();
     pub fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> c_int;
     pub fn builtin_usage();
+    fn builtin_help();
     pub fn builtin_error(arg1: *const c_char, ...);
     pub fn find_function(name: *const c_char) -> *mut SHELL_VAR;
     pub fn exportable_function_name(string: *const c_char) -> c_int;

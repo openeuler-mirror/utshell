@@ -852,6 +852,7 @@ extern "C" {
    fn with_input_from_stream (_:libc::FILE , _: *const i8);
    fn stupidly_hack_special_variables (_ : *mut i8);
    fn builtin_error(_: *const i8, _: ...);
+   fn  builtin_help();
      static mut posixly_correct : i32;
      static mut enable_history_list : i32;
      static mut ignoreeof : i32 ;
@@ -1434,13 +1435,17 @@ unsafe fn reset_shell_options () {
         }
       _ => {
         if opt == -99 {
-          unsafe {
-          builtin_usage ();
-          return EX_USAGE;
+          unsafe { 
+          builtin_help();
           }
+          return EX_USAGE;
+        }
+        unsafe {
+          builtin_usage ();
+        }
+          return EX_USAGE;
         }
       }
-    }
    // opt = unsafe {internal_getopt(list, optflags.as_ptr() as *mut i8)};
    opt = unsafe {internal_getopt (list, optflags.as_mut_ptr())};
   }
@@ -1646,6 +1651,10 @@ pub  extern "C"  fn r_unset_builtin(mut list: *mut WordList) -> i32 {
         'v'=>{global_unset_var = 0;} 
         'n'=>{nameref = 1;}
         _=>{
+          if opt == -99 {
+            builtin_help();
+            return EX_USAGE;
+        }
           builtin_usage ();
           return EX_USAGE;
         }
