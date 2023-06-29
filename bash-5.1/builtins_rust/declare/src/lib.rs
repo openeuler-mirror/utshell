@@ -716,7 +716,12 @@ pub extern "C" fn r_declare_internal (list:* mut WordList, local_var:i32)->i32
               }
              }
         'I'=>{ inherit_flag = MKLOC_INHERIT!();}
-        _=>{ builtin_usage ();
+        _=>{
+			if opt == -99 {
+				builtin_help();
+				return EX_USAGE;
+			}
+			 builtin_usage ();
              return EX_USAGE;
             }
 	    }
