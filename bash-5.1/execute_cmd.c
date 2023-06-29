@@ -5500,7 +5500,7 @@ execute_disk_command (words, redirects, command_line, pipe_in, pipe_out,
 
   if (command)
     {
-      printf("command  is  %s ========== ======= \n",command);
+      //printf("command  is  %s ========== ======= \n",command);
       /* If we're optimizing out the fork (implicit `exec'), decrement the
 	 shell level like `exec' would do. */
 #if 0 /* TAG: bash-5.2 psmith 10/11/2020 */
@@ -5814,7 +5814,7 @@ shell_execve (command, args, env)
      char *command;
      char **args, **env;
 {
-  printf("wwwwwwwwwwwwwwwwwwwwwwwwww===========\n");
+  //printf("wwwwwwwwwwwwwwwwwwwwwwwwww===========\n");
   int larray, i, fd;
   char sample[HASH_BANG_BUFSIZ];
   int sample_len;

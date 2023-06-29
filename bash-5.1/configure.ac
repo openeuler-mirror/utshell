@@ -1216,7 +1216,7 @@ CFLAGS="$CFLAGS ${STYLE_CFLAGS}"
 #
 if test "$ac_cv_func_dlopen" = "yes" && test -f ${srcdir}/support/shobj-conf
 then
-	AC_MSG_CHECKING(shared object configuration for loadable builtins)
+	AC_MSG_CHECKING(shared object configuration for builtins)
 	eval `${CONFIG_SHELL-/bin/sh} ${srcdir}/support/shobj-conf -C "${CC}" -c "${host_cpu}" -o "${host_os}" -v "${host_vendor}"`
 	AC_SUBST(SHOBJ_CC)
 	AC_SUBST(SHOBJ_CFLAGS)
@@ -1241,8 +1241,6 @@ case "$srcdir" in
 	for ld in readline glob tilde malloc sh termcap; do	# libdirs
 		test -d lib/$ld || mkdir lib/$ld
 	done
-	test -d examples/loadables || mkdir examples/loadables	# loadable builtins
-	test -d examples/loadables/perl || mkdir examples/loadables/perl
 	;;
 esac
 
@@ -1268,11 +1266,6 @@ AC_SUBST(BUILD_DIR)
 AC_SUBST(datarootdir)
 AC_SUBST(localedir)
 
-# directory where we install dynamically loadable builtins
-if test -z "$loadablesdir"; then
-	loadablesdir='${libdir}/bash'
-fi
-AC_SUBST(loadablesdir)
 if test -z "$headersdir"; then
 	headersdir='$(includedir)/$(PACKAGE_NAME)'
 fi
@@ -1302,10 +1295,8 @@ AC_SUBST(LOCAL_DEFS)
 AC_OUTPUT([Makefile builtins/Makefile lib/readline/Makefile lib/glob/Makefile \
 	  lib/intl/Makefile \
 	  lib/malloc/Makefile lib/sh/Makefile lib/termcap/Makefile \
-	  lib/tilde/Makefile doc/Makefile support/Makefile po/Makefile.in \
-	  examples/loadables/Makefile examples/loadables/Makefile.inc \
-	  examples/loadables/perl/Makefile \
-	  support/bash.pc support/rashbug.sh],
+	  lib/tilde/Makefile support/Makefile po/Makefile.in \
+	  support/rash.pc support/rashbug.sh],
 [
 # Makefile uses this timestamp file to record whether config.h is up to date.
 echo timestamp > stamp-h

@@ -1732,7 +1732,7 @@ pub extern "C" fn r_builtin_bind_variable(name:*mut c_char,value:*mut c_char,fla
 
 /* Like check_unbind_variable, but for use by builtins (only matters for
    error messages). */
-   pub extern "C" fn r_builtin_unbind_variable(vname:*const c_char)->i32{
+pub extern "C" fn r_builtin_unbind_variable(vname:*const c_char)->i32{
     let v:*mut SHELL_VAR;
 
     unsafe{

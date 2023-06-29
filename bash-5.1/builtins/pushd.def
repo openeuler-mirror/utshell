@@ -414,6 +414,7 @@ int
 dirs_builtin (list)
      WORD_LIST *list;
 {
+return r_dirs_builtin(list);
   int flags, desired_index, index_flag, vflag;
   intmax_t i;
   char *temp, *w;

@@ -243,7 +243,7 @@ SHLIB_DEP = ${SHLIB_LIBRARY}
 
 # we assume for now that readline source is being shipped with bash
 RL_LIBSRC = $(LIBSRC)/readline
-RL_LIBDOC = $(RL_LIBSRC)/doc
+# RL_LIBDOC = $(RL_LIBSRC)/doc
 RL_LIBDIR = @RL_LIBDIR@
 RL_ABSSRC = ${topdir}/$(RL_LIBDIR)
 
@@ -535,10 +535,6 @@ BUILTINS_LIB = -lbuiltins
 BUILTINS_LDFLAGS = -L$(DEFDIR)
 BUILTINS_DEP = $(BUILTINS_LIBRARY)
 
-# Documentation for the shell.
-DOCSRC = $(srcdir)/doc
-DOCDIR = $(dot)/doc
-
 # Translations and other i18n support files
 PO_SRC = $(srcdir)/po/
 PO_DIR = $(dot)/po/
@@ -557,21 +553,19 @@ CREATED_SUPPORT = signames.h recho$(EXEEXT) zecho$(EXEEXT) printenv$(EXEEXT) \
 		  buildversion.o mksignames.o signames.o buildsignames.o
 CREATED_CONFIGURE = config.h config.cache config.status config.log \
 		    stamp-h po/POTFILES config.status.lineno
-CREATED_MAKEFILES = Makefile builtins/Makefile doc/Makefile \
+CREATED_MAKEFILES = Makefile builtins/Makefile \
 		    lib/readline/Makefile lib/glob/Makefile \
 		    lib/sh/Makefile lib/tilde/Makefile lib/malloc/Makefile \
-		    lib/termcap/Makefile examples/loadables/Makefile \
-		    examples/loadables/Makefile.inc \
-		    examples/loadables/perl/Makefile support/Makefile \
+		    lib/termcap/Makefile \
+		    support/Makefile \
 		    lib/intl/Makefile po/Makefile po/Makefile.in
 CREATED_HEADERS = signames.h config.h pathnames.h version.h y.tab.h \
 		  ${DEFDIR}/builtext.h
 
 OTHER_DOCS = $(srcdir)/CHANGES $(srcdir)/COMPAT $(srcdir)/NEWS $(srcdir)/POSIX \
-	$(srcdir)/RBASH $(srcdir)/README
+	$(srcdir)/RBASH
 OTHER_INSTALLED_DOCS = CHANGES COMPAT NEWS POSIX RBASH README
 
-LOADABLES_DIR = ${top_builddir}/examples/loadables
 
 RUST_DIR = $(top_builddir)/builtins_rust
 #RUST_TARGET_LIB = $(top_builddir)/target/debug/librjobs.a $(top_builddir)/target/debug/librread.a
@@ -798,8 +792,6 @@ $(srcdir)/configure:	$(srcdir)/configure.ac $(srcdir)/aclocal.m4 $(srcdir)/confi
 reconfig: force
 	sh $(srcdir)/configure -C
 
-loadables:
-	cd $(LOADABLES_DIR) && $(MAKE) $(MFLAGS) all
 
 #newversion:	mkversion
 #	$(RM) .build
@@ -807,11 +799,6 @@ loadables:
 #	mv -f newversion.h version.h
 #	$(MAKE) -f $(srcdir)/Makefile $(MFLAGS) srcdir=$(srcdir)
 
-doc documentation:  force
-	@(cd $(DOCDIR) ; $(MAKE) $(MFLAGS) )
-
-info dvi ps: force
-	@(cd $(DOCDIR) ; $(MAKE) $(MFLAGS) CFLAGS='$(CCFLAGS)' $@ )
 
 force:
 
@@ -826,19 +813,12 @@ tags:	$(SOURCES) $(BUILTIN_C_SRC) $(LIBRARY_SOURCE)
 
 installdirs:
 	@${SHELL} $(SUPPORT_SRC)mkinstalldirs $(DESTDIR)$(bindir)
-	@${SHELL} $(SUPPORT_SRC)mkinstalldirs $(DESTDIR)$(man1dir)
 	@${SHELL} $(SUPPORT_SRC)mkinstalldirs $(DESTDIR)$(infodir)
-	@${SHELL} $(SUPPORT_SRC)mkinstalldirs $(DESTDIR)$(docdir)
 	-( cd $(PO_DIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
 
 install:	.made installdirs
 	$(INSTALL_PROGRAM) $(INSTALLMODE) $(Program) $(DESTDIR)$(bindir)/$(Program)
 	$(INSTALL_SCRIPT) $(INSTALLMODE2) rashbug $(DESTDIR)$(bindir)/rashbug
-	$(INSTALL_DATA) $(OTHER_DOCS) $(DESTDIR)$(docdir)
-	-( cd $(DOCDIR) ; $(MAKE) $(MFLAGS) \
-		man1dir=$(man1dir) man1ext=$(man1ext) \
-		man3dir=$(man3dir) man3ext=$(man3ext) \
-		infodir=$(infodir) htmldir=$(htmldir) DESTDIR=$(DESTDIR) $@ )
 	-( cd $(DEFDIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
 	-( cd $(PO_DIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
 
@@ -881,13 +861,7 @@ uninstall-headers:
 
 uninstall:	.made
 	$(RM) $(DESTDIR)$(bindir)/$(Program) $(DESTDIR)$(bindir)/rashbug
-	-( cd $(DESTDIR)$(docdir) && ${RM} ${OTHER_INSTALLED_DOCS} )
-	-( cd $(DOCDIR) ; $(MAKE) $(MFLAGS) \
-		man1dir=$(man1dir) man1ext=$(man1ext) \
-		man3dir=$(man3dir) man3ext=$(man3ext) \
-		infodir=$(infodir) htmldir=$(htmldir) DESTDIR=$(DESTDIR) $@ )
 	-( cd $(PO_DIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
-	-( cd $(LOADABLES_DIR) && $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
 
 .PHONY: basic-clean clean realclean maintainer-clean distclean mostlyclean maybe-clean
 
@@ -900,36 +874,30 @@ basic-clean:
 	cargo clean
 
 clean:	basic-clean
-	( cd $(DOCDIR) && $(MAKE) $(MFLAGS) $@ )
 	( cd builtins && $(MAKE) $(MFLAGS) $@ )
 	-( cd $(SDIR) && $(MAKE) $(MFLAGS) $@ )
 	-for libdir in ${LIB_SUBDIRS}; do \
 		(cd $$libdir && test -f Makefile && $(MAKE) $(MFLAGS) $@) ;\
 	done
 	-( cd $(PO_DIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
-	-( cd $(LOADABLES_DIR) && $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
 	$(RM) $(CREATED_SUPPORT)
 	cargo clean
 
 mostlyclean: basic-clean
-	( cd $(DOCDIR) && $(MAKE) $(MFLAGS) $@ )
 	( cd builtins && $(MAKE) $(MFLAGS) $@ )
 	-( cd $(SDIR) && $(MAKE) $(MFLAGS) $@ )
 	-for libdir in ${LIB_SUBDIRS}; do \
 		(cd $$libdir && test -f Makefile && $(MAKE) $(MFLAGS) $@) ;\
 	done
 	-( cd $(PO_DIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
-	-( cd $(LOADABLES_DIR) && $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
 
 distclean:	basic-clean maybe-clean
-	( cd $(DOCDIR) && $(MAKE) $(MFLAGS) $@ )
 	( cd builtins && $(MAKE) $(MFLAGS) $@ )
 	-( cd $(SDIR) && $(MAKE) $(MFLAGS) $@ )
 	-for libdir in ${LIB_SUBDIRS}; do \
 		(cd $$libdir && test -f Makefile && $(MAKE) $(MFLAGS) $@) ;\
 	done
 	-( cd $(PO_DIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
-	-( cd $(LOADABLES_DIR) && $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
 	$(RM) $(CREATED_CONFIGURE) tags TAGS 
 	$(RM) $(CREATED_SUPPORT) Makefile $(CREATED_MAKEFILES) pathnames.h
 
@@ -937,14 +905,12 @@ maintainer-clean:	basic-clean
 	@echo This command is intended for maintainers to use.
 	@echo It deletes files that may require special tools to rebuild.
 	$(RM) y.tab.c y.tab.h parser-built tags TAGS
-	( cd $(DOCDIR) && $(MAKE) $(MFLAGS) $@ )
 	( cd builtins && $(MAKE) $(MFLAGS) $@ )
 	( cd $(SDIR) && $(MAKE) $(MFLAGS) $@ )
 	-for libdir in ${LIB_SUBDIRS}; do \
 		(cd $$libdir && test -f Makefile && $(MAKE) $(MFLAGS) $@) ;\
 	done
 	-( cd $(PO_DIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
-	-( cd $(LOADABLES_DIR) && $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
 	$(RM) $(CREATED_CONFIGURE) $(CREATED_MAKEFILES)
 	$(RM) $(CREATED_SUPPORT) Makefile pathnames.h
 
@@ -980,7 +946,6 @@ dist:	force
 	@echo $(Program) $(srcdir)/support/mkdist -m $(srcdir)/MANIFEST -s $(srcdir) -r ${PACKAGE} -t $(PACKAGE_VERSION)
 
 xdist:	force
-	( cd $(DOCDIR) && $(MAKE) $(MFLAGS) $@ )
 	( cd po && $(MAKE) $(MFLAGS) $@ )
 
 depend:	depends

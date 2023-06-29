@@ -6,7 +6,6 @@ include!(concat!("intercdep.rs"));
 
 #[no_mangle]
 pub extern "C" fn r_let_builtin(mut list: *mut WordList) -> i32 {
-    println!("r_let_builtin call");
 unsafe {
     let mut ret: c_long = 0;
 	let mut expok: c_int = 0;
@@ -40,7 +39,6 @@ unsafe {
 
 #[no_mangle]
 pub extern "C" fn r_exp_builtin(mut list: *mut WordList) -> i32 {
-    println!("r_exp_builtin call");
 
 unsafe {
 	let mut expok: c_int = 0;
