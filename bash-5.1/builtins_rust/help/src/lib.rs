@@ -3,8 +3,12 @@ extern crate nix;
 extern crate std;
 use libc::{c_char,  c_void ,putchar, free};
 use std::{ffi::{CString,CStr}, i32, io::{Read, stdout, Write}, mem, string, u32};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, 
+  EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,
+  r_builtin_usage,get_local_str};
 
+use fluent_bundle::{FluentBundle, FluentResource, FluentValue, FluentArgs};
+use fluent_resmgr::resource_manager::ResourceManager;
 pub enum Option<T> {
     None,
     Some(T),
@@ -421,10 +425,12 @@ fn show_manpage (name : *mut c_char, i : i32){
  
     let  mut  j :i32;
     let mut doc :*mut *mut libc::c_char;
-    let mut line :*mut libc::c_char = 0 as *mut libc::c_char;;
+    let mut line :*mut libc::c_char = 0 as *mut libc::c_char;
     let  mut fd: i32;
     let  mut  usefile : bool;
     let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
+    let mgr = ResourceManager::new("./resources/{locale}/{res_id}".into());
+    let resources = vec![ "message.ftl".into()];
     unsafe {
       
         doc = builtin1.long_doc;
@@ -448,7 +454,6 @@ fn show_manpage (name : *mut c_char, i : i32){
       }
     }
     else {
-     
         if doc!= std::ptr::null_mut(){
           unsafe { 
             line = *doc as *mut libc::c_char;
@@ -460,9 +465,16 @@ fn show_manpage (name : *mut c_char, i : i32){
     }
   /* NAME */
   println! ("NAME\n");
-  unsafe {
-  println! ("     - {:?} ", CStr::from_ptr(name));
-  }
+  let mut args = FluentArgs::new();
+  let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
+  let msg: &str = c_str.to_str().unwrap();
+  args.set("cmdName",msg);
+  let bundle = mgr.get_bundle(get_local_str(), resources);
+  let mut value = bundle.get_message("helpname").unwrap();
+  let mut pattern = value.value().expect("partern err");
+  let mut errors = vec![];
+  let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+  println!("{}", msg1);
    let mut  j = 0 ;
    unsafe {
    while (*((doc as usize + (8*j))as *mut *mut c_char)as  *mut c_char) != std::ptr::null_mut()  {
@@ -484,13 +496,10 @@ fn show_manpage (name : *mut c_char, i : i32){
   /* DESCRIPTION */
   println! ("DESCRIPTION\n");
   if !usefile{
-      let mut j = 0 ;
-      unsafe {
-    while (*((doc as usize + (8*j))as *mut *mut c_char)as  *mut c_char) != std::ptr::null_mut()  {
-       println! ("    {:?}\n", unsafe{CStr::from_ptr(*((doc as usize + (8*j))as *mut *mut c_char)as  *mut c_char)});
-      j += 1;
-    }
-  }
+      value = bundle.get_message("helplongdoc").unwrap();
+      pattern = value.value().expect("partern err");
+      msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+      println!("{}", msg1);
    }
   else{
       while doc != std::ptr::null_mut() && (((doc as usize + (8*j)))as * mut c_char) != std::ptr::null_mut()  {
@@ -665,3 +674,4 @@ unsafe {
 //     }
 //   len
 // }
+
