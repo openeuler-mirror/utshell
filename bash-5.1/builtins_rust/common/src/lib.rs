@@ -350,7 +350,7 @@ macro_rules! DEBUG_TRAP {
 #[macro_export]
 macro_rules! NSIG {
     () => {
-        64
+        65
     };
 }
 

@@ -4839,9 +4839,8 @@ execute_builtin (builtin, words, flags, subshell)
 
   executing_builtin++;
   executing_command_builtin |= builtin == command_builtin;
-  //result = ((*builtin) (words->next));
+  // result = ((*builtin) (words->next));
   result = r_exec_cmd(words->word->word, words->next);
-  //r_execute_cmd2(words->next);
 
   /* This shouldn't happen, but in case `return' comes back instead of
      longjmp'ing, we need to unwind. */
@@ -5814,7 +5813,6 @@ shell_execve (command, args, env)
      char *command;
      char **args, **env;
 {
-  //printf("wwwwwwwwwwwwwwwwwwwwwwwwww===========\n");
   int larray, i, fd;
   char sample[HASH_BANG_BUFSIZ];
   int sample_len;
