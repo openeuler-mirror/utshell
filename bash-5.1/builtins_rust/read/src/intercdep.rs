@@ -271,7 +271,7 @@ extern "C" {
     pub fn rl_get_keymap() -> Keymap;
     pub fn rl_insert(count: c_int, key: c_int) -> c_int;
     pub fn rl_newline(count: c_int, key: c_int) -> c_int;
-    fn builtin_help();
+
 }
 
 extern "C" {

@@ -91,7 +91,7 @@ pub extern "C" fn r_echo_builtin(mut list:*mut WordList)->i32{
         // if posixly_correct!=0 && xpg_echo!=0{    //xpg_echo=0,所以这个可能不用翻译
             
         // }
-        if  !list.is_null() && (*list).word != std::ptr::null_mut()  && (*(*list).word).word != std::ptr::null_mut(){
+        if (*(*list).word).word != std::ptr::null_mut(){
             temp = (*(*list).word).word;
         }
         while !list.is_null() && *temp=='-' as c_char{

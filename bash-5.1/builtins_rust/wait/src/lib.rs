@@ -212,7 +212,6 @@ extern "C" {
     fn wait_for_background_pids(ps:*mut procstat);
     fn wait_for_single_pid(pid:pid_t,flags:i32)->i32;
     fn wait_for_job(job:i32,flags:i32,ps:*mut procstat)->i32;
-    fn builtin_help();
 }
 
 unsafe fn DIGIT(c:c_char)->bool{
@@ -275,10 +274,6 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WordList)->i32{
                 'f' => wflags |= JWAIT_FORCE!(),
                 'p' => vname = list_optarg,
                  _  => {
-                    if opt == -99 {
-                        builtin_help();
-                        return EX_USAGE;
-                    }
                      r_builtin_usage();
                      return EX_USAGE;
                  } 
@@ -407,7 +402,7 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WordList)->i32{
 
             //if defined (JOB_CONTROL)
             //else if  w != std::ptr::null_mut() && (w as u8)as char == '%' {
-            else if *w != 0 && *w == '%' as libc::c_char {
+            else if *w != 0 && *w == '%' as i8  {
                 /* Must be a job spec.  Check it out. */
                 let job:i32;
                 let mut set:SigSet = SigSet::empty();

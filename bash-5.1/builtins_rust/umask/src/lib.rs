@@ -160,7 +160,6 @@ extern "C" {
     fn reset_internal_getopt();
     fn internal_getopt (list:*mut WordList,  opts:*mut c_char)->i32;
     fn builtin_usage();
-    fn builtin_help();
     // fn read_octal(string:*mut c_char)->i32;
     fn sh_erange(s:*mut c_char,desc:*mut c_char);
     fn sh_chkwrite(s:i32)->i32;
@@ -213,12 +212,7 @@ pub extern "C" fn r_umask_builtin(mut list:*mut WordList) ->i32{
             match opt_char {
                 'S' => {print_symbolically = print_symbolically +1;}
                 'p' => {pflag = pflag + 1;}
-                _ => {
-                    if opt == -99 {
-                        builtin_help();
-                        return EX_USAGE;
-                    }
-                     builtin_usage();
+                _ => { builtin_usage();
                     return EX_USAGE;
                 }
             }
@@ -402,7 +396,7 @@ extern "C" fn r_parse_symbolic_mode(mode:*mut c_char,initial_bits:i32)->i32{
 
             /* Now perform the operation or return an error for a
              bad permission string. */
-            if *s != 0 || *s == ',' as libc::c_char{
+            if *s != 0 || *s == ',' as i8{
                 if who != 0{
                     perm &= who;
                 }
@@ -420,7 +414,7 @@ extern "C" fn r_parse_symbolic_mode(mode:*mut c_char,initial_bits:i32)->i32{
                     /* No other values are possible. */ 
                     _ => { }
                 }
-                if *s == '\0' as libc::c_char{
+                if *s == '\0' as i8{
                     break;
                 }
                 else {

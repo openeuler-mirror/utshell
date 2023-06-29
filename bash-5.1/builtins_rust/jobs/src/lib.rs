@@ -391,7 +391,7 @@ extern "C" {
       }
 	    
 	  libc::free((*(*l).word).word as * mut libc::c_void);
-	  (*(*(*l).word).word) = (*get_job_by_jid! (job)).pgrp as libc::c_char;
+	  (*(*(*l).word).word) = (*get_job_by_jid! (job)).pgrp as  i8;
 	  }
       l=(*l).next;
   }

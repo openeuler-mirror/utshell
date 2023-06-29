@@ -87,9 +87,9 @@ unsafe {
         let c_tmp = if *delete_arg == b'-' as c_char {delete_arg.offset(1 as isize ) as *mut c_char} else {delete_arg};
         range = libc::strchr(c_tmp, b'-' as c_int);
 
-            printf(b"AAAAAAArange=%u,   c_tmp=%s\n" as *const u8 as *const libc::c_char, range, c_tmp);
+            printf(b"AAAAAAArange=%u,   c_tmp=%s\n" as *const u8 as *const i8, range, c_tmp);
         if  !range.is_null() {
-            printf(b"AAAAAAArange=%s\n" as *const u8 as *const libc::c_char, range);
+            printf(b"AAAAAAArange=%s\n" as *const u8 as *const i8, range);
 
             let mut delete_start: c_long = 0;
             let mut delete_end: c_long = 0;
