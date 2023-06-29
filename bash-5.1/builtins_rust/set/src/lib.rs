@@ -868,7 +868,7 @@ extern "C" {
      static mut interactive_shell : i32;
      static mut history_lines_this_session : i32;
      static mut  rl_editing_mode : i32;
-     static mut  list_optopt :i32;
+     static mut  list_optopt :i8;
      static mut loptend:*mut WordList;
      static assoc_expand_once:i32;
      static mut stdin : libc::FILE;
@@ -916,7 +916,6 @@ unsafe fn find_minus_o_option (mut name : *mut libc::c_char) -> i32 {
     let  ooo = o_options[j];
     //println! ("i  is  {}, j is  {}",i,j);
     if STREQ(name, o_options[j as usize].name) {
-      //println! ("qqqqqqqqqqqq");
       return i;
     }
   }
@@ -1426,7 +1425,7 @@ unsafe fn reset_shell_options () {
         unsafe {
           builtin_usage ();
         }
-          if unsafe {list_optopt} == b'?' as libc::c_char as i32 {
+          if unsafe {list_optopt} == b'?' as libc::c_char as i8 {
             return EXECUTION_SUCCESS!();
           }
           else {
@@ -1440,10 +1439,10 @@ unsafe fn reset_shell_options () {
           }
           return EX_USAGE;
         }
-        unsafe {
-          builtin_usage ();
-        }
-          return EX_USAGE;
+       // unsafe {
+       //   builtin_usage ();
+       // }
+       //   return EX_USAGE;
         }
       }
    // opt = unsafe {internal_getopt(list, optflags.as_ptr() as *mut libc::c_char)};
@@ -1637,7 +1636,7 @@ pub  extern "C"  fn r_unset_builtin(mut list: *mut WordList) -> i32 {
   let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
   let mut tname: *mut libc::c_char = 0 as *mut libc::c_char;
 
-  println!("enter  r_unset by huanhuan");
+  //println!("enter  r_unset by huanhuan");
   let mut c_str_fnv   = CString::new("fnv").unwrap();
   unsafe {
     reset_internal_getopt();

@@ -6,13 +6,11 @@ include!(concat!("intercdep.rs"));
 
 #[no_mangle]
 pub extern "C" fn r_export_builtin(list: *mut WordList) -> c_int {
-    println!("r_export_builtin call");
     return set_or_show_attributes(list, att_exported, 0);
 }
 
 #[no_mangle]
 pub extern "C" fn r_readonly_builtin(list: *mut WordList) -> c_int {
-    println!("r_readonly_builtin call");
     return set_or_show_attributes(list, att_readonly, 0);
 }
 

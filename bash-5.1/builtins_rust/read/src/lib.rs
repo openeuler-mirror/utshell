@@ -46,7 +46,6 @@ static mut default_buffered_input : c_int = -1;
 
 #[no_mangle]
 pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
-    println!("r_read_builtin call");
 
     let mut varname :*mut c_char = libc::PT_NULL as *mut c_char;
     let mut size : c_int = 0;

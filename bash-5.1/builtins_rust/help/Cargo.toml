@@ -6,12 +6,12 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libc = "0.2"
-nix = "0.24.1"
+libc = "*"
+nix = "*"
 rcommon = {path ="../common"}
-fluent = "0.16.0"
-fluent-bundle = "0.15.2"
-fluent-resmgr = "0.0.5"
+fluent = "*"
+fluent-bundle = "*"
+fluent-resmgr = "*"
 
 [lib]
 crate-type = ["staticlib","rlib"]

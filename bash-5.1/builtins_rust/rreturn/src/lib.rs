@@ -4,7 +4,6 @@ include!(concat!("intercdep.rs"));
 
 #[no_mangle]
 pub extern "C" fn r_return_builtin(list: *mut WordList) -> i32 {
-    println!("r_return_builtin call");
 
 unsafe {
     if !list.is_null() && !(*list).word.is_null() &&
