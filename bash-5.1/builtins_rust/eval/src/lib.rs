@@ -43,15 +43,6 @@ pub extern "C" fn r_eval_builtin(mut list:*mut WordList)->i32{
   
 }
 
-
-
-
-
-
-
-
-
-
 #[cfg(test)]
 mod tests {
     #[test]

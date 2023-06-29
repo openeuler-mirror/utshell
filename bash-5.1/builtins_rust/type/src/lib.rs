@@ -362,7 +362,7 @@ extern "C" {
     fn sh_single_quote(quote: *const i8) -> *mut i8;
     fn find_reserved_word(word: *mut i8)->i32;
     fn find_function (name:* const i8)-> *mut SHELL_VAR;
-    fn named_function_string (name: *mut i8, cmd:* mut i8, i:i32)->* mut i8;
+    fn named_function_string (name: *mut i8, cmd:* mut COMMAND, i:i32)->* mut i8;
     fn find_shell_builtin(builtin: *mut i8) -> *mut i8;
     fn find_special_builtin(builtins: *mut i8) -> *mut sh_builtin_func_t;
     fn absolute_program(program:*const i8) -> i32;
@@ -566,15 +566,16 @@ fn describe_command (command : *mut i8, dflags : i32) -> i32 {
           }
       }
       else if dflags & CDESC_SHORTDESC!() != 0 {
-          let result : *mut i8;
+          let mut result : *mut i8;
           unsafe {
             println!("{:?} is a function",CStr::from_ptr(command));
-            result = named_function_string (command, unsafe{function_cell(func) as *mut i8}, FUNC_MULTILINE!()|FUNC_EXTERNAL!());
-            println!("{:?}",CStr::from_ptr(result));
+            result = named_function_string (command, function_cell(find_function (command)), FUNC_MULTILINE!()|FUNC_EXTERNAL!());
+                println!("{:?}",CStr::from_ptr(result));
           }
           
       }
-      else if dflags & CDESC_REUSABLE!() != 0{
+      else if dflags & CDESC_REUSABLE!() != 0{ 
+         
             unsafe {
                 println!("{:?}",CStr::from_ptr(command));
             }
