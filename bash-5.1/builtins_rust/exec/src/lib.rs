@@ -135,7 +135,7 @@ extern "C" fn r_mkdashname(name:*mut c_char)->*mut c_char{
 
     unsafe{
         ret = xmalloc(2 + strlen(name)) as *mut c_char;
-        *ret.offset(0) = '-' as i8;
+        *ret.offset(0) = '-' as libc::c_char;
         strcpy(ret.offset(1), name);
         return ret;
     }
