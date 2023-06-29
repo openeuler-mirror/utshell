@@ -1,25 +1,22 @@
-use crate::*;
 use std::fs::copy;
 use std::path::PathBuf;
 use std::process::Command;
 use tempfile::{tempdir, TempDir};
+use crate::*;
 
 fn compile_kernel_module() -> (PathBuf, String, TempDir) {
     let _m = crate::FORK_MTX.lock();
 
-    let tmp_dir =
-        tempdir().expect("unable to create temporary build directory");
+    let tmp_dir = tempdir().expect("unable to create temporary build directory");
 
     copy(
         "test/test_kmod/hello_mod/hello.c",
         &tmp_dir.path().join("hello.c"),
-    )
-    .expect("unable to copy hello.c to temporary build directory");
+    ).expect("unable to copy hello.c to temporary build directory");
     copy(
         "test/test_kmod/hello_mod/Makefile",
         &tmp_dir.path().join("Makefile"),
-    )
-    .expect("unable to copy Makefile to temporary build directory");
+    ).expect("unable to copy Makefile to temporary build directory");
 
     let status = Command::new("make")
         .current_dir(tmp_dir.path())
@@ -54,16 +51,12 @@ fn test_finit_and_delete_module() {
     delete_module(
         &CString::new(kmod_name).unwrap(),
         DeleteModuleFlags::empty(),
-    )
-    .expect("unable to unload kernel module");
+    ).expect("unable to unload kernel module");
 }
 
 #[test]
 fn test_finit_and_delete_module_with_params() {
-    require_capability!(
-        "test_finit_and_delete_module_with_params",
-        CAP_SYS_MODULE
-    );
+    require_capability!("test_finit_and_delete_module_with_params", CAP_SYS_MODULE);
     let _m0 = crate::KMOD_MTX.lock();
     let _m1 = crate::CWD_LOCK.read();
 
@@ -74,14 +67,12 @@ fn test_finit_and_delete_module_with_params() {
         &f,
         &CString::new("who=Rust number=2018").unwrap(),
         ModuleInitFlags::empty(),
-    )
-    .expect("unable to load kernel module");
+    ).expect("unable to load kernel module");
 
     delete_module(
         &CString::new(kmod_name).unwrap(),
         DeleteModuleFlags::empty(),
-    )
-    .expect("unable to unload kernel module");
+    ).expect("unable to unload kernel module");
 }
 
 #[test]
@@ -96,22 +87,17 @@ fn test_init_and_delete_module() {
     let mut contents: Vec<u8> = Vec::new();
     f.read_to_end(&mut contents)
         .expect("unable to read kernel module content to buffer");
-    init_module(&contents, &CString::new("").unwrap())
-        .expect("unable to load kernel module");
+    init_module(&contents, &CString::new("").unwrap()).expect("unable to load kernel module");
 
     delete_module(
         &CString::new(kmod_name).unwrap(),
         DeleteModuleFlags::empty(),
-    )
-    .expect("unable to unload kernel module");
+    ).expect("unable to unload kernel module");
 }
 
 #[test]
 fn test_init_and_delete_module_with_params() {
-    require_capability!(
-        "test_init_and_delete_module_with_params",
-        CAP_SYS_MODULE
-    );
+    require_capability!("test_init_and_delete_module_with_params", CAP_SYS_MODULE);
     let _m0 = crate::KMOD_MTX.lock();
     let _m1 = crate::CWD_LOCK.read();
 
@@ -127,8 +113,7 @@ fn test_init_and_delete_module_with_params() {
     delete_module(
         &CString::new(kmod_name).unwrap(),
         DeleteModuleFlags::empty(),
-    )
-    .expect("unable to unload kernel module");
+    ).expect("unable to unload kernel module");
 }
 
 #[test]
@@ -140,18 +125,14 @@ fn test_finit_module_invalid() {
     let kmod_path = "/dev/zero";
 
     let f = File::open(kmod_path).expect("unable to open kernel module");
-    let result =
-        finit_module(&f, &CString::new("").unwrap(), ModuleInitFlags::empty());
+    let result = finit_module(&f, &CString::new("").unwrap(), ModuleInitFlags::empty());
 
     assert_eq!(result.unwrap_err(), Errno::EINVAL);
 }
 
 #[test]
 fn test_finit_module_twice_and_delete_module() {
-    require_capability!(
-        "test_finit_module_twice_and_delete_module",
-        CAP_SYS_MODULE
-    );
+    require_capability!("test_finit_module_twice_and_delete_module", CAP_SYS_MODULE);
     let _m0 = crate::KMOD_MTX.lock();
     let _m1 = crate::CWD_LOCK.read();
 
@@ -161,16 +142,14 @@ fn test_finit_module_twice_and_delete_module() {
     finit_module(&f, &CString::new("").unwrap(), ModuleInitFlags::empty())
         .expect("unable to load kernel module");
 
-    let result =
-        finit_module(&f, &CString::new("").unwrap(), ModuleInitFlags::empty());
+    let result = finit_module(&f, &CString::new("").unwrap(), ModuleInitFlags::empty());
 
     assert_eq!(result.unwrap_err(), Errno::EEXIST);
 
     delete_module(
         &CString::new(kmod_name).unwrap(),
         DeleteModuleFlags::empty(),
-    )
-    .expect("unable to unload kernel module");
+    ).expect("unable to unload kernel module");
 }
 
 #[test]
@@ -179,10 +158,7 @@ fn test_delete_module_not_loaded() {
     let _m0 = crate::KMOD_MTX.lock();
     let _m1 = crate::CWD_LOCK.read();
 
-    let result = delete_module(
-        &CString::new("hello").unwrap(),
-        DeleteModuleFlags::empty(),
-    );
+    let result = delete_module(&CString::new("hello").unwrap(), DeleteModuleFlags::empty());
 
     assert_eq!(result.unwrap_err(), Errno::ENOENT);
 }
