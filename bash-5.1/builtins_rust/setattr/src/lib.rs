@@ -1,5 +1,3 @@
-use std::mem::size_of_val;
-
 use libc::{c_int, c_uint, c_char, c_long, PT_NULL, c_void};
 
 include!(concat!("intercdep.rs"));
@@ -43,10 +41,6 @@ unsafe {
             'a' => arrays_only = 1,
             'A' => assoc_only = 1,
             _ => {
-                if opt == -99 {
-                    builtin_help();
-                    return EX_USAGE;
-                }
             builtin_usage ();
             return EX_USAGE;
             }
@@ -191,8 +185,7 @@ unsafe {
         if !variable_list.is_null() {
             let mut i = 0;
             loop {
-                    var = *((variable_list as usize + (8*i))as  *mut *mut SHELL_VAR)  as  *mut SHELL_VAR;
-                
+                var = (variable_list as usize + 8 * i) as *mut SHELL_VAR;
                 if var.is_null() {
                     break;
                 }
@@ -200,12 +193,10 @@ unsafe {
                 if arrays_only != 0 && ((*var).attributes & att_array) != 0 {
                     continue;
                 } else if assoc_only != 0 && ((*var).attributes & assoc_only) != 0 {
-                    i += 1;
                     continue;
                 }
 
                 if ((*var).attributes & (att_invisible | att_exported)) == (att_invisible | att_exported) {
-                    i += 1;
                     continue;
                 }
 

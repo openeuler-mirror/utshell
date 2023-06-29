@@ -159,11 +159,11 @@ unsafe {
                     tmusec = uval as c_uint;
                 }
             }
-            'N' | 'n' => {
-                if opt_char == 'N' {
-                    ignore_delim = 1;
-                    delim = 255 as u8 as libc::c_char;
-                }
+            'N' => {
+                ignore_delim = 1;
+                delim = -1;
+            }
+            'n' => {
                 nflag = 1;
                 code = legal_number(list_optarg, &mut intval);
                 if code == 0 || intval < 0 || intval != (intval as c_int) as c_long {
@@ -193,10 +193,7 @@ unsafe {
                 }
                
             _ => {
-                if opt == -99 {
-                    builtin_help();
-                    return EX_USAGE;
-                }
+                // builtin_usage();
             r_builtin_usage ();
             return EX_USAGE;
             }
@@ -222,7 +219,7 @@ unsafe {
 
     //忽略界定符
     if ignore_delim != 0{  //-N  ignore_delim = 1
-        delim = 255 as u8 as libc::c_char;
+        delim = -1;
     }
 
     ifs_chars = getifs(); //ifs_chars is "\n"

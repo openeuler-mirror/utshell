@@ -33,9 +33,9 @@ unsafe {
     if times > nargs {
         if print_shift_error != 0 {
             let s = if list.is_null() {PT_NULL as *mut c_char} else {(*(*list).word).word};
-            r_sh_erange(s,"shift count\0".as_ptr() as *mut c_char);  
+            r_sh_erange(s,"shift count\0".as_ptr() as *mut c_char);
+            return EXECUTION_FAILURE;
         }
-        return EXECUTION_FAILURE;
     } else if times == nargs {
         clear_dollar_vars();
     } else {

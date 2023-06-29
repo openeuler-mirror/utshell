@@ -22,15 +22,15 @@ pub struct RESOURCE_LIMITS{
      option : i32,           	/* The ulimit option for this limit. */
      parameter : i32,            /* Parameter to pass to get_limit (). */
      block_factor :  i32,         /* Blocking factor for specific limit. */
-     description : *const libc::c_char,    /* Descriptive string to output. */
-     units : *const libc::c_char           /* scale */
+     description : *const i8,    /* Descriptive string to output. */
+     units : *const i8           /* scale */
 }
 
 #[repr (C)]
 #[derive(Copy,Clone)]
 pub struct _cmd {
      cmd :  i32,
-    arg : *mut libc::c_char
+    arg : *mut i8
 } 
 
 #[repr (C)]
@@ -41,9 +41,9 @@ pub struct user_info {
     euid : uid_t,
     gid : gid_t,
     egid : gid_t,
-    user_name : *mut libc::c_char,
-    shell :*mut libc::c_char,
-    home_dir : *mut  libc::c_char
+    user_name : *mut i8,
+    shell :*mut i8,
+    home_dir : *mut  i8
 }
 
 #[macro_export]
@@ -233,40 +233,40 @@ const  limits: [ RESOURCE_LIMITS_T;18] =[
         parameter: __RLIMIT_RTTIME as i32,
         block_factor: 1 as i32,
         description: b"real-time non-blocking time\0" as *const u8
-            as *const libc::c_char,
-        units: b"microseconds\0" as *const u8 as *const libc::c_char,
+            as *const i8,
+        units: b"microseconds\0" as *const u8 as *const i8,
     }},
    
     {   RESOURCE_LIMITS {
         option: 'c' as i32,
         parameter: RLIMIT_CORE as i32,
         block_factor: -(2 as i32),
-        description: b"core file size\0" as *const u8 as *const libc::c_char,
-        units: b"blocks\0" as *const u8 as *const libc::c_char,
+        description: b"core file size\0" as *const u8 as *const i8,
+        units: b"blocks\0" as *const u8 as *const i8,
     }},
    
     {   RESOURCE_LIMITS {
         option: 'd' as i32,
         parameter: RLIMIT_DATA as i32,
         block_factor: 1024 as i32,
-        description: b"data seg size\0" as *const u8 as *const libc::c_char,
-        units: b"kbytes\0" as *const u8 as *const libc::c_char,
+        description: b"data seg size\0" as *const u8 as *const i8,
+        units: b"kbytes\0" as *const u8 as *const i8,
     }},
 
     {   RESOURCE_LIMITS {
         option: 'e' as i32,
         parameter: __RLIMIT_NICE as i32,
         block_factor: 1 as i32,
-        description: b"scheduling priority\0" as *const u8 as *const libc::c_char,
-        units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+        description: b"scheduling priority\0" as *const u8 as *const i8,
+        units: 0 as *const libc::c_void as *mut libc::c_void as *mut i8,
     }},
 
     {   RESOURCE_LIMITS {
         option: 'f' as i32,
         parameter: RLIMIT_FSIZE as i32,
         block_factor: -(2 as i32),
-        description: b"file size\0" as *const u8 as *const libc::c_char,
-        units: b"blocks\0" as *const u8 as *const libc::c_char,
+        description: b"file size\0" as *const u8 as *const i8,
+        units: b"blocks\0" as *const u8 as *const i8,
     }},
     
     {
@@ -274,8 +274,8 @@ const  limits: [ RESOURCE_LIMITS_T;18] =[
             option: 'i' as i32,
             parameter: __RLIMIT_SIGPENDING as i32,
             block_factor: 1 as i32,
-            description: b"pending signals\0" as *const u8 as *const libc::c_char,
-            units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+            description: b"pending signals\0" as *const u8 as *const i8,
+            units: 0 as *const libc::c_void as *mut libc::c_void as *mut i8,
         }
     },
 
@@ -283,88 +283,88 @@ const  limits: [ RESOURCE_LIMITS_T;18] =[
         option: 'l' as i32,
         parameter: __RLIMIT_MEMLOCK as i32,
         block_factor: 1024 as i32,
-        description: b"max locked memory\0" as *const u8 as *const libc::c_char,
-        units: b"kbytes\0" as *const u8 as *const libc::c_char,
+        description: b"max locked memory\0" as *const u8 as *const i8,
+        units: b"kbytes\0" as *const u8 as *const i8,
     }},
 
     {   RESOURCE_LIMITS {
         option: 'm' as i32,
         parameter: __RLIMIT_RSS as i32,
         block_factor: 1024 as i32,
-        description: b"max memory size\0" as *const u8 as *const libc::c_char,
-        units: b"kbytes\0" as *const u8 as *const libc::c_char,
+        description: b"max memory size\0" as *const u8 as *const i8,
+        units: b"kbytes\0" as *const u8 as *const i8,
     }},
 
     {   RESOURCE_LIMITS {
         option: 'n' as i32,
         parameter: RLIMIT_NOFILE as i32,
         block_factor: 1 as i32,
-        description: b"open files\0" as *const u8 as *const libc::c_char,
-        units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+        description: b"open files\0" as *const u8 as *const i8,
+        units: 0 as *const libc::c_void as *mut libc::c_void as *mut i8,
     }},
 
     {   RESOURCE_LIMITS {
         option: 'p' as i32,
         parameter: 257 as i32,
         block_factor: 512 as i32,
-        description: b"pipe size\0" as *const u8 as *const libc::c_char,
-        units: b"512 bytes\0" as *const u8 as *const libc::c_char,
+        description: b"pipe size\0" as *const u8 as *const i8,
+        units: b"512 bytes\0" as *const u8 as *const i8,
     }},
 
     {   RESOURCE_LIMITS {
         option: 'q' as i32,
         parameter: __RLIMIT_MSGQUEUE as i32,
         block_factor: 1 as i32,
-        description: b"POSIX message queues\0" as *const u8 as *const libc::c_char,
-        units: b"bytes\0" as *const u8 as *const libc::c_char,
+        description: b"POSIX message queues\0" as *const u8 as *const i8,
+        units: b"bytes\0" as *const u8 as *const i8,
     }},
 
     {   RESOURCE_LIMITS {
         option: 'r' as i32,
         parameter: __RLIMIT_RTPRIO as i32,
         block_factor: 1 as i32,
-        description: b"real-time priority\0" as *const u8 as *const libc::c_char,
-        units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+        description: b"real-time priority\0" as *const u8 as *const i8,
+        units: 0 as *const libc::c_void as *mut libc::c_void as *mut i8,
     }},
 
     {   RESOURCE_LIMITS {
         option: 's' as i32,
         parameter: RLIMIT_STACK as i32,
         block_factor: 1024 as i32,
-        description: b"stack size\0" as *const u8 as *const libc::c_char,
-        units: b"kbytes\0" as *const u8 as *const libc::c_char,
+        description: b"stack size\0" as *const u8 as *const i8,
+        units: b"kbytes\0" as *const u8 as *const i8,
     }},
 
     {   RESOURCE_LIMITS {
         option: 't' as i32,
         parameter: RLIMIT_CPU as i32,
         block_factor: 1 as i32,
-        description: b"cpu time\0" as *const u8 as *const libc::c_char,
-        units: b"seconds\0" as *const u8 as *const libc::c_char,
+        description: b"cpu time\0" as *const u8 as *const i8,
+        units: b"seconds\0" as *const u8 as *const i8,
     }},
 
     {   RESOURCE_LIMITS {
         option: 'u' as i32,
         parameter: __RLIMIT_NPROC as i32,
         block_factor: 1 as i32,
-        description: b"max user processes\0" as *const u8 as *const libc::c_char,
-        units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+        description: b"max user processes\0" as *const u8 as *const i8,
+        units: 0 as *const libc::c_void as *mut libc::c_void as *mut i8,
     }},
 
     {   RESOURCE_LIMITS {
         option: 'v' as i32,
         parameter: RLIMIT_AS as i32,
         block_factor: 1024 as i32,
-        description: b"virtual memory\0" as *const u8 as *const libc::c_char,
-        units: b"kbytes\0" as *const u8 as *const libc::c_char,
+        description: b"virtual memory\0" as *const u8 as *const i8,
+        units: b"kbytes\0" as *const u8 as *const i8,
     }},
 
     {   RESOURCE_LIMITS {
         option: 'x' as i32,
         parameter: __RLIMIT_LOCKS as i32,
         block_factor: 1 as i32,
-        description: b"file locks\0" as *const u8 as *const libc::c_char,
-        units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+        description: b"file locks\0" as *const u8 as *const i8,
+        units: 0 as *const libc::c_void as *mut libc::c_void as *mut i8,
     }},
 
     {   RESOURCE_LIMITS {
@@ -372,8 +372,8 @@ const  limits: [ RESOURCE_LIMITS_T;18] =[
         parameter: -1,
         block_factor:-1,
         description: 0 as *const libc::c_void as *mut libc::c_void
-            as *mut libc::c_char,
-        units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+            as *mut i8,
+        units: 0 as *const libc::c_void as *mut libc::c_void as *mut i8,
     }}
     ];
 
@@ -381,17 +381,17 @@ extern "C" {
     fn reset_internal_getopt();
     fn xmalloc(_: u64) -> *mut libc::c_void;
     fn xrealloc(_: *mut libc::c_void, _: u64) -> *mut libc::c_void;
-    fn all_digits(_: *const libc::c_char) -> i32;
+    fn all_digits(_: *const i8) -> i32;
     fn sh_chkwrite(_: i32) -> i32;
-    fn internal_getopt(_: *mut WordList, _: *mut libc::c_char) -> i32;
-    fn strerror(_: i32) -> *mut libc::c_char;
-    fn sprintf(_: *mut libc::c_char, _: *const libc::c_char, _: ...) -> i32;
-    fn string_to_rlimtype(_: *mut libc::c_char ) -> rlim_t;
+    fn internal_getopt(_: *mut WordList, _: *mut i8) -> i32;
+    fn strerror(_: i32) -> *mut i8;
+    fn sprintf(_: *mut i8, _: *const i8, _: ...) -> i32;
+    fn string_to_rlimtype(_: *mut i8 ) -> rlim_t;
     fn getdtablesize() -> i32;
     fn builtin_help ();
     fn builtin_usage();
-    fn sh_erange (s:* mut libc::c_char, desc:* mut libc::c_char);
-    fn sh_invalidnum(arg1: *mut libc::c_char);
+    fn sh_erange (s:* mut i8, desc:* mut i8);
+    fn sh_invalidnum(arg1: *mut i8);
     fn __errno_location() -> *mut i32;
     fn getrlimit(__resource: __rlimit_resource_t, __rlimits: *mut rlimit) -> i32;
     fn setrlimit(
@@ -399,17 +399,17 @@ extern "C" {
         __rlimits: *const rlimit,
     ) -> i32;
 
-    fn builtin_error(_: *const libc::c_char, _: ...);
+    fn builtin_error(_: *const i8, _: ...);
     fn getmaxchild() -> i64;
     fn print_rlimtype(_: rlim_t, _: i32);
     
     static mut loptend: *mut WordList;
-    static mut list_optarg: *mut libc::c_char;
+    static mut list_optarg: *mut i8;
     static mut posixly_correct:i32 ;
     static mut current_user: user_info;
 }
 
-static mut optstring:[ libc::c_char;4 + 2 * NCMDS!() as usize] = [0;4 + 2 * NCMDS!() as usize];
+static mut optstring:[ i8;4 + 2 * NCMDS!() as usize] = [0;4 + 2 * NCMDS!() as usize];
 static mut cmdlist : *mut ULCMD = 0 as *const ULCMD as *mut ULCMD;
 static mut ncmd : i32  = 0;
 
@@ -432,7 +432,7 @@ fn _findlim (opt:i32) -> i32{
 pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
 
     //println!("enter ulimit set  by huanhuan");
-    let mut  s : *mut libc::c_char;
+    let mut  s : *mut i8;
     let mut c : i32 ;
     let mut limind : i32 ;
     let mut mode : i32 = 0 ;
@@ -441,23 +441,23 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
     if optstring[0] == 0 {
         //println!(" optstring[0] == 0");
          s = optstring.as_mut_ptr();
-         s = (s as usize ) as *mut libc::c_char;
-        *s = 'a' as libc::c_char;  
-         s = (s as usize + 1) as *mut libc::c_char;
-        *s  = 'S' as libc::c_char;
-         s = (s as usize + 1) as *mut libc::c_char;
-        *s   = 'H' as libc::c_char;
+         s = (s as usize ) as *mut i8;
+        *s = 'a' as i8;  
+         s = (s as usize + 1) as *mut i8;
+        *s  = 'S' as i8;
+         s = (s as usize + 1) as *mut i8;
+        *s   = 'H' as i8;
          c = 0 ;
         for i in 0..17 {
             if limits[i].option > 0{
                 //println!("limits[i].option > 0 is {}",limits[i].option);
-                s = (s as usize + 1) as *mut libc::c_char;
-                *s = limits[i].option as libc::c_char;
-                s = (s as usize + 1) as *mut libc::c_char;
-                *s = ';' as  libc::c_char;
+                s = (s as usize + 1) as *mut i8;
+                *s = limits[i].option as i8;
+                s = (s as usize + 1) as *mut i8;
+                *s = ';' as  i8;
             } 
         }
-        *s = '\0' as  libc::c_char;
+        *s = '\0' as  i8;
     }
     
     //println! ("cmdlistsz is {}",cmdlistsz);
@@ -472,7 +472,7 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
     }
     ncmd = 0;
     reset_internal_getopt ();
-    opt = internal_getopt(list, optstring.as_ptr() as *mut libc::c_char);
+    opt = internal_getopt(list, optstring.as_ptr() as *mut i8);
     //println! ("get opt 2 is {}",opt);
     while opt != -1 {
         //println!("opt  is {}", opt); 
@@ -483,13 +483,17 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
             'S' => { mode = mode | LIMIT_SOFT!() ; }
             'H' => { mode = mode | LIMIT_HARD!();}
             '?'=> {   
-                 builtin_usage();
+                 builtin_help();
                  return  EX_USAGE;
             }
+            //  => {
+            //     builtin_usage();
+            //     return EX_USAGE;
+            // }
             _ => {
                 //println!("enter switch default,opt  is {}",opt);
                 if opt == -99 {
-                    builtin_help();
+                    builtin_usage();
                     return EX_USAGE;
                 }
                 if ncmd >= cmdlistsz {
@@ -517,7 +521,7 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
 
             }
         }
-        opt = internal_getopt (list, optstring.as_ptr() as * mut libc::c_char);
+        opt = internal_getopt (list, optstring.as_ptr() as * mut i8);
   }
 
     // println! ("now cmd1 opt is {:?}",(*((cmdlist as usize + (ncmd as usize)*std::mem::size_of::<ULCMD>())
@@ -582,9 +586,9 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
       //println!("now get limind is {}",limind);
       if limind == -1 {
         unsafe {
-            builtin_error(b"%s: bad command : %s\0" as *const u8 as  *const libc::c_char, 
+            builtin_error(b"%s: bad command : %s\0" as *const u8 as  *const i8, 
             (*cmdlist.offset(d as isize)).cmd, 
-            strerror(*__errno_location()) as *const libc::c_char);
+            strerror(*__errno_location()) as *const i8);
         }
         return EX_USAGE;
       }
@@ -607,7 +611,7 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
   
 }
 
-unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32, multiple : i32) -> i32 {
+unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut i8,mut  mode : i32, multiple : i32) -> i32 {
 
     let mut opt : i32 ;
     let mut limind : i32 ;
@@ -642,8 +646,8 @@ unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32
 
   if opt < 0 {
     unsafe {
-        builtin_error(b"%s: cannot get limit : %s\0" as *const u8 as  *const libc::c_char,  limits[limind as usize].description, 
-         strerror(*__errno_location()) as *const libc::c_char);
+        builtin_error(b"%s: cannot get limit : %s\0" as *const u8 as  *const i8,  limits[limind as usize].description, 
+         strerror(*__errno_location()) as *const i8);
     }
  
     return EXECUTION_FAILURE!();
@@ -664,14 +668,14 @@ unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32
   let mut c_str_hard = CString::new("hard").unwrap();
   let mut c_str_soft = CString::new("soft").unwrap();
   let mut c_str_unlimited = CString::new("unlimited").unwrap();
-  if unsafe{STREQ!(cmdarg,c_str_hard.as_ptr() as *mut libc::c_char )}{
+  if unsafe{STREQ!(cmdarg,c_str_hard.as_ptr() as *mut i8 )}{
     real_limit = hard_limit;
   }
 
-  else if unsafe{STREQ!(cmdarg, c_str_soft.as_ptr() as *mut libc::c_char)}{
+  else if unsafe{STREQ!(cmdarg, c_str_soft.as_ptr() as *mut i8)}{
     real_limit = soft_limit;
   }
-  else if unsafe{STREQ!(cmdarg, c_str_unlimited.as_ptr() as *mut libc::c_char)}{
+  else if unsafe{STREQ!(cmdarg, c_str_unlimited.as_ptr() as *mut i8)}{
     real_limit = RLIM_INFINITY!();
   }
 
@@ -683,7 +687,7 @@ unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32
     if (real_limit / block_factor as i64) != limit {
       //  println!("real_limit / block_factor as i64) != limit");
         let c_str_limit =CString::new("limit").unwrap();
-	    unsafe {sh_erange (cmdarg,c_str_limit.as_ptr() as *mut libc::c_char)};
+	    unsafe {sh_erange (cmdarg,c_str_limit.as_ptr() as *mut i8)};
 	    return EXECUTION_FAILURE!();
 	}
     //println!("real_limit / block_factor as i64) == limit");
@@ -694,8 +698,8 @@ unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32
     return EXECUTION_FAILURE!();
   }
     if set_limit (limind, real_limit, mode) < 0 {
-            builtin_error(b"%s: cannot modify limit : %s\0" as *const u8 as  *const libc::c_char,  limits[limind as usize].description, 
-             strerror(*__errno_location()) as *const libc::c_char);
+            builtin_error(b"%s: cannot modify limit : %s\0" as *const u8 as  *const i8,  limits[limind as usize].description, 
+             strerror(*__errno_location()) as *const i8);
     return EXECUTION_FAILURE!();
     }
     return EXECUTION_SUCCESS!();
@@ -728,7 +732,7 @@ fn get_limit (mut ind : i32, softlim : *mut RLIMTYPE, hardlim : *mut RLIMTYPE ) 
                 
             }
             RLIMIT_VIRTMEM!() => {
-                return unsafe {getmaxvm(softlim, hardlim as *mut libc::c_char) };
+                return unsafe {getmaxvm(softlim, hardlim as *mut i8) };
             }
             RLIMIT_MAXUPROC!() => {
                 if getmaxuprc ((value as usize) as *mut u64) < 0 {
@@ -819,7 +823,7 @@ fn  set_limit (ind : i32, newlim : RLIMTYPE, mode : i32) -> i32{
     }  
 }
 
-unsafe fn getmaxvm(softlim : *mut RLIMTYPE , hardlim : *mut libc::c_char) -> i32 {
+unsafe fn getmaxvm(softlim : *mut RLIMTYPE , hardlim : *mut i8) -> i32 {
 
     let  mut  datalim :  rlimit = rlimit { rlim_cur: 0, rlim_max: 0 };
     let  mut  stacklim : rlimit = rlimit { rlim_cur: 0, rlim_max: 0 };
@@ -831,7 +835,7 @@ unsafe fn getmaxvm(softlim : *mut RLIMTYPE , hardlim : *mut libc::c_char) -> i32
         return -1;
     }    
         *softlim = (datalim.rlim_cur as i64 / 1024 as i64) + (stacklim.rlim_cur as i64/1024 as i64);
-        *hardlim = ((datalim.rlim_max as i64) /1024 as i64) as libc::c_char + (stacklim.rlim_max as i64/1024 as i64) as libc::c_char;
+        *hardlim = ((datalim.rlim_max as i64) /1024 as i64) as i8 + (stacklim.rlim_max as i64/1024 as i64) as i8;
     return 0;
 }
  
@@ -888,8 +892,8 @@ fn print_all_limits (mut mode : i32) {
         else if unsafe {
             *__errno_location() != libc::EINVAL } {
                 unsafe {
-                    builtin_error(b"%s: cannot get limit : %s\0" as *const u8 as  *const libc::c_char,  limits[i as usize].description, 
-                     strerror(*__errno_location()) as *const libc::c_char);
+                    builtin_error(b"%s: cannot get limit : %s\0" as *const u8 as  *const i8,  limits[i as usize].description, 
+                     strerror(*__errno_location()) as *const i8);
                 }
         }
      i = i+1;
@@ -899,7 +903,7 @@ fn print_all_limits (mut mode : i32) {
 fn  printone (limind : i32, curlim :RLIMTYPE  , pdesc : i32){
    // println!("enter printone");
     //println!("now  get curlim is {}",curlim);
-    let mut unitstr :[ libc::c_char; 64] = [0 ; 64];
+    let mut unitstr :[ i8; 64] = [0 ; 64];
     let mut factor : i32 ;
 
    // println!("limind1 is  {} ",limind);
@@ -908,7 +912,7 @@ fn  printone (limind : i32, curlim :RLIMTYPE  , pdesc : i32){
         if !limits[limind as usize].units.is_null(){
             unsafe {
                 //println!("ffffffffff11");
-                sprintf (unitstr.as_mut_ptr(), b"(%s, -%c) \0" as *const u8 as *const libc::c_char,
+                sprintf (unitstr.as_mut_ptr(), b"(%s, -%c) \0" as *const u8 as *const i8,
                 limits[limind as usize].units, 
                 limits[limind as usize].option);
             }
@@ -916,7 +920,7 @@ fn  printone (limind : i32, curlim :RLIMTYPE  , pdesc : i32){
         }
         else {
             unsafe {
-                sprintf (unitstr.as_mut_ptr(),b"(-%c) \0" as *const u8 as *const libc::c_char,
+                sprintf (unitstr.as_mut_ptr(),b"(-%c) \0" as *const u8 as *const i8,
                 limits[limind as usize].option);
             }
              
@@ -986,8 +990,8 @@ fn  set_all_limits (mut mode : i32 , newlim : RLIMTYPE) -> i32 {
     while limits[i as usize].option > 0 {
         if set_limit (i, newlim, mode) < 0 {
             unsafe {
-                builtin_error(b"%s: cannot modify limit : %s\0" as *const u8 as  *const libc::c_char,  limits[i as usize].description, 
-                 strerror(*__errno_location()) as *const libc::c_char);
+                builtin_error(b"%s: cannot modify limit : %s\0" as *const u8 as  *const i8,  limits[i as usize].description, 
+                 strerror(*__errno_location()) as *const i8);
             }
 	        retval = 1;
             i = i +1;

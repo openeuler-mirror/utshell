@@ -554,7 +554,6 @@ extern "C" {
   fn sh_invalidid (value:* mut c_char);
   fn sh_invalidoptname (value:* mut c_char);
   fn builtin_usage();
-  fn builtin_help();
   static list_optarg:* mut c_char;
   fn builtin_error(err:*const c_char,...);
   fn check_identifier (w:* mut WordDesc, f:i32)->i32;
@@ -823,10 +822,6 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
             Xarg = list_optarg;
            }
            _=>{
-            if opt == -99 {
-              builtin_help();
-              return EX_USAGE;
-          }
             builtin_usage ();
             return EX_USAGE;
           }

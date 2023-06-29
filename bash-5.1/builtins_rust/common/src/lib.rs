@@ -519,14 +519,14 @@ macro_rules! VUNSETATTR {
 #[macro_export]
 macro_rules! ISOCTAL {
     ($c:expr) => {
-        ($c) >= b'0' as libc::c_char  && ($c) <= b'7' as libc::c_char
+        ($c) >= b'0' as i8  && ($c) <= b'7' as i8
     };
 }
 
 #[macro_export]
 macro_rules! DIGIT {
     ($c:expr) => {
-        ($c) >= b'0' as libc::c_char  && ($c) <= b'9' as libc::c_char
+        ($c) >= b'0' as i8  && ($c) <= b'9' as i8
     };
 }
 
@@ -746,7 +746,7 @@ pub extern "C" fn r_no_options(list:*mut WordList)->i32{
         reset_internal_getopt();
         let c_str = CString::new("").unwrap();
         let c_ptr = c_str.as_ptr(); 
-        opt = internal_getopt(list,c_ptr as *mut libc::c_char);
+        opt = internal_getopt(list,c_ptr as *mut i8);
         if opt != -1{
             if opt == GETOPT_HELP!(){
                 builtin_help();
@@ -824,11 +824,11 @@ pub extern "C" fn r_sh_invalidnum(s:*mut c_char){
         let mut msg = String::new();
         let mut mag_ptr:*const c_char = std::ptr::null_mut();
 
-        if *s == b'0' as libc::c_char && isdigit(*s.offset(1) as c_int) != 0{
+        if *s == b'0' as i8 && isdigit(*s.offset(1) as c_int) != 0{
             msg.push_str("invalid octal number");
             mag_ptr = msg.as_ptr() as *mut c_char;
         }
-        else if *s == b'0' as libc::c_char && *s.offset(1) == b'x' as libc::c_char{
+        else if *s == b'0' as i8 && *s.offset(1) == b'x' as i8{
             msg.push_str("invalid hex number");
             mag_ptr = msg.as_ptr() as *mut c_char;
         }
@@ -1148,7 +1148,7 @@ pub extern "C" fn r_get_numeric_arg(mut list:*mut WordList,fatal:i32,count:*mut 
             *count = 1;
         }
 
-        if !list.is_null() && !(*list).word.is_null() && ISOPTION((*(*list).word).word,b'-' as libc::c_char){
+        if !list.is_null() && !(*list).word.is_null() && ISOPTION((*(*list).word).word,b'-' as i8){
             list = (*list).next;
         }
 
@@ -1159,7 +1159,7 @@ pub extern "C" fn r_get_numeric_arg(mut list:*mut WordList,fatal:i32,count:*mut 
                     r_sh_neednumarg((*(*list).word).word);
                 }
                 else {
-                    r_sh_neednumarg(String::from("`'").as_ptr() as *mut libc::c_char);
+                    r_sh_neednumarg(String::from("`'").as_ptr() as *mut i8);
                 }
                 
                 if fatal == 0{
@@ -1188,7 +1188,7 @@ pub extern "C" fn r_get_exitstat(mut list:*mut WordList)->i32{
     let arg:*mut c_char;
 
     unsafe{
-        if !list.is_null() && !(*list).word.is_null() && ISOPTION((*(*list).word).word,b'-' as libc::c_char){
+        if !list.is_null() && !(*list).word.is_null() && ISOPTION((*(*list).word).word,b'-' as i8){
             list = (*list).next;
         }
 
@@ -1211,7 +1211,7 @@ pub extern "C" fn r_get_exitstat(mut list:*mut WordList)->i32{
                 r_sh_neednumarg((*(*list).word).word);
             }
             else {
-                r_sh_neednumarg(String::from("`'").as_ptr() as *mut libc::c_char);
+                r_sh_neednumarg(String::from("`'").as_ptr() as *mut i8);
             }
 
             return EX_BADUSAGE!();
@@ -1234,7 +1234,7 @@ pub extern "C" fn r_read_octal(mut string:*mut c_char)->i32{
     unsafe{
         while *string!=0 && ISOCTAL!(*string){
             digits += 1;
-            result = (result * 8) + (*string - b'0' as libc::c_char) as i32;
+            result = (result * 8) + (*string - b'0' as i8) as i32;
             string = (string as usize + 1 ) as *mut c_char;
             if result > 0o7777{
                 return -1;
@@ -1390,11 +1390,11 @@ pub extern "C" fn r_get_job_spec(list:*mut WordList)->i32{
 
         word = (*(*list).word).word;
 
-        if *word.offset(0) == '\0' as libc::c_char {
+        if *word.offset(0) == '\0' as i8 {
             return NO_JOB!();
         }
 
-        if *word.offset(0) == '%' as libc::c_char {
+        if *word.offset(0) == '%' as i8 {
             word = word.offset(1);
         }
 

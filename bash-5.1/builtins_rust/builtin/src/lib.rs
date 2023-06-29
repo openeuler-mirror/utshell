@@ -6,14 +6,15 @@ include!(concat!("intercdep.rs"));
 pub extern "C" fn r_builtin_builtin(mut list: *mut WordList) -> i32 {
     unsafe{
         let mut function: Option::<sh_builtin_func_t> = None;
+        let mut command: &CStr = CStr::from_ptr((*(*list).word).word as *mut c_char);
         if no_options(list) != 0 {
             return EX_USAGE;
         }
         list = loptend;
-        if list == std::ptr::null_mut() {
+        if list.is_null() {
             return EXECUTION_SUCCESS!();
         }
-        let mut command: &CStr = CStr::from_ptr((*(*list).word).word as *mut c_char);
+
         function = find_shell_builtin(command.as_ptr() as *mut c_char);
         if function.is_none() {
             sh_notbuiltin(command.as_ptr() as *mut c_char);

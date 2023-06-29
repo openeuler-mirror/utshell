@@ -140,10 +140,6 @@ unsafe {
                 }
             }
             _ => {
-                if opt == -99 {
-                    builtin_help();
-                    return EX_USAGE;
-                }
             r_builtin_usage ();
             return EX_USAGE;
             }
@@ -190,7 +186,7 @@ unsafe {
             if *fmt == b'\\' as c_char {               
                 fmt = (fmt as usize + 1) as *mut c_char;
                 
-                let mut mbch: [libc::c_char;25] = [0; 25];
+                let mut mbch: [i8;25] = [0; 25];
                 let mut mblen: c_int = 0;
                 fmt = (fmt as usize + tescape(fmt, mbch.as_ptr() as *mut c_char, std::mem::transmute(&mblen), PT_NULL as *mut c_int) as usize) as *mut c_char;
                 let mut mbind = 0;

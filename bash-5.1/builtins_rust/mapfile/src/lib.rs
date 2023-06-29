@@ -94,10 +94,6 @@ unsafe {
                 }
             }
             _ => {
-                if opt == -99 {
-                    builtin_help();
-                    return EX_USAGE;
-                }
             r_builtin_usage ();
             return EX_USAGE;
             }
