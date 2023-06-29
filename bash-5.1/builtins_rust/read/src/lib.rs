@@ -159,11 +159,11 @@ unsafe {
                     tmusec = uval as c_uint;
                 }
             }
-            'N' => {
-                ignore_delim = 1;
-                delim = -1;
-            }
-            'n' => {
+            'N' | 'n' => {
+                if opt_char == 'N' {
+                    ignore_delim = 1;
+                    delim = -1;
+                }
                 nflag = 1;
                 code = legal_number(list_optarg, &mut intval);
                 if code == 0 || intval < 0 || intval != (intval as c_int) as c_long {
@@ -193,7 +193,6 @@ unsafe {
                 }
                
             _ => {
-                // builtin_usage();
             r_builtin_usage ();
             return EX_USAGE;
             }
