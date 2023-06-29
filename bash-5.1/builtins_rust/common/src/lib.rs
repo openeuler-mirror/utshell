@@ -6,7 +6,8 @@ use std::ffi::{CStr, CString};
 use std::mem::size_of;
 use std::ptr::read_volatile;
 use nix::errno::errno;
-
+use std::env::var;
+use unic_langid::LanguageIdentifier;
 include!(concat!("lib_readline_keymaps.rs"));
 
 include!(concat!("command.rs"));
@@ -662,6 +663,7 @@ extern "C"{
     fn builtin_help();
     
     fn builtin_error(format:*const c_char,...);
+
 }
 
 unsafe fn ISOPTION(s:* const c_char, c:c_char)->bool
@@ -1730,7 +1732,7 @@ pub extern "C" fn r_builtin_bind_variable(name:*mut c_char,value:*mut c_char,fla
 
 /* Like check_unbind_variable, but for use by builtins (only matters for
    error messages). */
-pub extern "C" fn r_builtin_unbind_variable(vname:*const c_char)->i32{
+   pub extern "C" fn r_builtin_unbind_variable(vname:*const c_char)->i32{
     let v:*mut SHELL_VAR;
 
     unsafe{
@@ -1753,3 +1755,20 @@ pub extern "C" fn r_builtin_unbind_variable(vname:*const c_char)->i32{
     }
 }
 
+pub extern "C" fn get_local_str()-> Vec<LanguageIdentifier>{
+
+    let  lang : String;
+    match var("LANGUAGE") {
+        Ok(v) => lang = v ,
+        Err(e) => 
+        {
+            lang = String::from("en-US");
+            println!("err is {e:?}")
+        },
+    }
+    println!("now language is {:?}",lang);
+    //parse() 用于类型转换
+    let langid : LanguageIdentifier = lang.parse().expect("wrong language");
+    let locales = vec![langid.into()];
+    return locales; 
+  }
