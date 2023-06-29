@@ -641,7 +641,7 @@ impl Factory for SimpleFactory {
                 ReservedComand{}
             ),
             CMDType::ReturnCmd => Box::new(
-                ReadComand{}
+                ReturnComand{}
             ),
             CMDType::SetattrCmd => Box::new(
                 SetattrComand{}
@@ -899,10 +899,10 @@ unsafe fn get_cmd_type (command : *mut libc::c_char) -> CMDType{
 #[no_mangle]
 pub extern "C" fn r_exec_cmd(command : *mut libc::c_char, mut list :*mut WordList) -> i32 {
 
-    println!("enter r_exec_cmd");
-    unsafe {
-        println!("command is {:?}",CStr::from_ptr(command));
-    }
+    // println!("enter r_exec_cmd");
+    // unsafe {
+    //    println!("command is {:?}",CStr::from_ptr(command));
+    // }
     let commandType = unsafe {get_cmd_type(command)};
     let  factory = SimpleFactory::new();
     let cmdCall = factory.make_product(commandType);

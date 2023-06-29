@@ -2765,6 +2765,7 @@ mod printing {
     use super::*;
     use crate::attr::FilterAttrs;
     use crate::print::TokensOrDefault;
+    use crate::punctuated::Pair;
     use proc_macro2::TokenStream;
     use quote::{ToTokens, TokenStreamExt};
 
@@ -3282,9 +3283,16 @@ mod printing {
             self.generics.to_tokens(tokens);
             self.paren_token.surround(tokens, |tokens| {
                 let mut last_is_variadic = false;
-                for pair in self.inputs.pairs() {
-                    last_is_variadic = maybe_variadic_to_tokens(pair.value(), tokens);
-                    pair.punct().to_tokens(tokens);
+                for input in self.inputs.pairs() {
+                    match input {
+                        Pair::Punctuated(input, comma) => {
+                            maybe_variadic_to_tokens(input, tokens);
+                            comma.to_tokens(tokens);
+                        }
+                        Pair::End(input) => {
+                            last_is_variadic = maybe_variadic_to_tokens(input, tokens);
+                        }
+                    }
                 }
                 if self.variadic.is_some() && !last_is_variadic {
                     if !self.inputs.empty_or_trailing() {

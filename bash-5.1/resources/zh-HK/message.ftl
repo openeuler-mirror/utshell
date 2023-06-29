@@ -736,7 +736,7 @@ $cmdName ->
     退出状态
     总是成功。
 
-    [limit] 修改 shell 资源限制。
+    [ulimit] 修改 shell 资源限制。
     
     在允许此类控制的系统上，提供对于 shell 及其创建的进程所可用的
     资源的控制。
@@ -1306,7 +1306,7 @@ $cmdName ->
 [suspend] suspend - 挂起 shell 执行。
 [eval] eval - 对条件表达式进行估值。
 [times] times - 显示进程时间
-[limit] limit - 修改 shell 资源限制。
+[ulimit] limit - 修改 shell 资源限制。
 [umask] umask - 显示或设定文件模式掩码。
 [return] return - 等待任务完成并返回退出状态。
 [wait] wait - 等待进程完成并且返回退出状态。
@@ -1337,5 +1337,77 @@ $cmdName ->
 [source] source - 在当前 shell 中执行一个文件中的命令。
 [bind] bind - 设定 Readline 键绑定和变量。
 [test] test - 估值算术表达式。
+*[other] 显示其他命令帮助信息 .
+}
+
+helpsynopsis = {
+$cmdName ->
+[set]   {"set [--abefhkmnptuvxBCHP][-o 选项名][--][参数 ...]"}
+[read]  {"read [-ers] [-a 数组] [-d 分隔符] [-i 缓冲区文字] [-n 读取字符数] [-N 读取字符数] [-p 提示符] [-t 超时] [-u 文件描述符] [名称 ...]"}
+[type]  {"type [-afptP] 名称 [名称 ...]"}
+[trap]  {"trap: trap [-lp] [[参数] 信号声明 ...]"}
+[alias] {"alias [-p] [名称[=值] ... ]"}
+[unalias] {"unalias [-a] 名称 [名称 ...] "}
+[break] {"break [n]"}
+[continue] {"continue [n]"}
+[builtin] {"builtin [shell 内建 [参数 ...]] "}
+[caller] {"caller [表达式] "}
+[cd] {"cd [-L|[-P [-e]] [-@]] [目录]"}
+[pwd] {"pwd [-LP]"}
+[true] {"true"}
+[shopt] {"shopt [-pqsu] [-o] [选项名 ...]"}
+[false] {"false"}
+[command] {"command [-pVv] 命令 [参数 ...]"}
+[echo] {"echo [-neE] [参数 ...]"}
+[enable] {"enable [-a] [-dnps] [-f 文件名] [名称 ...] "}
+[getopts] {"getopts 选项字符串 名称 [参数]"}
+[exec] {"exec [-cl] [-a 名称] [命令 [参数 ...]] [重定向 ...] "}
+[exit] {"exit [n]"}
+[logout] {"logout [n]"}
+[fc] {"fc [-e 编辑器名] [-lnr] [起始] [终结] 或 fc -s [模式=替换串] [命令]"}
+[fg] {"fg [任务声明] "}
+[bg] {"bg [任务声明 ...]"}
+[hash] {"hash [-lr] [-p 路径名] [-dt] [名称 ...]"}
+[help] {"help [-dms] [模式 ...]"}
+[history] {"history [-c] [-d 偏移量] [n] 或 history -anrw [文件名] 或 history -ps 参数 [参数...]"}
+[jobs] {"jobs [-lnprs] [任务声明 ...] 或 jobs -x 命令 [参数]"}
+[disown] {"disown [-h] [-ar] [任务声明 ... | pid ...]"}
+[kill] {"kill [-s 信号声明 | -n 信号编号 | -信号声明] 进程号 | 任务声明 ... 或 kill -l [信号声明]"}
+[let] {"let 参数 [参数 ...]"}
+[shift] {"shift [n]"}
+[suspend] {"suspend [-f]"}
+[eval] {"eval [参数 ...]"}
+[times] {"times"}
+[ulimit] {"ulimit [-SHabcdefiklmnpqrstuvxPT] [限制]"}
+[umask] {"umask [-p] [-S] [模式]"}
+[return] {"return [n]"}
+[wait] {"wait [-fn] [编号 ...]"}
+[for] {"for 名称 [in 词语 ... ] ; do 命令; done"}
+[select] {"select NAME [in 词语 ... ;] do 命令; done"}
+[time] {"time [-p] 管道"}
+[case] {"case 词 in [模式 [| 模式]...) 命令 ;;]... esac"}
+[if] {"if 命令; then 命令; [ elif 命令; then 命令; ]... [ else 命令; ] fi"}
+[while] {"while 命令; do 命令; done"}
+[until] {"until 命令; do 命令; done"}
+[coproc] {"coproc [名称] 命令 [重定向]"}
+[variables] {"variables - 一些 shell 变量的名称和含义"}
+[pushd] {"pushd [-n] [+N | -N | 目录]"}
+[popd] {"popd [-n] [+N | -N]"}
+[dirs] {"dirs [-clpv] [+N] [-N]"}
+[printf] {"printf [-v var] 格式 [参数]"}
+[complete] {"complete [-abcdefgjksuv] [-pr] [-DEI] [-o 选项] [-A 动作] [-G 全局模式]   [-W 词语列表]  [-F 函数] [-C 命令] [-X 过滤模式] [-P 前缀] [-S 后缀] [名称 ...]"}
+[compgen] {"compgen [-abcdefgjksuv] [-o 选项]  [-A 动作] [-G 全局模式] [-W 词语列表]  [-F 函数]  [-C 命令] [-X 过滤模式] [-P 前缀] [-S 后缀] [词语]"}
+[compopt] {"compopt [-o|+o 选项] [-DEI] [名称 ...]"}
+[mapfile] {"mapfile [-d 分隔符] [-n 计数] [-O 起始序号] [-s 计数] [-t] [-u fd] [-C 回调] [-c 量子] [数组]"}
+[unset] {"unset [-f] [-v] [-n] [名称 ...]"}
+[readarray] {"readarray [-d 定界符] [-n 计数] [-O 起始序号] [-s 计数] [-t] [-u fd] [-C 回调] [-c 量子] [数组]"}
+[local] {"local [option] 名称[=值] ... "}
+[export] {"export [-fn] [名称[=值] ...] 或 export -p"}
+[readonly] {"readonly [-aAf] [名称[=值] ...] 或 readonly -p"}
+[function] {"function 名称 { 命令 ; } 或 name () { 命令 ; } "}
+[typeset] {"typeset [-aAfFgilnrtux] [-p] 名称[=值] ..."}
+[source] {"source 文件名 [参数]"}
+[bind] {"bind [-lpvsPSVX] [-m 键映射] [-f 文件名] [-q 名称] [-u 名称] [-r 键序列] [-x 键序列:shell-命令]  [键序列:readline-函数 或 readline-命令] "}
+[test] {"test [表达式]"}
 *[other] 显示其他命令帮助信息 .
 }

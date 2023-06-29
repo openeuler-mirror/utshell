@@ -1766,7 +1766,7 @@ pub extern "C" fn get_local_str()-> Vec<LanguageIdentifier>{
             println!("err is {e:?}")
         },
     }
-    println!("now language is {:?}",lang);
+   // println!("now language is {:?}",lang);
     //parse() 用于类型转换
     let langid : LanguageIdentifier = lang.parse().expect("wrong language");
     let locales = vec![langid.into()];
