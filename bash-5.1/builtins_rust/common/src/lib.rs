@@ -1757,7 +1757,7 @@ pub extern "C" fn r_builtin_unbind_variable(vname:*const c_char)->i32{
 pub extern "C" fn get_local_str()-> Vec<LanguageIdentifier>{
 
     let  lang : String;
-    match var("LANGUAGE") {
+    match var("LANG") {
         Ok(v) => lang = v ,
         Err(e) => 
         {
@@ -1767,7 +1767,8 @@ pub extern "C" fn get_local_str()-> Vec<LanguageIdentifier>{
     }
    // println!("now language is {:?}",lang);
     //parse() 用于类型转换
-    let langid : LanguageIdentifier = lang.parse().expect("wrong language");
+    let v: Vec<_> = lang.split('.').collect();
+    let langid : LanguageIdentifier = v[0].parse().expect("wrong language");
     let locales = vec![langid.into()];
     return locales; 
   }
