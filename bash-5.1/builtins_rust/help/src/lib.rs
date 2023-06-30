@@ -305,7 +305,7 @@ fn open_helpfile(name :*mut c_char) -> i32{
 
 fn show_longdoc(i : i32){
   let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-  let mgr = ResourceManager::new("./resources/{locale}/{res_id}".into());
+  let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
   let resources = vec![ "message.ftl".into()];
   let mut args = FluentArgs::new();
   let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
