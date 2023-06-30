@@ -4,7 +4,7 @@ extern crate nix;
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
-
+use rhelp::r_builtin_help;
 
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -450,7 +450,6 @@ pub union Functions {
 }
 
 extern "C" {
-	fn builtin_help ();
     static variable_context:i32;
     fn builtin_error(err:*const c_char,...);
 	fn builtin_warning(err:*const c_char,...);
@@ -530,7 +529,7 @@ pub extern "C" fn r_local_builtin (list:* mut WordList)->i32
   unsafe {
       /* Catch a straight `local --help' before checking function context */
       if list !=std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && STREQ ((*(*list).word).word, CString::new("--help").unwrap().as_ptr()) {
-        builtin_help ();
+        r_builtin_help ();
         return EX_USAGE;
       }
 
@@ -643,7 +642,7 @@ pub extern "C" fn r_declare_internal (list:* mut WordList, local_var:i32)->i32
   let mut assign_error:i32=0;
   let mut pflag:i32=0;
   let mut nodefs:i32=0;
-  let opt:i32;
+  let mut opt:i32;
   let mut onref:i32;
   let mut offref:i32;
   let mut mkglobal:i32=0;
@@ -662,15 +661,15 @@ pub extern "C" fn r_declare_internal (list:* mut WordList, local_var:i32)->i32
 
   unsafe {
   reset_internal_getopt ();
-  let tmp = DECLARE_OPTS().as_ptr();
-  opt = internal_getopt (list, tmp as * mut c_char);
+  let tmp = DECLARE_OPTS();
+  opt = internal_getopt (list, tmp.as_ptr() as * mut c_char);
   while  opt != -1 {
       if list_opttype == '+' as i32 {
         flags= &mut flags_off;
       } else {
         flags= &mut flags_on;
       }
-
+     
       let optu8:u8= opt as u8;
       let optChar:char=char::from(optu8);
 
@@ -678,7 +677,7 @@ pub extern "C" fn r_declare_internal (list:* mut WordList, local_var:i32)->i32
 	 the loop in subst.c:shell_expand_word_list() */
       match optChar {
         'a'=>{ *flags |= att_array!();}
-	'A'=>{ *flags |= att_assoc!();}
+		'A'=>{ *flags |= att_assoc!();}
         'p'=>{ pflag+=1;}
         'F'=>{ nodefs+=1;
               *flags |= att_function!();
@@ -719,14 +718,14 @@ pub extern "C" fn r_declare_internal (list:* mut WordList, local_var:i32)->i32
         'I'=>{ inherit_flag = MKLOC_INHERIT!();}
         _=>{
 			if opt == -99 {
-				builtin_help();
+				r_builtin_help();
 				return EX_USAGE;
 			}
 			 builtin_usage ();
              return EX_USAGE;
             }
 	    }
-		internal_getopt (list, tmp as * mut c_char);
+		opt = internal_getopt (list, tmp.as_ptr() as * mut c_char);
   }
 
   let mut llist:* mut WordList = loptend.clone();

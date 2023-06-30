@@ -1,5 +1,5 @@
 use rcommon::{WordList};
-
+use rhelp::r_builtin_help;
 pub type __intmax_t = c_long;
 pub type intmax_t = __intmax_t;
 pub type arrayind_t = intmax_t;
@@ -56,7 +56,6 @@ extern "C" {
     pub fn reset_internal_getopt();
     pub fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> c_int;
     pub fn builtin_usage();
-    fn builtin_help();
     pub fn builtin_error(format: *const c_char, ...);
     pub fn builtin_warning(format: *const c_char, ...);
     pub fn builtin_bind_variable(name: *mut c_char, value: *mut c_char, flags: c_int) -> *mut SHELL_VAR;

@@ -4,6 +4,7 @@ use rset::r_set_shellopts;
 use libc::*;
 
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
+use rhelp::r_builtin_help;
 /*
 /* First, the user-visible attributes */
 #define att_exported	0x0000001	/* export to environment */
@@ -123,7 +124,6 @@ extern "C" {
     fn builtin_usage();
     fn sh_invalidoptname(_: *mut libc::c_char);
     fn sh_chkwrite(_: i32) -> libc::c_int;
-    fn builtin_help();
     fn minus_o_option_value(_: *mut libc::c_char) -> i32;
     fn list_minus_o_opts(_: i32, _: i32);
     fn set_minus_o_option(_: i32, _: *mut libc::c_char) -> libc::c_int;
@@ -950,7 +950,7 @@ pub unsafe extern "C" fn r_shopt_builtin(mut list: *mut WordList) -> i32 {
             
             _ => {
                 if opt == -99 {
-                    builtin_help();
+                    r_builtin_help();
                     return EX_USAGE;
                 }
                 builtin_usage();

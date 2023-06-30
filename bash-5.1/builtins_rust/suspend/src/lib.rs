@@ -1,6 +1,6 @@
 use libc::{c_int, c_char, c_long, PT_NULL};
 use rcommon::{r_no_args,WordList,r_builtin_usage};
-
+use rhelp::r_builtin_help;
 include!(concat!("intercdep.rs"));
 
 pub static mut old_cont: *mut SigHandler = PT_NULL as *mut SigHandler;
@@ -21,7 +21,7 @@ unsafe {
             'f' => force += 1,
             _ => {
                 if opt == -99 {
-                    builtin_help();
+                    r_builtin_help();
                     return EX_USAGE;
                 }
             r_builtin_usage ();

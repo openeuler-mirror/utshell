@@ -1,7 +1,7 @@
 use std::mem::size_of_val;
 
 use libc::{c_int, c_uint, c_char, c_long, PT_NULL, c_void};
-
+use rhelp::r_builtin_help;
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
@@ -40,9 +40,10 @@ unsafe {
             'f' => functions_only = true,
             'a' => arrays_only = 1,
             'A' => assoc_only = 1,
+            'p' => break,
             _ => {
                 if opt == -99 {
-                    builtin_help();
+                    r_builtin_help();
                     return EX_USAGE;
                 }
             builtin_usage ();

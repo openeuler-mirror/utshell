@@ -12,7 +12,7 @@ nix = "*"
 rjobs = {path = "../jobs"}
 rread = {path = "../read"}
 rcommon = {path = "../common"}
-
+rhelp = {path ="../help"}
 
 [lib]
 crate-type = ["staticlib","rlib"]

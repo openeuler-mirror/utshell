@@ -1,4 +1,5 @@
 use rcommon::{r_builtin_usage,r_sh_invalidsig,r_sh_badpid,r_sh_badjob,r_get_job_spec,r_display_signal_list,WordList,WordDesc};
+use rhelp::r_builtin_help;
 // #[repr(C)]
 // #[derive(Copy, Clone)]
 // pub struct word_desc {
@@ -299,7 +300,6 @@ extern "C" {
     pub fn get_job_spec(list: *mut WordList) -> c_int;
 
     // pub fn builtin_usage();
-    pub fn builtin_help();
     pub fn builtin_error(format: *const c_char, ...);
 
     pub fn legal_number(string: *mut c_char, result: c_long) -> c_int;

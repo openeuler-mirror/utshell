@@ -19,3 +19,4 @@ libc = "*"
 nix = "*"
 rdeclare = {path = "../declare"}
 rcommon = {path = "../common"}
+rhelp = {path ="../help"}

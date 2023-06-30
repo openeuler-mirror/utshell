@@ -6,7 +6,7 @@ use std::ffi::CString;
 use std::ptr;
 use std::mem;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
-
+use rhelp::r_builtin_help;
 
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -388,7 +388,6 @@ extern "C" {
     fn sprintf(_: *mut libc::c_char, _: *const libc::c_char, _: ...) -> i32;
     fn string_to_rlimtype(_: *mut libc::c_char ) -> rlim_t;
     fn getdtablesize() -> i32;
-    fn builtin_help ();
     fn builtin_usage();
     fn sh_erange (s:* mut libc::c_char, desc:* mut libc::c_char);
     fn sh_invalidnum(arg1: *mut libc::c_char);
@@ -489,7 +488,7 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
             _ => {
                 //println!("enter switch default,opt  is {}",opt);
                 if opt == -99 {
-                    builtin_help();
+                    r_builtin_help();
                     return EX_USAGE;
                 }
                 if ncmd >= cmdlistsz {

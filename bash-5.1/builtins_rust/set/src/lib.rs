@@ -7,6 +7,7 @@ use std::ptr;
 use std::mem;
 use std::io;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
+use rhelp::r_builtin_help;
 
 #[macro_export]
 macro_rules! FLAG_UNKNOWN {
@@ -852,7 +853,6 @@ extern "C" {
    fn with_input_from_stream (_:libc::FILE , _: *const libc::c_char);
    fn stupidly_hack_special_variables (_ : *mut libc::c_char);
    fn builtin_error(_: *const libc::c_char, _: ...);
-   fn  builtin_help();
      static mut posixly_correct : i32;
      static mut enable_history_list : i32;
      static mut ignoreeof : i32 ;
@@ -1433,10 +1433,8 @@ unsafe fn reset_shell_options () {
           }
         }
       _ => {
-        if opt == -99 {
-          unsafe { 
-          builtin_help();
-          }
+        if opt == -99{ 
+          r_builtin_help();
           return EX_USAGE;
         }
        // unsafe {
@@ -1651,7 +1649,7 @@ pub  extern "C"  fn r_unset_builtin(mut list: *mut WordList) -> i32 {
         'n'=>{nameref = 1;}
         _=>{
           if opt == -99 {
-            builtin_help();
+            r_builtin_help();
             return EX_USAGE;
         }
           builtin_usage ();

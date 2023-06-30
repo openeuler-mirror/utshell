@@ -1,5 +1,5 @@
 use rcommon::{WordList};
-
+use rhelp::r_builtin_help;
 pub type arrayind_t = c_long;
 
 pub type sh_var_value_func_t =
@@ -71,7 +71,6 @@ extern "C" {
     pub fn reset_internal_getopt();
     pub fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> c_int;
     pub fn builtin_usage();
-    fn builtin_help();
     pub fn builtin_error(format: *const c_char, ...);
 
     pub fn legal_identifier(arg1: *const c_char) -> c_int;
