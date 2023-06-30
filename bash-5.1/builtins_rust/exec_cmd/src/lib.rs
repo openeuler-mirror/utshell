@@ -23,7 +23,6 @@ use rhash::r_hash_builtin;
 use rhelp::r_help_builtin;
 use rhistory::r_history_builtin;
 use rjobs::r_jobs_builtin;
-use rjobs::r_disown_builtin;
 use rkill::r_kill_builtin;
 use rmapfile::r_mapfile_builtin;
 use rprintf::r_printf_builtin;
@@ -106,8 +105,7 @@ enum CMDType {
     TypeCmd,
     UlimitCmd,
     UmaskCmd,
-    WaitCmd,
-    DisownCmd
+    WaitCmd
 }
 
   struct AliasComand ;
@@ -498,15 +496,6 @@ impl CommandExec for UnSetComand{
     }
 }
 
-  struct DisownCommand ;
-  impl CommandExec for DisownCommand{
-    fn  excute(&self,list : *mut WordList)-> i32{
-        unsafe {
-            r_disown_builtin(list)
-        }
-    }
-  }
-
 // 定义接口
 pub trait CommandExec {
     fn excute(&self,list : *mut WordList) -> i32;
@@ -701,9 +690,6 @@ impl Factory for SimpleFactory {
             ),
             CMDType::WaitCmd  => Box::new(
                 WaitComand{}
-            ),
-            CMDType::DisownCmd => Box::new(
-                DisownCommand{}
             )
         }
     }
@@ -905,9 +891,6 @@ unsafe fn get_cmd_type (command : *mut libc::c_char) -> CMDType{
     
     else if libc::strcmp(command , b"wait\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::WaitCmd;
-    }
-    else if libc::strcmp(command , b"disown\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
-        types = CMDType::DisownCmd;
     }
     
    types

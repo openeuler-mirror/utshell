@@ -247,15 +247,7 @@ pub extern "C" fn r_umask_builtin(mut list:*mut WordList) ->i32{
         else{            /* Display the UMASK for this user. */        
             umask_arg = umask(0o22);
             umask(umask_arg);
-            if pflag != 0{
-                if print_symbolically != 0{
-                    println!("umask  -S");
-                }
-                else{
-                    print!("umask ")
-                }
-            }
-/*
+
             if pflag != 0{
                 if print_symbolically != 0{
                     println!("umask \" -S\" ");
@@ -264,7 +256,7 @@ pub extern "C" fn r_umask_builtin(mut list:*mut WordList) ->i32{
                     println!("umask \"\" ")
                 }
             }
-*/
+
             if print_symbolically != 0{
                 r_print_symbolic_umask(umask_arg);
             }
