@@ -1,7 +1,87 @@
 helplongdoc ={
 $cmdName -> 
-        [set] 
-          Set or unset values of shell options and positional parameters.
+[command0]  Resume job in foreground.  
+       
+           Equivalent to the JOB_SPEC argument to the `fg' command.  Resume a  
+           stopped or background job.  JOB_SPEC can specify either a job name  
+           or a job number.  Following JOB_SPEC with a `&' places the job in  
+           the background, as if the job specification had been supplied as an  
+           argument to `bg'.  
+       
+           Exit Status:  
+           Returns the status of the resumed job. 
+
+[command1] Evaluate conditional expression.  
+       
+          This is a synonym for the  test  builtin, but the last argument must  
+          be a literal `]', to match the opening `['. 
+[command2] Execute commands from a file in the current shell.  
+       
+          Read and execute commands from FILENAME in the current shell.  The  
+          entries in $PATH are used to find the directory containing FILENAME.  
+          If any ARGUMENTS are supplied, they become the positional parameters  
+          when FILENAME is executed.  
+       
+          Exit Status:  
+          Returns the exit status of SHELL-BUILTIN, or false if SHELL-BUILTIN is  
+          not a shell builtin. 
+
+[command3] Null command.  
+       
+          No effect; the command does nothing.  
+       
+          Exit Status:  
+          Always succeeds. 
+
+[command4] Evaluate conditional expression.  
+       
+          This is a synonym for the  test  builtin, but the last argument must  
+          be a literal `]', to match the opening `['. 
+          
+[command5] Execute conditional command.  
+       
+           Returns a status of 0 or 1 depending on the evaluation of the  
+           conditional  
+           expression EXPRESSION.  Expressions are composed of the same primaries  
+           used  
+           by the `test' builtin, and may be combined using the following  
+           operators:  
+       
+           ( EXPRESSION ) Returns the value of EXPRESSION  
+           ! EXPRESSION  True if EXPRESSION is false; else false  
+           EXPR1 && EXPR2 True if both EXPR1 and EXPR2 are true; else false  
+           EXPR1 || EXPR2 True if either EXPR1 or EXPR2 is true; else false  
+       
+           When the `==' and `!=' operators are used, the string to the right of  
+          the operator is used as a pattern and pattern matching is performed.  
+          When the `=~' operator is used, the string to the right of the operator  
+          is matched as a regular expression.  
+       
+          The && and || operators do not evaluate EXPR2 if EXPR1 is sufficient to
+
+[command6] Arithmetic for loop.  
+       
+           Equivalent to  
+             (( EXP1 ))  
+             while (( EXP2 )); do  
+                 COMMANDS  
+                (( EXP3 ))  
+             done  
+            EXP1, EXP2, and EXP3 are arithmetic expressions.  If any expression is  
+            omitted, it behaves as if it evaluates to 1.  
+       
+            Exit Status:  
+            Returns the status of the last command executed. 
+
+[command7]  Group commands as a unit.  
+       
+            Run a set of commands in a group.  This is one way to redirect an  
+            entire set of commands.  
+       
+            Exit Status:  
+            Returns the status of the last command executed.
+
+[set]  Set or unset values of shell options and positional parameters.
     
         Change the value of shell attributes and positional parameters, or
         display tmes and values of shell variables.
@@ -647,26 +727,26 @@ $cmdName ->
     grouped into levels of equal-precedence operators.  The levels are 
     listed in order of decreasing precedence.
     
-      id++, id--  variable post-increment, post-decrement
-      ++id, --id  variable pre-increment, pre-decrement
-      -, +    unary minus, plus
-      !, ~    logical and bitwise negation
-      **    exponentiation
-      *, /, %    multiplication, division, remainder
-      +, -    addition, subtraction
-      <<, >>    left and right bitwise shifts
-      <=, >=, <, >  comparison
-      ==, !=    equality, inequality
-      &    bitwise AND
-      ^    bitwise XOR
-      |    bitwise OR
-      &&    logical AND
-      ||    logical OR
-      expr ? expr : expr
-          conditional operator
-      =, *=, /=, %=,
-      +=, -=, <<=, >>=,
-      &=, ^=, |=  assignment
+    \tid++, id--\tvariable post-increment, post-decrement
+    \t++id, --id\tvariable pre-increment, pre-decrement
+    \t-, +\t\tunary minus, plus
+    \t!, ~\t\tlogical and bitwise negation
+    \t**\t\texponentiation
+    \t*, /, %\t\tmultiplication, division, remainder
+    \t+, -\t\taddition, subtraction
+    \t<<, >>\t\tleft and right bitwise shifts
+    \t<=, >=, <, >\tcomparison
+    \t==, !=\t\tequality, inequality
+    \t&\t\tbitwise AND
+    \t^\t\tbitwise XOR
+    \t|\t\tbitwise OR
+    \t&&\t\tlogical AND
+    \t||\t\tlogical OR
+    \texpr ? expr : expr
+    \t\t\tconditional operator
+    \t=, *=, /=, %=,
+    \t+=, -=, <<=, >>=,
+    \t&=, ^=, |=\tassignment
     
     Shell variables are allowed as operands.  The name of the variable
     is replaced by its value (coerced to a fixed-width integer) within
@@ -1368,8 +1448,8 @@ $cmdName ->
                          function.
       -r  keyseq         Remove the binding for KEYSEQ.
       -f  filename       Read key bindings from FILENAME.
-      -x  keyseq:shell-command\tCause SHELL-COMMAND to be executed when
-                        \t\t\t\tKEYSEQ is entered.
+      -x  keyseq:shell-command  Cause SHELL-COMMAND to be executed when
+                                KEYSEQ is entered.
       -X                 List key sequences bound with -x and associated 
                          commands
                          in a form that can be reused as input.
@@ -1418,11 +1498,59 @@ $cmdName ->
     
     Exit Status:
     If the last ARG evaluates to 0, let returns 1; let returns 0 otherwise.
+
+    [declare]     Set variable values and attributes.
+    
+      Declare variables and give them attributes.  If no NAMEs are given,
+      display the attributes and values of all variables.
+    
+      Options:
+        -f\trestrict action or display to function names and definitions
+        -F\trestrict display to function names only (plus line number and
+           \t\tsource file when debugging)
+        -g\tcreate global variables when used in a shell function; otherwise
+           \t\tignored
+        -I\tif creating a local variable, inherit the attributes and value
+           \t\tof a variable with the same name at a previous scope
+        -p\tdisplay the attributes and value of each NAME
+    
+      Options which set attributes:
+        -a\tto make NAMEs indexed arrays (if supported)
+        -A\tto make NAMEs associative arrays (if supported)
+        -i\tto make NAMEs have the `integer' attribute
+        -l\tto convert the value of each NAME to lower case on assignment
+        -n\tmake NAME a reference to the variable named by its value
+      -r  to make NAMEs readonly
+      -t  to make NAMEs have the `trace' attribute
+      -u  to convert the value of each NAME to upper case on assignment
+      -x  to make NAMEs export
+    
+    Using `+' instead of `-' turns off the given attribute.
+    
+    Variables with the integer attribute have arithmetic evaluation (see
+    the `let' command) performed when the variable is assigned a value.
+    
+    When used in a function, `declare' makes NAMEs local, as with the 
+`local'
+    command.  The `-g' option suppresses this behavior.
+    
+    Exit Status:
+    Returns success unless an invalid option is supplied or a variable
+    assignment error occurs.
+
     *[other] show other command help info.   
  }
 
 helpname = {
 $cmdName ->
+[command0] {" % - Resume job in foreground."}
+[command1] {"(( - Evaluate conditional expression. "}
+[command2] {". - Execute commands from a file in the current shell. "}
+[command3] {": - Null command."}
+[command4] {"[ - Evaluate conditional expression."}
+[command5] {"[[ - Execute conditional command. "}
+[command6] {"for (( - Arithmetic for loop."}
+[command7] Group commands as a unit. 
 [set]  set -  Set or unset values of shell options and positional parameters.
 [read] read - Read a line from the standard input and split it into fields.
 [type] type - Display information about command type.
@@ -1490,77 +1618,93 @@ $cmdName ->
 [source] source - Execute commands from a file in the current shell.
 [bind] bind -  Set Readline key bindings and variables.。
 [test] test - Evaluate arithmetic expressions.
+[declare] declare - Set variable values and attributes.
 *[other] show other command help info..
 }
 
 helpsynopsis = {
 $cmdName ->
-[set]   {"set [-abefhkmnptuvxBCHP] [-o option-name] [--] [arg ...]"}
-[read]  {"read [-ers] [-a array] [-d delim] [-i text] [-n nchars] [-N nchars] [-p prompt] [-t timeout] [-u fd] [name ...]"}
-[type]  {"type [-afptP] name [name ...]"}
-[trap]  {"trap [-lp] [[arg] signal_spec ...]"}
-[alias] {"alias [-p] [name[=value] ... ]"}
-[unalias] {"unalias [-a] name [name ...]"}
-[break] {"break [n]"}
-[continue] {"continue [n]"}
-[builtin] {"unalias [-a] name [name ...]"}
-[caller] {"caller [expr] "}
-[cd] {"cd [-L|[-P [-e]] [-@]] [dir]"}
-[pwd] {"pwd [-LP]"}
-[true] {"true"}
-[shopt] {"shopt [-pqsu] [-o] [optname ...]"}
-[false] {"false"}
-[command] {"command [-pVv] command [arg ...]"}
-[echo] {"echo [-neE] [arg ...]"}
-[enable] {"enable [-a] [-dnps] [-f filename] [name ...] "}
-[getopts] {"getopts optstring name [arg ...]"}
-[exec] {"exec [-cl] [-a name] [command [argument ...]] [redirection ...] "}
-[exit] {"exit [n]"}
-[logout] {"logout [n]"}
-[fc] {"fc [-e ename] [-lnr] [first] [last] or fc -s [pat=rep] [command]"}
-[fg] {"fg [job_spec] "}
-[bg] {"bg [job_spec ...]"}
-[hash] {"hash [-lr] [-p pathname] [-dt] [name ...]"}
-[help] {"help [-dms] [pattren ...]"}
-[history] {"history [-c] [-d offset] [n] or history -anrw [filename] or history -ps arg [arg...]"}
-[jobs] {"jobs [-lnprs] [jobspec ...] or jobs -x command [args]"}
-[disown] {"disown [-h] [-ar] [jobspec ... | pid ...]"}
-[kill] {"kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]"}
-[let] {"let arg [arg ...]"}
-[shift] {"shift [n]"}
-[suspend] {"suspend [-f]"}
-[eval] {"eval [arg ...]"}
-[times] {"times"}
-[ulimit] {"ulimit [-SHabcdefiklmnpqrstuvxPT] [ulimit]"}
-[umask] {"umask [-p] [-S] [pattern]"}
-[return] {"return [n]"}
-[wait] {"wait [-fn] [-p var] [id ...]"}
-[for] {"for NAME [in WORDS ... ] ; do COMMANDS; done"}
-[select] {"select NAME [in WORDS ... ;] do COMMANDS; done"}
-[time] {"time [-p] pipeline"}
-[case] {"case WORD in [pattern [| pattern]...) COMMANDS ;;]... esac"}
-[if] {"if COMMANDS; then COMMANDS; [ elif COMMANDS; then COMMANDS; ]... [ else COMMANDS; ] fi"}
-[while] {"while COMMANDS; do COMMANDS; done"}
-[until] {"until COMMANDS; do COMMANDS; done"}
-[coproc] {"coproc [NAME] COMMANDS [redirections]"}
-[variables] {"variables - variables - Names and meanings of some shell variables"}
-[pushd] {"pushd [-n] [+N | -N | dir]"}
-[popd] {"popd [-n] [+N | -N]"}
-[dirs] {"dirs [-clpv] [+N] [-N]"}
-[printf] {"printf [-v var] format [arguments]"}
-[complete] {"complete [-abcdefgjksuv] [-pr] [-DEI] [-o option] [-A action] [-G globpat] [-W wordlist] [-F function] [-C command] [-X filterpat] [-P prefix] [-S suffix] [name ...]"}
-[compgen] {"compgen [-abcdefgjksuv] [-o option] [-A action] [-G globpat] [-W wordlist] [-F function] [-C command] [-X filterpat] [-P prefix] [-S suffix] [word]"}
-[compopt] {"compopt [-o|+o option] [-DEI] [name ...]"}
-[mapfile] {"mapfile [-d delim] [-n count] [-O origin] [-s count] [-t] [-u fd] [-C callback] [-c quantum] [array]]"}
-[unset] {"unset [-f] [-v] [-n] [NAME ...]"}
-[readarray] {"readarray [-d delim] [-n count] [-O origin] [-s count] [-t] [-u fd] [-C callback] [-c quantum] [array]"}
-[local] {"local [option] name[=value] ... "}
-[export] {"export [-fn] [name[=value] ...] or export -p"}
-[readonly] {"readonly [-aAf] [name[=value] ...] or readonly -p"}
-[function] {"function NAME { COMMANDS ; } 或 name () { COMMANDS ; } "}
-[typeset] {"typeset [-aAfFgiIlnrtux] [-p] name[=value] ..."}
-[source] {"source filename [arguments]"}
-[bind] {"bind [-lpsvPSVX] [-m keymap] [-f filename] [-q name] [-u name] [-r keyseq] [-x keyseq:shell-command] [keyseq:readline-function or readline-command] "}
-[test] {"test [expr]"}
+[command0] {"job_spec [&]"}
+[command1] {"(( expression ))"}
+[command2] {". filename [arguments]"}
+[command3] {":"}
+[command4] {"[ ... ]"}
+[command5] {"[[ expression ]]"}
+[command6] {"for (( exp1; exp2; exp33 )); do COMMANDS ; done"}
+[command7] {"{ COMMAND ; }"}
+[set]   {set [-abefhkmnptuvxBCHP] [-o option-name] [--] [arg ...]}
+[read]  {read [-ers] [-a array] [-d delim] [-i text] [-n nchars] [-N nchars] [-p prompt] [-t timeout] [-u fd] [name ...]}
+[type]  {type [-afptP] name [name ...]}
+[trap]  {trap [-lp] [[arg] signal_spec ...]}
+[alias] {alias [-p] [name[=value] ... ]}
+[unalias] {unalias [-a] name [name ...]}
+[break] {break [n]}
+[continue] {continue [n]}
+[builtin] {unalias [-a] name [name ...]}
+[caller] {caller [expr] }
+[cd] {cd [-L|[-P [-e]] [-@]] [dir]}
+[pwd] {pwd [-LP]}
+[true] {true}
+[shopt] {shopt [-pqsu] [-o] [optname ...]}
+[false] {false}
+[command] {command [-pVv] command [arg ...]}
+[echo] {echo [-neE] [arg ...]}
+[enable] {enable [-a] [-dnps] [-f filename] [name ...] }
+[getopts] {getopts optstring name [arg ...]}
+[exec] {exec [-cl] [-a name] [command [argument ...]] [redirection ...] }
+[exit] {exit [n]}
+[logout] {logout [n]}
+[fc] {fc [-e ename] [-lnr] [first] [last] or fc -s [pat=rep] [command]}
+[fg] {fg [job_spec] }
+[bg] {bg [job_spec ...]}
+[hash] {hash [-lr] [-p pathname] [-dt] [name ...]}
+[help] {help [-dms] [pattren ...]}
+[history] {history [-c] [-d offset] [n] or history -anrw [filename] or history -ps arg [arg...]}
+[jobs] {jobs [-lnprs] [jobspec ...] or jobs -x command [args]}
+[disown] {disown [-h] [-ar] [jobspec ... | pid ...]}
+[kill] {kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]}
+[let] {let arg [arg ...]}
+[shift] {shift [n]}
+[suspend] {suspend [-f]}
+[eval] {eval [arg ...]}
+[times] {times}
+[ulimit] {ulimit [-SHabcdefiklmnpqrstuvxPT] [ulimit]}
+[umask] {umask [-p] [-S] [pattern]}
+[return] {return [n]}
+[wait] {wait [-fn] [-p var] [id ...]}
+[for] {for NAME [in WORDS ... ] ; do COMMANDS; done}
+[select] {select NAME [in WORDS ... ;] do COMMANDS; done}
+[time] {time [-p] pipeline}
+[case] {case WORD in [pattern [| pattern]...) COMMANDS ;;]... esac}
+[if] {if COMMANDS; then COMMANDS; [ elif COMMANDS; then COMMANDS; ]... [ else COMMANDS; ] fi}
+[while] {while COMMANDS; do COMMANDS; done}
+[until] {until COMMANDS; do COMMANDS; done}
+[coproc] {coproc [NAME] COMMANDS [redirections]}
+[variables] {variables - variables - Names and meanings of some shell variables}
+[pushd] {pushd [-n] [+N | -N | dir]}
+[popd] {popd [-n] [+N | -N]}
+[dirs] {dirs [-clpv] [+N] [-N]}
+[printf] {printf [-v var] format [arguments]}
+[complete] {complete [-abcdefgjksuv] [-pr] [-DEI] [-o option] [-A action] [-G globpat] [-W wordlist] [-F function] [-C command] [-X filterpat] [-P prefix] [-S suffix] [name ...]}
+[compgen] {compgen [-abcdefgjksuv] [-o option] [-A action] [-G globpat] [-W wordlist] [-F function] [-C command] [-X filterpat] [-P prefix] [-S suffix] [word]}
+[compopt] {compopt [-o|+o option] [-DEI] [name ...]}
+[mapfile] {mapfile [-d delim] [-n count] [-O origin] [-s count] [-t] [-u fd] [-C callback] [-c quantum] [array]]}
+[unset] {unset [-f] [-v] [-n] [NAME ...]}
+[readarray] {readarray [-d delim] [-n count] [-O origin] [-s count] [-t] [-u fd] [-C callback] [-c quantum] [array]}
+[local] {local [option] name[=value] ... }
+[export] {export [-fn] [name[=value] ...] or export -p}
+[readonly] {readonly [-aAf] [name[=value] ...] or readonly -p}
+[function] {function NAME { COMMANDS ; } 或 name () { COMMANDS ; } }
+[typeset] {typeset [-aAfFgiIlnrtux] [-p] name[=value] ...}
+[source] {source filename [arguments]}
+[bind] {bind [-lpsvPSVX] [-m keymap] [-f filename] [-q name] [-u name] [-r keyseq] [-x keyseq:shell-command] [keyseq:readline-function or readline-command] }
+[test] {test [expr]}
+[declare] {declare [-aAfFgilnrtux] [-p] [name[=value] ...]}
 *[other]  show other command help info..
 }
+
+information =     These shell commands are defined internally.  Type `help' to see this list.
+  Type `help name' to find out more about the function `name'.
+  Use `info bash' to find out more about the shell in general.
+  Use `man -k' or `info' to find out more about commands not in this list.
+  A star (*) next to a name means that the command is disabled.

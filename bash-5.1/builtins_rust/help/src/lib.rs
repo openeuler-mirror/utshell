@@ -104,7 +104,6 @@ extern "C"{
 
 #[no_mangle]
 pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
-
    // let mut i:i32;
     let mut plen:usize;
     let mut match_found:i32;
@@ -197,11 +196,10 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
                  m = libc::strncmp (pattern, v[i], plen) == 0;
               }
               if m {
-
                   this_found = 1;
                   match_found = match_found +1 ;
                   if dflag == 1{
-                      show_desc (v[i], i as  i32);
+                      show_desc (i as i32);
                       continue;
                   }
                   else if mflag ==1{
@@ -209,30 +207,17 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
                     continue;
                     }
                     let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-                    let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
-                    let resources = vec![ "message.ftl".into()];
-                
-                    let mut args = FluentArgs::new();
-                    let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
-                    let msg: &str = c_str.to_str().unwrap();
-                    args.set("cmdName",msg);
-                    let bundle = mgr.get_bundle(get_local_str(), resources);
-                    let mut value = bundle.get_message("helpsynopsis").unwrap();
-                    let mut pattern = value.value().expect("partern err");
-                    let mut errors = vec![];
-                    let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
-                    println!(" {}:{}\n",msg ,msg1);
+                    print!("{:?}:",CStr::from_ptr(builtin1.name));
+                    show_helpsynopsis(i as i32);
                     if sflag == 0{
-                      show_longdoc (i as i32);
+                      show_longdoc(i as i32);    
                   }
                 }
               }
               if val == 1 && this_found == 1{
-       
                  break;
               }
        }
-   
       if (*list).next != std::ptr::null_mut(){
        list = (*list).next;
 
@@ -277,6 +262,7 @@ unsafe fn QUIT ()
 
 #[no_mangle]
 pub extern "C" fn r_builtin_help (){
+    // print  all  command usage
     let mut ind: i32 = 5;
     let d: i32;
     unsafe {
@@ -319,12 +305,49 @@ fn open_helpfile(name :*mut c_char) -> i32{
 
 fn show_longdoc(i : i32){
   let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
+  let mgr = ResourceManager::new("./resources/{locale}/{res_id}".into());
+  let resources = vec![ "message.ftl".into()];
+  let mut args = FluentArgs::new();
+  let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
+  let s1 = String::from("command");
+  match i {
+      0|1|2|3|4|5 => {
+                args.set("cmdName",format!("{}{}",s1,i));}
+      33 => {
+              args.set("cmdName",format!("{}{}",s1,6))}
+      75 => {
+            args.set("cmdName",format!("{}{}",s1,7))}
+      _ => {
+        let msg: &str = c_str.to_str().unwrap();
+        args.set("cmdName",msg);}
+  }
+    let bundle = mgr.get_bundle(get_local_str(), resources);
+    let mut value = bundle.get_message("helplongdoc").unwrap();
+    let mut pattern = value.value().expect("partern err");
+    let mut errors = vec![];
+    let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+     println!("    {}", msg1);
+}
+
+fn show_helpsynopsis( i : i32) 
+{
+    let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
     let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
     let resources = vec![ "message.ftl".into()];
     let mut args = FluentArgs::new();
     let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
-    let msg: &str = c_str.to_str().unwrap();
-    args.set("cmdName",msg);
+    let s1 = String::from("command");
+    match i {
+      0|1|2|3|4|5 => {
+                args.set("cmdName",format!("{}{}",s1,i));}
+      33 => {
+              args.set("cmdName",format!("{}{}",s1,6))}
+      75 => {
+            args.set("cmdName",format!("{}{}",s1,7))}
+      _ => {
+        let msg: &str = c_str.to_str().unwrap();
+        args.set("cmdName",msg);}
+   }
     let bundle = mgr.get_bundle(get_local_str(), resources);
     let mut value = bundle.get_message("helpsynopsis").unwrap();
     let mut pattern = value.value().expect("partern err");
@@ -333,73 +356,45 @@ fn show_longdoc(i : i32){
      println!("    {}", msg1);
 }
 
-fn show_desc (name : *mut c_char, i :i32){
-    let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-    let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
-    let resources = vec![ "message.ftl".into()];
-
-    let mut args = FluentArgs::new();
-    let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
-    let msg: &str = c_str.to_str().unwrap();
-    args.set("cmdName",msg);
-    let bundle = mgr.get_bundle(get_local_str(), resources);
-    let mut value = bundle.get_message("helpname").unwrap();
-    let mut pattern = value.value().expect("partern err");
-    let mut errors = vec![];
-    let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
-     println!("    {}", msg1);
-}
-fn show_manpage (name : *mut c_char, i : i32){
- 
-    let  mut  j :i32;
-    let mut doc :*mut *mut libc::c_char;
-    let mut line :*mut libc::c_char = 0 as *mut libc::c_char;
-    let  mut fd: i32;
-    let  mut  usefile : bool;
-    let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-    let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
-    let resources = vec![ "message.ftl".into()];
-    unsafe {
-        doc = builtin1.long_doc;
-    }
-    //*doc = (*((shell_builtins as usize + i as usize) as *mut builtin).long_doc as *mut libc::c_char);
-    usefile = doc!= std::ptr::null_mut() && unsafe {*doc as *mut libc::c_char} != std::ptr::null_mut();
-    usefile = usefile && unsafe {**doc as libc::c_char } == '/' as libc::c_char;
-  /* NAME */
-  println! ("NAME\n");
+fn show_desc (i :i32){
+  let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
+  let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
+  let resources = vec![ "message.ftl".into()];
   let mut args = FluentArgs::new();
   let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
-  let msg: &str = c_str.to_str().unwrap();
-  args.set("cmdName",msg);
+  let s1 = String::from("command");
+  match i {
+    0|1|2|3|4|5 => {
+              args.set("cmdName",format!("{}{}",s1,i));}
+    33 => {
+            args.set("cmdName",format!("{}{}",s1,6))}
+    75 => {
+          args.set("cmdName",format!("{}{}",s1,7))}
+    _ => {
+      let msg: &str = c_str.to_str().unwrap();
+      args.set("cmdName",msg);}
+ }
   let bundle = mgr.get_bundle(get_local_str(), resources);
   let mut value = bundle.get_message("helpname").unwrap();
   let mut pattern = value.value().expect("partern err");
   let mut errors = vec![];
   let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
-   println!("    {}\n", msg1);
+   println!("    {}", msg1);
+}
+
+fn show_manpage (name : *mut c_char, i : i32){
+  /* NAME */
+  println! ("NAME\n");
+  show_desc(i);
 
   /* SYNOPSIS */
   println! ("SYNOPSIS\n");
-    value = bundle.get_message("helpsynopsis").unwrap();
-    pattern = value.value().expect("partern err");
-    msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
-    println!("    {}\n", msg1);
-  //  println! ("     {:?}\n", CStr::from_ptr(builtin1.short_doc));
-  /* DESCRIPTION */
+  show_helpsynopsis(i);
   println! ("DESCRIPTION\n");
-  if !usefile{
-      value = bundle.get_message("helplongdoc").unwrap();
-      pattern = value.value().expect("partern err");
-      msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
-      println!("{}\n", msg1);
-   }
-  unsafe {
-     libc::putchar ('\n' as i32);
-  }
+  show_longdoc(i);
   /* SEE ALSO */
-  
   println! ("SEE ALSO\n");
-  println! ("    rash(1) {} \n\n"," ");
+  println! ("    utshell(1) {} \n\n"," ");
 
   /* IMPLEMENTATION */
   println! ("IMPLEMENTATION\n");
@@ -414,12 +409,6 @@ fn show_manpage (name : *mut c_char, i : i32){
   println! ("    ");
   unsafe {
      println! ("{:?}", CStr::from_ptr(bash_license));
-  }
-  //fflush (stdout);
-  if usefile {
-    unsafe {
-        libc::free (line as * mut c_void);
-      }
   }
 }
 
@@ -468,18 +457,7 @@ pub extern "C" fn  dispcolumn (i : i32, buf : *mut c_char, bufsize :libc::c_int,
 
 pub fn  wdispcolumn (i : i32, buf :*mut c_char, bufsize : i32, width : i32, height : i32){
     let  mut j : i32;
-    let mut dispcols : i32 = 0; 
-    let mut dispchars : i32 = 0;
-    let mut helpdoc :*mut c_char; 
-    let mut wcstr:*mut libc::wchar_t;
-    let mut slen : i32 = 0;
-    let mut n :i32 = 0;
-    let mut builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-    helpdoc = builtin1.short_doc;
-    unsafe {
-      println! ("{:?}", CStr::from_ptr(helpdoc));
-    }
-  
+    show_helpsynopsis(i);
 }
 
 fn show_builtin_command_help (){
@@ -490,7 +468,15 @@ fn show_builtin_command_help (){
     let mut t :*mut libc::c_char;
     let mut blurb:[libc::c_char;128] = ['0' as  libc::c_char;128];
     println!("help  command  edit by huanhuan.");
-    println!("{}",("These shell commands are defined internally.  Type `help' to see this list.\n Type `help name' to find out more about the function `name'.\n Use `info bash' to find out more about the shell in general.\n Use `man -k' or `info' to find out more about commands not in this list.\n A star (*) next to a name means that the command is disabled.\n"));
+    let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
+    let resources = vec!["message.ftl".into()];
+    let bundle = mgr.get_bundle(get_local_str(), resources);
+    let value = bundle.get_message("information").unwrap();
+    let  pattern = value.value().expect("partern err");
+    let mut errors = vec![];
+    let msg1 = bundle.format_pattern(&pattern, None, &mut errors);
+    println!("{}\n", msg1);
+    //println!("{}",("These shell commands are defined internally.  Type `help' to see this list.\n Type `help name' to find out more about the function `name'.\n Use `info bash' to find out more about the shell in general.\n Use `man -k' or `info' to find out more about commands not in this list.\n A star (*) next to a name means that the command is disabled.\n"));
 
     let ref2: &mut libc::c_char= &mut blurb[0];
 
