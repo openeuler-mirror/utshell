@@ -505,7 +505,7 @@ pub extern "C" fn r_jobs_builtin(mut list:*mut WordList)->i32 {
 
 #[no_mangle]
 pub extern "C" fn r_disown_builtin (list:* mut WordList)->libc::c_int {
-  let opt:i32;
+  let mut opt:i32;
   let mut job:i32=0;
   let mut retval:i32;
   let mut nohup_only:i32=0;
@@ -534,6 +534,7 @@ pub extern "C" fn r_disown_builtin (list:* mut WordList)->libc::c_int {
             return EX_USAGE;
         }
 	}
+  opt = internal_getopt (list, c_str_ahr.as_ptr() as * mut c_char);
   }
 
   retval = EXECUTION_SUCCESS!();
