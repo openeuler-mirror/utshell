@@ -4,6 +4,7 @@ include!(concat!("intercdep.rs"));
 
 #[no_mangle]
 pub extern "C" fn r_test_builtin(list: *mut WordList) -> i32 {
+    println!("r_test_builtin call");
 
     let result: c_int;
     let mut argc: c_int = 0;

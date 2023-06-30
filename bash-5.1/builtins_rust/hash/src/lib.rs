@@ -8,7 +8,22 @@ use std::io::{stdout, Write};
 use rread::{SHELL_VAR};
 use rcommon::{r_find_shell_builtin,r_builtin_usage};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+//struct
+//结构体
+/* 
+#[repr (C)]
+pub struct WordDesc{
+    pub word:*mut c_char,
+    pub flags:c_int,
+}
 
+#[repr (C)]
+// #[derive(Copy,Clone)]
+pub struct WordList{
+    pub next:*mut WordList,
+    pub word:*mut WordDesc,
+}
+*/
 type PTR_T=c_void;
 #[repr (C)]
 pub struct bucket_contents{

@@ -9,7 +9,7 @@ name = "rbuiltin"
 crate-type = ["staticlib","rlib"]
 
 [dependencies]
-libc = "*"
+libc = "0.2"
 rcmd = {path="../cmd"}
 rcommon = {path="../common"}
 

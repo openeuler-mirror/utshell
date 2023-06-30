@@ -7,6 +7,7 @@ pub static print_shift_error: c_int = 0;
 
 #[no_mangle]
 pub extern "C" fn r_shift_builtin(list: *mut WordList) -> i32 {
+    println!("r_shift_builtin call");
 
 unsafe {
     if !list.is_null() && !(*list).word.is_null() &&

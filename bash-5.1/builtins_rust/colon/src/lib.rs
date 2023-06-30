@@ -14,10 +14,12 @@ mod tests {
 
 #[no_mangle]
 pub extern "C" fn r_colon_builtin(ignore: *mut WordList )->i32 {
+    println!("in r_colon_builtin");
     0
 }
 
 #[no_mangle]
 pub extern "C" fn r_false_builtin(ignore: *mut  WordList) -> i32 {
+    println!("in r_false_builtin");
     1
 }

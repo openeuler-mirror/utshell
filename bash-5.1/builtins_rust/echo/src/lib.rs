@@ -76,6 +76,7 @@ pub static mut xpg_echo:i32 = 0;    // 也有可能是1
 
 #[no_mangle]
 pub extern "C" fn r_echo_builtin(mut list:*mut WordList)->i32{
+    println!("r_echo_builtin");
     let mut display_return:i32;
     let mut do_v9:i32;
     let mut i:i32;

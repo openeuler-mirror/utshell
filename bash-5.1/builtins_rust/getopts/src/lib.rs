@@ -3,7 +3,20 @@ extern crate nix;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,GETOPT_HELP, r_builtin_usage};
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
+/*
+#[repr(C)]
+pub struct WordDesc {
+    pub word: *mut libc::c_char,
+    pub flags:libc::c_int
+}
 
+#[repr(C)]
+#[derive(Copy,Clone)]
+pub struct WordList {
+    next: *mut WordList,
+    word: *mut WordDesc
+}
+ */
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
     cm_connection, cm_function_def, cm_until, cm_group,
