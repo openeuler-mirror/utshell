@@ -133,7 +133,6 @@ static mut sourced_logout:i32 = 0;
 
 #[no_mangle]
 pub extern "C" fn r_exit_builtin(list:*mut WordList) -> i32{
-    println!("r_exit_builtin");
     unsafe{
         let c_str = CString::new("--help").unwrap();
         let c_ptr = c_str.as_ptr();
@@ -163,7 +162,7 @@ pub extern "C" fn r_exit_builtin(list:*mut WordList) -> i32{
 
 #[no_mangle]
 pub extern "C" fn  r_logout_builtin(list:*mut WordList)->i32{
-    unsafe{
+    unsafe {
         let c_str = CString::new("--help").unwrap();
         let c_ptr = c_str.as_ptr();
         if list != std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && 
@@ -183,9 +182,7 @@ pub extern "C" fn  r_logout_builtin(list:*mut WordList)->i32{
     }
 }
 
-#[no_mangle]
-pub extern "C" fn r_exit_or_logout(list:*mut WordList)->i32{
-    // let stream:*mut libc::FILE;
+pub fn r_exit_or_logout(list:*mut WordList)->i32{
     let  exit_value:i32;
     let  exit_immediate_okay:i32;
     let mut stopmsg:i32;
@@ -200,16 +197,18 @@ pub extern "C" fn r_exit_or_logout(list:*mut WordList)->i32{
         if exit_immediate_okay == 0 {
             stopmsg = 0;
             for i in 0..js.j_jobslots {
+                // println!("jobs: {}", i);
                 if get_job_by_jid!(i) != std::ptr::null_mut()  && STOPPED!(i){
                     stopmsg = JOB_STATE::JSTOPPED as i32;
+                    break;
                 }
                 else if (check_jobs_at_exit != 0)  && (stopmsg ==0) && get_job_by_jid!(i) != std::ptr::null_mut() && RUNNING!(i) {
                     stopmsg = JOB_STATE::JRUNNING as i32;
+                    break;
                 }
             }
 
             if stopmsg == JOB_STATE::JSTOPPED as i32 {
-                // libc::fprintf(stream,CString::new("There are stopped jobs. \n").unwrap().as_ptr());
                 eprintln!("There are stopped jobs. ");
             }
             else if stopmsg == JOB_STATE::JRUNNING as i32{
@@ -244,8 +243,9 @@ pub extern "C" fn r_exit_or_logout(list:*mut WordList)->i32{
     }
 }
 
-#[no_mangle]
-pub extern "C" fn r_bash_logout(){
+//#[no_mangle]
+//pub extern "C" fn r_bash_logout(){
+pub fn r_bash_logout(){
     unsafe{    
         if login_shell != 0 && sourced_logout == 0 && subshell_environment == 0 {
             sourced_logout = sourced_logout + 1;

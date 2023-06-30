@@ -118,8 +118,6 @@ pub extern "C" fn r_caller_builtin(mut list:*mut WordList)->i32{
 
     let mut c_str :CString;
 
-    println!("r_caller_builtin");
-
     unsafe{
         CHECK_HELPOPT!(list);
 
@@ -152,7 +150,7 @@ pub extern "C" fn r_caller_builtin(mut list:*mut WordList)->i32{
 
         list = loptend;     /* skip over possible `--' */
         /* If there is no argument list, then give short form: line filename. */
-        if list.is_null(){
+        if list.is_null() {
             lineno_s = array_reference(bash_lineno_a,0);
             source_s = array_reference(bash_source_a,1);
             
@@ -162,7 +160,6 @@ pub extern "C" fn r_caller_builtin(mut list:*mut WordList)->i32{
             else{
                 c_str = CString::new("NULL").unwrap();
                 lineno_s = c_str.as_ptr() as *mut c_char;
-                // lineno_s = CString::new("NULL").unwrap().as_ptr() as *mut c_char;
             }
 
             if !source_s.is_null(){
@@ -171,7 +168,6 @@ pub extern "C" fn r_caller_builtin(mut list:*mut WordList)->i32{
             else{
                 c_str = CString::new("NULL").unwrap();
                 source_s = c_str.as_ptr() as *mut c_char;
-                // source_s = CString::new("NULL").unwrap().as_ptr() as *mut c_char;
             }
             let lineno_s_str = CStr::from_ptr(lineno_s).to_str().unwrap().to_owned();
             let source_s_str = CStr::from_ptr(source_s).to_str().unwrap().to_owned();

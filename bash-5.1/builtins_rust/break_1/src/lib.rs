@@ -9,25 +9,34 @@ use libc::c_long;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 
 
-// 屏蔽警告。
-#[allow(non_camel_case_types)]
 type intmax_t = c_long;
-
+/*
 #[macro_export]
 macro_rules! ISHELP {
    ($s:expr) => {
-    libc::strcmp($s as *const libc::c_char,CString::new("--help").unwrap().as_ptr())
+    libc::strcmp($s as *const libc::c_char, CString::new("--help").unwrap().as_ptr())
     }
 }
 
 #[macro_export]
 macro_rules! CHECK_HELPOPT {
   ($l:expr) => {
-    if $l  !=std::ptr::null_mut() && (*$l).word !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) == 0 {
+    if $l  !=std::ptr::null_mut() && (*$l).word !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) ==0 {
       builtin_help ();
       return EX_USAGE;
     }
   }
+}
+*/
+fn checkhelp(l: *mut WordList) -> i32{
+    unsafe {
+    let tmp=CString::new("--help").unwrap();
+    if l!=std::ptr::null_mut() && (*l).word !=std::ptr::null_mut() && 
+        libc::strcmp((*((*l).word)).word, tmp.as_ptr()) == 0 {
+            builtin_help();
+        }
+            return EX_USAGE;
+    }
 }
 
 extern "C" {
@@ -50,15 +59,16 @@ pub extern "C" fn r_break_builtin(mut list :*mut WordList) -> i32 {
     //println!("enter r_break_builtin");
     let  mut  newbreak : intmax_t = 1 as intmax_t;
     unsafe {
-        CHECK_HELPOPT! (list);
+        checkhelp(list);
+        //CHECK_HELPOPT! (list);
     if check_loop_level() == 0 {
         return EXECUTION_SUCCESS!();
     }
         get_numeric_arg(list, 1, &mut newbreak as *mut intmax_t);
 
     if newbreak <= 0{
-        #[warn(temporary_cstring_as_ptr)]
-            sh_erange ((*(*list).word).word, CString::new("loop count").unwrap().as_ptr() as * mut libc::c_char);
+        let mut tmp = CString::new("loop count ").unwrap();
+        sh_erange ((*(*list).word).word, tmp.as_ptr() as * mut libc::c_char);
             //set_breaking (get_loop_level());
             breaking =  loop_level;
       return EXECUTION_FAILURE!();
@@ -74,21 +84,22 @@ pub extern "C" fn r_break_builtin(mut list :*mut WordList) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn r_continue_builtin (list :*mut WordList) -> i32 {
+pub extern "C" fn r_continue_builtin (mut list :*mut WordList) -> i32 {
     let mut newcont : intmax_t = 0 as intmax_t;
     unsafe {
-        CHECK_HELPOPT! (list);
+        //CHECK_HELPOPT! (list);
+        checkhelp(list);
     }
     if check_loop_level() == 0 {
         return (EXECUTION_SUCCESS!());
     }
     unsafe {
-        get_numeric_arg(list, 1, newcont  as *mut intmax_t);
+        get_numeric_arg(list, 1, &mut newcont  as *mut intmax_t);
     }
     unsafe {
     if newcont <= 0{
-        #[warn(temporary_cstring_as_ptr)]
-        sh_erange ((*(*list).word).word, CString::new("loop count ").unwrap().as_ptr() as * mut libc::c_char);
+        let mut tmp = CString::new("loop count ").unwrap();
+        sh_erange ((*(*list).word).word, tmp.as_ptr() as * mut libc::c_char);
         //set_breaking(get_loop_level());
         breaking =  loop_level;
       return (EXECUTION_FAILURE!());

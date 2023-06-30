@@ -65,7 +65,6 @@ pub static AL_REUSABLE:i32 = 0x01;
 
 #[no_mangle]
 pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int {
-    println!("alias_builtin run!");
     let mut any_failed;
     let mut offset;
     let mut pflag ;
@@ -160,7 +159,6 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int
 }
 #[no_mangle]
 pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WordList) -> libc::c_int {
-    println!("alias_builtin run!");
     let mut alias: *mut AliasT;
     let mut opt: libc::c_int;
     let mut aflag: libc::c_int;
@@ -174,7 +172,7 @@ pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WordList) -> libc::c_i
         if !(opt != -(1 as libc::c_int)) {
             break;
         }
-        match opt as u8{
+        match opt as u8 {
             b'a' => {
                 aflag = 1 as libc::c_int;
             }

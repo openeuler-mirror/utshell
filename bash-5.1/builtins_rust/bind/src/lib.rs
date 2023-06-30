@@ -161,8 +161,6 @@ pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
     let mut cmd_seq:*mut c_char;
     let t:*mut c_char;
 
-    println!("r_bind_builtin");
-
     unsafe{
         if no_line_editing != 0{
         builtin_warning(
