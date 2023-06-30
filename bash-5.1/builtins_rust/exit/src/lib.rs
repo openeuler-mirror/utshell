@@ -8,6 +8,7 @@ use std::ffi::CString;
 use rjobs::{PROCESS, COMMAND, r_jobs_builtin, JLIST_STANDARD };
 
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rhelp::r_builtin_help;
 
 #[repr(C)]
 pub struct JOB {
@@ -109,7 +110,6 @@ extern "C"{
     static mut last_command_exit_value:i32;
     static subshell_environment:i32;
 
-    fn builtin_help();
     fn builtin_error(err:*const c_char,...);
     fn list_all_jobs(form:i32);
     fn get_exitstat(list:*mut WordList) -> i32;
@@ -138,7 +138,7 @@ pub extern "C" fn r_exit_builtin(list:*mut WordList) -> i32{
         let c_ptr = c_str.as_ptr();
         if list != std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && 
            STREQ((*(*list).word).word, c_ptr){
-               builtin_help();
+               r_builtin_help();
                return EX_USAGE;
         }
 
@@ -167,7 +167,7 @@ pub extern "C" fn  r_logout_builtin(list:*mut WordList)->i32{
         let c_ptr = c_str.as_ptr();
         if list != std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && 
            STREQ((*(*list).word).word, c_ptr){
-               builtin_help();
+               r_builtin_help();
                return EX_USAGE;
         }
 

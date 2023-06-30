@@ -10,6 +10,8 @@ libc="*"
 nix="*"
 lazy_static = "*"
 rcommon = {path ="../common"}
+rhelp = {path ="../help"}
+
 [lib]
 crate-type = ["staticlib","rlib"]
 name = "rset"

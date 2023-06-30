@@ -8,6 +8,7 @@ use std::io::{stdout, Write};
 use rread::{SHELL_VAR};
 use rcommon::{r_find_shell_builtin,r_builtin_usage};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rhelp::r_builtin_help;
 
 type PTR_T=c_void;
 #[repr (C)]
@@ -128,7 +129,6 @@ extern "C"{
     fn hash_walk(table:*mut HASH_TABLE,func:*mut hash_wfunc);
     fn phash_search(filename:*const c_char)->*mut c_char;
     fn printable_filename(f:*mut c_char,flage:i32)->*mut c_char;
-    fn builtin_help();
 }
 
 //rust
@@ -174,7 +174,7 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
                 't' => list_targets = 1,
                  _  => {
                     if opt == -99 {
-                        builtin_help();
+                        r_builtin_help();
                         return EX_USAGE;
                     }
                      r_builtin_usage();

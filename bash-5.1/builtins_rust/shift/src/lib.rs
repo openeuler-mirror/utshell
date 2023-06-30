@@ -1,5 +1,6 @@
 use libc::{c_int, c_char, c_long, PT_NULL};
 use rcommon::{r_sh_erange,};
+use rhelp::r_builtin_help;
 
 include!(concat!("intercdep.rs"));
 
@@ -11,7 +12,7 @@ pub extern "C" fn r_shift_builtin(list: *mut WordList) -> i32 {
 unsafe {
     if !list.is_null() && !(*list).word.is_null() &&
         libc::strcmp((*((*list).word)).word, "--help\0".as_ptr() as *const c_char) == 0 {
-        builtin_help ();
+        r_builtin_help ();
         return EX_USAGE;
     }
 

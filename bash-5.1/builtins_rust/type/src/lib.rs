@@ -6,6 +6,7 @@ use std::ffi::CStr;
 use std::ffi::CString;
 use std::ptr;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
+use rhelp::r_builtin_help;
 
 #[macro_export]
 macro_rules! CDESC_ALL{
@@ -64,7 +65,7 @@ macro_rules!  CDESC_STDPATH{
 macro_rules! CHECK_HELPOPT {
   ($l:expr) => {
     if $l  !=std::ptr::null_mut() && (*$l).word !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) == 0 {
-      builtin_help ();
+      r_builtin_help ();
       return EX_USAGE;
     }
   }
@@ -356,7 +357,6 @@ extern "C" {
     fn reset_internal_getopt();
     fn internal_getopt (list:*mut WordList , opts:*mut libc::c_char)->i32;
     fn builtin_usage();
-    fn builtin_help();
     fn sh_notfound (name:* mut libc::c_char);
     fn sh_chkwrite (ret:i32)->i32;
     fn find_alias(alia :*mut libc::c_char) ->alias_t;
@@ -446,7 +446,7 @@ pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
                 }
             _ =>{
                  if opt == -99 {
-                     builtin_help();
+                     r_builtin_help();
                      return EX_USAGE;
                  }
                 unsafe {

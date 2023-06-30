@@ -8,6 +8,7 @@ edition = "2018"
 [dependencies]
 libc ="*"
 rcommon = {path="../common"}
+rhelp = {path ="../help"}
 
 [lib]
 crate-type = ["staticlib", "rlib"]
