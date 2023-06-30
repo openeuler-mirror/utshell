@@ -1,5 +1,3 @@
-//! List directory contents
-
 use crate::{Error, NixPath, Result};
 use crate::errno::Errno;
 use crate::fcntl::{self, OFlag};
@@ -55,7 +53,6 @@ impl Dir {
     }
 
     /// Converts from a file descriptor, closing it on success or failure.
-    #[cfg_attr(has_doc_alias, doc(alias("fdopendir")))]
     pub fn from_fd(fd: RawFd) -> Result<Self> {
         let d = ptr::NonNull::new(unsafe { libc::fdopendir(fd) }).ok_or_else(|| {
             let e = Error::last();
@@ -116,7 +113,6 @@ fn next(dir: &mut Dir) -> Option<Result<Entry>> {
     }
 }
 
-/// Return type of [`Dir::iter`].
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub struct Iter<'d>(&'d mut Dir);
 
@@ -186,22 +182,14 @@ impl IntoIterator for Dir {
 #[repr(transparent)]
 pub struct Entry(dirent);
 
-/// Type of file referenced by a directory entry
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Type {
-    /// FIFO (Named pipe)
     Fifo,
-    /// Character device
     CharacterDevice,
-    /// Directory
     Directory,
-    /// Block device
     BlockDevice,
-    /// Regular file
     File,
-    /// Symbolic link
     Symlink,
-    /// Unix-domain socket
     Socket,
 }
 
@@ -238,7 +226,7 @@ impl Entry {
     /// notably, some Linux filesystems don't implement this. The caller should use `stat` or
     /// `fstat` if this returns `None`.
     pub fn file_type(&self) -> Option<Type> {
-        #[cfg(not(any(target_os = "illumos", target_os = "solaris", target_os = "haiku")))]
+        #[cfg(not(any(target_os = "illumos", target_os = "solaris")))]
         match self.0.d_type {
             libc::DT_FIFO => Some(Type::Fifo),
             libc::DT_CHR => Some(Type::CharacterDevice),
@@ -250,8 +238,8 @@ impl Entry {
             /* libc::DT_UNKNOWN | */ _ => None,
         }
 
-        // illumos, Solaris, and Haiku systems do not have the d_type member at all:
-        #[cfg(any(target_os = "illumos", target_os = "solaris", target_os = "haiku"))]
+        // illumos and Solaris systems do not have the d_type member at all:
+        #[cfg(any(target_os = "illumos", target_os = "solaris"))]
         None
     }
 }
