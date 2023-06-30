@@ -13,6 +13,7 @@ static mut delim: c_int = 0;
 
 #[no_mangle]
 pub extern "C" fn r_mapfile_builtin(mut list: *mut WordList) -> i32 {
+    println!("r_mapfile_builtin call");
 
     let mut opt: c_int;
     let mut code: c_int;

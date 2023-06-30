@@ -8,6 +8,7 @@ include!(concat!("intercdep.rs"));
 
 #[no_mangle]
 pub extern "C" fn r_trap_builtin(mut list: *mut WordList) -> i32 {
+    println!("r_trap_builtin call");
 
     let mut list_signal_names: c_int = 0;
     let mut display: c_int = 0;

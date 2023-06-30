@@ -143,6 +143,14 @@ macro_rules! S_IXUGO {
     };
 }
 
+// #[macro_export]
+// macro_rules! DIGIT{
+//     ($c:expr) => {
+//         c >= '0' && c <= '9'
+//     }
+// }
+
+// 
 
 //C库
 extern "C" {
@@ -186,6 +194,7 @@ unsafe fn member(c:*mut c_char,s:*mut c_char) -> bool{
    of -S means display the umask in a symbolic mode. */
 
 pub extern "C" fn r_umask_builtin(mut list:*mut WordList) ->i32{
+    println!("r_umask_builtin");
     let mut print_symbolically:i32;
     let mut opt:i32;
     let  umask_value:i32;

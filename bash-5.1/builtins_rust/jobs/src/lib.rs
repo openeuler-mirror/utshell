@@ -337,7 +337,7 @@ macro_rules! get_job_by_jid {
 #[macro_export]
 macro_rules! INVALID_JOB {
    ($j:expr) => {
-         $j <0 || $j >=  js.j_jobslots || get_job_by_jid!($j) == std::ptr::null_mut()
+         $j <0 || $j >=  js.j_jobslots || get_job_by_jid !($j) == std::ptr::null_mut()
     }
 }
 
@@ -373,6 +373,7 @@ extern "C" {
 
  #[no_mangle]
  pub extern "C" fn r_execute_list_with_replacements (list:*mut WordList)->i32{
+  //println!("r_execute_list_with_replacements");
   unsafe{
   let mut l:*mut WordList=list;
   let mut job:i32;
@@ -390,7 +391,7 @@ extern "C" {
       }
 	    
 	  libc::free((*(*l).word).word as * mut libc::c_void);
-	  (*(*(*l).word).word) = (*get_job_by_jid!(job)).pgrp as libc::c_char;
+	  (*(*(*l).word).word) = (*get_job_by_jid! (job)).pgrp as libc::c_char;
 	  }
       l=(*l).next;
   }
@@ -415,6 +416,7 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn r_jobs_builtin(mut list:*mut WordList)->i32 {
+    println!("r_jobs_builtin");
     let mut form:i32;
     let mut execute:i32=0;
     let mut state:i32;
@@ -484,7 +486,7 @@ pub extern "C" fn r_jobs_builtin(mut list:*mut WordList)->i32 {
         BLOCK_CHILD !(Some(&mut set), Some(&mut oset));
         job = get_job_spec (list);
 
-        if (job == NO_JOB!()) || jobs  == std::ptr::null_mut() || get_job_by_jid!(job)  == std::ptr::null_mut() {
+        if (job == NO_JOB!()) || jobs  == std::ptr::null_mut() || get_job_by_jid !(job)  == std::ptr::null_mut() {
             sh_badjob ((*((*list).word)).word);                 
             any_failed+=1;
         } else if job != DUP_JOB!() {
@@ -515,6 +517,7 @@ pub extern "C" fn r_disown_builtin (list:* mut WordList)->libc::c_int {
   let mut set:nix::sys::signal::SigSet=nix::sys::signal::SigSet::empty();
   let mut oset:nix::sys::signal::SigSet =nix::sys::signal::SigSet::empty();
   let mut pid_value:c_long=0;
+  //println!("r_disown_builtin");
   unsafe {
   reset_internal_getopt ();
   let mut c_str_ahr = CString::new("ahr").unwrap(); // from a &str, creates a new allocation
@@ -547,13 +550,14 @@ pub extern "C" fn r_disown_builtin (list:* mut WordList)->libc::c_int {
       }
 	    return EXECUTION_SUCCESS!();
   }
+    
   BLOCK_CHILD !(Some(&mut set), Some(&mut oset));
   if (loptend !=std::ptr::null_mut() && legal_number ((*(*loptend).word).word, &mut pid_value) !=0 && pid_value ==  pid_value) {
      job=get_job_by_pid ( pid_value as i32, 0, 0 as *mut*mut PROCESS);
   }else {
-    job = get_job_spec (loptend);
+    get_job_spec (loptend);
   }
-  if (job == NO_JOB!()) ||( jobs ==std::ptr::null_mut()) || (INVALID_JOB!(job)) {
+  if job == NO_JOB!() || jobs !=std::ptr::null_mut() || INVALID_JOB!(job) {
     if loptend !=std::ptr::null_mut() {
             sh_badjob ((*(*loptend).word).word);
     } else {

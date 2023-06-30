@@ -7,6 +7,7 @@ pub static mut old_cont: *mut SigHandler = PT_NULL as *mut SigHandler;
 
 #[no_mangle]
 pub extern "C" fn r_suspend_builtin(mut list: *mut WordList) -> i32 {
+    println!("r_suspend_builtin call");
 
     let mut opt: c_int;
     let mut force: c_int = 0;

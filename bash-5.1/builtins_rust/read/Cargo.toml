@@ -11,6 +11,6 @@ name = "rread"
 crate-type = ["staticlib", "rlib"]
 
 [dependencies]
-libc = "*"
-nix = "*"
+libc = "0.2"
+nix = "0.23"
 rcommon = {path = "../common"}

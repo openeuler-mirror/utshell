@@ -23,7 +23,6 @@ use rhash::r_hash_builtin;
 use rhelp::r_help_builtin;
 use rhistory::r_history_builtin;
 use rjobs::r_jobs_builtin;
-use rjobs::r_disown_builtin;
 use rkill::r_kill_builtin;
 use rmapfile::r_mapfile_builtin;
 use rprintf::r_printf_builtin;
@@ -106,8 +105,7 @@ enum CMDType {
     TypeCmd,
     UlimitCmd,
     UmaskCmd,
-    WaitCmd,
-    DisownCmd
+    WaitCmd
 }
 
   struct AliasComand ;
@@ -498,15 +496,6 @@ impl CommandExec for UnSetComand{
     }
 }
 
-  struct DisownCommand ;
-  impl CommandExec for DisownCommand{
-    fn  excute(&self,list : *mut WordList)-> i32{
-        unsafe {
-            r_disown_builtin(list)
-        }
-    }
-  }
-
 // 定义接口
 pub trait CommandExec {
     fn excute(&self,list : *mut WordList) -> i32;
@@ -652,7 +641,7 @@ impl Factory for SimpleFactory {
                 ReservedComand{}
             ),
             CMDType::ReturnCmd => Box::new(
-                ReturnComand{}
+                ReadComand{}
             ),
             CMDType::SetattrCmd => Box::new(
                 SetattrComand{}
@@ -701,9 +690,6 @@ impl Factory for SimpleFactory {
             ),
             CMDType::WaitCmd  => Box::new(
                 WaitComand{}
-            ),
-            CMDType::DisownCmd => Box::new(
-                DisownCommand{}
             )
         }
     }
@@ -906,9 +892,6 @@ unsafe fn get_cmd_type (command : *mut libc::c_char) -> CMDType{
     else if libc::strcmp(command , b"wait\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::WaitCmd;
     }
-    else if libc::strcmp(command , b"disown\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
-        types = CMDType::DisownCmd;
-    }
     
    types
 }
@@ -916,10 +899,10 @@ unsafe fn get_cmd_type (command : *mut libc::c_char) -> CMDType{
 #[no_mangle]
 pub extern "C" fn r_exec_cmd(command : *mut libc::c_char, mut list :*mut WordList) -> i32 {
 
-    // println!("enter r_exec_cmd");
-    // unsafe {
-    //    println!("command is {:?}",CStr::from_ptr(command));
-    // }
+    println!("enter r_exec_cmd");
+    unsafe {
+        println!("command is {:?}",CStr::from_ptr(command));
+    }
     let commandType = unsafe {get_cmd_type(command)};
     let  factory = SimpleFactory::new();
     let cmdCall = factory.make_product(commandType);

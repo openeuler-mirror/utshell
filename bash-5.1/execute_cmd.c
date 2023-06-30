@@ -4839,8 +4839,9 @@ execute_builtin (builtin, words, flags, subshell)
 
   executing_builtin++;
   executing_command_builtin |= builtin == command_builtin;
-  // result = ((*builtin) (words->next));
-  result = r_exec_cmd(words->word->word, words->next);
+  //result = ((*builtin) (words->next));
+  result = r_exec_cmd(this_command_name,words->next);
+  //r_execute_cmd2(words->next);
 
   /* This shouldn't happen, but in case `return' comes back instead of
      longjmp'ing, we need to unwind. */
@@ -5499,7 +5500,7 @@ execute_disk_command (words, redirects, command_line, pipe_in, pipe_out,
 
   if (command)
     {
-      //printf("command  is  %s ========== ======= \n",command);
+      printf("command  is  %s ========== ======= \n",command);
       /* If we're optimizing out the fork (implicit `exec'), decrement the
 	 shell level like `exec' would do. */
 #if 0 /* TAG: bash-5.2 psmith 10/11/2020 */
@@ -5813,6 +5814,7 @@ shell_execve (command, args, env)
      char *command;
      char **args, **env;
 {
+  printf("wwwwwwwwwwwwwwwwwwwwwwwwww===========\n");
   int larray, i, fd;
   char sample[HASH_BANG_BUFSIZ];
   int sample_len;

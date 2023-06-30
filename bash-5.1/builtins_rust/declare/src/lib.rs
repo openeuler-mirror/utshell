@@ -568,9 +568,9 @@ pub extern "C" fn r_declare_find_variable (name:* const c_char, mkglobal:i32, ch
   }
 }
 
-unsafe fn DECLARE_OPTS()-> CString
+unsafe fn DECLARE_OPTS()->* const c_char
 {
-  return CString::new("+acfgilnprtuxAFGI").unwrap();
+  return CString::new("+acfgilnprtuxAFGI").unwrap().as_ptr();
 }
 
 unsafe fn  savestring(x:* const c_char)->* mut c_char
@@ -662,8 +662,7 @@ pub extern "C" fn r_declare_internal (list:* mut WordList, local_var:i32)->i32
 
   unsafe {
   reset_internal_getopt ();
-  let tmp = DECLARE_OPTS().as_ptr();
-  opt = internal_getopt (list, tmp as * mut c_char);
+  opt = internal_getopt (list, DECLARE_OPTS() as * mut c_char);
   while  opt != -1 {
       if list_opttype == '+' as i32 {
         flags= &mut flags_off;
@@ -678,7 +677,7 @@ pub extern "C" fn r_declare_internal (list:* mut WordList, local_var:i32)->i32
 	 the loop in subst.c:shell_expand_word_list() */
       match optChar {
         'a'=>{ *flags |= att_array!();}
-	'A'=>{ *flags |= att_assoc!();}
+	      'A'=>{ *flags |= att_assoc!();}
         'p'=>{ pflag+=1;}
         'F'=>{ nodefs+=1;
               *flags |= att_function!();
@@ -726,7 +725,7 @@ pub extern "C" fn r_declare_internal (list:* mut WordList, local_var:i32)->i32
              return EX_USAGE;
             }
 	    }
-		internal_getopt (list, tmp as * mut c_char);
+		internal_getopt (list, DECLARE_OPTS() as * mut c_char);
   }
 
   let mut llist:* mut WordList = loptend.clone();

@@ -6,9 +6,9 @@ edition = "2018"
 
 
 [dependencies]
-lazy_static = "*"
-libc = "*"
-nix = "*"
+lazy_static = "1.4.0"
+libc = "0.2"
+nix = "0.23.0"
 rcommon = {path = "../common"}
 
 [lib]

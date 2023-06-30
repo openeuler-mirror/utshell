@@ -4,6 +4,7 @@ include!(concat!("intercdep.rs"));
 
 #[no_mangle]
 pub extern "C" fn r_times_builtin(list: *mut WordList) -> i32 {
+    println!("r_times_builtin call");
 
 unsafe {
 

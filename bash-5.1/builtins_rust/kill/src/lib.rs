@@ -8,6 +8,7 @@ include!(concat!("intercdep.rs"));
 
 #[no_mangle]
 pub extern "C" fn r_kill_builtin(mut list: *mut WordList) -> i32 {
+    println!("r_kill_builtin call");
 
 unsafe {
     let mut word: *mut c_char;
