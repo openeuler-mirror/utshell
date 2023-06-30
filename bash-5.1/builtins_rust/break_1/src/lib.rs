@@ -52,6 +52,7 @@ extern "C" {
     static mut breaking : i32;
     static mut continuing : i32;
     static mut loop_level : i32;
+    fn builtin_error(err:*const libc::c_char,...);
 }
 
 #[no_mangle]
@@ -118,7 +119,7 @@ pub extern "C" fn r_continue_builtin (mut list :*mut WordList) -> i32 {
 pub extern "C" fn check_loop_level () -> i32 {
 unsafe { 
   if loop_level == 0 &&  posixly_correct == 0 {
-      println! ("only meaningful in a `for`, `while`, or until `loop` ");
+      builtin_error (b"only meaningful in a `for`, `while`, or until `loop` \0" as *const u8 as *const libc::c_char);
       return 0;
   }
    loop_level

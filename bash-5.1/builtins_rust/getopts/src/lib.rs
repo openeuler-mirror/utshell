@@ -343,10 +343,10 @@ pub extern "C" fn r_dogetopts(argc:i32, argv:*mut*mut c_char)->i32
     }
 
     /* argv[0] is "getopts". */
-    optstr = *((argvv as usize +8) as *mut*mut c_char);
-    name = *((argvv as usize +16) as *mut*mut c_char);
+    optstr = *(argvv.offset(1));
+    name = *(argvv.offset(2));
     argcc -= 2;
-    argvv = (argvv as usize +16) as *mut*mut c_char;    
+    argvv = argvv.offset(2);
     
     if *optstr == ':' as c_char {
       special_error = 1;
@@ -356,7 +356,7 @@ pub extern "C" fn r_dogetopts(argc:i32, argv:*mut*mut c_char)->i32
 
     if special_error != 0 {
       old_opterr = sh_opterr;
-      optstr=(optstr as usize + 4) as * mut c_char;
+      optstr= optstr.offset(1); 
       sh_opterr = 0; /* suppress diagnostic messages */
     }
 
@@ -382,18 +382,18 @@ pub extern "C" fn r_dogetopts(argc:i32, argv:*mut*mut c_char)->i32
       v = strvec_create(i + 1);
       i=0;
       while i < 10 && dollar_vars[i as usize] !=std::ptr::null_mut() {
-        *((v as usize +8*i as usize) as *mut*mut c_char)  = dollar_vars[i as usize];
+        *(v.offset(i as isize)) = dollar_vars[i as usize];
         i+=1;
       }
 
       words = rest_of_args;
       while  words != std::ptr::null_mut() {
-        *((v as usize +8*i as usize) as *mut*mut c_char)  = (*(*words).word).word;
+        *(v.offset(i as isize)) = (*(*words).word).word;
         words = (*words).next;
         i+=1;
       }
 
-      *((v as usize +8*i as usize) as *mut*mut c_char)  = std::ptr::null_mut();
+      *(v.offset(i as isize)) = std::ptr::null_mut();
       sh_getopt_restore_state(&mut(*v));
       ret = sh_getopt(i, v, optstr);
       libc::free(v as * mut c_void);
@@ -421,9 +421,7 @@ pub extern "C" fn r_dogetopts(argc:i32, argv:*mut*mut c_char)->i32
         numval[i as usize] = (n % 10) as c_char + '0' as c_char;
       }
     }
-
-    bind_variable(CString::new ("OPTIND").unwrap().as_ptr(), & mut numval[i as usize], 0);
-
+    bind_variable(CString::new ("OPTIND").unwrap().as_ptr(), &mut numval[i as usize], 0);
     /* If an error occurred, decide which one it is and set the return
       code appropriately.  In all cases, the option character in error
       is in OPTOPT.  If an invalid option was encountered, OPTARG is
@@ -454,7 +452,6 @@ pub extern "C" fn r_dogetopts(argc:i32, argv:*mut*mut c_char)->i32
       } else {
         r_getopts_unbind_variable(CString::new ("OPTARG").unwrap().as_ptr() as * mut c_char);
       }
-
       return ret;
     }
 
@@ -465,7 +462,7 @@ pub extern "C" fn r_dogetopts(argc:i32, argv:*mut*mut c_char)->i32
 
         strval[0] = sh_optopt as c_char;
         strval[1] = '\0' as c_char;
-        bind_variable(CString::new ("OPTARG").unwrap().as_ptr() as * mut c_char, &mut strval[1], 0);
+        bind_variable(CString::new ("OPTARG").unwrap().as_ptr() as * mut c_char, &mut strval[0], 0);
       } else {
         ret = r_getopts_bind_variable(name, CString::new ("?").unwrap().as_ptr() as * mut c_char);
         r_getopts_unbind_variable(CString::new ("OPTARG").unwrap().as_ptr() as * mut c_char);
