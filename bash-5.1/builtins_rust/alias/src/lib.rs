@@ -1,5 +1,6 @@
 use std::ffi::CStr;
 
+use std::io::{Read, stdout, Write};
 //extern crate rcommon;
 use rcommon::r_sh_notfound;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage};
@@ -212,18 +213,25 @@ unsafe extern "C" fn print_alias( alias: *mut AliasT,  flags: libc::c_int) {
     let value: *mut libc::c_char;
     value = sh_single_quote((*alias).value);
     if flags & 0x1 as libc::c_int != 0 {
-        printf(
-            b"alias %s\0" as *const u8 as *const libc::c_char,
+        print!("alias ");
+        //printf(
+        //    b"alias %s\0" as *const u8 as *const libc::c_char,
             if !((*alias).name).is_null()
                 && *((*alias).name).offset(0 as libc::c_int as isize) as libc::c_int
                     == '-' as i32
             {
-                b"-- \0" as *const u8 as *const libc::c_char
+               // b"-- \0" as *const u8 as *const libc::c_char
+               print!("-- ");
             } else {
-                b"\0" as *const u8 as *const libc::c_char
-            },
-        );
+               // b"\0" as *const u8 as *const libc::c_char
+               print!(" ");
+            }
+        //);
     }
+   // fflush()
+   //unsafe {
+   //    std::io::stdout().flush();
+   //}
 
     println!("{}={}", CStr::from_ptr((*alias).name).to_string_lossy().into_owned(), CStr::from_ptr(value).to_string_lossy().into_owned());
     free(value as *mut libc::c_void);
