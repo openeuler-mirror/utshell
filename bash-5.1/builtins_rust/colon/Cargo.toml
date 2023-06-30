@@ -10,5 +10,5 @@ crate-type = ["staticlib","rlib"]
 name = "rcolon"
 
 [dependencies]
-libc = "0.2"
+libc = "*"
 rcommon = {path ="../common"}

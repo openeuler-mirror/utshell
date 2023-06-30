@@ -10,9 +10,6 @@ edition = "2018"
 libc = "*"
 rcommon = {path = "../common"}
 
-
-
-
 [lib]
 crate-type = ["staticlib","rlib"]
 name = "rumask"

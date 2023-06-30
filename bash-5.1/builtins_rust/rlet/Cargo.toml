@@ -12,6 +12,6 @@ name = "rlet"
 crate-type = ["staticlib","rlib"]
 
 [dependencies]
-libc = "0.2"
-nix = "0.23"
+libc = "*"
+nix = "*"
 rcommon = {path = "../common"}

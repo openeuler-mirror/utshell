@@ -209,7 +209,7 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
                     continue;
                     }
                     let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-                    let mgr = ResourceManager::new("./resources/{locale}/{res_id}".into());
+                    let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
                     let resources = vec![ "message.ftl".into()];
                 
                     let mut args = FluentArgs::new();
@@ -319,7 +319,7 @@ fn open_helpfile(name :*mut c_char) -> i32{
 
 fn show_longdoc(i : i32){
   let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-    let mgr = ResourceManager::new("./resources/{locale}/{res_id}".into());
+    let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
     let resources = vec![ "message.ftl".into()];
     let mut args = FluentArgs::new();
     let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
@@ -335,7 +335,7 @@ fn show_longdoc(i : i32){
 
 fn show_desc (name : *mut c_char, i :i32){
     let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-    let mgr = ResourceManager::new("./resources/{locale}/{res_id}".into());
+    let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
     let resources = vec![ "message.ftl".into()];
 
     let mut args = FluentArgs::new();
@@ -357,7 +357,7 @@ fn show_manpage (name : *mut c_char, i : i32){
     let  mut fd: i32;
     let  mut  usefile : bool;
     let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-    let mgr = ResourceManager::new("./resources/{locale}/{res_id}".into());
+    let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
     let resources = vec![ "message.ftl".into()];
     unsafe {
         doc = builtin1.long_doc;
@@ -504,9 +504,6 @@ fn show_builtin_command_help (){
   if width <= 3{
     width = 40;
   }
-  // unsafe {
-  //   height = (num_shell_builtins + 1) / 2;        /* number of rows */
-  // }
   for i in 0..height{
       unsafe {
         QUIT();
@@ -557,4 +554,3 @@ unsafe {
 //     }
 //   len
 // }
-

@@ -663,7 +663,6 @@ extern "C"{
     fn builtin_help();
     
     fn builtin_error(format:*const c_char,...);
-
 }
 
 unsafe fn ISOPTION(s:* const c_char, c:c_char)->bool

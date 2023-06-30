@@ -566,6 +566,8 @@ OTHER_DOCS = $(srcdir)/CHANGES $(srcdir)/COMPAT $(srcdir)/NEWS $(srcdir)/POSIX \
 	$(srcdir)/RBASH
 OTHER_INSTALLED_DOCS = CHANGES COMPAT NEWS POSIX RBASH README
 
+LANGSUBDIR = resources
+LANGSRC = $(srcdir)/$(LANGSUBDIR)
 
 RUST_DIR = $(top_builddir)/builtins_rust
 #RUST_TARGET_LIB = $(top_builddir)/target/debug/librjobs.a $(top_builddir)/target/debug/librread.a
@@ -821,6 +823,9 @@ install:	.made installdirs
 	$(INSTALL_SCRIPT) $(INSTALLMODE2) rashbug $(DESTDIR)$(bindir)/rashbug
 	-( cd $(DEFDIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
 	-( cd $(PO_DIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
+	-($(INSTALL_DATA) -D $(INSTALLMODE2) $(LANGSRC)/zh-CN/* -t $(DESTDIR)$(datadir)/utshell/${LANGSRC}/zh-CN  )
+	-($(INSTALL_DATA) -D $(INSTALLMODE2) $(LANGSRC)/zh-HK/* -t $(DESTDIR)$(datadir)/utshell/${LANGSRC}/zh-HK  )
+	-($(INSTALL_DATA) -D $(INSTALLMODE2) $(LANGSRC)/en-US/* -t $(DESTDIR)$(datadir)/utshell/${LANGSRC}/en-US  )
 
 install-strip:
 	$(MAKE) $(MFLAGS) INSTALL_PROGRAM='$(INSTALL_PROGRAM) -s' \
@@ -862,6 +867,7 @@ uninstall-headers:
 uninstall:	.made
 	$(RM) $(DESTDIR)$(bindir)/$(Program) $(DESTDIR)$(bindir)/rashbug
 	-( cd $(PO_DIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
+	$(RM) -r $(DESTDIR)$(datadir)/utshell
 
 .PHONY: basic-clean clean realclean maintainer-clean distclean mostlyclean maybe-clean
 
