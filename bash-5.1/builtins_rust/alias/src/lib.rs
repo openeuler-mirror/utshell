@@ -1,6 +1,5 @@
 use std::ffi::CStr;
 
-use std::io::{Read, stdout, Write};
 //extern crate rcommon;
 use rcommon::r_sh_notfound;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage};
@@ -228,10 +227,6 @@ unsafe extern "C" fn print_alias( alias: *mut AliasT,  flags: libc::c_int) {
             }
         //);
     }
-   // fflush()
-   //unsafe {
-   //    std::io::stdout().flush();
-   //}
 
     println!("{}={}", CStr::from_ptr((*alias).name).to_string_lossy().into_owned(), CStr::from_ptr(value).to_string_lossy().into_owned());
     free(value as *mut libc::c_void);
