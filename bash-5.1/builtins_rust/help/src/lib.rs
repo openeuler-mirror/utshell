@@ -201,22 +201,28 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
                   this_found = 1;
                   match_found = match_found +1 ;
                   if dflag == 1{
-      
                       show_desc (v[i], i as  i32);
-                      //continue;
+                      continue;
                   }
                   else if mflag ==1{
-
                     show_manpage (v[i], i as  i32); 
                     continue;
                     }
-                  unsafe {
-                  let builtin1 = &(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin));
+                    let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
+                    let mgr = ResourceManager::new("./resources/{locale}/{res_id}".into());
+                    let resources = vec![ "message.ftl".into()];
                 
-                  println! ("{:?}: {:?}\n", CStr::from_ptr(v[i]), CStr::from_ptr(builtin1.short_doc));
-                  }
-                  if sflag == 0{
-          
+                    let mut args = FluentArgs::new();
+                    let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
+                    let msg: &str = c_str.to_str().unwrap();
+                    args.set("cmdName",msg);
+                    let bundle = mgr.get_bundle(get_local_str(), resources);
+                    let mut value = bundle.get_message("helpsynopsis").unwrap();
+                    let mut pattern = value.value().expect("partern err");
+                    let mut errors = vec![];
+                    let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+                    println!(" {}:{}\n",msg ,msg1);
+                    if sflag == 0{
                       show_longdoc (i as i32);
                   }
                 }
@@ -312,114 +318,36 @@ fn open_helpfile(name :*mut c_char) -> i32{
 }
 
 fn show_longdoc(i : i32){
-    let mut j : i32;
-    let mut doc :*mut (*mut c_char);
-    let mut fd : i32;
-    let  mut usefile : bool ;
-    let builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-    unsafe {
-        doc = builtin1.long_doc;
-        usefile = doc!= std::ptr::null_mut() && (doc as usize + 8 as usize) as * mut c_char != std::ptr::null_mut(); 
-        usefile = usefile && char::from(unsafe {*((*doc as usize) as * mut c_char) as u8 })== '/';
-       // usefile = usefile && unsafe{*((doc as usize + 8 as  usize)as *mut *mut libc::c_char) as *mut libc::c_char} == std::ptr::null_mut();
-        //usefile = usefile && ((doc as usize + 8 as  usize) as * mut c_char) == std::ptr::null_mut();
-         //usefile = usefile && (*(doc as usize + 8 as usize) as *mut libc::c_char )as char== '/' as char ;
-        //usefile = doc!= std::ptr::null_mut() && *((doc as usize + ) as * mut c_char)== '/' as libc::c_char && (doc as usize +4)as * mut c_char == std::ptr::null_mut() as * mut c_char; 
-    }
-   // let usefile = (doc!= std::ptr::null_mut() && char::from(unsafe {*((doc + 4*8) as usize ) as * mut c_char) as u8 })== '/');
-    if usefile {
-          unsafe {
-          fd = open_helpfile (*builtin1.long_doc);
-          }
-          if (fd < 0){
-              //无返回值
-              return ();
-          }
-          unsafe {
-           zcatfd (fd, 1, *doc);
-           libc::close (fd);
-          }
-      /* XXX - handle errors if zmapfd returns < 0 */
-    }
-  else if doc!= std::ptr::null_mut() {
-      let mut j = 0 ;
-      unsafe {
-      println!("{:?}",CStr::from_ptr(*doc));
-      }
-  }
-      // while unsafe {*((doc as usize+(8*j) as usize)as * mut * mut c_char) as *mut c_char }!= std::ptr::null_mut(){
-      //   unsafe {
-      //      println! ("{:?}{:?} {:?}", BASE_INDENT!()," ", CStr::from_ptr(*((doc as usize+(8*j) as usize)as * mut * mut c_char) as *mut c_char));
-      //      j += 1;
-      //   }
-      //  }
-      //  }
+  let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
+    let mgr = ResourceManager::new("./resources/{locale}/{res_id}".into());
+    let resources = vec![ "message.ftl".into()];
+    let mut args = FluentArgs::new();
+    let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
+    let msg: &str = c_str.to_str().unwrap();
+    args.set("cmdName",msg);
+    let bundle = mgr.get_bundle(get_local_str(), resources);
+    let mut value = bundle.get_message("helpsynopsis").unwrap();
+    let mut pattern = value.value().expect("partern err");
+    let mut errors = vec![];
+    let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+     println!("    {}", msg1);
 }
 
 fn show_desc (name : *mut c_char, i :i32){
+    let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
+    let mgr = ResourceManager::new("./resources/{locale}/{res_id}".into());
+    let resources = vec![ "message.ftl".into()];
 
-    let mut j :i32;
-    let r :i32;
-    let mut doc : *mut *mut libc::c_char;
-    let mut  line : *mut libc::c_char = 0  as *mut libc::c_char ;
-    let mut fd : i32;
-    let mut usefile : bool;
-    
-    let builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-    unsafe {
-       doc = builtin1.long_doc;
-   }
-   // usefile = (doc && doc[0] && *doc[0] == '/' && doc[1] == (char *)NULL);
-    usefile = doc!= std::ptr::null_mut() && unsafe {*doc as *mut libc::c_char} != std::ptr::null_mut();
-    usefile = usefile && unsafe {**doc as libc::c_char } == '/' as libc::c_char;
-    //usefile = usefile && unsafe {*(doc as usize + 8 as usize) as *mut libc::c_char} != std::ptr::null_mut();
-   if usefile {
-   
-          fd = open_helpfile (unsafe {*doc as *mut libc::c_char });
-          if (fd < 0){
-              //无返回值
-              return ();
-          }
-           unsafe {
-               r = zmapfd (fd, *(line as *mut libc::c_char) as *mut *mut libc::c_char ,(doc as *mut libc::c_char));
-               libc::close (fd);
-          }
-      /* XXX - handle errors if zmapfd returns < 0 */
-    }
-  else
-  {
-      if doc!= std::ptr::null_mut() {
-          unsafe {
-              line = *doc as *mut libc::c_char;
-          }
-      }
-      else{
-    
-          line =  std::ptr::null_mut();
-      }
-    }
-
-  unsafe {
-  println!("{:?}",CStr::from_ptr(name));
-  }
-   let mut j = 0 ;
-   while ((line as usize + (8*j)) as * mut c_char)!= std::ptr::null_mut()  {
-      unsafe {
-          libc::putchar (*((line as usize + (8*j))as * mut c_char) as i32);
-          if char::from(*((line as usize + (8*j))as * mut c_char) as u8)== '\n'{
-            break;
-      }
-      }
-       j += 1;
-   }
-   unsafe {
-       std::io::stdout().flush();
-   }
-  if usefile{
-    unsafe {
-        libc::free (line as * mut c_void);
-    }
-  }
+    let mut args = FluentArgs::new();
+    let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
+    let msg: &str = c_str.to_str().unwrap();
+    args.set("cmdName",msg);
+    let bundle = mgr.get_bundle(get_local_str(), resources);
+    let mut value = bundle.get_message("helpname").unwrap();
+    let mut pattern = value.value().expect("partern err");
+    let mut errors = vec![];
+    let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+     println!("    {}", msg1);
 }
 fn show_manpage (name : *mut c_char, i : i32){
  
@@ -432,37 +360,11 @@ fn show_manpage (name : *mut c_char, i : i32){
     let mgr = ResourceManager::new("./resources/{locale}/{res_id}".into());
     let resources = vec![ "message.ftl".into()];
     unsafe {
-      
         doc = builtin1.long_doc;
     }
     //*doc = (*((shell_builtins as usize + i as usize) as *mut builtin).long_doc as *mut libc::c_char);
     usefile = doc!= std::ptr::null_mut() && unsafe {*doc as *mut libc::c_char} != std::ptr::null_mut();
     usefile = usefile && unsafe {**doc as libc::c_char } == '/' as libc::c_char;
-
-    if usefile{
-   
-      unsafe {
-        fd = open_helpfile (*doc);
-      }
-      if fd < 0 {
-           //无返回值
-          return ();
-      }
-      unsafe{
-          zmapfd (fd, line  as *mut *mut libc::c_char, *doc);
-          libc::close (fd);
-      }
-    }
-    else {
-        if doc!= std::ptr::null_mut(){
-          unsafe { 
-            line = *doc as *mut libc::c_char;
-          }
-        }
-        else{
-            line = std::ptr::null_mut();
-        }
-    }
   /* NAME */
   println! ("NAME\n");
   let mut args = FluentArgs::new();
@@ -474,42 +376,23 @@ fn show_manpage (name : *mut c_char, i : i32){
   let mut pattern = value.value().expect("partern err");
   let mut errors = vec![];
   let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
-  println!("{}", msg1);
-   let mut  j = 0 ;
-   unsafe {
-   while (*((doc as usize + (8*j))as *mut *mut c_char)as  *mut c_char) != std::ptr::null_mut()  {
-      libc::putchar (*((line as usize + (8*j)) as * mut c_char) as i32);
-      if char::from(*((line as usize + (8*j))as * mut c_char) as u8)  == '\n'{
-         break;
-      }
-       j += 1;
-   }
-  }
-   
-  println! ("\n");
+   println!("    {}\n", msg1);
 
   /* SYNOPSIS */
   println! ("SYNOPSIS\n");
-  unsafe {
-    println! ("     {:?}\n", CStr::from_ptr(builtin1.short_doc));
-  }
+    value = bundle.get_message("helpsynopsis").unwrap();
+    pattern = value.value().expect("partern err");
+    msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+    println!("    {}\n", msg1);
+  //  println! ("     {:?}\n", CStr::from_ptr(builtin1.short_doc));
   /* DESCRIPTION */
   println! ("DESCRIPTION\n");
   if !usefile{
       value = bundle.get_message("helplongdoc").unwrap();
       pattern = value.value().expect("partern err");
       msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
-      println!("{}", msg1);
+      println!("{}\n", msg1);
    }
-  else{
-      while doc != std::ptr::null_mut() && (((doc as usize + (8*j)))as * mut c_char) != std::ptr::null_mut()  {
-      unsafe {
-          libc::putchar (*((doc as usize + (8*j))as * mut c_char)as i32);
-      }
-          println! (" ");
-      }
-       j += 1;
-      }
   unsafe {
      libc::putchar ('\n' as i32);
   }

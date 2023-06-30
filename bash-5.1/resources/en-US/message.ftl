@@ -787,7 +787,7 @@ $cmdName ->
     Exit Status:
     Always succeeds.
 
-    [limit] Modify shell resource limits.
+    [ulimit] Modify shell resource limits.
     
     Provides control over the resources available to the shell and 
     processes
@@ -1459,7 +1459,7 @@ $cmdName ->
 [suspend] suspend - Suspend shell execution.
 [eval] eval - Evaluate conditional expression.
 [times] times - Display process times.
-[limit] limit - Modify shell resource limits.
+[ulimit] limit - Modify shell resource limits.
 [umask] umask - Display or set file mode mask.
 [return] return - Wait for job completion and return exit status.
 [wait] wait -Wait for process completion and return exit status.
@@ -1491,4 +1491,76 @@ $cmdName ->
 [bind] bind -  Set Readline key bindings and variables.。
 [test] test - Evaluate arithmetic expressions.
 *[other] show other command help info..
+}
+
+helpsynopsis = {
+$cmdName ->
+[set]   {"set [-abefhkmnptuvxBCHP] [-o option-name] [--] [arg ...]"}
+[read]  {"read [-ers] [-a array] [-d delim] [-i text] [-n nchars] [-N nchars] [-p prompt] [-t timeout] [-u fd] [name ...]"}
+[type]  {"type [-afptP] name [name ...]"}
+[trap]  {"trap [-lp] [[arg] signal_spec ...]"}
+[alias] {"alias [-p] [name[=value] ... ]"}
+[unalias] {"unalias [-a] name [name ...]"}
+[break] {"break [n]"}
+[continue] {"continue [n]"}
+[builtin] {"unalias [-a] name [name ...]"}
+[caller] {"caller [expr] "}
+[cd] {"cd [-L|[-P [-e]] [-@]] [dir]"}
+[pwd] {"pwd [-LP]"}
+[true] {"true"}
+[shopt] {"shopt [-pqsu] [-o] [optname ...]"}
+[false] {"false"}
+[command] {"command [-pVv] command [arg ...]"}
+[echo] {"echo [-neE] [arg ...]"}
+[enable] {"enable [-a] [-dnps] [-f filename] [name ...] "}
+[getopts] {"getopts optstring name [arg ...]"}
+[exec] {"exec [-cl] [-a name] [command [argument ...]] [redirection ...] "}
+[exit] {"exit [n]"}
+[logout] {"logout [n]"}
+[fc] {"fc [-e ename] [-lnr] [first] [last] or fc -s [pat=rep] [command]"}
+[fg] {"fg [job_spec] "}
+[bg] {"bg [job_spec ...]"}
+[hash] {"hash [-lr] [-p pathname] [-dt] [name ...]"}
+[help] {"help [-dms] [pattren ...]"}
+[history] {"history [-c] [-d offset] [n] or history -anrw [filename] or history -ps arg [arg...]"}
+[jobs] {"jobs [-lnprs] [jobspec ...] or jobs -x command [args]"}
+[disown] {"disown [-h] [-ar] [jobspec ... | pid ...]"}
+[kill] {"kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]"}
+[let] {"let arg [arg ...]"}
+[shift] {"shift [n]"}
+[suspend] {"suspend [-f]"}
+[eval] {"eval [arg ...]"}
+[times] {"times"}
+[ulimit] {"ulimit [-SHabcdefiklmnpqrstuvxPT] [ulimit]"}
+[umask] {"umask [-p] [-S] [pattern]"}
+[return] {"return [n]"}
+[wait] {"wait [-fn] [-p var] [id ...]"}
+[for] {"for NAME [in WORDS ... ] ; do COMMANDS; done"}
+[select] {"select NAME [in WORDS ... ;] do COMMANDS; done"}
+[time] {"time [-p] pipeline"}
+[case] {"case WORD in [pattern [| pattern]...) COMMANDS ;;]... esac"}
+[if] {"if COMMANDS; then COMMANDS; [ elif COMMANDS; then COMMANDS; ]... [ else COMMANDS; ] fi"}
+[while] {"while COMMANDS; do COMMANDS; done"}
+[until] {"until COMMANDS; do COMMANDS; done"}
+[coproc] {"coproc [NAME] COMMANDS [redirections]"}
+[variables] {"variables - variables - Names and meanings of some shell variables"}
+[pushd] {"pushd [-n] [+N | -N | dir]"}
+[popd] {"popd [-n] [+N | -N]"}
+[dirs] {"dirs [-clpv] [+N] [-N]"}
+[printf] {"printf [-v var] format [arguments]"}
+[complete] {"complete [-abcdefgjksuv] [-pr] [-DEI] [-o option] [-A action] [-G globpat] [-W wordlist] [-F function] [-C command] [-X filterpat] [-P prefix] [-S suffix] [name ...]"}
+[compgen] {"compgen [-abcdefgjksuv] [-o option] [-A action] [-G globpat] [-W wordlist] [-F function] [-C command] [-X filterpat] [-P prefix] [-S suffix] [word]"}
+[compopt] {"compopt [-o|+o option] [-DEI] [name ...]"}
+[mapfile] {"mapfile [-d delim] [-n count] [-O origin] [-s count] [-t] [-u fd] [-C callback] [-c quantum] [array]]"}
+[unset] {"unset [-f] [-v] [-n] [NAME ...]"}
+[readarray] {"readarray [-d delim] [-n count] [-O origin] [-s count] [-t] [-u fd] [-C callback] [-c quantum] [array]"}
+[local] {"local [option] name[=value] ... "}
+[export] {"export [-fn] [name[=value] ...] or export -p"}
+[readonly] {"readonly [-aAf] [name[=value] ...] or readonly -p"}
+[function] {"function NAME { COMMANDS ; } 或 name () { COMMANDS ; } "}
+[typeset] {"typeset [-aAfFgiIlnrtux] [-p] name[=value] ..."}
+[source] {"source filename [arguments]"}
+[bind] {"bind [-lpsvPSVX] [-m keymap] [-f filename] [-q name] [-u name] [-r keyseq] [-x keyseq:shell-command] [keyseq:readline-function or readline-command] "}
+[test] {"test [expr]"}
+*[other]  show other command help info..
 }
