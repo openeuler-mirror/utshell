@@ -9,7 +9,7 @@ name = "renable"
 crate-type = ["staticlib","rlib"]
 
 [dependencies]
-libc = "0.2"
-libloading = "0.7"
+libc = "*"
+libloading = "*"
 rcmd = {path="../cmd"}
 rcommon = {path="../common"}

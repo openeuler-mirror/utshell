@@ -65,7 +65,7 @@ members=[
 ]
 
 [dependencies]
- libc = "0.2"
+ libc = "*"
  rread = {path = "./builtins_rust/read"}
  rhistory = {path = "./builtins_rust/history"}
  rkill = {path = "./builtins_rust/kill"}
