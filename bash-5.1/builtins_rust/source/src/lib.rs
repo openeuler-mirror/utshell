@@ -23,14 +23,6 @@ enum r_instruction {
     r_move_input, r_move_output, r_move_input_word, r_move_output_word,
     r_append_err_and_out
 }
-/*
-#[repr(C)]
-#[derive(Copy,Clone)]
-pub union REDIRECTEE {
-    dest:libc::c_int,
-    filename:* mut WordDesc
-}
-*/
 
 #[repr(C)]
 pub union REDIRECT {

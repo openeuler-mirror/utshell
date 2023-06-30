@@ -22,7 +22,6 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn r_eval_builtin(mut list:*mut WordList)->i32{
-    println!("r_eval_builtin");
     
     unsafe{
         if r_no_options(list) != 0{

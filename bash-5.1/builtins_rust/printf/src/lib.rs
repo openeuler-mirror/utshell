@@ -61,7 +61,6 @@ unsafe fn  savestring(x:* mut c_char)->* mut c_char
 
 #[no_mangle]
 pub extern "C" fn r_printf_builtin(mut list: *mut WordList) -> i32 {
-    println!("r_printf_builtin call");
 
     let mut ch: c_int;
     let mut fieldwidth: c_int;

@@ -16,7 +16,6 @@ pub const DFLAG: c_int = 0x80;
 
 #[no_mangle]
 pub extern "C" fn r_history_builtin(mut list: *mut WordList) -> i32 {
-    println!("r_history_builtin call");
 
     let mut flags: c_int = 0;
     let mut opt: c_int;

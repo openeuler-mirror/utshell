@@ -8,21 +8,6 @@ use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE
 use nix::errno::errno;
 use rcommon::r_sh_restricted;
 
-/*
-#[repr (C)]
-#[derive(Copy,Clone)]
-pub struct WordDesc{
-    pub word:*mut c_char,
-    pub flags:c_int,
-}
-
-#[repr (C)]
-#[derive(Copy,Clone)]
-pub struct WordList{
-    pub next:*mut WordList,
-    pub word:*mut WordDesc,
-}
-*/
 #[repr(C)]
 struct redirect{
     next:*mut redirect,
@@ -156,9 +141,6 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WordList)->i32{
     let mut env:*mut *mut c_char;
     let newname:*mut c_char;
     let com2:*mut c_char;
-
-    println!("r_exec_builtin");
-
 
     unsafe{
         exec_argv0 = std::ptr::null_mut() as *mut c_char;
