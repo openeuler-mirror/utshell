@@ -3,6 +3,7 @@ extern crate nix;
 
 use std::ffi::CStr;
 use std::ffi::CString;
+use std::fmt::format;
 use std::ptr;
 use std::mem;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
@@ -400,7 +401,6 @@ extern "C" {
 
     fn builtin_error(_: *const libc::c_char, _: ...);
     fn getmaxchild() -> i64;
-    fn print_rlimtype(_: rlim_t, _: i32);
     
     static mut loptend: *mut WordList;
     static mut list_optarg: *mut libc::c_char;
@@ -418,7 +418,6 @@ fn _findlim (opt:i32) -> i32{
 
     for i in 0..17 {
         if limits[i].option > 0{
-            //println!("now  opt is {}",opt);
             if limits[i].option  == opt {
                 return i  as i32;
             }
@@ -430,7 +429,6 @@ fn _findlim (opt:i32) -> i32{
 #[no_mangle]
 pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
 
-    //println!("enter ulimit set  by huanhuan");
     let mut  s : *mut libc::c_char;
     let mut c : i32 ;
     let mut limind : i32 ;
@@ -438,43 +436,37 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
     let mut opt : i32 = 0 ;
     let  mut all_limits : i32 = 0 ;
     if optstring[0] == 0 {
-        //println!(" optstring[0] == 0");
          s = optstring.as_mut_ptr();
-         s = (s as usize ) as *mut libc::c_char;
+         s = s.offset(0);
         *s = 'a' as libc::c_char;  
-         s = (s as usize + 1) as *mut libc::c_char;
+         s = s.offset(1);
         *s  = 'S' as libc::c_char;
-         s = (s as usize + 1) as *mut libc::c_char;
+         s =  s.offset(1);
         *s   = 'H' as libc::c_char;
+         s =  s.offset(1);
          c = 0 ;
         for i in 0..17 {
             if limits[i].option > 0{
-                //println!("limits[i].option > 0 is {}",limits[i].option);
-                s = (s as usize + 1) as *mut libc::c_char;
                 *s = limits[i].option as libc::c_char;
-                s = (s as usize + 1) as *mut libc::c_char;
+                 s =  s.offset(1);
                 *s = ';' as  libc::c_char;
+                 s =  s.offset(1);
             } 
         }
         *s = '\0' as  libc::c_char;
     }
-    
-    //println! ("cmdlistsz is {}",cmdlistsz);
+
     if cmdlistsz == 0{
-       // println!("cmdlistsz == 0");
        cmdlistsz = 16;
         unsafe {
             cmdlist = 
              xmalloc ((cmdlistsz as u64)*(std::mem::size_of::<ULCMD>() as libc::c_ulong) ) as *mut ULCMD;
         }
-      //  println!("cmdlistsz == 0");
     }
     ncmd = 0;
     reset_internal_getopt ();
     opt = internal_getopt(list, optstring.as_ptr() as *mut libc::c_char);
-    //println! ("get opt 2 is {}",opt);
     while opt != -1 {
-        //println!("opt  is {}", opt); 
         let optu8:u8= opt as u8;
         let optChar:char=char::from(optu8);
         match optChar {
@@ -486,7 +478,6 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
                  return  EX_USAGE;
             }
             _ => {
-                //println!("enter switch default,opt  is {}",opt);
                 if opt == -99 {
                     r_builtin_help();
                     return EX_USAGE;
@@ -506,7 +497,6 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
                     //                     (ncmd as usize)*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD);
                     // cmm.cmd = opt;
                     // cmm.arg = list_optarg;
-                    // println!("now  cmd opt is {:?}",cmm.cmd);
                     // (*((cmdlist as usize + (ncmd as usize)*std::mem::size_of::<ULCMD>())
                     // as *mut ULCMD) as ULCMD).cmd = opt ;
                     //  (*((cmdlist as usize + (ncmd as usize) * std::mem::size_of::<ULCMD>())
@@ -519,24 +509,20 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
         opt = internal_getopt (list, optstring.as_ptr() as * mut libc::c_char);
   }
 
-    // println! ("now cmd1 opt is {:?}",(*((cmdlist as usize + (ncmd as usize)*std::mem::size_of::<ULCMD>())
     //  as *mut ULCMD) as ULCMD).cmd );
     list = loptend;
 
    if  all_limits != 0 {
-      //println!("all_limits != 0 ");
       if mode == 0  {
         print_all_limits (LIMIT_SOFT!());
       }
       else {
-        //println!("all_limits == 0 ，mode  is {}",mode); 
         print_all_limits (mode);
       }
     return sh_chkwrite(EXECUTION_SUCCESS!());
   }
  
    if ncmd == 0 {
-      //println!("ncmd == 0");
       unsafe {
         (*cmdlist.offset(ncmd as isize)).cmd = 'f' as i32;
         //   let mut cmm =  *((cmdlist as usize + (ncmd as usize )*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD;
@@ -552,33 +538,25 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
           }
         }
        else {
-            //println!("enter else"); 
             unsafe {
             (*cmdlist.offset(ncmd as isize)).arg =  std::ptr::null_mut();  
             // let mut cmm = *((cmdlist as usize + (ncmd as usize )*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD;
             // cmm.arg  =  std::ptr::null_mut();    
             ncmd = ncmd+1;        
-            //println!("pos 4?");
         }
 
     }
     if !list.is_null() {
-      //  println!("pos 5?");
         list = (*list).next;
     }
   }
 
-  //println!("now ncmd is {}",ncmd);
   for d in 0..ncmd {
-    //println!("pos 6?");
-    //println!("now get dmd is {}",(*((cmdlist as usize + d as usize*std::mem::size_of::<ULCMD>())
     //as *mut ULCMD) as ULCMD).cmd);
       let cmm = *((cmdlist as usize + (d as usize )*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD;
       let dmd = cmm.cmd;
 
-      //println!("dmd is {}",dmd);
       limind = _findlim ((*cmdlist.offset(d as isize)).cmd);
-      //println!("now get limind is {}",limind);
       if limind == -1 {
         unsafe {
             builtin_error(b"%s: bad command : %s\0" as *const u8 as  *const libc::c_char, 
@@ -590,7 +568,6 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
   }
 
   for d in 0..ncmd {
-    //println!("pos 7?");
     let dmd = (*cmdlist.offset(d as isize)).cmd;
     let  drg = (*cmdlist.offset(d as isize)).arg;
     // let dmd =   (*((cmdlist as usize + (d as usize )*std::mem::size_of::<ULCMD>())
@@ -601,13 +578,11 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
         return EXECUTION_FAILURE!();
        }
     }
-    //println!("pos 8?");
       return EXECUTION_SUCCESS!();
   
 }
 
 unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32, multiple : i32) -> i32 {
-
     let mut opt : i32 ;
     let mut limind : i32 ;
     let mut setting : i32 ;
@@ -623,9 +598,7 @@ unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32
     else {
         setting = 0;
     }
-   // println!("now  set cmd  limind is {}",cmd);
     limind = _findlim(cmd);
-    //println!("now  get limind is {}",limind);
     if mode == 0 {
         if setting != 0 {
             mode = LIMIT_HARD!()|LIMIT_SOFT!();
@@ -634,9 +607,6 @@ unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32
             mode = LIMIT_SOFT!();
         }
     }
-//   println!("now get_limit para {}" , limind);
-//   println!("now get soft_limit is {}",soft_limit);
-//   println!("now get hard_limit is {}",hard_limit);
   opt = get_limit (limind, &mut soft_limit, &mut hard_limit);
 
   if opt < 0 {
@@ -650,11 +620,9 @@ unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32
 
   if setting == 0 {
       if (mode & LIMIT_SOFT!()) != 0 {   
-       //println!("mode & LIMIT_SOFT!()) != 0，soft_limit is {},hard_limit is {}", soft_limit,hard_limit);
         printone (limind,soft_limit,multiple);
       }
       else {
-        //println!("mode & LIMIT_SOFT!()) == 0");
         printone (limind,hard_limit,multiple);
       }
     return EXECUTION_SUCCESS!();
@@ -680,12 +648,10 @@ unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32
     real_limit = limit * block_factor as i64;
 
     if (real_limit / block_factor as i64) != limit {
-      //  println!("real_limit / block_factor as i64) != limit");
         let c_str_limit =CString::new("limit").unwrap();
 	    unsafe {sh_erange (cmdarg,c_str_limit.as_ptr() as *mut libc::c_char)};
 	    return EXECUTION_FAILURE!();
 	}
-    //println!("real_limit / block_factor as i64) == limit");
   }
 
   else {
@@ -702,13 +668,10 @@ unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32
 }
 
 fn get_limit (mut ind : i32, softlim : *mut RLIMTYPE, hardlim : *mut RLIMTYPE ) -> i32 { 
-    //println!("now enter get_limit, ind is {}",ind);
     let mut value :  RLIMTYPE = 0 ;
     let mut limit: rlimit = rlimit { rlim_cur: 1, rlim_max: 1 };
 
-    // println!("now get ind is {}",ind);
     if limits[ind as usize].parameter >= 256 {
-        // println!("limits[ind as usize].parameter >= 256");
         match limits[ind as usize].parameter {
             RLIMIT_FILESIZE!() => {
                 if filesize (((&mut value)  as *mut i64) as *mut u64) < 0 {
@@ -749,18 +712,13 @@ fn get_limit (mut ind : i32, softlim : *mut RLIMTYPE, hardlim : *mut RLIMTYPE ) 
       }
     else{
         unsafe {
-          //println!("now get ind is {} , ====2：{}==== ind is3： {}",ind,ind as u32,ind as u32 as usize );  
         let ii = getrlimit(limits[ind as u32 as usize ].parameter as __rlimit_resource_t,
               &mut limit);
-           //   println!("parameter={}  softlimeeeee is {},hardlimeeeeeeeaaaaaaaaae is {}" ,limits[ind as usize ].parameter,limit.rlim_cur as i64 ,
-          // limit.rlim_max as i64);
-           //   println!(" option == {}, description is {:?} \n",limits[ind  as usize].option,  CStr::from_ptr(limits[ind as usize ].description));
         if  ii < 0 {
             return -1;
         } 
         }
         unsafe {
-           // println!("softlim is {},hardlim is {}",limit.rlim_cur as i64 ,
            // limit.rlim_max as i64);
             *softlim = limit.rlim_cur as i64;
             *hardlim = limit.rlim_max as i64;
@@ -770,7 +728,6 @@ fn get_limit (mut ind : i32, softlim : *mut RLIMTYPE, hardlim : *mut RLIMTYPE ) 
 }
 
 fn  set_limit (ind : i32, newlim : RLIMTYPE, mode : i32) -> i32{
-    
     let  mut limit  : rlimit  = rlimit { rlim_cur: 0, rlim_max: 0 };
     let  mut val :  RLIMTYPE = 0;
      
@@ -819,7 +776,6 @@ fn  set_limit (ind : i32, newlim : RLIMTYPE, mode : i32) -> i32{
 }
 
 unsafe fn getmaxvm(softlim : *mut RLIMTYPE , hardlim : *mut libc::c_char) -> i32 {
-
     let  mut  datalim :  rlimit = rlimit { rlim_cur: 0, rlim_max: 0 };
     let  mut  stacklim : rlimit = rlimit { rlim_cur: 0, rlim_max: 0 };
     
@@ -842,9 +798,7 @@ fn filesize(mut valuep: *mut rlim_t) -> i32 {
 }
 
 unsafe fn pipesize(mut valuep: *mut rlim_t) -> i32 {
-    // println!("enter pipesize");
     *((valuep as usize) as *mut rlim_t) =  PIPE_BUF!() as rlim_t;
-    // println!("return");
     return 0 ;
 }
 
@@ -896,17 +850,13 @@ fn print_all_limits (mut mode : i32) {
 }
 
 fn  printone (limind : i32, curlim :RLIMTYPE  , pdesc : i32){
-   // println!("enter printone");
-    //println!("now  get curlim is {}",curlim);
     let mut unitstr :[ libc::c_char; 64] = [0 ; 64];
     let mut factor : i32 ;
 
-   // println!("limind1 is  {} ",limind);
     factor = BLOCKSIZE!(limits[limind as usize].block_factor);
     if pdesc > 0 {
         if !limits[limind as usize].units.is_null(){
             unsafe {
-                //println!("ffffffffff11");
                 sprintf (unitstr.as_mut_ptr(), b"(%s, -%c) \0" as *const u8 as *const libc::c_char,
                 limits[limind as usize].units, 
                 limits[limind as usize].option);
@@ -918,36 +868,28 @@ fn  printone (limind : i32, curlim :RLIMTYPE  , pdesc : i32){
                 sprintf (unitstr.as_mut_ptr(),b"(-%c) \0" as *const u8 as *const libc::c_char,
                 limits[limind as usize].option);
             }
-             
         }
-       // println!("limind is  {} RLIM_INFINITY is {}",limind ,RLIM_INFINITY!());
-        println!("{}",
-        format! ("{:?} {:?} ", unsafe {
-            CStr::from_ptr (limits[limind as usize].description)}
-        , unsafe {CStr::from_ptr(unitstr.as_mut_ptr())}));
-        //println!(""); 
+        print!("{:<20} {:>20}", unsafe {
+            CStr::from_ptr(limits[limind as usize].description).to_str().unwrap()}
+        , unsafe {CStr::from_ptr(unitstr.as_mut_ptr()).to_str().unwrap()});
     }
     if curlim == RLIM_INFINITY!() {
-        //println!("unlimited");
-        let c_str_unlimited = CString::new("unlimited").unwrap();
-        unsafe {libc::puts (c_str_unlimited.as_ptr())};
+        let c_str_unlimited = b"unlimited" as *const u8 as *const libc::c_char;
+        println!("{}",unsafe {CStr::from_ptr(c_str_unlimited).to_str().unwrap()});
     }
   
     else if curlim == RLIM_SAVED_MAX!() {
         //println!("hard");
-        let c_str_hard = CString::new("hard").unwrap();
-        unsafe {libc::puts (c_str_hard.as_ptr())};
+        let c_str_hard = b"hard" as *const u8 as *const libc::c_char;
+        println!("{}",unsafe {CStr::from_ptr(c_str_hard).to_str().unwrap()});
     }
     else if curlim == RLIM_SAVED_CUR!() {
         //println!("soft");
-        let c_str_soft = CString::new("soft").unwrap();
-        unsafe {libc::puts (c_str_soft.as_ptr())};
+        let c_str_soft = b"soft" as *const u8 as *const libc::c_char;
+        println!("{}",unsafe {CStr::from_ptr(c_str_soft).to_str().unwrap()});
     }  
     else{
-        unsafe {
-            print_rlimtype ((curlim / factor as i64) as u64 , 1); 
-        }
-      
+        print_rlimtype ((curlim / factor as i64) as u64 , 1); 
     }
    
 }
@@ -964,6 +906,17 @@ fn  printone (limind : i32, curlim :RLIMTYPE  , pdesc : i32){
    To attempt to raise all soft and hard limits to infinity, use
 	ulimit -a unlimited
 */
+
+fn  print_rlimtype(num : u64, nl : i32) 
+{
+    if nl > 0{
+        println!("{num}");
+    }
+    else {
+        print!("{num}");
+    }
+}
+
 
 fn  set_all_limits (mut mode : i32 , newlim : RLIMTYPE) -> i32 {
     let mut  i : i32 ;
