@@ -3,6 +3,7 @@ use std::ffi::CStr;
 //extern crate rcommon;
 use rcommon::r_sh_notfound;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage};
+use rhelp::r_builtin_help;
 
 extern "C" {
     fn free(__ptr: *mut libc::c_void);
@@ -25,7 +26,6 @@ extern "C" {
     fn builtin_usage();
     fn sh_notfound(_: *mut libc::c_char);
     fn sh_chkwrite(_: libc::c_int) -> libc::c_int;
-    fn builtin_help();
     static mut loptend: *mut WordList;
     fn internal_getopt(_: *mut WordList, _: *mut libc::c_char) -> libc::c_int;
     fn reset_internal_getopt();
@@ -91,7 +91,7 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int
             }
             _ => {
                 if offset == -99 {
-                    builtin_help();
+                    r_builtin_help();
                     return EX_USAGE;
                 }
                 r_builtin_usage();
@@ -178,7 +178,7 @@ pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WordList) -> libc::c_i
             }
             _ => {
                 if opt == -99 {
-                    builtin_help();
+                    r_builtin_help();
                     return EX_USAGE;
                 }
                 builtin_usage();

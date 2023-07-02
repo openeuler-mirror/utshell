@@ -1,5 +1,5 @@
 use rcommon::{WordList};
-
+use rhelp::r_builtin_help;
 pub const EXECUTION_SUCCESS : c_int = 0;
 pub const EXECUTION_FAILURE : c_int = 1;
 pub const EX_USAGE: c_int = 258;
@@ -20,7 +20,6 @@ extern "C" {
     pub fn string_list(list: *mut WordList) -> *mut c_char;
 
     pub fn builtin_usage();
-    pub fn builtin_help();
     pub fn builtin_error(format: *const c_char, ...);
 
     pub fn evalexp (expr: *mut c_char, flags: c_int, validp: *mut c_int) -> c_long;

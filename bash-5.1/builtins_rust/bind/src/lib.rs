@@ -8,6 +8,7 @@ use std::fs::File;
 use nix::errno::errno;
 use rcommon::{r_builtin_usage,r_sh_chkwrite};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rhelp::r_builtin_help;
 
 #[repr (C)]
 pub struct _keymap_entry{
@@ -142,7 +143,6 @@ extern "C"{
     fn strvec_len(array:*mut *mut  c_char)->i32;
     fn rl_parse_and_bind(string:*mut c_char)->i32;
     fn strvec_search(array:*mut *mut c_char,name:*mut c_char)->i32;
-    fn builtin_help();
 }
 
 
@@ -246,7 +246,7 @@ pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
                 'X' => flags |= XXFLAG!(),
                 _  => {
                     if opt == -99 {
-                        builtin_help();
+                        r_builtin_help();
                         return EX_USAGE;
                     }
                     r_builtin_usage();

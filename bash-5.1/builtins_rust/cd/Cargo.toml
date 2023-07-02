@@ -11,6 +11,7 @@ lazy_static = "*"
 libc = "*"
 rcommon = {path="../common"}
 nix = "*"
+rhelp = {path ="../help"}
 
 [lib]
 crate-type = ["staticlib","rlib"]

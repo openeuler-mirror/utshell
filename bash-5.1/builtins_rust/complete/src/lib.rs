@@ -4,7 +4,7 @@ extern crate nix;
 use libc::{c_char, c_int, c_ulong, c_void};
 use std::{ffi::CString};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
-
+use rhelp::r_builtin_help;
 
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -554,7 +554,6 @@ extern "C" {
   fn sh_invalidid (value:* mut c_char);
   fn sh_invalidoptname (value:* mut c_char);
   fn builtin_usage();
-  fn builtin_help();
   static list_optarg:* mut c_char;
   fn builtin_error(err:*const c_char,...);
   fn check_identifier (w:* mut WordDesc, f:i32)->i32;
@@ -824,7 +823,7 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
            }
            _=>{
             if opt == -99 {
-              builtin_help();
+              r_builtin_help();
               return EX_USAGE;
           }
             builtin_usage ();

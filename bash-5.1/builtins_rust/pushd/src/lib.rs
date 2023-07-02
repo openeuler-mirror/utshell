@@ -2,10 +2,10 @@ extern crate  libc;
 extern crate nix;
 
 use libc::{c_char, c_long, c_void};
-use std::{ffi::CString};
+use std::{ffi::{CString,CStr}};
 
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
-
+use rhelp::r_builtin_help;
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
     cm_connection, cm_function_def, cm_until, cm_group,
@@ -213,7 +213,6 @@ macro_rules! CLEARSTAK {
 }
 
 extern "C" {
-  fn builtin_help ();
   fn builtin_error(err:*const c_char,...);
   fn get_working_directory (path:* mut c_char)-> * mut c_char;
   fn sh_invalidopt (value:* mut c_char);
@@ -246,7 +245,7 @@ unsafe fn ISHELP(s:* const c_char)->bool
 
 unsafe fn ISOPTION(s:* const c_char, c:c_char)->bool
 {
-	return *s == '-' as c_char && *((s as usize + 1)as * mut c_char) == c && *((s as usize + 8)as * mut c_char) != 0;
+	return *s == '-' as c_char && *(s.offset(1)) == c && *(s.offset(2)) == 0;
 }
 
 unsafe fn savestring(x:* const c_char)->* mut c_char
@@ -273,7 +272,7 @@ pub extern "C" fn r_pushd_builtin (listt:* mut WordList)->i32
 	orig_list = list.clone();
 
 	if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISHELP((*((*list).word)).word) {
-		builtin_help ();
+		r_builtin_help ();
 		return EX_USAGE;
 	}
 
@@ -455,7 +454,7 @@ let mut which_word:* mut c_char;
 unsafe {
 let mut list:* mut WordList=listt.clone();
 if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISHELP((*((*list).word)).word) { 
-  builtin_help ();
+  r_builtin_help ();
   return EX_USAGE;
 }
 
@@ -568,7 +567,7 @@ pub extern "C" fn r_dirs_builtin (listt:* mut WordList)->i32
   unsafe {
     let mut list:* mut WordList=listt.clone();
     if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISHELP((*((*list).word)).word) {
-      builtin_help ();
+      r_builtin_help ();
       return EX_USAGE;
     }
 
@@ -586,15 +585,15 @@ pub extern "C" fn r_dirs_builtin (listt:* mut WordList)->i32
 	      break;
 	    } else if *((*((*list).word)).word) == '+' as c_char || *((*((*list).word)).word) == '-' as c_char {
 	      let sign:i32;
-        w = ((*((*list).word)).word as usize +1) as * mut c_char;
-	      if legal_number (w, &mut i) == 0 {
+	      w = (*(*list).word).word.offset(1);
+        if legal_number (w, &mut i) == 0 {
           sh_invalidnum ((*((*list).word)).word);
           builtin_usage ();
           return EX_USAGE;
         }
 
-        if *((*((*list).word)).word) == '+' as c_char {
-          sign = -1;
+        if *((*(*list).word).word) == '+' as c_char{  
+          sign = 1;
         } else {
           sign = -1;
         }
@@ -783,7 +782,7 @@ pub extern "C" fn r_get_dirstack_index (ind:libc::c_long, sign:i32, indexp:* mut
       if sign > 0 {
         *indexp=1;
       } else {
-        *indexp=0;
+        *indexp=2;
       }
     }
     /* dirs +0 prints the current working directory. */
