@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2018"
 authors = ["liutong"]
 
+
 [lib]
 name = "ralias"
 crate-type = ["staticlib","rlib"]
@@ -12,5 +13,4 @@ crate-type = ["staticlib","rlib"]
 libc = "*"
 rcmd = {path="../cmd"}
 rcommon= {path="../common"}
-rhelp = {path ="../help"}
 # nix = "*"

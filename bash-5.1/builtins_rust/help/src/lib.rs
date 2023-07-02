@@ -99,6 +99,7 @@ extern "C"{
     static mut static_shell_builtin : [builtin ; 100];
     static  shell_builtins:*mut  builtin;
     static  mut current_builtin :*mut builtin;
+    fn builtin_help();
 }
 
 #[no_mangle]
@@ -133,7 +134,7 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
             _=>{
                 unsafe {
                   if i == -99 {
-                    r_builtin_help();
+                    builtin_help();
                     return EX_USAGE;
                   }
                   builtin_usage ();
@@ -227,18 +228,8 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
       }
    }
   if match_found == 0{
-        let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
-        let resources = vec![ "message.ftl".into()];
-        let mut args = FluentArgs::new();
-        let s1 = String::from("command");
-        args.set("name",format!("{:?}",CStr::from_ptr(pattern)));
-        let bundle = mgr.get_bundle(get_local_str(), resources);
-        let mut value = bundle.get_message("helperr").unwrap();
-        let mut pattern = value.value().expect("partern err");
-        let mut errors = vec![];
-        let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
-        println!("utshell: help: {}", msg1);
-        return EXECUTION_FAILURE!();
+        println! ("no help topics match {:?} .Try 'help help' or 'man -k {:?}' or info {:?}", pattern , pattern, pattern);
+      return EXECUTION_FAILURE!();
     }
    }
    unsafe {
@@ -268,7 +259,9 @@ unsafe fn QUIT ()
   }
 }
 
-pub  extern "C"  fn r_builtin_help (){
+
+#[no_mangle]
+pub extern "C" fn r_builtin_help (){
     // print  all  command usage
     let mut ind: i32 = 5;
     let d: i32;
@@ -280,11 +273,18 @@ pub  extern "C"  fn r_builtin_help (){
 
         d = (current_builtin as usize  - shell_builtins as usize) as i32;
     }
-    ind = d/BUILTIN_SIZEOF!() ;
+    ind = d ;
+    /*
+    #if defined (__STDC__)
+        ind = (int)d;
+    #else
+        ind = (int)d / sizeof (struct builtin);
+    #endif
+    */
     unsafe {
-       print!("{:?} : ",CStr::from_ptr(this_command_name));
+        let  builtin1  = &(*((shell_builtins as usize + (ind*BUILTIN_SIZEOF!()) as usize) as *mut builtin));
+        println!("{:?} : {:?}",this_command_name, CStr::from_ptr(builtin1.short_doc));
     }
-    show_helpsynopsis(ind);
     show_longdoc (ind);
 }
 
@@ -467,6 +467,7 @@ fn show_builtin_command_help (){
     let mut width : usize;
     let mut t :*mut libc::c_char;
     let mut blurb:[libc::c_char;128] = ['0' as  libc::c_char;128];
+    println!("help  command  edit by huanhuan.");
     let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
     let resources = vec!["message.ftl".into()];
     let bundle = mgr.get_bundle(get_local_str(), resources);

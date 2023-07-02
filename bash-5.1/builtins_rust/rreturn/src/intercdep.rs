@@ -38,6 +38,7 @@ pub type sigjmp_buf = [__jmp_buf_tag; 1usize];
 
 extern "C" {
     pub fn builtin_usage();
+    pub fn builtin_help();
     pub fn builtin_error(format: *const c_char, ...);
 
     pub fn get_exitstat(list: *mut WordList) -> c_int;

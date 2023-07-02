@@ -1,7 +1,6 @@
 use libc::{c_int, c_char, c_void};
 use rcommon::{r_make_builtin_argv,WordList};
 include!(concat!("intercdep.rs"));
-use rhelp::r_builtin_help;
 
 #[no_mangle]
 pub extern "C" fn r_test_builtin(list: *mut WordList) -> i32 {

@@ -12,7 +12,7 @@ unsafe {
 
 	if !list.is_null() && !(*list).word.is_null() &&
 		libc::strcmp((*((*list).word)).word, "--help\0".as_ptr() as *const c_char) == 0 {
-        r_builtin_help ();
+        builtin_help ();
         return EX_USAGE;
     }
 

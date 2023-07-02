@@ -9,7 +9,6 @@ edition = "2018"
 libc = "*"
 nix = "*"
 rcommon = {path = "../common"}
-rhelp = {path ="../help"}
 
 [lib]
 crate-type = ["staticlib","rlib"]

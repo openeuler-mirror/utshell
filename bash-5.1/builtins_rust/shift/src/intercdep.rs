@@ -6,6 +6,7 @@ pub const EX_USAGE: c_int = 258;
 
 extern "C" {
     pub fn builtin_usage();
+    pub fn builtin_help();
     pub fn builtin_error(format: *const c_char, ...);
 
     pub fn get_numeric_arg(list: *mut WordList, fatal: c_int, count: c_long) -> c_int;

@@ -6,7 +6,6 @@ use libc::{c_char,c_int,PT_NULL,c_long,};
 use std::ffi::{CStr,CString};
 
 use rread::{SHELL_VAR,ARRAY,intmax_t,};
-use rhelp::r_builtin_help;
 
 #[macro_export]
 macro_rules! att_array {
@@ -61,7 +60,7 @@ macro_rules! GET_ARRAY_FROM_VAR {
 macro_rules! CHECK_HELPOPT {
     ($l:expr) => {
         if $l != std::ptr::null_mut() && (*($l)).word != std::ptr::null_mut() && ISHELP((*(*($l)).word).word) == true{
-            r_builtin_help();
+            builtin_help();
             return EX_USAGE;
         }
     };
@@ -72,6 +71,7 @@ type arrayind_t = intmax_t;
 extern "C" {
     static loptend:*mut WordList;
 
+    fn builtin_help();
     fn find_variable(str:*const c_char)->*mut SHELL_VAR;
     fn array_reference(a:*mut ARRAY,i:arrayind_t)->*mut c_char;
     fn builtin_usage();

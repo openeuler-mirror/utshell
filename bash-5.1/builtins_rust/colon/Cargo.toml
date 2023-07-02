@@ -12,4 +12,3 @@ name = "rcolon"
 [dependencies]
 libc = "*"
 rcommon = {path ="../common"}
-rhelp = {path ="../help"}

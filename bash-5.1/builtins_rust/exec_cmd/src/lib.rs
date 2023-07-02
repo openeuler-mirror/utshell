@@ -760,7 +760,7 @@ unsafe fn get_cmd_type (command : *mut libc::c_char) -> CMDType{
     else if libc::strcmp(command, b"compgen\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::CompgenCmd;
     }
-    else if libc::strcmp(command,b"declare\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0 || libc::strcmp(command,b"typeset\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
+    else if libc::strcmp(command,b"declare\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
         types = CMDType::DeclareCmd;
     }
     else if libc::strcmp(command,b"local\0" as *const u8 as *const libc::c_char as *mut libc::c_char)  == 0{
@@ -844,7 +844,8 @@ unsafe fn get_cmd_type (command : *mut libc::c_char) -> CMDType{
     else if libc::strcmp(command,b"return\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::ReturnCmd;
     }
-    else if libc::strcmp(command,b"set\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
+    else if libc::strcmp(command,b"set\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 
+    || libc::strcmp(command,b"typeset\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {
         types = CMDType::SetCmd;
     }
     else if libc::strcmp(command,b"unset\0" as *const u8 as *const libc::c_char as *mut libc::c_char) == 0 {

@@ -7,7 +7,6 @@ use std::ffi::CString;
 use libc::c_long;
 
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
-use rhelp::r_builtin_help;
 
 
 type intmax_t = c_long;
@@ -34,7 +33,7 @@ fn checkhelp(l: *mut WordList) -> i32{
     let tmp=CString::new("--help").unwrap();
     if l!=std::ptr::null_mut() && (*l).word !=std::ptr::null_mut() && 
         libc::strcmp((*((*l).word)).word, tmp.as_ptr()) == 0 {
-            r_builtin_help();
+            builtin_help();
         }
             return EX_USAGE;
     }
@@ -42,6 +41,7 @@ fn checkhelp(l: *mut WordList) -> i32{
 
 extern "C" {
     fn get_numeric_arg(list :*mut WordList, i: i32 , intmax :*mut intmax_t) -> i32;
+    fn builtin_help ();
    // fn get_loop_level() -> i32;
     //fn set_continuing(cont : i32);
     //fn set_breaking(breaking : i32);
@@ -52,7 +52,6 @@ extern "C" {
     static mut breaking : i32;
     static mut continuing : i32;
     static mut loop_level : i32;
-    fn builtin_error(err:*const libc::c_char,...);
 }
 
 #[no_mangle]
@@ -119,7 +118,7 @@ pub extern "C" fn r_continue_builtin (mut list :*mut WordList) -> i32 {
 pub extern "C" fn check_loop_level () -> i32 {
 unsafe { 
   if loop_level == 0 &&  posixly_correct == 0 {
-      builtin_error (b"only meaningful in a `for`, `while`, or until `loop` \0" as *const u8 as *const libc::c_char);
+      println! ("only meaningful in a `for`, `while`, or until `loop` ");
       return 0;
   }
    loop_level

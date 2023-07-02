@@ -14,7 +14,7 @@ use rread::{SHELL_VAR,sh_var_value_func_t,sh_var_assign_func_t,
 use rcommon::{r_builtin_unbind_variable,r_builtin_usage,r_get_job_spec,WordList};
 use rcommon::{ WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN};
 
-use rhelp::r_builtin_help;
+
 // 结构体
 #[repr(C)]
 pub struct procstat{
@@ -191,6 +191,7 @@ extern "C" {
     static assoc_expand_once:i32;
     static mut last_command_exit_signal:i32;
     static posixly_correct:i32;
+
     // fn sigsetjmp(env:sigjmp_buf,val:c_int)->i32;
     fn internal_getopt (list:*mut WordList,  opts:*mut c_char)->i32;
     // fn builtin_usage();
@@ -211,6 +212,7 @@ extern "C" {
     fn wait_for_background_pids(ps:*mut procstat);
     fn wait_for_single_pid(pid:pid_t,flags:i32)->i32;
     fn wait_for_job(job:i32,flags:i32,ps:*mut procstat)->i32;
+    fn builtin_help();
 }
 
 unsafe fn DIGIT(c:c_char)->bool{
@@ -274,7 +276,7 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WordList)->i32{
                 'p' => vname = list_optarg,
                  _  => {
                     if opt == -99 {
-                        r_builtin_help();
+                        builtin_help();
                         return EX_USAGE;
                     }
                      r_builtin_usage();

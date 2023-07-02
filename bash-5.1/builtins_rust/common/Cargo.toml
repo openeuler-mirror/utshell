@@ -13,4 +13,3 @@ unic-langid = "*"
 [lib]
 crate-type = ["staticlib","rlib"]
 name = "rcommon"
-rhelp = {path ="../help"}

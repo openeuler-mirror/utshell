@@ -5,7 +5,7 @@ use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
 
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
-use rhelp::r_builtin_help;
+
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
     cm_connection, cm_function_def, cm_until, cm_group,
@@ -213,6 +213,7 @@ macro_rules! CLEARSTAK {
 }
 
 extern "C" {
+  fn builtin_help ();
   fn builtin_error(err:*const c_char,...);
   fn get_working_directory (path:* mut c_char)-> * mut c_char;
   fn sh_invalidopt (value:* mut c_char);
@@ -272,7 +273,7 @@ pub extern "C" fn r_pushd_builtin (listt:* mut WordList)->i32
 	orig_list = list.clone();
 
 	if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISHELP((*((*list).word)).word) {
-		r_builtin_help ();
+		builtin_help ();
 		return EX_USAGE;
 	}
 
@@ -454,7 +455,7 @@ let mut which_word:* mut c_char;
 unsafe {
 let mut list:* mut WordList=listt.clone();
 if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISHELP((*((*list).word)).word) { 
-  r_builtin_help ();
+  builtin_help ();
   return EX_USAGE;
 }
 
@@ -567,7 +568,7 @@ pub extern "C" fn r_dirs_builtin (listt:* mut WordList)->i32
   unsafe {
     let mut list:* mut WordList=listt.clone();
     if list != std::ptr::null_mut() &&  (*list).word != std::ptr::null_mut() && ISHELP((*((*list).word)).word) {
-      r_builtin_help ();
+      builtin_help ();
       return EX_USAGE;
     }
 
