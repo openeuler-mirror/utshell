@@ -5,7 +5,8 @@ use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use rhelp::r_builtin_help;
-
+use rsetattr::show_name_attributes;
+use std::ffi::CStr;
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
     cm_connection, cm_function_def, cm_until, cm_group,
@@ -468,7 +469,6 @@ extern "C" {
     fn sh_chkwrite (ret:i32)->i32;
     fn show_func_attributes (name:* mut c_char, nodefs:i32)->i32;
     fn show_localname_attributes (name:* mut c_char, nodefs:i32)->i32;
-    fn show_name_attributes (name:* mut c_char, nodefs:i32)->i32;
     fn sh_notfound (name:* mut c_char);
 	static assoc_expand_once:i32;
 	fn assignment (str1:* const c_char, flags:i32)->i32;
@@ -589,7 +589,7 @@ unsafe fn  var_setvalue(var:*mut SHELL_VAR,str1:* mut c_char)
 }
 
 unsafe fn VSETATTR(var:*mut SHELL_VAR, attr:i32) {
-	(*var).attributes=attr;
+	(*var).attributes |= attr;
 }
 
 unsafe fn readonly_p(var:*mut SHELL_VAR) ->i32 {
@@ -608,8 +608,8 @@ unsafe fn function_cell(var:*mut SHELL_VAR) ->* mut COMMAND {
 	return (*var).value as * mut COMMAND;
 }
 
-unsafe fn VUNSETATTR(var:*mut SHELL_VAR,attr:i32) ->i32 {
-	return (*var).attributes & !attr;
+unsafe fn VUNSETATTR(var:*mut SHELL_VAR,attr:i32) {
+	(*var).attributes &= !attr;
 }
 
 unsafe fn array_p(var:*mut SHELL_VAR) ->i32 {
@@ -727,7 +727,6 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	    }
 		opt = internal_getopt (list, tmp.as_ptr() as * mut c_char);
   }
-
     list = loptend;
   /* If there are no more arguments left, then we just want to show
      some variables. */
@@ -760,12 +759,11 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
         } else {
           pflag = show_name_attributes ((*(*list).word).word, nodefs);
         }
-
         if pflag !=0 {
             sh_notfound ((*(*list).word).word);
             any_failed += 1;
         }
-        list = (*list).next;
+         list = (*list).next;
 	  }
 
       if any_failed !=0 {
@@ -774,7 +772,6 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
         return EXECUTION_SUCCESS!();
       }
   }
-
 
   /* There are arguments left, so we are making variables. */
  'outter: while list !=std::ptr::null_mut() {		/* declare [-aAfFirx] name [name ...] */
@@ -892,7 +889,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	 shell function names don't have to be valid identifiers when the
 	 shell's not in posix mode), check whether or not the argument is a
 	 valid, well-formed shell identifier. */
-	 if (posixly_correct !=0 || (flags_on & att_function!()) == 0) && legal_identifier (name) == 0 {
+	 if (posixly_correct !=0 || (flags_on & att_function!()) == 0) && legal_identifier(name) == 0 {
 		sh_invalidid (name);
 	  	assign_error+=1;
 		libc::free (name as * mut c_void);
@@ -914,16 +911,18 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		 var = find_variable (name);
 	     if var == std::ptr::null_mut() {
 			newname = nameref_transform_name (name, ASS_MKLOCAL!());
-		 } else if (flags_on & att_nameref!()) == 0 && (flags_off & att_nameref!()) == 0 {
+		 }
+		 else if (flags_on & att_nameref!()) == 0 && (flags_off & att_nameref!()) == 0 {
 	      /* Ok, we're following namerefs here, so let's make sure that if
 		 we followed one, it was at the same context (see below for
 		 more details). */
 	      refvar = find_variable_last_nameref (name, 1);
 		  if refvar != std::ptr::null_mut() && (*refvar).context != variable_context {
 			newname =  name ;
-		  } else {
-			newname =  (*var).name;
 		  }
+		 else {
+			newname =  (*var).name;
+		}
 	      refvar = std::ptr::null_mut();
 	    } else {
 			newname = name;	/* dealing with nameref attribute */
@@ -1015,9 +1014,9 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		      if nodefs !=0 && debugging_mode !=0 {
 			  	shell_fn = find_function_def ((*var).name);
 				if shell_fn !=std::ptr::null_mut() {
-					libc::printf (CString::new("%s %d %s\n").unwrap().as_ptr(), (*var).name, (*shell_fn).line, (*shell_fn).source_file);
+					println!("{} {} {}",CStr::from_ptr((*var).name).to_str().unwrap(),(*shell_fn).line,CStr::from_ptr((*shell_fn).source_file).to_str().unwrap());
 				} else {
-					libc::printf (CString::new("%s\n").unwrap().as_ptr(), (*var).name);
+					println!("{}",CStr::from_ptr((*var).name).to_str().unwrap());
 				}
 			  } else {
 				  if nodefs !=0 {
@@ -1025,7 +1024,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 				  } else {
 					named_function_string (name, function_cell (var), FUNC_MULTILINE!()|FUNC_EXTERNAL!());
 				  }
-				  libc::printf (CString::new("%s\n").unwrap().as_ptr(), t);
+				  println!("{}",CStr::from_ptr(t).to_str().unwrap());
 			      any_failed = sh_chkwrite (any_failed);
 			 }
 		  } else {	/* declare -[fF] -[rx] name [name...] */ 
@@ -1040,7 +1039,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		list = (*list).next;
 		continue 'outter; 
 	    }
-	} else {	/* declare -[aAinrx] name [name...] */
+	} else {
+		/* declare -[aAinrx] name [name...] */
 	 /* Non-null if we just created or fetched a local variable. */
 
 	  /* Here's what ksh93 seems to do as of the 2012 version: if we are
@@ -1381,7 +1381,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		/* ksh93 seems to do this */
 		offref = flags_off & att_nameref!();
 		flags_off &= !att_nameref!();
-
+        
 		VSETATTR (var, flags_on);
 		VUNSETATTR (var, flags_off);
 
@@ -1515,4 +1515,3 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
   }
 }
 }
-

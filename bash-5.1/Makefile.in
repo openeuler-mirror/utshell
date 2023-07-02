@@ -1,4 +1,4 @@
-# Makefile for bash-5.0, version 4.30
+# Makefile for utshell, version 4.30
 #
 # Copyright (C) 1996-2018 Free Software Foundation, Inc.
 
@@ -104,10 +104,10 @@ EXEEXT = @EXEEXT@
 OBJEXT = @OBJEXT@
 
 # The name of this program and some version information.
-VERSPROG = rashversion$(EXEEXT)
-VERSOBJ = rashversion.$(OBJEXT)
+VERSPROG = utshellversion$(EXEEXT)
+VERSOBJ = utshellversion.$(OBJEXT)
 
-Program = rash$(EXEEXT)
+Program = utshell$(EXEEXT)
 Version = @BASHVERS@
 PatchLevel = `$(BUILD_DIR)/$(VERSPROG) -p`
 RELSTATUS = @RELSTATUS@
@@ -191,7 +191,7 @@ SUBDIR_INCLUDES = -I. @RL_INCLUDE@ -I$(topdir) -I$(topdir)/$(LIBSUBDIR)
 BUILD_INCLUDED_LIBINTL = @BUILD_INCLUDED_LIBINTL@
 USE_INCLUDED_LIBINTL = @USE_INCLUDED_LIBINTL@
 
-# the bash library
+# the utshell library
 # the library is a mix of functions that the C library does not provide on
 # some platforms and general shell utility functions
 SH_LIBSRC = $(LIBSRC)/sh
@@ -241,7 +241,7 @@ SHLIB_LIBRARY = ${SH_LIBDIR}/${SHLIB_LIBNAME}
 SHLIB_LDFLAGS = -L${SH_LIBDIR}
 SHLIB_DEP = ${SHLIB_LIBRARY}
 
-# we assume for now that readline source is being shipped with bash
+# we assume for now that readline source is being shipped with utshell
 RL_LIBSRC = $(LIBSRC)/readline
 # RL_LIBDOC = $(RL_LIBSRC)/doc
 RL_LIBDIR = @RL_LIBDIR@
@@ -577,7 +577,7 @@ RUST_BUILTINS_DIRS = $(RUST_DIR)/alias $(RUST_DIR)/bind $(RUST_DIR)/break_1 $(RU
 # Keep GNU Make from exporting the entire environment for small machines.
 .NOEXPORT:
 
-.made: $(Program) rashbug $(SDIR)/man2html$(EXEEXT)
+.made: $(Program) utshellbug $(SDIR)/man2html$(EXEEXT)
 	@echo "$(Program) last made for a $(Machine) running $(OS)" >.made
 
 $(Program):  .build  $(OBJECTS) $(BUILTINS_DEP) $(LIBDEP) rust_builtins_lib
@@ -599,10 +599,10 @@ rust_builtins_lib:
 	@for it in $(RUST_BUILTINS_DIRS); do  cd $$it ;  cargo build;   cd -; done
 
 
-rashbug: $(SDIR)/rashbug.sh $(VERSPROG)
+utshellbug: $(SDIR)/utshellbug.sh $(VERSPROG)
 	@sed -e "s%!PATCHLEVEL!%$(PatchLevel)%" \
-	     $(SDIR)/rashbug.sh > $@
-	@chmod a+rx rashbug
+	     $(SDIR)/utshellbug.sh > $@
+	@chmod a+rx utshellbug
 
 strip:	$(Program) .made
 	$(STRIP) $(Program)
@@ -635,8 +635,8 @@ version.h:  $(SOURCES) config.h Makefile patchlevel.h
 	$(SHELL) $(SUPPORT_SRC)mkversion.sh -b -S ${topdir} -s $(RELSTATUS) -d $(Version) -o newversion.h \
 		&& mv newversion.h version.h
 
-rashversion$(EXEEXT): buildversion.o $(SUPPORT_SRC)rashversion.c
-	$(CC_FOR_BUILD) $(CCFLAGS_FOR_BUILD) ${LDFLAGS_FOR_BUILD} -o $@ $(SUPPORT_SRC)rashversion.c buildversion.o ${LIBS_FOR_BUILD}
+utshellversion$(EXEEXT): buildversion.o $(SUPPORT_SRC)utshellversion.c
+	$(CC_FOR_BUILD) $(CCFLAGS_FOR_BUILD) ${LDFLAGS_FOR_BUILD} -o $@ $(SUPPORT_SRC)utshellversion.c buildversion.o ${LIBS_FOR_BUILD}
 
 buildversion.o: $(srcdir)/version.c
 	$(CC_FOR_BUILD) $(CCFLAGS_FOR_BUILD) -DBUILDTOOL -c -o $@ $(srcdir)/version.c
@@ -820,7 +820,7 @@ installdirs:
 
 install:	.made installdirs
 	$(INSTALL_PROGRAM) $(INSTALLMODE) $(Program) $(DESTDIR)$(bindir)/$(Program)
-	$(INSTALL_SCRIPT) $(INSTALLMODE2) rashbug $(DESTDIR)$(bindir)/rashbug
+	$(INSTALL_SCRIPT) $(INSTALLMODE2) utshellbug $(DESTDIR)$(bindir)/utshellbug
 	-( cd $(DEFDIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
 	-( cd $(PO_DIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
 	-($(INSTALL_DATA) -D $(INSTALLMODE2) $(LANGSRC)/zh-CN/* -t $(DESTDIR)$(datadir)/utshell/${LANGSRC}/zh-CN  )
@@ -855,17 +855,17 @@ install-headers: install-headers-dirs
 			${INSTALL_DATA} $(srcdir)/"$$hf" $(DESTDIR)$(headersdir)/$$hf || exit 1; \
 		fi ; \
 	done
-	-$(INSTALL_DATA) $(SDIR)/bash.pc $(DESTDIR)$(pkgconfigdir)/bash.pc
+	-$(INSTALL_DATA) $(SDIR)/utshell.pc $(DESTDIR)$(pkgconfigdir)/utshell.pc
 
 uninstall-headers:
 	-( cd $(DESTDIR)$(headersdir) && $(RM) $(INSTALLED_HEADERS) )
 	-( cd $(DESTDIR)$(headersdir)/include && $(RM) $(INSTALLED_INCFILES) )
 	-( cd $(DESTDIR)$(headersdir)/builtins && $(RM) $(INSTALLED_BUILTINS_HEADERS) )
 	-( cd $(DESTDIR)$(headersdir) && $(RM) $(CREATED_HEADERS) )
-	-( $(RM) $(DESTDIR)$(pkgconfigdir)/bash.pc )
+	-( $(RM) $(DESTDIR)$(pkgconfigdir)/utshell.pc )
 
 uninstall:	.made
-	$(RM) $(DESTDIR)$(bindir)/$(Program) $(DESTDIR)$(bindir)/rashbug
+	$(RM) $(DESTDIR)$(bindir)/$(Program) $(DESTDIR)$(bindir)/utshellbug
 	-( cd $(PO_DIR) ; $(MAKE) $(MFLAGS) DESTDIR=$(DESTDIR) $@ )
 	$(RM) -r $(DESTDIR)$(datadir)/utshell
 
@@ -875,7 +875,7 @@ LIB_SUBDIRS = ${RL_LIBDIR}  ${HIST_LIBDIR} ${TERM_LIBDIR} ${GLOB_LIBDIR} \
 		${INTL_LIBDIR} ${TILDE_LIBDIR} ${ALLOC_LIBDIR} ${SH_LIBDIR}
 
 basic-clean:
-	$(RM) $(OBJECTS) $(Program) rashbug
+	$(RM) $(OBJECTS) $(Program) utshellbug
 	$(RM) .build .made version.h 
 	cargo clean
 
