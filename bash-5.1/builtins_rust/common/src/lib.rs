@@ -1155,7 +1155,7 @@ pub extern "C" fn r_get_numeric_arg(mut list:*mut WordList,fatal:i32,count:*mut 
 
         if !list.is_null(){
             arg = (*(*list).word).word;
-            if !arg.is_null() || legal_number(arg,count) == 0{
+            if arg.is_null() || legal_number(arg,count) == 0{
                 if !(*(*list).word).word.is_null(){
                     r_sh_neednumarg((*(*list).word).word);
                 }
@@ -1174,7 +1174,6 @@ pub extern "C" fn r_get_numeric_arg(mut list:*mut WordList,fatal:i32,count:*mut 
                     jump_to_top_level(DISCARD!());
                 }
             }
-
             r_no_args((*list).next);
         }
         return 1;

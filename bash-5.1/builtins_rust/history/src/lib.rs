@@ -77,19 +77,17 @@ unsafe {
             push_history(list);
         }
         return EXECUTION_SUCCESS;
-    } else if (flags & PFLAG) != 0 {
+    }
+    else if (flags & PFLAG) != 0 {
         if !list.is_null() {
             return expand_and_print_history(list);
         }
         return r_sh_chkwrite(EXECUTION_SUCCESS);
-    } else if (flags & DFLAG) != 0 {
+    } 
+    else if (flags & DFLAG) != 0 {
         let c_tmp = if *delete_arg == b'-' as c_char {delete_arg.offset(1 as isize ) as *mut c_char} else {delete_arg};
         range = libc::strchr(c_tmp, b'-' as c_int);
-
-            printf(b"AAAAAAArange=%u,   c_tmp=%s\n" as *const u8 as *const libc::c_char, range, c_tmp);
         if  !range.is_null() {
-            printf(b"AAAAAAArange=%s\n" as *const u8 as *const libc::c_char, range);
-
             let mut delete_start: c_long = 0;
             let mut delete_end: c_long = 0;
 
@@ -161,7 +159,8 @@ unsafe {
         }
         return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
     }
-} else if (flags & (AFLAG | RFLAG | NFLAG | WFLAG | CFLAG)) == 0 {
+}
+    else if (flags & (AFLAG | RFLAG | NFLAG | WFLAG | CFLAG)) == 0 {
         result = display_history(list);
         return r_sh_chkwrite(result);
     }
@@ -241,7 +240,7 @@ unsafe fn display_history(list: *mut WordList) -> c_int
     let mut timestr: *mut c_char;
 
     if !list.is_null() {
-        if r_get_numeric_arg(list, 0, std::mem::transmute(&limit)) == 0 {
+        if  r_get_numeric_arg(list, 0,&mut limit)== 0 {
             return EXECUTION_FAILURE;
         }
         if limit < 0 {
@@ -292,17 +291,14 @@ unsafe fn display_history(list: *mut WordList) -> c_int
             i += 1;
         }
     }
-
     return EXECUTION_SUCCESS;
 }
 
 fn push_history(list: *mut WordList) {
-    println!("push_history!!!!");
 unsafe {
     if remember_on_history != 0 && hist_last_line_pushed == 0 &&
         (hist_last_line_added != 0 || (current_command_line_count > 0 && current_command_first_line_saved != 0 && command_oriented_history != 0)) &&
         bash_delete_last_history() == 0 {
-
         return;
     }
 
