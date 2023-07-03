@@ -5,7 +5,7 @@ use std::ffi::{CString};
 use rcommon::{r_read_octal};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 
-
+use rhelp::r_builtin_help;
 //结构体
 
 
@@ -152,7 +152,6 @@ extern "C" {
     fn reset_internal_getopt();
     fn internal_getopt (list:*mut WordList,  opts:*mut c_char)->i32;
     fn builtin_usage();
-    fn builtin_help();
     // fn read_octal(string:*mut c_char)->i32;
     fn sh_erange(s:*mut c_char,desc:*mut c_char);
     fn sh_chkwrite(s:i32)->i32;
@@ -206,7 +205,7 @@ pub extern "C" fn r_umask_builtin(mut list:*mut WordList) ->i32{
                 'p' => {pflag = pflag + 1;}
                 _ => {
                     if opt == -99 {
-                        builtin_help();
+                        r_builtin_help();
                         return EX_USAGE;
                     }
                      builtin_usage();

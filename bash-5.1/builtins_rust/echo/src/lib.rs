@@ -5,7 +5,7 @@ use std::ffi::{CString,CStr,};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 // use std::io::{stdout, Write};
 use std::ptr::read_volatile;
-
+use rhelp::r_builtin_help;
 //结构体
 
 //枚举

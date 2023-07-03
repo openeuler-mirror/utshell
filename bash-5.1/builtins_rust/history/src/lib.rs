@@ -2,7 +2,7 @@ use std::{ffi::{CString, CStr}, io::Write};
 
 use libc::{size_t, c_int, c_char, c_long, c_void, PT_NULL};
 use rcommon::{r_builtin_usage,r_sh_erange,r_sh_restricted,r_sh_chkwrite,r_get_numeric_arg,WordList};
-
+use rhelp::r_builtin_help;
 include!(concat!("intercdep.rs"));
 
 pub const AFLAG: c_int = 0x01;
@@ -47,7 +47,7 @@ unsafe {
             'p' => flags |= PFLAG,
             _ => {
                 if opt == -99 {
-                    builtin_help();
+                    r_builtin_help();
                     return EX_USAGE;
                 }
             r_builtin_usage ();

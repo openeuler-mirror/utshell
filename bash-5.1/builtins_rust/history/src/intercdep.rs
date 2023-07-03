@@ -68,7 +68,6 @@ extern "C" {
 
     pub fn sh_erange(s: *mut c_char, desc: *mut c_char);
     pub fn sh_restricted(s: *mut c_char) -> c_void;
-    fn builtin_help();
     pub static mut list_optarg : *mut libc::c_char;
     pub static mut loptend : *mut WordList;
 

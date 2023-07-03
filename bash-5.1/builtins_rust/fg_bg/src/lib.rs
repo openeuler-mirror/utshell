@@ -4,6 +4,7 @@ extern crate nix;
 use libc::{c_char, c_long};
 use std::{ffi::CString, ops::Add};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage};
+use rhelp::r_builtin_help;
 
 #[repr(i8)]
 pub enum JOB_STATE {
@@ -313,7 +314,7 @@ macro_rules! ISHELP {
 macro_rules! CHECK_HELPOPT {
   ($l:expr) => {
     if $l  !=std::ptr::null_mut() && (*$l).word !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) == 0 {
-      builtin_help ();
+      r_builtin_help ();
       return EX_USAGE;
     }
   }
@@ -329,7 +330,6 @@ extern "C" {
     static mut loptend:*mut WordList; 
     fn sh_nojobs (str:*mut c_char);
     fn no_options (list:*mut WordList)->i32;
-    fn builtin_help ();
     static mut job_control:i32;
     static mut last_asynchronous_pid:i32;
     fn start_job (job:i32, foreground:i32)->i32;

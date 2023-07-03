@@ -5,6 +5,7 @@ use libc::{c_char, c_long, c_void, c_int};
 use nix::sys::termios::SpecialCharacterIndices;
 use std::{ffi::{CString,CStr}, i32, io::{Write, stdout}, ops::Add, string, u32};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage};
+use rhelp::r_builtin_help;
 
 #[repr(i8)]
 pub enum JOB_STATE {
@@ -388,8 +389,6 @@ extern "C" {
     fn run_unwind_frame (filename:* mut c_char);
     static mut echo_input_at_read:i32;
     static mut verbose_flag:i32;
-    fn builtin_help();
-
 }
 
 #[no_mangle]
@@ -524,7 +523,7 @@ pub extern "C" fn r_fc_builtin (mut list:* mut WordList)->i32
         'e' => ename = list_optarg,
         _ => {
           if opt == -99 {
-            builtin_help();
+            r_builtin_help();
             return EX_USAGE;
           }
           r_builtin_usage();

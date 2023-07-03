@@ -11,6 +11,7 @@ version = "0.0.1"
 libc = "*"
 nix = "*"
 rcommon = {path ="../common"}
+rhelp = {path ="../help"}
 
 [lib]
 crate-type = ["staticlib","rlib"]

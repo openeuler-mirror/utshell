@@ -3,6 +3,7 @@ extern crate nix;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,GETOPT_HELP, r_builtin_usage};
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
+use rhelp::r_builtin_help;
 
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -260,7 +261,6 @@ extern "C" {
     static sh_optopt:i32;
     fn reset_internal_getopt();
     fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
-    fn builtin_help ();
     static mut loptend:*mut WordList;
     fn make_builtin_argv (list:* mut WordList, ac:* mut i32)->*mut*mut c_char;
 }
@@ -498,7 +498,7 @@ pub extern "C" fn r_getopts_builtin(list: * mut WordList)->i32
     ret = internal_getopt(list, CString::new ("").unwrap().as_ptr() as * mut c_char);
     if ret != -1 {
       if ret == GETOPT_HELP!() {
-        builtin_help();
+        r_builtin_help();
       } else {
         builtin_usage();
       }

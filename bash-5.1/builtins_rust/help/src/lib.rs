@@ -99,7 +99,6 @@ extern "C"{
     static mut static_shell_builtin : [builtin ; 100];
     static  shell_builtins:*mut  builtin;
     static  mut current_builtin :*mut builtin;
-    fn builtin_help();
 }
 
 #[no_mangle]
@@ -134,7 +133,7 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
             _=>{
                 unsafe {
                   if i == -99 {
-                    builtin_help();
+                    r_builtin_help();
                     return EX_USAGE;
                   }
                   builtin_usage ();
@@ -259,9 +258,7 @@ unsafe fn QUIT ()
   }
 }
 
-
-#[no_mangle]
-pub extern "C" fn r_builtin_help (){
+pub  extern "C"  fn r_builtin_help (){
     // print  all  command usage
     let mut ind: i32 = 5;
     let d: i32;
@@ -273,18 +270,11 @@ pub extern "C" fn r_builtin_help (){
 
         d = (current_builtin as usize  - shell_builtins as usize) as i32;
     }
-    ind = d ;
-    /*
-    #if defined (__STDC__)
-        ind = (int)d;
-    #else
-        ind = (int)d / sizeof (struct builtin);
-    #endif
-    */
+    ind = d/BUILTIN_SIZEOF!() ;
     unsafe {
-        let  builtin1  = &(*((shell_builtins as usize + (ind*BUILTIN_SIZEOF!()) as usize) as *mut builtin));
-        println!("{:?} : {:?}",this_command_name, CStr::from_ptr(builtin1.short_doc));
+       print!("{:?} : ",CStr::from_ptr(this_command_name));
     }
+    show_helpsynopsis(ind);
     show_longdoc (ind);
 }
 
