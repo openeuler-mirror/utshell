@@ -131,10 +131,8 @@ unsafe {
 			}
 		}
 		else if *((*((*list).word)).word) != 0 && *((*((*list).word)).word) != b'%' as c_char {
-			eprint!("utshell : kill :");
-            let names = String::from("killargerr");
-            err_translate_fn(&names,(*((*list).word)).word);
-			println!();
+			let c_err = CString::new("%s: arguments must be process or job IDs").unwrap();
+			builtin_error(c_err.as_ptr(), (*((*list).word)).word);
 			list = (*list).next;
 			continue;
 		} else if *word != 0 {

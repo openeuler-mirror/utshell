@@ -5,7 +5,7 @@ extern crate nix;
 use libc::c_char;
 use std::ffi::CString;
 
-use rjobs::{PROCESS, COMMAND, r_jobs_builtin, JLIST_STANDARD,err_translate_fn};
+use rjobs::{PROCESS, COMMAND, r_jobs_builtin, JLIST_STANDARD };
 
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use rhelp::r_builtin_help;
@@ -146,10 +146,7 @@ pub extern "C" fn r_exit_builtin(list:*mut WordList) -> i32{
             if login_shell != 0 {
                 // let str:*mut c_char = CString::new("logout\n").unwrap().into_raw();
                 // printToStderr(str);
-                //eprintln!("logout");
-                let names = String::from("logout");
-                err_translate_fn(&names,std::ptr::null_mut());
-			    println!();
+                eprintln!("logout");
             }else{
                 // let str:*mut c_char = CString::new("exit\n").unwrap().into_raw();
                 // printToStderr(str);
@@ -175,13 +172,9 @@ pub extern "C" fn  r_logout_builtin(list:*mut WordList)->i32{
         }
 
         if login_shell == 0{
-            let names = String::from("logout");
-            err_translate_fn(&names,std::ptr::null_mut());
-			println!();
             let c_str = CString::new("not login shell: use `exit'").unwrap();
             let c_ptr = c_str.as_ptr();
             builtin_error(c_ptr);
-
             return EXECUTION_FAILURE!();
         }else{
             return r_exit_or_logout(list)
@@ -216,16 +209,11 @@ pub fn r_exit_or_logout(list:*mut WordList)->i32{
             }
 
             if stopmsg == JOB_STATE::JSTOPPED as i32 {
-                let names = String::from("stoppedjobs");
-                err_translate_fn(&names,std::ptr::null_mut());
-                eprintln!();
+                eprintln!("There are stopped jobs. ");
             }
             else if stopmsg == JOB_STATE::JRUNNING as i32{
                 // libc::fprintf(stream,CString::new("There are runing jobs.\n").unwrap().as_ptr());
-                //eprintln!("There are runing jobs.");
-                let names = String::from("runjobs");
-                err_translate_fn(&names,std::ptr::null_mut());
-                eprintln!();
+                eprintln!("There are runing jobs.");
             }
 
             if stopmsg == check_jobs_at_exit{

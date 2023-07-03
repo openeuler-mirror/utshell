@@ -1,4 +1,4 @@
-use rcommon::{r_builtin_usage,r_sh_invalidsig,r_sh_badpid,r_sh_badjob,r_get_job_spec,r_display_signal_list,WordList,WordDesc,err_translate_fn};
+use rcommon::{r_builtin_usage,r_sh_invalidsig,r_sh_badpid,r_sh_badjob,r_get_job_spec,r_display_signal_list,WordList,WordDesc};
 use rhelp::r_builtin_help;
 // #[repr(C)]
 // #[derive(Copy, Clone)]

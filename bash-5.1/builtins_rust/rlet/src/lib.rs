@@ -21,9 +21,7 @@ unsafe {
     }
 
 	if list.is_null() {
-		let names = String::from("letwarn");
-        err_translate_fn(&names,std::ptr::null_mut());
-	    println!();
+		builtin_error("expression expected\0".as_ptr() as *mut c_char);
 		return EXECUTION_FAILURE;
 	}
 
@@ -46,9 +44,7 @@ unsafe {
 	let mut expok: c_int = 0;
 
 	if list.is_null() {
-		let names = String::from("letwarn");
-        err_translate_fn(&names,std::ptr::null_mut());
-		println!();
+		builtin_error("expression expected\0".as_ptr() as *const c_char);
 		return EXECUTION_FAILURE;
 	}
 

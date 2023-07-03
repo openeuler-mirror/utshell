@@ -4,7 +4,7 @@ extern crate nix;
 use libc::{c_char, c_long, c_void};
 use std::{ffi::{CString,CStr}};
 
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage, r_savestring};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 use rhelp::r_builtin_help;
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -248,6 +248,12 @@ unsafe fn ISOPTION(s:* const c_char, c:c_char)->bool
 	return *s == '-' as c_char && *(s.offset(1)) == c && *(s.offset(2)) == 0;
 }
 
+unsafe fn savestring(x:* const c_char)->* mut c_char
+{
+  let str1:* mut c_char=libc::malloc(1 + libc::strlen (x )) as * mut c_char;
+  return libc::strcpy(str1,x );
+}
+
 #[no_mangle]
 pub extern "C" fn r_pushd_builtin (listt:* mut WordList)->i32
 {
@@ -417,7 +423,7 @@ pub extern "C" fn r_pushd_builtin (listt:* mut WordList)->i32
 
 	if j == EXECUTION_SUCCESS!() {
     if (flags & NOCD!()) !=0 {
-      r_add_dirstack_element(r_savestring ((*((*list).word)).word));
+      r_add_dirstack_element(savestring ((*((*list).word)).word));
     } else {
       r_add_dirstack_element(current_directory);
     }
@@ -615,7 +621,7 @@ pub extern "C" fn r_dirs_builtin (listt:* mut WordList)->i32
     if index_flag == 0 || (index_flag == 1 && desired_index == 0) {
       temp = get_working_directory (CString::new("dirs").unwrap().as_ptr() as * mut c_char);
       if temp == std::ptr::null_mut() {
-        temp = r_savestring (CString::new("<no current directory>").unwrap().as_ptr() as * mut c_char);
+        temp = savestring (CString::new("<no current directory>").unwrap().as_ptr() as * mut c_char);
       }
 
       if (vflag & 2) !=0 {
@@ -868,7 +874,7 @@ pub extern "C" fn r_set_dirstack_element (ind:libc::c_long, sign:i32, value:* mu
       return;
     }
     libc::free ((*((pushd_directory_list as usize + (i*8) as usize) as * mut * mut c_char)) as * mut c_void);
-    *((pushd_directory_list as usize + (i*8) as usize) as * mut * mut c_char) = r_savestring (value);
+    *((pushd_directory_list as usize + (i*8) as usize) as * mut * mut c_char) = savestring (value);
   }
 }
 

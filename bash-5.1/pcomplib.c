@@ -85,7 +85,6 @@ compspec_dispose (cs)
       FREE (cs->filterpat);
 
       free (cs);
-      cs=NULL;
     }
 }
 

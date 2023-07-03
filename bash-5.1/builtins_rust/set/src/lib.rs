@@ -6,7 +6,7 @@ use std::ffi::CString;
 use std::ptr;
 use std::mem;
 use std::io;
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage, r_savestring};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 use rhelp::r_builtin_help;
 
 #[macro_export]
@@ -202,6 +202,13 @@ macro_rules! name_cell {
 macro_rules!  att_array{
   () => {
     0x0000004
+  }
+}
+
+#[macro_export]
+macro_rules! savestring {
+  ($x:expr) => {
+    libc::strcpy(xmalloc ((1+ strlen ($x)) as u64) as *mut libc::c_char, $x)
   }
 }
 
@@ -1348,7 +1355,7 @@ unsafe fn initialize_shell_options (no_shellopts : i32) {
           temp = std::ptr::null_mut();
         }
         else {
-          temp = r_savestring(value_cell!(var));
+          temp = savestring !(value_cell!(var));
         }
 
 	      if temp != std::ptr::null_mut() {
@@ -1764,7 +1771,7 @@ pub  extern "C"  fn r_unset_builtin(mut list: *mut WordList) -> i32 {
         var = find_variable_last_nameref (name, 0);
         if var !=  std::ptr::null_mut() && nameref_p!(var) != 0 { 
           if valid_array_reference (nameref_cell!(var), 0) != 0 {
-            tname = r_savestring(nameref_cell!(var));
+            tname = savestring!(nameref_cell!(var));
             var = array_variable_part (tname, 0,  &mut t, &mut 0);
             if var != std::ptr::null_mut() {
               tem = unbind_array_element (var, t, vflags);	/* XXX new third arg */
