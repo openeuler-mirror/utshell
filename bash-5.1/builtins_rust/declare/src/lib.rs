@@ -5,7 +5,7 @@ use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use rhelp::r_builtin_help;
-use rsetattr::show_name_attributes;
+use rsetattr::{show_name_attributes,set_or_show_attributes};
 use std::ffi::CStr;
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -465,7 +465,6 @@ extern "C" {
     fn show_local_var_attributes (v:i32, nodefs:i32)->i32;
     fn show_all_var_attributes (v:i32, nodefs:i32)->i32;
     fn set_builtin (list:*mut WordList)->i32;
-    fn set_or_show_attributes (list:*mut WordList, attribute:i32, nodefs:i32)->i32;
     fn sh_chkwrite (ret:i32)->i32;
     fn show_func_attributes (name:* mut c_char, nodefs:i32)->i32;
     fn show_localname_attributes (name:* mut c_char, nodefs:i32)->i32;
