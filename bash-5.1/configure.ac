@@ -1,5 +1,5 @@
 dnl
-dnl Configure script for bash-5.1
+dnl Configure script for utshell
 dnl
 dnl report bugs to chet@po.cwru.edu
 dnl
@@ -23,10 +23,10 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_REVISION([for Bash 5.1, version 5.022])dnl
 
-define(rashvers, 0.1)
+define(utshellvers, 0.1)
 define(relstatus, release)
 
-AC_INIT([rash], rashvers-relstatus, [bug-rash@gnu.org])
+AC_INIT([utshell], utshellvers-relstatus, [bug-utshell@gnu.org])
 
 dnl make sure we are using a recent autoconf version
 AC_PREREQ(2.61)
@@ -37,7 +37,7 @@ AC_CONFIG_AUX_DIR(./support)
 AC_CONFIG_HEADERS(config.h)
 
 dnl checks for version info
-BASHVERS=rashvers
+BASHVERS=utshellvers
 RELSTATUS=relstatus
 
 dnl defaults for debug settings
@@ -52,14 +52,14 @@ AC_CANONICAL_HOST
 AC_CANONICAL_BUILD
 
 dnl configure defaults
-opt_bash_malloc=yes
+opt_bash_malloc=no
 opt_afs=no
 opt_curses=no
 opt_with_installed_readline=no
 
 #htmldir=
 
-dnl some systems should be configured without the bash malloc by default
+dnl some systems should be configured without the utshell malloc by default
 dnl and some need a special compiler or loader
 dnl look in the NOTES file for more
 case "${host_cpu}-${host_os}" in
@@ -101,10 +101,10 @@ sco3.2v5*|sco3.2v4*)	opt_memscramble=no ;;
 esac
 
 dnl
-dnl macros for the bash debugger
+dnl macros for the utshell debugger
 dnl
 dnl AM_PATH_LISPDIR
-AC_ARG_VAR(DEBUGGER_START_FILE, [location of bash debugger initialization file])
+AC_ARG_VAR(DEBUGGER_START_FILE, [location of utshell debugger initialization file])
 
 dnl arguments to configure
 dnl packages
@@ -140,7 +140,7 @@ if test "$opt_curses" = yes; then
 fi
 
 if test -z "${DEBUGGER_START_FILE}"; then
-	DEBUGGER_START_FILE='${datadir}/bashdb/bashdb-main.inc'
+	DEBUGGER_START_FILE='${datadir}/utshelldb/utshelldb-main.inc'
 fi
 
 dnl optional shell features in config.h.in
@@ -183,7 +183,7 @@ opt_globascii_default=yes
 opt_function_import=yes
 opt_dev_fd_stat_broken=no
 
-dnl options that affect how bash is compiled and linked
+dnl options that affect how utshell is compiled and linked
 opt_static_link=no
 opt_profiling=no
 
@@ -216,7 +216,7 @@ AC_ARG_ENABLE(command-timing, AC_HELP_STRING([--enable-command-timing], [enable 
 AC_ARG_ENABLE(cond-command, AC_HELP_STRING([--enable-cond-command], [enable the conditional command]), opt_cond_command=$enableval)
 AC_ARG_ENABLE(cond-regexp, AC_HELP_STRING([--enable-cond-regexp], [enable extended regular expression matching in conditional commands]), opt_cond_regexp=$enableval)
 AC_ARG_ENABLE(coprocesses, AC_HELP_STRING([--enable-coprocesses], [enable coprocess support and the coproc reserved word]), opt_coproc=$enableval)
-AC_ARG_ENABLE(debugger, AC_HELP_STRING([--enable-debugger], [enable support for bash debugger]), opt_debugger=$enableval)
+AC_ARG_ENABLE(debugger, AC_HELP_STRING([--enable-debugger], [enable support for utshell debugger]), opt_debugger=$enableval)
 AC_ARG_ENABLE(dev-fd-stat-broken, AC_HELP_STRING([--enable-dev-fd-stat-broken], [enable this option if stat on /dev/fd/N and fstat on file descriptor N don't return the same results]), opt_dev_fd_stat_broken=$enableval)
 AC_ARG_ENABLE(direxpand-default, AC_HELP_STRING([--enable-direxpand-default], [enable the direxpand shell option by default]), opt_dircomplete_expand_default=$enableval)
 AC_ARG_ENABLE(directory-stack, AC_HELP_STRING([--enable-directory-stack], [enable builtins pushd/popd/dirs]), opt_dirstack=$enableval)
@@ -224,7 +224,7 @@ AC_ARG_ENABLE(disabled-builtins, AC_HELP_STRING([--enable-disabled-builtins], [a
 AC_ARG_ENABLE(dparen-arithmetic, AC_HELP_STRING([--enable-dparen-arithmetic], [include ((...)) command]), opt_dparen_arith=$enableval)
 AC_ARG_ENABLE(extended-glob, AC_HELP_STRING([--enable-extended-glob], [include ksh-style extended pattern matching]), opt_extended_glob=$enableval)
 AC_ARG_ENABLE(extended-glob-default, AC_HELP_STRING([--enable-extended-glob-default], [force extended pattern matching to be enabled by default]), opt_extglob_default=$enableval)
-AC_ARG_ENABLE(function-import, AC_HELP_STRING([--enable-function-import], [allow bash to import exported function definitions by default]), opt_function_import=$enableval)
+AC_ARG_ENABLE(function-import, AC_HELP_STRING([--enable-function-import], [allow utshell to import exported function definitions by default]), opt_function_import=$enableval)
 AC_ARG_ENABLE(glob-asciiranges-default, AC_HELP_STRING([--enable-glob-asciiranges-default], [force bracket range expressions in pattern matching to use the C locale by default]), opt_globascii_default=$enableval)
 AC_ARG_ENABLE(help-builtin, AC_HELP_STRING([--enable-help-builtin], [include the help builtin]), opt_help=$enableval)
 AC_ARG_ENABLE(history, AC_HELP_STRING([--enable-history], [turn on command history]), opt_history=$enableval)
@@ -239,14 +239,14 @@ AC_ARG_ENABLE(restricted, AC_HELP_STRING([--enable-restricted], [enable a restri
 AC_ARG_ENABLE(select, AC_HELP_STRING([--enable-select], [include select command]), opt_select=$enableval)
 AC_ARG_ENABLE(separate-helpfiles, AC_HELP_STRING([--enable-separate-helpfiles], [use external files for help builtin documentation]), opt_separate_help=$enableval)
 AC_ARG_ENABLE(single-help-strings, AC_HELP_STRING([--enable-single-help-strings], [store help documentation as a single string to ease translation]), opt_single_longdoc_strings=$enableval)
-AC_ARG_ENABLE(strict-posix-default, AC_HELP_STRING([--enable-strict-posix-default], [configure bash to be posix-conformant by default]), opt_strict_posix=$enableval)
+AC_ARG_ENABLE(strict-posix-default, AC_HELP_STRING([--enable-strict-posix-default], [configure utshell to be posix-conformant by default]), opt_strict_posix=$enableval)
 AC_ARG_ENABLE(usg-echo-default, AC_HELP_STRING([--enable-usg-echo-default], [a synonym for --enable-xpg-echo-default]), opt_xpg_echo=$enableval)
 AC_ARG_ENABLE(xpg-echo-default, AC_HELP_STRING([--enable-xpg-echo-default], [make the echo builtin expand escape sequences by default]), opt_xpg_echo=$enableval)
 
-dnl options that alter how bash is compiled and linked
+dnl options that alter how utshell is compiled and linked
 AC_ARG_ENABLE(mem-scramble, AC_HELP_STRING([--enable-mem-scramble], [scramble memory on calls to malloc and free]), opt_memscramble=$enableval)
 AC_ARG_ENABLE(profiling, AC_HELP_STRING([--enable-profiling], [allow profiling with gprof]), opt_profiling=$enableval)
-AC_ARG_ENABLE(static-link, AC_HELP_STRING([--enable-static-link], [link bash statically, for use as a root shell]), opt_static_link=$enableval)
+AC_ARG_ENABLE(static-link, AC_HELP_STRING([--enable-static-link], [link utshell statically, for use as a root shell]), opt_static_link=$enableval)
 
 dnl So-called `precious' variables
 AC_ARG_VAR([CC_FOR_BUILD], [C compiler used when compiling binaries used only at build time])
@@ -368,7 +368,7 @@ fi
 HELPDIR= HELPDIRDEFINE= HELPINSTALL= HELPFILES_TARGET=
 if test "$opt_separate_help" != no; then
 	if test "$opt_separate_help" = "yes" ; then
-		HELPDIR='${datadir}/bash'
+		HELPDIR='${datadir}/utshell'
 	else
 		HELPDIR=$opt_separate_help
 	fi
@@ -405,7 +405,7 @@ if test -z "$CFLAGS"; then
 fi
 
 echo ""
-echo "Beginning configuration for bash-$BASHVERS-$RELSTATUS for ${host_cpu}-${host_vendor}-${host_os}"
+echo "Beginning configuration for utshell-$BASHVERS-$RELSTATUS for ${host_cpu}-${host_vendor}-${host_os}"
 echo ""
 
 dnl compilation checks
@@ -476,7 +476,7 @@ dnl default values
 CFLAGS=${CFLAGS-"$AUTO_CFLAGS"}
 # LDFLAGS=${LDFLAGS="$AUTO_LDFLAGS"}	# XXX
 
-dnl handle options that alter how bash is compiled and linked
+dnl handle options that alter how utshell is compiled and linked
 dnl these must come after the test for cc/gcc
 if test "$opt_profiling" = "yes"; then
 	PROFILE_FLAGS=-pg
@@ -543,9 +543,9 @@ AC_SUBST(LIBS_FOR_BUILD)
 AC_PROG_GCC_TRADITIONAL
 
 dnl BEGIN READLINE and HISTORY LIBRARY SECTION
-dnl prepare to allow bash to be linked against an already-installed readline
+dnl prepare to allow utshell to be linked against an already-installed readline
 
-dnl first test that the readline version is new enough to link bash against
+dnl first test that the readline version is new enough to link utshell against
 if test "$opt_readline" = yes && test "$opt_with_installed_readline" != "no"
 then
 	# If the user specified --with-installed-readline=PREFIX and PREFIX
@@ -557,8 +557,8 @@ then
 	case "$ac_cv_rl_version" in
 	8*|9*)	;;
 	*)	opt_with_installed_readline=no 
-		AC_MSG_WARN([installed readline library is too old to be linked with bash])
-		AC_MSG_WARN([using private bash version])
+		AC_MSG_WARN([installed readline library is too old to be linked with utshell])
+		AC_MSG_WARN([using private utshell version])
 		;;
 	esac
 fi
@@ -786,7 +786,7 @@ AC_FUNC_SETVBUF_REVERSED
 AC_FUNC_VPRINTF
 AC_FUNC_STRCOLL
 
-dnl if we're not using the bash malloc but require the C alloca, set things
+dnl if we're not using the utshell malloc but require the C alloca, set things
 dnl up to build a libmalloc.a containing only alloca.o
 
 if test "$ac_cv_func_alloca_works" = "no" && test "$opt_bash_malloc" = "no"; then
@@ -1235,7 +1235,7 @@ fi
 # this should be packaged into a script accessible via ${srcdir}/support
 case "$srcdir" in
 .)	;;
-*)	for d in doc tests support lib examples; do	# dirs
+*)	for d in doc tests support lib; do	# dirs
 		test -d $d || mkdir $d
 	done
 	for ld in readline glob tilde malloc sh termcap; do	# libdirs
@@ -1296,7 +1296,7 @@ AC_OUTPUT([Makefile builtins/Makefile lib/readline/Makefile lib/glob/Makefile \
 	  lib/intl/Makefile \
 	  lib/malloc/Makefile lib/sh/Makefile lib/termcap/Makefile \
 	  lib/tilde/Makefile support/Makefile po/Makefile.in \
-	  support/rash.pc support/rashbug.sh],
+	  support/utshell.pc support/utshellbug.sh],
 [
 # Makefile uses this timestamp file to record whether config.h is up to date.
 echo timestamp > stamp-h
