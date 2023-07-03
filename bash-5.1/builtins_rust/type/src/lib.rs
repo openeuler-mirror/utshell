@@ -405,18 +405,18 @@ pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
          let c_str_all1 = CString::new("-all").unwrap();
          if STREQ!(flag, c_str_type.as_ptr() as *mut libc::c_char ) || STREQ!(flag, c_str_type1.as_ptr() as *mut libc::c_char) {
            unsafe {
-            *((*(*this).word).word).offset(1) = 't' as libc::c_char ;
-            *((*(*this).word).word).offset(2) = '\0' as libc::c_char ;
+            *((((*(*this).word).word) as usize + 1) as *mut libc::c_char)  = 't' as libc::c_char ;
+            *((((*(*this).word).word) as usize + 2) as *mut libc::c_char)  = '\0' as libc::c_char ;
             } 
         }
         else if STREQ!(flag, c_str_path.as_ptr() as *mut libc::c_char) || STREQ!(flag, c_str_path1.as_ptr() as *mut libc::c_char){
-            *((*(*this).word).word).offset(1) = 'p' as libc::c_char ;
-            *((*(*this).word).word).offset(2) = '\0' as libc::c_char ;
+            *((((*(*this).word).word) as usize + 1) as *mut libc::c_char) = 'p' as libc::c_char ;
+            *((((*(*this).word).word) as usize + 2) as *mut libc::c_char)  = '\0' as libc::c_char ;
 	     }
        
          else if STREQ!(flag, c_str_all.as_ptr() as *mut libc::c_char) || STREQ!(flag, c_str_all1.as_ptr() as *mut libc::c_char) {
-            *((*(*this).word).word).offset(1) = 'a' as libc::c_char ;
-            *((*(*this).word).word).offset(2) = '\0' as libc::c_char ;
+            *((((*(*this).word).word) as usize + 1) as *mut libc::c_char) = 'a' as libc::c_char ;
+            *((((*(*this).word).word) as usize + 2) as *mut libc::c_char)  = '\0' as libc::c_char ;
         }
 
        if (*this).next != std::ptr::null_mut(){
@@ -712,8 +712,8 @@ fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
         
     }
       if full_path == std::ptr::null_mut(){
-         // return 0;
-        break;
+          return 0;
+        //break;
       }
 
     /* If we found the command as itself by looking through $PATH, it

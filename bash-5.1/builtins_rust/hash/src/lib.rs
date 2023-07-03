@@ -137,6 +137,7 @@ extern "C"{
    commands. */
 #[no_mangle]
 pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
+    println!("r_hash_builtin");
     let mut expunge_hash_table:i32;
     let mut list_targets:i32;
     let mut list_portably:i32;
