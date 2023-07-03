@@ -4,7 +4,7 @@ extern crate nix;
 use libc::{c_char, c_long, c_void, c_int};
 use nix::sys::termios::SpecialCharacterIndices;
 use std::{ffi::{CString,CStr}, i32, io::{Write, stdout}, ops::Add, string, u32};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage,savestring};
 use rhelp::r_builtin_help;
 
 #[repr(i8)]
@@ -413,12 +413,6 @@ pub extern "C" fn r_fc_number(list:*mut WordList)->i32
     let res = legal_number(s,std::ptr::null_mut());
     return res;
   }
-}
-
-unsafe fn  savestring(x:* mut c_char)->* mut c_char
-{
-  let str1:* mut c_char=libc::malloc(1 + libc::strlen (x as * const c_char)) as * mut c_char;
-  return libc::strcpy(str1,x as * const c_char);
 }
 
 unsafe fn REVERSE_LIST(list:* mut GENERIC_LIST)->* mut REPL

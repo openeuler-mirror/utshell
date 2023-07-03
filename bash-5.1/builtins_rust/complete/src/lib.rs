@@ -2,8 +2,8 @@ extern crate  libc;
 extern crate nix;
 
 use libc::{c_char, c_int, c_ulong, c_void};
-use std::{ffi::CString};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use std::{ffi::CString, ffi::CStr};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, savestring} ;
 use rhelp::r_builtin_help;
 
 #[repr(u8)]
@@ -218,30 +218,30 @@ impl CompactsArray {
     pub fn new()->CompactsArray {
       CompactsArray{
         compactsArr:[
-          _compacts{ actname:"alias\0".as_ptr() as *const c_char, actflag: CA_ALIAS!(),actopt: 'a' as c_int },
-          _compacts{ actname:"arrayvar\0".as_ptr() as *const c_char, actflag: CA_ARRAYVAR!(),actopt: 0 as c_int },
-          _compacts{ actname:"binding\0".as_ptr() as *const c_char, actflag: CA_BINDING!(),actopt: 0 as c_int },
-          _compacts{ actname:"builtin\0".as_ptr() as *const c_char, actflag: CA_BUILTIN!(),actopt: 'b' as c_int },
-          _compacts{ actname:"command\0".as_ptr() as *const c_char, actflag: CA_COMMAND!(),actopt: 'c' as c_int },
-          _compacts{ actname:"directory\0".as_ptr() as *const c_char, actflag: CA_DIRECTORY!(),actopt: 'd' as c_int },
-          _compacts{ actname:"disabled\0".as_ptr() as *const c_char, actflag: CA_DISABLED!(),actopt: 0 as c_int },
-          _compacts{ actname:"enabled\0".as_ptr() as *const c_char, actflag: CA_ENABLED!(),actopt: 0 as c_int },
-          _compacts{ actname:"export\0".as_ptr() as *const c_char, actflag: CA_EXPORT!(),actopt: 'e' as c_int },
-          _compacts{ actname:"file\0".as_ptr() as *const c_char, actflag: CA_FILE!(),actopt: 'f' as c_int },
-          _compacts{ actname:"function\0".as_ptr() as *const c_char, actflag: CA_FUNCTION!(),actopt: 0 as c_int },
-          _compacts{ actname:"helptopic\0".as_ptr() as *const c_char, actflag: CA_HELPTOPIC!(),actopt: 0 as c_int },
-          _compacts{ actname:"hostname\0".as_ptr() as *const c_char, actflag: CA_HOSTNAME!(),actopt: 0 as c_int },
-          _compacts{ actname:"group\0".as_ptr() as *const c_char, actflag: CA_GROUP!(),actopt: 'g' as c_int },
-          _compacts{ actname:"job\0".as_ptr() as *const c_char, actflag: CA_JOB!(),actopt: 'j' as c_int },
-          _compacts{ actname:"keyword\0".as_ptr() as *const c_char, actflag: CA_KEYWORD!(),actopt: 'k' as c_int },
-          _compacts{ actname:"running\0".as_ptr() as *const c_char, actflag: CA_RUNNING!(),actopt: 0 as c_int },
-          _compacts{ actname:"service\0".as_ptr() as *const c_char, actflag: CA_SERVICE!(),actopt: 's' as c_int },
-          _compacts{ actname:"setopt\0".as_ptr() as *const c_char, actflag: CA_SETOPT!(),actopt: 0 as c_int },
-          _compacts{ actname:"shopt\0".as_ptr() as *const c_char, actflag: CA_SHOPT!(),actopt: 0 as c_int },
-          _compacts{ actname:"signal\0".as_ptr() as *const c_char, actflag: CA_SIGNAL!(),actopt: 0 as c_int },
-          _compacts{ actname:"stopped\0".as_ptr() as *const c_char, actflag: CA_STOPPED!(),actopt: 0 as c_int },
-          _compacts{ actname:"user\0".as_ptr() as *const c_char, actflag: CA_USER!(),actopt: 'u' as c_int },
-          _compacts{ actname:"variable\0".as_ptr() as *const c_char, actflag: CA_VARIABLE!(),actopt: 'v' as c_int },
+          _compacts{ actname:b"alias\0".as_ptr() as *const c_char, actflag: CA_ALIAS!(),actopt: 'a' as c_int },
+          _compacts{ actname:b"arrayvar\0".as_ptr() as *const c_char, actflag: CA_ARRAYVAR!(),actopt: 0 as c_int },
+          _compacts{ actname:b"binding\0".as_ptr() as *const c_char, actflag: CA_BINDING!(),actopt: 0 as c_int },
+          _compacts{ actname:b"builtin\0".as_ptr() as *const c_char, actflag: CA_BUILTIN!(),actopt: 'b' as c_int },
+          _compacts{ actname:b"command\0".as_ptr() as *const c_char, actflag: CA_COMMAND!(),actopt: 'c' as c_int },
+          _compacts{ actname:b"directory\0".as_ptr() as *const c_char, actflag: CA_DIRECTORY!(),actopt: 'd' as c_int },
+          _compacts{ actname:b"disabled\0".as_ptr() as *const c_char, actflag: CA_DISABLED!(),actopt: 0 as c_int },
+          _compacts{ actname:b"enabled\0".as_ptr() as *const c_char, actflag: CA_ENABLED!(),actopt: 0 as c_int },
+          _compacts{ actname:b"export\0".as_ptr() as *const c_char, actflag: CA_EXPORT!(),actopt: 'e' as c_int },
+          _compacts{ actname:b"file\0".as_ptr() as *const c_char, actflag: CA_FILE!(),actopt: 'f' as c_int },
+          _compacts{ actname:b"function\0".as_ptr() as *const c_char, actflag: CA_FUNCTION!(),actopt: 0 as c_int },
+          _compacts{ actname:b"helptopic\0".as_ptr() as *const c_char, actflag: CA_HELPTOPIC!(),actopt: 0 as c_int },
+          _compacts{ actname:b"hostname\0".as_ptr() as *const c_char, actflag: CA_HOSTNAME!(),actopt: 0 as c_int },
+          _compacts{ actname:b"group\0".as_ptr() as *const c_char, actflag: CA_GROUP!(),actopt: 'g' as c_int },
+          _compacts{ actname:b"job\0".as_ptr() as *const c_char, actflag: CA_JOB!(),actopt: 'j' as c_int },
+          _compacts{ actname:b"keyword\0".as_ptr() as *const c_char, actflag: CA_KEYWORD!(),actopt: 'k' as c_int },
+          _compacts{ actname:b"running\0".as_ptr() as *const c_char, actflag: CA_RUNNING!(),actopt: 0 as c_int },
+          _compacts{ actname:b"service\0".as_ptr() as *const c_char, actflag: CA_SERVICE!(),actopt: 's' as c_int },
+          _compacts{ actname:b"setopt\0".as_ptr() as *const c_char, actflag: CA_SETOPT!(),actopt: 0 as c_int },
+          _compacts{ actname:b"shopt\0".as_ptr() as *const c_char, actflag: CA_SHOPT!(),actopt: 0 as c_int },
+          _compacts{ actname:b"signal\0".as_ptr() as *const c_char, actflag: CA_SIGNAL!(),actopt: 0 as c_int },
+          _compacts{ actname:b"stopped\0".as_ptr() as *const c_char, actflag: CA_STOPPED!(),actopt: 0 as c_int },
+          _compacts{ actname:b"user\0".as_ptr() as *const c_char, actflag: CA_USER!(),actopt: 'u' as c_int },
+          _compacts{ actname:b"variable\0".as_ptr() as *const c_char, actflag: CA_VARIABLE!(),actopt: 'v' as c_int },
           _compacts{ actname:std::ptr::null_mut(), actflag: 0,actopt: 0 as c_int },  
         ]
       }
@@ -276,7 +276,6 @@ impl CompoptArray {
     }
   }
 }
-
 
 #[repr(C)]
 pub struct COMPSPEC {
@@ -597,12 +596,6 @@ pub static mut Xarg:* mut c_char=std::ptr::null_mut();
 pub static mut Farg:* mut c_char=std::ptr::null_mut();
 pub static mut Carg:* mut c_char=std::ptr::null_mut();
 
-unsafe fn savestring(x:* const c_char)->* mut c_char
-{
-  let str1:* mut c_char=libc::malloc(1 + libc::strlen (x )) as * mut c_char;
-  return libc::strcpy(str1,x );
-}
-
 unsafe fn STRDUP(x:* const c_char)->* mut c_char
 {
   if x !=std::ptr::null_mut() {
@@ -619,22 +612,22 @@ unsafe fn STREQ( a:* const c_char, b:* const c_char)->bool
 
 unsafe fn shell_break_chars()->* const c_char
 {
-  return "()<>;&| \t\n\0".as_ptr() as *const c_char;
+  return b"()<>;&| \t\n\0".as_ptr() as *const c_char;
 }
 
 unsafe fn EMPTYCMD()->* const c_char
 {
-  return "_EmptycmD_\0".as_ptr() as *const c_char;
+  return b"_EmptycmD_\0".as_ptr() as *const c_char;
 }
 
 unsafe fn DEFAULTCMD()->* const c_char
 {
-  return "_DefaultCmD_\0".as_ptr() as *const c_char;
+  return b"_DefaultCmD_\0".as_ptr() as *const c_char;
 }
 
 unsafe fn INITIALWORD()->* const c_char
 {
-  return "_InitialWorD_\0".as_ptr() as *const c_char;
+  return b"_InitialWorD_\0".as_ptr() as *const c_char;
 }
 
 unsafe fn RL_ISSTATE(x:c_ulong)->c_ulong
@@ -649,6 +642,7 @@ pub extern "C" fn r_find_compact (name:* mut c_char)->i32
   unsafe {
     let compacts:CompactsArray=CompactsArray::new();
     while compacts.compactsArr[i as usize].actname != std::ptr::null_mut() {
+        let tmp = CStr::from_ptr(compacts.compactsArr[i as usize].actname);
       if STREQ (name, compacts.compactsArr[i as usize].actname) {
         return i;
       }
@@ -675,7 +669,7 @@ pub extern "C" fn r_find_compopt (name:* mut c_char)->i32
 }
 
 #[no_mangle]
-pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, actp:* mut c_ulong, optp:* mut c_ulong)->i32
+pub extern "C" fn r_build_actions (mut list : *mut WordList, flagp:* mut _optflags, actp:* mut c_ulong, optp:* mut c_ulong)->i32
 {
   let mut opt:i32;
   let mut ind:i32;
@@ -818,9 +812,6 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
            'X'=>{
             Xarg = list_optarg;
            }
-           'X'=>{
-            Xarg = list_optarg;
-           }
            _=>{
             if opt == -99 {
               r_builtin_help();
@@ -834,6 +825,7 @@ pub extern "C" fn r_build_actions (list : *mut WordList, flagp:* mut _optflags, 
       }
       *actp = acts;
       *optp = copts;
+    list = loptend.clone();
       if opt_given !=0 {
         return EXECUTION_SUCCESS!();
       } else {
@@ -899,6 +891,7 @@ pub extern "C" fn r_complete_builtin (listt: *mut WordList)->i32
         wl = std::ptr::null_mut();
     }
 
+
     /* -p overrides everything else */
     if oflags.pflag !=0 || (list == std::ptr::null_mut() && opt_given == 0) {
         if wl != std::ptr::null_mut() {
@@ -906,6 +899,7 @@ pub extern "C" fn r_complete_builtin (listt: *mut WordList)->i32
           dispose_words (wl);
           return rval;
         } else if list == std::ptr::null_mut() {
+            //给了P,但没给参数，直接打印全部并退出
           r_print_all_completions ();
           return EXECUTION_SUCCESS!();
         }
@@ -963,6 +957,7 @@ pub extern "C" fn r_complete_builtin (listt: *mut WordList)->i32
     dispose_words (wl);
     return rval;
   }
+  
 }
 
 #[no_mangle]
@@ -1025,6 +1020,7 @@ pub extern "C" fn r_print_arg (arg:* const c_char, flag:* const c_char, quote:i3
   unsafe {
     if arg != std::ptr::null_mut() {
         if quote !=0 {
+            // 复制arg 增加单引号返给x
             x = sh_single_quote (arg as * mut c_char);
         } else {
             x= arg as * mut c_char;
@@ -1184,10 +1180,11 @@ pub extern "C" fn r_compgen_builtin (listt:* mut WordList)->i32
 
     list = loptend.clone();
 
+    let wordtmp=CString::new("").unwrap();
     if list !=std::ptr::null_mut() && (*list).word != std::ptr::null_mut() {
         word = (*((*list).word)).word; 
     } else {
-        word=CString::new("").unwrap().as_ptr() as * mut c_char;
+        word = wordtmp.as_ptr() as * mut c_char;
     }
 
     if Farg != std::ptr::null_mut() {
@@ -1219,7 +1216,8 @@ pub extern "C" fn r_compgen_builtin (listt:* mut WordList)->i32
     old_ind = pcomp_ind;
     pcomp_line = std::ptr::null_mut();
     pcomp_ind = 0;
-    sl = gen_compspec_completions (cs, CString::new("compgen").unwrap().as_ptr(), word, 0, 0, std::ptr::null_mut());
+    let compgenStr=CString::new("compgen").unwrap();
+    sl = gen_compspec_completions (cs, compgenStr.as_ptr(), word, 0, 0, std::ptr::null_mut());
     pcomp_line = old_line;
     pcomp_ind = old_ind;
 

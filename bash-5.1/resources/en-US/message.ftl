@@ -1787,3 +1787,11 @@ information =     These shell commands are defined internally.  Type 'help' to s
   A star (*) next to a name means that the command is disabled.
 
 helperr = "no help topics match {$name} .Try 'help help' or 'man -k {$name}' or info {$name}"
+
+is = {$str1} is {$str2}
+special = {$str1} is a special shell builtin 
+hashd = {$str1} is hashed {$str2} 
+isfunction = {$str1} is a function 
+iskeyword = {$str1} is a shell keyword
+isalias = {$str1} is aliased to {$str2} 
+isbuiltin = {$str1} is a shell builtin

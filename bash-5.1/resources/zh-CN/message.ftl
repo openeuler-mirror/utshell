@@ -1616,3 +1616,11 @@ information =      这些 shell 命令是内部定义的。请输入 `help' 以�
       使用 `man -k' 或 `info' 来获取不在列表中的命令的更多信息。
 
 helperr = 没有与{$name}匹配的帮助主题。尝试使用"help help"、"man -k {$name} 或 "info {$name}"。
+
+is =  {$str1} 是 {$str2}
+special = {$str1} 是特殊 shell 内建 
+hashd =  {$str1} 已被录入哈希表 
+isfunction = {$str1}是函数 
+iskeyword = {$str1} 是 shell 关键字
+isalias = {$str1} 是 {$str2} 的别名
+isbuiltin = {$str1} 是 shell 内建

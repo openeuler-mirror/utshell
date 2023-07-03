@@ -3,7 +3,7 @@ extern crate nix;
 
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, savestring};
 use rhelp::r_builtin_help;
 use rsetattr::{show_name_attributes,set_or_show_attributes};
 use std::ffi::CStr;
@@ -569,12 +569,6 @@ pub extern "C" fn r_declare_find_variable (name:* const c_char, mkglobal:i32, ch
 unsafe fn DECLARE_OPTS()-> CString
 {
   return CString::new("+acfgilnprtuxAFGI").unwrap();
-}
-
-unsafe fn  savestring(x:* const c_char)->* mut c_char
-{
-  let str1:* mut c_char=libc::malloc(1 + libc::strlen (x )) as * mut c_char;
-  return libc::strcpy(str1,x );
 }
 
 unsafe fn  value_cell(var:*mut SHELL_VAR)->* mut c_char
