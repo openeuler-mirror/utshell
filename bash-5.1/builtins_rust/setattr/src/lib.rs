@@ -164,8 +164,7 @@ unsafe {
             }
             list = (*list).next;
         }
-    }
-    else {
+    } else {
         let mut variable_list: *mut *mut SHELL_VAR;
         if (attribute & att_function) != 0 || functions_only {
             variable_list = all_shell_functions();

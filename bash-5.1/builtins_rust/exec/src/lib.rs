@@ -4,7 +4,7 @@ extern crate rcommon;
 
 use libc::{c_char,c_int, strlen, strcpy, size_t, c_void, free};
 use std::ffi::{CString,CStr};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage, r_savestring};
 use nix::errno::errno;
 use rcommon::r_sh_restricted;
 use rhelp::r_builtin_help;
@@ -49,12 +49,6 @@ pub const r_inputa_direction: r_instruction = 2;
 pub const r_input_direction: r_instruction = 1;
 pub const r_output_direction: r_instruction = 0;
 
-#[macro_export]
-macro_rules! savestring {
-    ($x:expr) => {
-        strcpy(xmalloc(1 + strlen($x)) as *mut c_char,$x) as *mut c_char
-    }
-}
 
 #[macro_export]
 macro_rules! FREE {
@@ -227,9 +221,9 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WordList)->i32{
                     *args.offset(0) = r_mkdashname(argv0);
                 }
                 else {
-                    *args.offset(0) = savestring!(argv0);
+                    *args.offset(0) = r_savestring(argv0);
                 }
-                exec_argv0 = savestring!(*args.offset(0));
+                exec_argv0 = r_savestring(*args.offset(0));
             }
             else if login != 0{
                 newname = r_mkdashname(*args.offset(0));

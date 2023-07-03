@@ -3,7 +3,7 @@ extern crate nix;
 
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, savestring};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, r_savestring};
 use rhelp::r_builtin_help;
 use rsetattr::{show_name_attributes,set_or_show_attributes};
 use std::ffi::CStr;
@@ -765,6 +765,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
         return EXECUTION_SUCCESS!();
       }
   }
+  let tmpValue = CString::new("").unwrap();
 
   /* There are arguments left, so we are making variables. */
  'outter: while list !=std::ptr::null_mut() {		/* declare [-aAfFirx] name [name ...] */
@@ -786,10 +787,11 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	  let mut creating_array:i32;
 	  let mut array_subscript_assignment:i32;
 
-      name = savestring ((*(*list).word).word);
+      name = r_savestring ((*(*list).word).word);
       wflags = (*(*list).word).flags;
 
       assoc_noexpand = (assoc_expand_once !=0 && (wflags & (1 << 2)) !=0) as i32;
+      //　分出=
       if assoc_noexpand !=0 {
 		offset = assignment (name,  2);
 	  } else {
@@ -801,7 +803,9 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 
       if local_var !=0 && variable_context !=0 && STREQ (name, CString::new("-").unwrap().as_ptr())	{
 		var = make_local_variable (CString::new("-").unwrap().as_ptr(), 0);
-		libc::free (value_cell (var) as * mut c_void);		/* just in case */
+        if value_cell(var) != std::ptr::null_mut() {
+		  libc::free (value_cell (var) as * mut c_void);		/* just in case */
+        }
 		value = get_current_options ();
 		var_setvalue (var, value);
 		VSETATTR (var, att_invisible!());
@@ -811,14 +815,14 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	  }
 
       if offset !=0 {	/* declare [-aAfFirx] name=value */
-	  	*((name as usize + offset  as usize) as * mut c_char) = '\0' as c_char;
+	  	*name.offset(offset as isize) = '\0' as c_char;
 	  	value = (name as usize + (offset + 1) as usize) as * mut c_char;
 	  	if *((name as usize + (offset - 1) as usize) as * mut c_char) == '+' as c_char {
 	      aflags |= ASS_APPEND!();
 	      *((name as usize + (offset - 1) as usize) as * mut c_char) = '\0' as c_char;
 	    }
 	  } else {
-		value = CString::new("").unwrap().as_ptr() as * mut c_char;
+		value = tmpValue.as_ptr() as * mut c_char;
 	  }
 
       /* Do some lexical error checking on the LHS and RHS of the assignment
@@ -920,7 +924,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	    } else {
 			newname = name;	/* dealing with nameref attribute */
 		}
-
+// 至此，find_variable 返回var 没有被更新
 	    /* Pass 1 as second argument to make_local_{assoc,array}_variable
 	     return an existing {array,assoc} variable to be flagged as an
 	     error below. */
@@ -1405,7 +1409,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	    } else if simple_array_assign !=0 {
 	      /* let bind_{array,assoc}_variable take care of this. */
 	      if assoc_p (var) !=0 {
-			bind_assoc_variable (var, name, savestring (CString::new("0").unwrap().as_ptr()), value, aflags|ASS_FORCE!());
+			bind_assoc_variable (var, name, r_savestring (CString::new("0").unwrap().as_ptr()), value, aflags|ASS_FORCE!());
 		  } else {
 			bind_array_variable (name, 0, value, aflags|ASS_FORCE!());
 		  }
@@ -1451,14 +1455,14 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	     variable is in the same table as the function local vars. */
 	  if (flags_on & (att_exported!()|att_readonly!()) !=0 ) && tempvar_p (var) !=0 {
 		 let mut tv:* mut SHELL_VAR;
-	     let tvalue:* mut c_char=std::ptr::null_mut();
+	     let mut tvalue:* mut c_char=std::ptr::null_mut();
 
 	     tv = find_tempenv_variable ((*var).name);
 	     if tv != std::ptr::null_mut() {
 			  if var_isset(var) {
-				savestring (value_cell (var));
+				tvalue = r_savestring (value_cell (var));
 			  } else {
-				savestring (CString::new("").unwrap().as_ptr());
+				tvalue = r_savestring (CString::new("").unwrap().as_ptr());
 			  }
 	          tv = bind_variable ((*var).name, tvalue, 0);
 

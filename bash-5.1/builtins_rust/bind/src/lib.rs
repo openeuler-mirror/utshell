@@ -6,7 +6,7 @@ use libc::{c_char,c_int,strerror,free, c_void, strlen, size_t,};
 use std::{ffi::{CString,CStr}};
 use std::fs::File;
 use nix::errno::errno;
-use rcommon::{r_builtin_usage,r_sh_chkwrite};
+use rcommon::{r_builtin_usage,r_sh_chkwrite,err_translate_fn,translate_fn};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use rhelp::r_builtin_help;
 
@@ -273,9 +273,9 @@ pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
         if (flags & MFLAG!()) != 0 && !map_name.is_null(){
             kmap = rl_get_keymap_by_name(map_name);
             if kmap.is_null(){
-                let c_str = CString::new("%s:invalid keymap name").unwrap();     //%s在c中为`%s':
-                let c_ptr = c_str.as_ptr();
-                builtin_error(c_ptr,map_name);
+                let names = String::from("invaildmap");
+                err_translate_fn(&names,map_name);
+                println!();
                 return_code = EXECUTION_FAILURE!();
                 if !saved_keymap.is_null(){
                     rl_set_keymap(saved_keymap);
@@ -323,6 +323,7 @@ pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
                 t = printable_filename(initfile,0);
                 let c_str = CString::new("%s: cannot read: %s").unwrap();
                 let c_ptr = c_str.as_ptr();
+
                 builtin_error(c_ptr,t,strerror(errno()));
                 if t != initfile{
                     free(t as *mut c_void);
@@ -437,23 +438,24 @@ extern "C" fn r_query_bindings(name:*mut c_char)->i32{
     // let mut name_str:String;
 
     unsafe{
-        let name_str = CStr::from_ptr(name).to_str().unwrap().to_owned();
-
         function = rl_named_function(name);
         if function.is_null(){
-            let c_str = CString::new("%s: unknow function name").unwrap();
-            builtin_error(c_str.as_ptr(),name);
+            let names = String::from("unknowdfunction");
+            err_translate_fn(&names,name);
+            println!();
             return EXECUTION_FAILURE!();
         }
 
         keyseqs = rl_invoking_keyseqs(function);
 
         if keyseqs.is_null(){
-            println!("{} is not bound to any keys.",name_str);
+            let names = String::from("bindnokeys");
+            err_translate_fn(&names,name);
+            println!();
             return EXECUTION_FAILURE!();
         }
-
-        print!("{} can be invoked via ",name_str);
+        let names = String::from("bindvia");
+        translate_fn(&names,name);
         j = 0;
         let mut t:*mut c_char;
         t = *keyseqs;
@@ -486,9 +488,9 @@ extern "C" fn r_unbind_command(name:*mut c_char)->i32{
     unsafe{
         function = rl_named_function(name);
         if function.is_null(){
-            let c_str = CString::new("`%s':unknown function name").unwrap();
-
-            builtin_error(c_str.as_ptr(),name);
+            let names = String::from("unknowdfunction");
+            err_translate_fn(&names,name);
+            println!();
             return EXECUTION_FAILURE!();
         }
 
@@ -506,10 +508,11 @@ extern "C" fn r_unbind_keyseq(seq:*mut c_char)->i32{
     unsafe{
         kseq = xmalloc((2 * strlen(seq)) + 1) as *mut c_char;
         if rl_translate_keyseq(seq,kseq,&mut kslen) != 0{
+            
             free(kseq as *mut c_void);
-            let c_str = CString::new("`%s': cannot unbind").unwrap();
-
-            builtin_error(c_str.as_ptr(), seq);
+            let names = String::from("unbindfaild");
+            err_translate_fn(&names,seq);
+            println!();
             return EXECUTION_FAILURE!();
         }
         //可能存在错误
@@ -529,9 +532,9 @@ extern "C" fn r_unbind_keyseq(seq:*mut c_char)->i32{
          an argument. */
         if rl_bind_keyseq(seq,std::ptr::null_mut() as *mut rl_command_func_t) != 0{
             free(kseq as *mut c_void);
-            let c_str = CString::new("`%s': cannot unbind").unwrap();
-            let c_ptr = c_str.as_ptr();
-            builtin_error(c_ptr, seq);
+            let names = String::from("unbindfaild");
+            err_translate_fn(&names,seq);
+            println!();
             return EXECUTION_FAILURE!();
         }
         
