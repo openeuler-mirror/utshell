@@ -1771,3 +1771,10 @@ pub extern "C" fn get_local_str()-> Vec<LanguageIdentifier>{
     let locales = vec![langid.into()];
     return locales; 
   }
+pub unsafe fn savestring(x:* const c_char)->* mut c_char
+{
+    let len = 1+libc::strlen(x);
+  let str1:* mut c_char=libc::malloc(len) as * mut c_char;
+  libc::memset(str1 as *mut libc::c_void, 0, len);
+  return libc::strcpy(str1 as *mut c_char ,x);
+}
