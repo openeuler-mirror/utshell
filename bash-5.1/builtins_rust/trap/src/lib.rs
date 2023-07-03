@@ -2,7 +2,7 @@ use std::{ffi::CString};
 
 use libc::{c_int, c_char, c_void, PT_NULL};
 use rcommon::{r_builtin_usage,r_display_signal_list,WordList,r_sh_invalidsig,r_sh_chkwrite};
-use rhelp::r_builtin_help;
+
 include!(concat!("intercdep.rs"));
 
 
@@ -24,7 +24,7 @@ unsafe {
             'p' => display += 1,
             _ => {
                 if opt == -99 {
-                    r_builtin_help();
+                    builtin_help();
                     return EX_USAGE;
                 }
                 r_builtin_usage ();

@@ -5,7 +5,6 @@ use std::path::Path;
 use libloading::Library;
 use rcmd::*;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
-use rhelp::r_builtin_help;
 /*
 #define ENABLED  1
 #define DISABLED 2
@@ -99,6 +98,7 @@ extern "C" {
     fn sh_notbuiltin(_: *mut libc::c_char);
     fn builtin_address_internal(_: *mut libc::c_char, _: libc::c_int) -> *mut builtin;
     fn initialize_shell_builtins();
+    fn builtin_help();
     static mut list_optarg: *mut libc::c_char;
     static mut loptend: *mut WordList;
     fn internal_getopt(_: *const WordList, _: *const libc::c_char) -> i32;
@@ -189,7 +189,7 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
             }
             _ => {
                 if opt ==-99 {
-                    r_builtin_help();
+                    builtin_help();
                     return EX_USAGE;
                 }
                 builtin_usage();

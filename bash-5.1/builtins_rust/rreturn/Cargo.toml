@@ -15,4 +15,3 @@ crate-type = ["staticlib","rlib"]
 libc = "*"
 nix = "*"
 rcommon = {path = "../common"}
-rhelp = {path ="../help"}

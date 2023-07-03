@@ -1,9 +1,9 @@
 use std::mem::size_of_val;
 
 use libc::{c_int, c_uint, c_char, c_long, PT_NULL, c_void};
-use rhelp::r_builtin_help;
+
 include!(concat!("intercdep.rs"));
-use std::ffi::CStr;
+
 #[no_mangle]
 pub extern "C" fn r_export_builtin(list: *mut WordList) -> c_int {
     return set_or_show_attributes(list, att_exported, 0);
@@ -40,10 +40,9 @@ unsafe {
             'f' => functions_only = true,
             'a' => arrays_only = 1,
             'A' => assoc_only = 1,
-            'p' => break,
             _ => {
                 if opt == -99 {
-                    r_builtin_help();
+                    builtin_help();
                     return EX_USAGE;
                 }
             builtin_usage ();
@@ -239,7 +238,7 @@ unsafe {
     }
 
     loop {
-        var = variable_list.offset(i) as *mut SHELL_VAR;
+        var = (variable_list as usize + 8 * i) as *mut SHELL_VAR;
         if var.is_null() {
             break;
         }
@@ -273,7 +272,7 @@ unsafe {
     }
 
     loop {
-        var = variable_list.offset(i) as *mut SHELL_VAR;
+        var = (variable_list as usize + 8 * i) as *mut SHELL_VAR;
         if var.is_null() {
             break;
         }
@@ -298,59 +297,52 @@ unsafe {
 pub extern "C" fn show_var_attributes(var: *mut SHELL_VAR, pattr: c_int, mut nodefs: c_int) -> c_int {
 
     let mut flags = [0;16];
+
 unsafe {
     let i = var_attribute_string(var, pattr, flags.as_mut_ptr());
+
     if ((*var).attributes & att_function) != 0 && nodefs == 0 &&
         (pattr == 0 || posixly_correct == 0) {
-            println!("{}",CStr::from_ptr(named_function_string((*var).name, (*var).value as *mut COMMAND, FUNC_MULTILINE | FUNC_EXTERNAL)).to_str().unwrap());
+        libc::printf("%s\n\0".as_ptr() as *const c_char,
+            named_function_string((*var).name, (*var).value as *mut COMMAND, FUNC_MULTILINE | FUNC_EXTERNAL));
+
         nodefs += 1;
         if pattr == 0 && i == 1 && flags[0] == b'f' as c_char {
             return 0;
         }
     }
+
     if pattr == 0 || posixly_correct == 0 {
-        if i !=0 {
-            print!("declare -{} ", CStr::from_ptr(flags.as_ptr()).to_str().unwrap());
-        }
-        else {
-            print!("declare -- ");
-        }
-    } 
-    else if i != 0 {
-        print!("{} {}", CStr::from_ptr(this_command_name).to_str().unwrap(),CStr::from_ptr(flags.as_ptr()).to_str().unwrap());
-    }
-     else {
-        print!("{}", CStr::from_ptr(this_command_name).to_str().unwrap());
+        libc::printf("declare -%s \0".as_ptr() as *const c_char, if i != 0 {flags.as_ptr()} else {"-\0".as_ptr() as *const c_char});
+    } else if i != 0 {
+        libc::printf("%s -%s \0".as_ptr() as *const c_char, this_command_name, flags.as_ptr());
+    } else {
+        libc::printf("%s \0".as_ptr() as *const c_char, this_command_name);
     }
 
     if ((*var).attributes & att_invisible) != 0 &&
         ((*var).attributes & att_array) != 0 &&
         ((*var).attributes & att_assoc) != 0 {
-            println!("{}",CStr::from_ptr((*var).name).to_str().unwrap());
-    }
-     else if ((*var).attributes & att_array) != 0 {
+        libc::printf("%s\n\0".as_ptr() as *const c_char, (*var).name);
+    } else if ((*var).attributes & att_array) != 0 {
         print_array_assignment(var, 0);
-    } 
-    else if ((*var).attributes & att_assoc) != 0 {
+    } else if ((*var).attributes & att_assoc) != 0 {
         print_assoc_assignment(var, 0);
-    } 
-    else if nodefs != 0 || (((*var).attributes & att_function) != 0 && pattr != 0 && posixly_correct != 0) {
-        println!("{}",CStr::from_ptr((*var).name).to_str().unwrap());
-    } 
-    else if ((*var).attributes & att_function) != 0 {
-        println!("{}",CStr::from_ptr(named_function_string((*var).name, (*var).value as *mut COMMAND, FUNC_MULTILINE | FUNC_EXTERNAL)).to_str().unwrap());
-    } else if ((*var).attributes & att_invisible) != 0 || (*var).value.is_null() {
-        println!("{}",CStr::from_ptr((*var).name).to_str().unwrap());
+    } else if nodefs != 0 ||
+        (((*var).attributes & att_function) != 0 && pattr != 0 && posixly_correct != 0) {
+        libc::printf("%s\n\0".as_ptr() as *const c_char, (*var).name);
+    } else if ((*var).attributes & att_function) != 0 {
+        libc::printf("%s\n\0".as_ptr() as *const c_char,
+            named_function_string((*var).name, (*var).value as *mut COMMAND, FUNC_MULTILINE | FUNC_EXTERNAL));
+    } else if ((*var).attributes & att_invisible) != 0 && (*var).value.is_null() {
+        libc::printf("%s\n\0".as_ptr() as *const c_char, (*var).name);
     } else {
-        println!("{} = {}",CStr::from_ptr((*var).name).to_str().unwrap(),CStr::from_ptr(sh_double_quote(value_cell(var))).to_str().unwrap());
+        let x = sh_double_quote((*var).value);
+        libc::printf("%s=%s\n\0".as_ptr() as *const c_char, (*var).name, x);
+        libc::free(x as *mut c_void);
     }
 }
     return 0;
-}
-
-unsafe fn  value_cell(var:*mut SHELL_VAR)->* mut c_char
-{
-  return (*var).value;
 }
 
 #[no_mangle]
@@ -500,7 +492,7 @@ unsafe {
             i += 1;
         }
         if ((*var).attributes & att_readonly) != 0 {
-            *(flags.offset(i as isize)) = b'r' as c_char;
+            *((flags as usize + i) as *mut c_char) = b'r' as c_char;
             i += 1;
         }
         if ((*var).attributes & att_trace) != 0 {

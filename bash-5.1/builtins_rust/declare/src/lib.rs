@@ -4,9 +4,8 @@ extern crate nix;
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
-use rhelp::r_builtin_help;
-use rsetattr::show_name_attributes;
-use std::ffi::CStr;
+
+
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
     cm_connection, cm_function_def, cm_until, cm_group,
@@ -451,6 +450,7 @@ pub union Functions {
 }
 
 extern "C" {
+	fn builtin_help ();
     static variable_context:i32;
     fn builtin_error(err:*const c_char,...);
 	fn builtin_warning(err:*const c_char,...);
@@ -469,6 +469,7 @@ extern "C" {
     fn sh_chkwrite (ret:i32)->i32;
     fn show_func_attributes (name:* mut c_char, nodefs:i32)->i32;
     fn show_localname_attributes (name:* mut c_char, nodefs:i32)->i32;
+    fn show_name_attributes (name:* mut c_char, nodefs:i32)->i32;
     fn sh_notfound (name:* mut c_char);
 	static assoc_expand_once:i32;
 	fn assignment (str1:* const c_char, flags:i32)->i32;
@@ -529,7 +530,7 @@ pub extern "C" fn r_local_builtin (list:* mut WordList)->i32
   unsafe {
       /* Catch a straight `local --help' before checking function context */
       if list !=std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && STREQ ((*(*list).word).word, CString::new("--help").unwrap().as_ptr()) {
-        r_builtin_help ();
+        builtin_help ();
         return EX_USAGE;
       }
 
@@ -589,7 +590,7 @@ unsafe fn  var_setvalue(var:*mut SHELL_VAR,str1:* mut c_char)
 }
 
 unsafe fn VSETATTR(var:*mut SHELL_VAR, attr:i32) {
-	(*var).attributes |= attr;
+	(*var).attributes=attr;
 }
 
 unsafe fn readonly_p(var:*mut SHELL_VAR) ->i32 {
@@ -608,8 +609,8 @@ unsafe fn function_cell(var:*mut SHELL_VAR) ->* mut COMMAND {
 	return (*var).value as * mut COMMAND;
 }
 
-unsafe fn VUNSETATTR(var:*mut SHELL_VAR,attr:i32) {
-	(*var).attributes &= !attr;
+unsafe fn VUNSETATTR(var:*mut SHELL_VAR,attr:i32) ->i32 {
+	return (*var).attributes & !attr;
 }
 
 unsafe fn array_p(var:*mut SHELL_VAR) ->i32 {
@@ -633,7 +634,7 @@ unsafe fn noassign_p(var:*mut SHELL_VAR) ->i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i32
+pub extern "C" fn r_declare_internal (list:* mut WordList, local_var:i32)->i32
 {
   let mut flags_on:i32=0;
   let mut flags_off:i32=0;
@@ -642,7 +643,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
   let mut assign_error:i32=0;
   let mut pflag:i32=0;
   let mut nodefs:i32=0;
-  let mut opt:i32;
+  let opt:i32;
   let mut onref:i32;
   let mut offref:i32;
   let mut mkglobal:i32=0;
@@ -661,15 +662,15 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 
   unsafe {
   reset_internal_getopt ();
-  let tmp = DECLARE_OPTS();
-  opt = internal_getopt (list, tmp.as_ptr() as * mut c_char);
+  let tmp = DECLARE_OPTS().as_ptr();
+  opt = internal_getopt (list, tmp as * mut c_char);
   while  opt != -1 {
       if list_opttype == '+' as i32 {
         flags= &mut flags_off;
       } else {
         flags= &mut flags_on;
       }
-     
+
       let optu8:u8= opt as u8;
       let optChar:char=char::from(optu8);
 
@@ -677,7 +678,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	 the loop in subst.c:shell_expand_word_list() */
       match optChar {
         'a'=>{ *flags |= att_array!();}
-		'A'=>{ *flags |= att_assoc!();}
+	'A'=>{ *flags |= att_assoc!();}
         'p'=>{ pflag+=1;}
         'F'=>{ nodefs+=1;
               *flags |= att_function!();
@@ -718,19 +719,21 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
         'I'=>{ inherit_flag = MKLOC_INHERIT!();}
         _=>{
 			if opt == -99 {
-				r_builtin_help();
+				builtin_help();
 				return EX_USAGE;
 			}
 			 builtin_usage ();
              return EX_USAGE;
             }
 	    }
-		opt = internal_getopt (list, tmp.as_ptr() as * mut c_char);
+		internal_getopt (list, tmp as * mut c_char);
   }
-    list = loptend;
+
+  let mut llist:* mut WordList = loptend.clone();
+
   /* If there are no more arguments left, then we just want to show
      some variables. */
-  if list == std::ptr::null_mut() {	/* declare -[aAfFirtx] */
+  if llist == std::ptr::null_mut() {	/* declare -[aAfFirtx] */
       /* Show local variables defined at this context level if this is
 	 the `local' builtin. */
       if local_var != 0 {
@@ -751,19 +754,20 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 
   if pflag !=0 {	/* declare -p [-aAfFirtx] name [name...] */
       any_failed=0;
-      while  list != std::ptr::null_mut() {
+      while  llist != std::ptr::null_mut() {
         if (flags_on & att_function!()) != 0 {
-          pflag = show_func_attributes ((*(*list).word).word, nodefs);
+          pflag = show_func_attributes ((*(*llist).word).word, nodefs);
         } else if local_var !=0 {
-          pflag = show_localname_attributes ((*(*list).word).word, nodefs);
+          pflag = show_localname_attributes ((*(*llist).word).word, nodefs);
         } else {
-          pflag = show_name_attributes ((*(*list).word).word, nodefs);
+          pflag = show_name_attributes ((*(*llist).word).word, nodefs);
         }
+
         if pflag !=0 {
-            sh_notfound ((*(*list).word).word);
-            any_failed += 1;
+            sh_notfound ((*(*llist).word).word);
+            any_failed+=1;
         }
-         list = (*list).next;
+        llist = (*llist).next;
 	  }
 
       if any_failed !=0 {
@@ -774,7 +778,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
   }
 
   /* There are arguments left, so we are making variables. */
- 'outter: while list !=std::ptr::null_mut() {		/* declare [-aAfFirx] name [name ...] */
+  while llist !=std::ptr::null_mut() {		/* declare [-aAfFirx] name [name ...] */
+
       let mut value:* mut c_char;
 	  let mut name:* mut c_char;
 	  let mut oldname:* mut c_char;
@@ -793,8 +798,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	  let mut creating_array:i32;
 	  let mut array_subscript_assignment:i32;
 
-      name = savestring ((*(*list).word).word);
-      wflags = (*(*list).word).flags;
+      name = savestring ((*(*llist).word).word);
+      wflags = (*(*llist).word).flags;
 
       assoc_noexpand = (assoc_expand_once !=0 && (wflags & (1 << 2)) !=0) as i32;
       if assoc_noexpand !=0 {
@@ -813,8 +818,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		var_setvalue (var, value);
 		VSETATTR (var, att_invisible!());
 		libc::free (name as * mut c_void);
-		list = (*list).next;
-		continue 'outter;
+		llist = (*llist).next;
+		continue;
 	  }
 
       if offset !=0 {	/* declare [-aAfFirx] name=value */
@@ -835,15 +840,15 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 			builtin_error (CString::new("%s: reference variable cannot be an array").unwrap().as_ptr(), name);
 			assign_error+=1;
 			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
+			llist = (*llist).next;
+			continue;
 		} else if check_selfref (name, value, 0) !=0 {/* disallow self references at global scope, warn at function scope */
 	        if variable_context == 0 {
 				builtin_error (CString::new("%s: nameref variable self references not allowed").unwrap().as_ptr(), name);
 				assign_error+=1;
 				libc::free (name as * mut c_void);
-				list = (*list).next;
-				continue 'outter;
+				llist = (*llist).next;
+				continue;
 			} else {
 				builtin_warning (CString::new("%s: circular name reference").unwrap().as_ptr(), name);
 			}
@@ -853,12 +858,14 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	      builtin_error (CString::new("`nvalid %s': ivariable name for name reference").unwrap().as_ptr(), value);
 	      assign_error+=1;
 	      libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter;
+		  llist = (*llist).next;
+		  continue;
 	    }
 	 }
+
 //restart_new_var_name:
-	'inner: loop {
+	 loop {
+
       var_exists = 0;
 	  array_exists = 0;
 	  creating_array = 0;
@@ -874,8 +881,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 			sh_invalidid (name);
 			assign_error+=1;
 			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter; 
+			llist = (*llist).next;
+			break;
 		}
 
 		subscript_start = t;
@@ -889,12 +896,12 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	 shell function names don't have to be valid identifiers when the
 	 shell's not in posix mode), check whether or not the argument is a
 	 valid, well-formed shell identifier. */
-	 if (posixly_correct !=0 || (flags_on & att_function!()) == 0) && legal_identifier(name) == 0 {
-		sh_invalidid (name);
+	 if (posixly_correct !=0 || (flags_on & att_function!()) == 0) && legal_identifier (name) == 0 {
+	  	sh_invalidid (name);
 	  	assign_error+=1;
 		libc::free (name as * mut c_void);
-		list = (*list).next;
-		continue 'outter; 
+		llist = (*llist).next;
+		break;
 	 }
       /* If VARIABLE_CONTEXT has a non-zero value, then we are executing
 	 inside of a function.  This means we should make local variables,
@@ -911,18 +918,16 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		 var = find_variable (name);
 	     if var == std::ptr::null_mut() {
 			newname = nameref_transform_name (name, ASS_MKLOCAL!());
-		 }
-		 else if (flags_on & att_nameref!()) == 0 && (flags_off & att_nameref!()) == 0 {
+		 } else if (flags_on & att_nameref!()) == 0 && (flags_off & att_nameref!()) == 0 {
 	      /* Ok, we're following namerefs here, so let's make sure that if
 		 we followed one, it was at the same context (see below for
 		 more details). */
 	      refvar = find_variable_last_nameref (name, 1);
 		  if refvar != std::ptr::null_mut() && (*refvar).context != variable_context {
 			newname =  name ;
-		  }
-		 else {
+		  } else {
 			newname =  (*var).name;
-		}
+		  }
 	      refvar = std::ptr::null_mut();
 	    } else {
 			newname = name;	/* dealing with nameref attribute */
@@ -963,16 +968,16 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	    if var == std::ptr::null_mut() {
 	      any_failed+=1;
 	      libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter; 
+		  llist = (*llist).next;
+		  break;
 	    }
 
 	  	if var != std::ptr::null_mut() && nameref_p (var) !=0 && readonly_p (var) != 0 && nameref_cell (var) != std::ptr::null_mut() && (flags_off & att_nameref!()) !=0 {
 	      sh_readonly (name);
 	      any_failed+=1;
 	      libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter; 
+		  llist = (*llist).next;
+		  break;
 	    }
 	} else {
 		var = std::ptr::null_mut();
@@ -995,8 +1000,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		      builtin_error (CString::new("%s: readonly function").unwrap().as_ptr(), name);
 		      any_failed+=1;
 		      libc::free (name as * mut c_void);
-			  list = (*list).next;
-			  continue 'outter; 
+			  llist = (*llist).next;
+			  break;
 		  } else if (flags_on & (att_array!()|att_assoc!())) !=0 {
 			  if (flags_on & att_array!()) !=0 {
 				sh_invalidopt (CString::new("-a").unwrap().as_ptr() as * mut c_char);
@@ -1006,17 +1011,17 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 
 		      any_failed+=1;
 		      libc::free (name as * mut c_void);
-			  list = (*list).next;
-			  continue 'outter; 
+			  llist = (*llist).next;
+			  break;
 		  }
 		  /* declare -[Ff] name [name...] */
 		  if flags_on == att_function!() && flags_off == 0 {
 		      if nodefs !=0 && debugging_mode !=0 {
 			  	shell_fn = find_function_def ((*var).name);
 				if shell_fn !=std::ptr::null_mut() {
-					println!("{} {} {}",CStr::from_ptr((*var).name).to_str().unwrap(),(*shell_fn).line,CStr::from_ptr((*shell_fn).source_file).to_str().unwrap());
+					libc::printf (CString::new("%s %d %s\n").unwrap().as_ptr(), (*var).name, (*shell_fn).line, (*shell_fn).source_file);
 				} else {
-					println!("{}",CStr::from_ptr((*var).name).to_str().unwrap());
+					libc::printf (CString::new("%s\n").unwrap().as_ptr(), (*var).name);
 				}
 			  } else {
 				  if nodefs !=0 {
@@ -1024,7 +1029,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 				  } else {
 					named_function_string (name, function_cell (var), FUNC_MULTILINE!()|FUNC_EXTERNAL!());
 				  }
-				  println!("{}",CStr::from_ptr(t).to_str().unwrap());
+				  libc::printf (CString::new("%s\n").unwrap().as_ptr(), t);
 			      any_failed = sh_chkwrite (any_failed);
 			 }
 		  } else {	/* declare -[fF] -[rx] name [name...] */ 
@@ -1036,11 +1041,10 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 			any_failed+=1;
 		}
 		libc::free (name as * mut c_void);
-		list = (*list).next;
-		continue 'outter; 
+		llist = (*llist).next;
+		break;
 	    }
-	} else {
-		/* declare -[aAinrx] name [name...] */
+	} else {	/* declare -[aAinrx] name [name...] */
 	 /* Non-null if we just created or fetched a local variable. */
 
 	  /* Here's what ksh93 seems to do as of the 2012 version: if we are
@@ -1085,8 +1089,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 			sh_readonly (name);
 			any_failed+=1;
 			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter; 
+			llist = (*llist).next;
+			break;
 		  }
 	      /* If all we're doing is turning off the nameref attribute, don't
 		 bother with VAR at all, whether it exists or not. Just turn it
@@ -1094,8 +1098,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	      if refvar != std::ptr::null_mut() && flags_on == 0 && offset == 0 && (flags_off & !att_nameref!()) == 0 {
 		  	VUNSETATTR (refvar, att_nameref!());
 		  	libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter; 
+			llist = (*llist).next;
+			break;
 		  }
 
 	      if refvar !=std::ptr::null_mut() {
@@ -1192,8 +1196,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 				sh_invalidid (name);
 				assign_error+=1;
 				libc::free (name as * mut c_void);
-				list = (*list).next;
-				continue 'outter; 
+				llist = (*llist).next;
+				break;
 			  }
 			  *((name as usize + offset as usize) as * mut c_char) = '\0' as c_char;		      
 		      value = (name as usize + namelen as usize) as * mut c_char;
@@ -1207,7 +1211,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 			}
 
 			//goto restart_new_var_name;
-			continue 'inner;
+			continue;
 			/* NOTREACHED */
 		  }
 	    }
@@ -1244,8 +1248,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		if var == std::ptr::null_mut() {
 		  /* Has to appear in brackets */
 		  libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter;
+		  llist = (*llist).next;
+		  break;
 		}
 	      created_var = 1;
 	   } else if (array_p (var) !=0 || assoc_p (var) !=0 ) && (flags_on & att_nameref!()) !=0 {
@@ -1253,14 +1257,14 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	      builtin_error (CString::new("%s: reference variable cannot be an array").unwrap().as_ptr(), name);
 	      assign_error+=1;
 	      libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter;
+		  llist = (*llist).next;
+		  break;
 	    } else if nameref_p (var) !=0 && (flags_on & att_nameref!()) == 0 && (flags_off & att_nameref!()) == 0 && offset !=0 && valid_nameref_value (value, 1) == 0 {
 	      builtin_error (CString::new("`%s': invalid variable name for name reference").unwrap().as_ptr(), value);
 	      any_failed+=1;
 	      libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter;
+		  llist = (*llist).next;
+		  break;
 	    } else if (flags_on & att_nameref!()) !=0 {
 	      /* Check of offset is to allow an assignment to a nameref var as
 		 part of the declare word to override existing value */
@@ -1268,16 +1272,16 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 			builtin_error (CString::new("`%s': invalid variable name for name reference").unwrap().as_ptr(), value_cell (var));
 			any_failed+=1;
 			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
+			llist = (*llist).next;
+			break;
 		  }
 
 	      if readonly_p (var) !=0 {
 			sh_readonly (name);
 			any_failed+=1;
 			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
+			llist = (*llist).next;
+			break;
 		  }
 	      /* ksh93 compat: turning on nameref attribute turns off -ilu */
 	      VUNSETATTR (var, att_integer!()|att_uppercase!()|att_lowercase!()|att_capcase!());
@@ -1288,8 +1292,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 			sh_readonly ((*var).name);
 			any_failed+=1;
 			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
+			llist = (*llist).next;
+			break;
 		}
 
 		/* Cannot use declare to assign value to readonly or noassign
@@ -1300,8 +1304,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 			}
 			assign_error+=1;
 			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
+			llist = (*llist).next;
+			break;
 		}
 
 		/* make declare a[2]=foo as similar to a[2]=foo as possible if
@@ -1318,7 +1322,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		     creating_array to allow things like
 		     declare -a foo$bar='(abc)' to work. */
 			if array_exists == 0 && creating_array == 0 {
-				internal_warning (CString::new("%s: quoted compound array assignment deprecated").unwrap().as_ptr(), (*(*list).word).word);
+				internal_warning (CString::new("%s: quoted compound array assignment deprecated").unwrap().as_ptr(), (*(*llist).word).word);
 			}
 			compound_array_assign = (array_exists !=0 || creating_array !=0) as i32;
 			simple_array_assign = making_array_special;
@@ -1335,24 +1339,24 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 			builtin_error (CString::new("%s: cannot destroy array variables in this way").unwrap().as_ptr(), name);
 			any_failed+=1;
 			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
+			llist = (*llist).next;
+			break;
 		}
 
 		if (flags_on & att_array!()) !=0 && assoc_p (var) !=0 {
 			builtin_error (CString::new("%s: cannot convert associative to indexed array").unwrap().as_ptr(), name);
 			any_failed+=1;
 			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
+			llist = (*llist).next;
+			break;
 		}
 
 	    if (flags_on & att_assoc!()) !=0 && array_p (var) !=0 {
 	      builtin_error (CString::new("%s: cannot convert indexed to associative array").unwrap().as_ptr(), name);
 	      any_failed+=1;
 	      libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter;
+		  llist = (*llist).next;
+		  break;
 	    }
 
 	    /* declare -A name[[n]] makes name an associative array variable. */
@@ -1381,7 +1385,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		/* ksh93 seems to do this */
 		offref = flags_off & att_nameref!();
 		flags_off &= !att_nameref!();
-        
+
 		VSETATTR (var, flags_on);
 		VUNSETATTR (var, flags_off);
 
@@ -1406,8 +1410,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 			flags_on |= onref;
 			flags_off |= offref;
 			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
+			llist = (*llist).next;
+			break;
 		  }
 	    } else if simple_array_assign !=0 {
 	      /* let bind_{array,assoc}_variable take care of this. */
@@ -1442,8 +1446,8 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 			flags_on |= onref;/* undo change from above */
 			flags_off |= offref;
 			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
+			llist = (*llist).next;
+			break;
 		  }
 	    }
 
@@ -1498,10 +1502,11 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		}
 		VUNSETATTR (refvar, flags_off);
 	  }
+
       stupidly_hack_special_variables (name);
 	  libc::free (name as * mut c_void);
-	  list = (*list).next;
-	  continue 'outter;
+	  llist = (*llist).next;
+	  break;
      }
 	}
   if assign_error !=0 {
@@ -1515,3 +1520,4 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
   }
 }
 }
+

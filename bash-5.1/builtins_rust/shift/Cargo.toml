@@ -11,9 +11,7 @@ authors = ["lvgenggeng"]
 name = "rshift"
 crate-type = ["staticlib","rlib"]
 
-
 [dependencies]
 libc = "*"
 nix = "*"
 rcommon = {path = "../common"}
-rhelp = {path ="../help"}

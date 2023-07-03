@@ -11,8 +11,11 @@ authors = ["lvgenggeng"]
 name = "rsetattr"
 crate-type = ["staticlib","rlib"]
 
+[build-dependencies]
+rdeclare = {path = "../declare"}
+
 [dependencies]
 libc = "*"
 nix = "*"
+rdeclare = {path = "../declare"}
 rcommon = {path = "../common"}
-rhelp = {path ="../help"}

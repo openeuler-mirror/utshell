@@ -13,4 +13,3 @@ libc = "*"
 libloading = "*"
 rcmd = {path="../cmd"}
 rcommon = {path="../common"}
-rhelp = {path ="../help"}

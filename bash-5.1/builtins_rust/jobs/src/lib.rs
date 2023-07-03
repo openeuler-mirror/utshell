@@ -4,7 +4,7 @@ extern crate nix;
 use libc::{c_char, c_long};
 use std::ffi::CString;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
-use rhelp::r_builtin_help;
+
 #[repr(i8)]
 pub enum JOB_STATE {
     JNONE = -1,
@@ -368,6 +368,7 @@ extern "C" {
     fn nohup_job (job_index:i32);
     fn nohup_all_jobs (running_only:i32);
     fn delete_all_jobs(running_only:i32);
+    fn builtin_help();
  }
 
  #[no_mangle]
@@ -451,7 +452,7 @@ pub extern "C" fn r_jobs_builtin(mut list:*mut WordList)->i32 {
             's'=>{state = JSTATE_STOPPED!();}
         _=>{
             if opt == -99 {
-                r_builtin_help();
+                builtin_help();
                 return EX_USAGE;
             }
             builtin_usage ();
@@ -526,7 +527,7 @@ pub extern "C" fn r_disown_builtin (list:* mut WordList)->libc::c_int {
         'r'=>{running_jobs = 1;}
         _=>{
             if opt == -99 {
-                r_builtin_help();
+                builtin_help();
                 return EX_USAGE;
             }
             builtin_usage ();

@@ -94,7 +94,7 @@ unsafe {
             }
             _ => {
                 if opt == -99 {
-                    r_builtin_help();
+                    builtin_help();
                     return EX_USAGE;
                 }
             r_builtin_usage ();

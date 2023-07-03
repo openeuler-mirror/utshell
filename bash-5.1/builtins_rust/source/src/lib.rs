@@ -4,7 +4,7 @@ extern crate nix;
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
-use rhelp::r_builtin_help;
+
 
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,

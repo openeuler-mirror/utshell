@@ -1,6 +1,6 @@
 use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable,WordList,WordDesc};
 pub type SHELL_VAR = rcommon::SHELL_VAR;
-use rhelp::r_builtin_help;
+
 pub type __intmax_t = c_long;
 pub type intmax_t = __intmax_t;
 pub type arrayind_t = intmax_t;
@@ -271,6 +271,7 @@ extern "C" {
     pub fn rl_get_keymap() -> Keymap;
     pub fn rl_insert(count: c_int, key: c_int) -> c_int;
     pub fn rl_newline(count: c_int, key: c_int) -> c_int;
+    fn builtin_help();
 }
 
 extern "C" {

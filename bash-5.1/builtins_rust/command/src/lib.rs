@@ -1,7 +1,6 @@
 use std::ffi::*;
 
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
-use rhelp::r_builtin_help;
 extern "C" {
     fn copy_word_list(_: *mut WordList) -> *mut WordList;
     fn begin_unwind_frame(_: *mut libc::c_char);
@@ -17,6 +16,7 @@ extern "C" {
     fn builtin_usage();
     fn sh_notfound(_: *mut libc::c_char);
     fn sh_restricted(_: *mut libc::c_char);
+    fn builtin_help();
     fn describe_command(_: *mut libc::c_char, _: libc::c_int) -> libc::c_int;
     //type Function = fn ()->i32;
 }
@@ -313,7 +313,7 @@ pub unsafe extern "C" fn r_command_builtin(mut list: *mut WordList) -> libc::c_i
             }
             _ => {
                 if opt ==-99 {
-                    r_builtin_help();
+                    builtin_help();
                     return EX_USAGE;
                 }
                 builtin_usage();

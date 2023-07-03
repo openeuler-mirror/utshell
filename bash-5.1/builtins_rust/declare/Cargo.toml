@@ -10,8 +10,6 @@ lazy_static = "*"
 libc = "*"
 nix = "*"
 rcommon = {path = "../common"}
-rhelp = {path ="../help"}
-rsetattr = {path = "../setattr"}
 
 [lib]
 crate-type = ["staticlib","rlib"]

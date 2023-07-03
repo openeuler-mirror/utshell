@@ -7,7 +7,6 @@ use std::ffi::{CString,CStr};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 use nix::errno::errno;
 use rcommon::r_sh_restricted;
-use rhelp::r_builtin_help;
 
 #[repr(C)]
 struct redirect{
@@ -80,6 +79,7 @@ extern "C" {
     static interactive:i32;
     static default_buffered_input:i32;
     static no_exit_on_failed_exec:i32;
+    fn builtin_help();
     fn xmalloc(n:size_t)->*mut c_void;
     fn reset_internal_getopt();
     fn internal_getopt(list:*mut WordList,opts:*mut c_char)->i32;
@@ -159,7 +159,7 @@ pub extern "C" fn r_exec_builtin(mut list:*mut WordList)->i32{
                     'a' => argv0 = list_optarg,
                     _  => {
                         if opt == -99 {
-                            r_builtin_help();
+                            builtin_help();
                             return EX_USAGE;
                         }
                         r_builtin_usage();
