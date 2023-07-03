@@ -3,14 +3,31 @@ extern crate rjobs;
 extern crate rread;
 extern crate nix;
 
-use libc::{c_char, intmax_t, pid_t, c_short,c_int, SIGCHLD, c_long};
-use std::ffi::{CString,};
-use nix::sys::signal::{SigSet};
+include!("./signal.rs");
 
+pub type __jmp_buf = [::std::os::raw::c_long; 8usize];
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __jmp_buf_tag {
+    pub __jmpbuf: __jmp_buf,
+    pub __mask_was_saved: ::std::os::raw::c_int,
+    pub __saved_mask: __sigset_t,
+}
+extern "C" {
+    pub fn setjmp(__env: *mut __jmp_buf_tag) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn __sigsetjmp(
+        __env: *mut __jmp_buf_tag,
+        __savemask: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+
+use libc::{c_ulong, c_char, intmax_t,  c_short,c_int, c_long};
+use std::ffi::{CString,};
+use nix::sys::signal::{SigSet, Signal};
 use rjobs::{PROCESS,COMMAND, BLOCK_CHILD, UNBLOCK_CHILD};
-// use rjobs::WordList;
-use rread::{SHELL_VAR,sh_var_value_func_t,sh_var_assign_func_t,
-    sigjmp_buf,__jmp_buf_tag,__sigset_t,__sigsetjmp,};
+use rread::{SHELL_VAR, sh_var_value_func_t, sh_var_assign_func_t};
 use rcommon::{r_builtin_unbind_variable,r_builtin_usage,r_get_job_spec,WordList};
 use rcommon::{ WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN};
 
@@ -33,6 +50,7 @@ pub struct JOB {
     j_cleanup:*mut fn(),
     cleanarg:* mut fn()
 }
+
 
 #[repr(C)]
 pub struct jobstats {
@@ -162,28 +180,13 @@ macro_rules! UNBLOCK_SIGNAL {
     };
 }
 
-#[macro_export]
-macro_rules! sigsetjmp {
-    ($env:expr,$savemask:expr) => {
-        unsafe{
-            __sigsetjmp($env,$savemask)
-        }
-        
-    };
-}
+pub type procenv_t=__jmp_buf_tag;
 
-#[macro_export]
-macro_rules! setjmp_sigs {
-    ($x:expr) => {
-        sigsetjmp!(($x),1)
-    };
-}
-
-pub type procenv_t=sigjmp_buf;
 //C库
 extern "C" {
+    static mut wait_intr_buf: procenv_t;
     static mut wait_signal_received:i32;
-    // static mut wait_intr_flag:i32;
+    static mut wait_intr_flag:i32;
     static mut loptend:*mut WordList;
     static  js:jobstats ;
     static mut jobs:*mut*mut JOB;
@@ -191,18 +194,14 @@ extern "C" {
     static assoc_expand_once:i32;
     static mut last_command_exit_signal:i32;
     static posixly_correct:i32;
-    // fn sigsetjmp(env:sigjmp_buf,val:c_int)->i32;
     fn internal_getopt (list:*mut WordList,  opts:*mut c_char)->i32;
-    // fn builtin_usage();
     fn legal_number(string:*const c_char,result:*mut c_long)->i32;
     fn get_job_by_pid(pid:pid_t,block:i32,procp:*mut *mut PROCESS)->i32;
-    // fn get_job_spec(list:*mut WordList)->i32;
     fn sh_badjob(str:*mut c_char);
     fn reset_internal_getopt();
     fn legal_identifier(name:*const c_char)->i32;
     fn valid_array_reference(name:*const c_char,flage:i32)->i32;
     fn sh_invalidid(s:*mut c_char);
-    // fn builtin_unbind_variable(name:*const c_char)->i32;
     fn wait_sigint_cleanup();
     fn first_pending_trap()->i32;
     fn next_pending_trap(start:i32)->i32;
@@ -223,18 +222,10 @@ macro_rules! WAIT_RETURN  {
         {
             wait_signal_received = 0;
             wait_intr_flag = 0;
-                
             $s
-        }         
+        }
     };
 } 
-
-pub static mut wait_intr_flag:i32=0;
-pub static mut wait_intr_buf:procenv_t = [__jmp_buf_tag{
-    __jmpbuf:[0;8],
-    __mask_was_saved:0,
-    __saved_mask:__sigset_t{__val:[0;16]},
-}; 1];
 
 //rust
 #[no_mangle]
@@ -279,15 +270,14 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WordList)->i32{
                     }
                      r_builtin_usage();
                      return EX_USAGE;
-                 } 
+                 }
             }
-            
         }
 
         list = loptend;
         /* Sanity-check variable name if -p supplied. */
-        if vname != std::ptr::null_mut(){            
-            
+        if vname != std::ptr::null_mut(){
+
             //这里有个条件编译，确定是否需要
             let  arrayflags:i32;
             if assoc_expand_once != 0{
@@ -316,7 +306,8 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WordList)->i32{
             specially (I think), since it's handled specially in {no,}jobs.c. */
 
         wait_intr_flag = 1;
-        code = setjmp_sigs!(&mut wait_intr_buf[0]);
+
+        code = __sigsetjmp(&mut wait_intr_buf, 1);//*mut [__jmp_buf_tag; 1]
 
         if code != 0{
             last_command_exit_signal = wait_signal_received;
@@ -332,8 +323,8 @@ pub extern  "C" fn r_wait_builtin(mut list:*mut WordList)->i32{
         /* We special case SIGCHLD when not in posix mode because we don't break
             out of the wait even when the signal is trapped; we run the trap after
             the wait completes. See how it's handled in jobs.c:waitchld(). */
-        
-        if opt==SIGCHLD && posixly_correct==0{
+
+        if opt==(SIGCHLD as i32) && posixly_correct==0{
             opt = next_pending_trap(opt+1);
         }
         if opt != -1{

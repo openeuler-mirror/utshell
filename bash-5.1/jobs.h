@@ -75,6 +75,7 @@ struct pipeline_saver {
   struct pipeline_saver *next;
 };
 
+    extern int wait_intr_flag ;
 /* PALIVE really means `not exited' */
 #define PSTOPPED(p)	(WIFSTOPPED((p)->status))
 #define PRUNNING(p)	((p)->running == PS_RUNNING)
