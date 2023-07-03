@@ -705,7 +705,7 @@ unsafe {
                 }
                 b'e' | b'E' | b'f' | b'F' | b'g' | b'G' | b'a' | b'A' => {
                     let p = getfloatmax();
-                    let f = mklong(start, "L\0".as_ptr() as *mut c_char, 1);
+                    let f = mklong(start, "l\0".as_ptr() as *mut c_char, 1);
                     libc::clearerr(stdout);
                     let PF = || {
                         let nw: c_int;
