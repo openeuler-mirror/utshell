@@ -480,23 +480,23 @@ pub extern "C" fn var_attribute_string(var: *mut SHELL_VAR, pattr: c_int, flags:
 unsafe {
     if pattr == 0 || posixly_correct == 0 {
         if ((*var).attributes & att_array) != 0 {
-            *((flags as usize + i) as *mut c_char) = b'a' as c_char;
+           *(flags.offset(i as isize)) = b'a' as c_char;
             i += 1;
         }
         if ((*var).attributes & att_assoc) != 0 {
-            *((flags as usize + i) as *mut c_char) = b'A' as c_char;
+           *(flags.offset(i as isize)) = b'A' as c_char;
             i += 1;
         }
         if ((*var).attributes & att_function) != 0 {
-            *((flags as usize + i) as *mut c_char) = b'f' as c_char;
+            *(flags.offset(i as isize)) = b'f' as c_char;
             i += 1;
         }
         if ((*var).attributes & att_integer) != 0 {
-            *((flags as usize + i) as *mut c_char) = b'i' as c_char;
+            *(flags.offset(i as isize)) = b'i' as c_char;
             i += 1;
         }
         if ((*var).attributes & att_nameref) != 0 {
-            *((flags as usize + i) as *mut c_char) = b'n' as c_char;
+            *(flags.offset(i as isize)) = b'n' as c_char;
             i += 1;
         }
         if ((*var).attributes & att_readonly) != 0 {
@@ -504,41 +504,41 @@ unsafe {
             i += 1;
         }
         if ((*var).attributes & att_trace) != 0 {
-            *((flags as usize + i) as *mut c_char) = b't' as c_char;
+           *(flags.offset(i as isize)) = b't' as c_char;
             i += 1;
         }
         if ((*var).attributes & att_exported) != 0 {
-            *((flags as usize + i) as *mut c_char) = b'x' as c_char;
+           *(flags.offset(i as isize)) = b'x' as c_char;
             i += 1;
         }
         if ((*var).attributes & att_capcase) != 0 {
-            *((flags as usize + i) as *mut c_char) = b'c' as c_char;
+           *(flags.offset(i as isize)) = b'c' as c_char;
             i += 1;
         }
         if ((*var).attributes & att_lowercase) != 0 {
-            *((flags as usize + i) as *mut c_char) = b'l' as c_char;
+           *(flags.offset(i as isize)) = b'l' as c_char;
             i += 1;
         }
         if ((*var).attributes & att_uppercase) != 0 {
-            *((flags as usize + i) as *mut c_char) = b'u' as c_char;
+           *(flags.offset(i as isize)) = b'u' as c_char;
             i += 1;
         }
     } else {
         if ((*var).attributes & att_array) != 0 {
-            *((flags as usize + i) as *mut c_char) = b'a' as c_char;
+           *(flags.offset(i as isize)) = b'a' as c_char;
             i += 1;
         }
         if ((*var).attributes & att_assoc) != 0 {
-            *((flags as usize + i) as *mut c_char) = b'A' as c_char;
+           *(flags.offset(i as isize)) = b'A' as c_char;
             i += 1;
         }
         if ((*var).attributes & att_function) != 0 {
-            *((flags as usize + i) as *mut c_char) = b'f' as c_char;
+           *(flags.offset(i as isize)) = b'f' as c_char;
             i += 1;
         }
     }
 
-    *((flags as usize + i) as *mut c_char) = b'\0' as c_char;
+   *(flags.offset(i as isize)) = b'\0' as c_char;
 }
     return i as c_int;
 }
