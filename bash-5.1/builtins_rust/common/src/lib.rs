@@ -12,6 +12,9 @@ include!(concat!("lib_readline_keymaps.rs"));
 
 include!(concat!("command.rs"));
 
+use fluent_bundle::{FluentBundle, FluentResource, FluentValue, FluentArgs};
+use fluent_resmgr::resource_manager::ResourceManager;
+
 //struct
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -543,12 +546,6 @@ macro_rules!  QUIT {
     };
 }
 
-#[macro_export]
-macro_rules! savestring {
-    ($x:expr) => {
-        strcpy(xmalloc(1 + strlen($x)) as *mut c_char,$x) as *mut c_char
-    }
-}
 
 #[macro_export]
 macro_rules! FREE {
@@ -1026,7 +1023,7 @@ pub extern "C" fn r_remember_args(mut list:*mut WordList,destructive:i32){
 
             if !list.is_null(){
                 posparam_count = i;
-                *dollar_vars.as_mut_ptr().offset(posparam_count as isize) = savestring!((*(*list).word).word);
+                *dollar_vars.as_mut_ptr().offset(posparam_count as isize) = r_savestring((*(*list).word).word);
                 list = (*list).next;
             }
             i += 1;
@@ -1070,7 +1067,7 @@ pub extern "C" fn r_shift_args(mut times:i32){
 
             if !rest_of_args.is_null(){
                 temp = rest_of_args;
-                *dollar_vars.as_mut_ptr().offset(9) = savestring!((*(*temp).word).word);
+                *dollar_vars.as_mut_ptr().offset(9) = r_savestring((*(*temp).word).word);
                 rest_of_args = (*rest_of_args).next;
                 (*temp).next = std::ptr::null_mut();
                 dispose_words(temp);
@@ -1289,7 +1286,7 @@ pub extern "C" fn r_get_working_directory(for_whom:*mut c_char)->*mut c_char{
                 return std::ptr::null_mut();
             }
         }
-        return savestring!(the_current_working_directory);
+        return r_savestring(the_current_working_directory);
     }
 }
 
@@ -1297,7 +1294,7 @@ pub extern "C" fn r_get_working_directory(for_whom:*mut c_char)->*mut c_char{
 pub extern "C" fn r_set_working_dierctory(name:*mut c_char){
     unsafe{
         FREE!(the_current_working_directory as *mut c_void);
-        the_current_working_directory = savestring!(name);
+        the_current_working_directory = r_savestring(name);
     } 
 }
 
@@ -1771,10 +1768,56 @@ pub extern "C" fn get_local_str()-> Vec<LanguageIdentifier>{
     let locales = vec![langid.into()];
     return locales; 
   }
-pub unsafe fn savestring(x:* const c_char)->* mut c_char
+
+pub unsafe fn r_savestring(x:* const c_char)->* mut c_char
 {
     let len = 1+libc::strlen(x);
   let str1:* mut c_char=libc::malloc(len) as * mut c_char;
   libc::memset(str1 as *mut libc::c_void, 0, len);
   return libc::strcpy(str1 as *mut c_char ,x);
+}
+
+
+pub unsafe fn err_translate_fn (command:&String , args1 : *mut libc::c_char) {
+    let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
+    let resources = vec![ "message.ftl".into() ];
+    let mut args = FluentArgs::new();
+    if args1 !=  std::ptr::null_mut(){
+        args.set("str1",format!("{:?}",CStr::from_ptr(args1).to_str().unwrap()));
+    }
+
+    let bundle = mgr.get_bundle(get_local_str(), resources);
+    let mut value = bundle.get_message(command).unwrap();
+    let mut pattern = value.value().expect("partern err");
+    let mut errors = vec![];
+    if args1 !=  std::ptr::null_mut(){
+        let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+        eprint!("{msg1}");
+    }
+    else {
+        let mut msg1 = bundle.format_pattern(&pattern, None, &mut errors);
+        eprint!("{msg1}");
+    } 
+}
+
+pub unsafe fn translate_fn (command:&String , args1 : *mut libc::c_char) {
+    let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
+    let resources = vec![ "message.ftl".into() ];
+    let mut args = FluentArgs::new();
+    if args1 !=  std::ptr::null_mut(){
+        args.set("str1",format!("{:?}",CStr::from_ptr(args1).to_str().unwrap()));
+    }
+
+    let bundle = mgr.get_bundle(get_local_str(), resources);
+    let mut value = bundle.get_message(command).unwrap();
+    let mut pattern = value.value().expect("partern err");
+    let mut errors = vec![];
+    if args1 !=  std::ptr::null_mut(){
+        let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+        print!("{msg1}");
+    }
+    else {
+        let mut msg1 = bundle.format_pattern(&pattern, None, &mut errors);
+        print!("{msg1}");
+    } 
 }

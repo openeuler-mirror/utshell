@@ -1,4 +1,4 @@
-use rcommon::{WordList};
+use rcommon::{WordList,err_translate_fn};
 use rhelp::r_builtin_help;
 pub const EXECUTION_SUCCESS : c_int = 0;
 pub const EXECUTION_FAILURE : c_int = 1;

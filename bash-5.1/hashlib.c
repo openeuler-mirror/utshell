@@ -152,6 +152,7 @@ hash_rehash (table, nsize)
     }
 
   free (old_bucket_array);
+  old_bucket_array = NULL;
 }
 
 static void
@@ -397,6 +398,7 @@ hash_flush (table, free_data)
 	    free (item->data);
 	  free (item->key);
 	  free (item);
+	  item = NULL;
 	}
       table->bucket_array[i] = (BUCKET_CONTENTS *)NULL;
     }
@@ -411,6 +413,7 @@ hash_dispose (table)
 {
   free (table->bucket_array);
   free (table);
+  table = NULL;
 }
 
 void
@@ -526,6 +529,7 @@ main ()
 	{
 	  fprintf (stderr, "You have already added item `%s'\n", string);
 	  free (temp_string);
+	  temp_string = NULL
 	}
       else
 	{

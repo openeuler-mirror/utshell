@@ -3,7 +3,7 @@ extern crate nix;
 
 use libc::{c_char, c_int, c_ulong, c_void};
 use std::{ffi::CString, ffi::CStr};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, savestring} ;
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, r_savestring} ;
 use rhelp::r_builtin_help;
 
 #[repr(u8)]
@@ -599,7 +599,7 @@ pub static mut Carg:* mut c_char=std::ptr::null_mut();
 unsafe fn STRDUP(x:* const c_char)->* mut c_char
 {
   if x !=std::ptr::null_mut() {
-      return savestring (x);
+      return r_savestring (x);
   } else {
       return std::ptr::null_mut();
   }
@@ -642,7 +642,7 @@ pub extern "C" fn r_find_compact (name:* mut c_char)->i32
   unsafe {
     let compacts:CompactsArray=CompactsArray::new();
     while compacts.compactsArr[i as usize].actname != std::ptr::null_mut() {
-        let tmp = CStr::from_ptr(compacts.compactsArr[i as usize].actname);
+      let tmp = CStr::from_ptr(compacts.compactsArr[i as usize].actname);
       if STREQ (name, compacts.compactsArr[i as usize].actname) {
         return i;
       }
@@ -891,7 +891,6 @@ pub extern "C" fn r_complete_builtin (listt: *mut WordList)->i32
         wl = std::ptr::null_mut();
     }
 
-
     /* -p overrides everything else */
     if oflags.pflag !=0 || (list == std::ptr::null_mut() && opt_given == 0) {
         if wl != std::ptr::null_mut() {
@@ -957,7 +956,6 @@ pub extern "C" fn r_complete_builtin (listt: *mut WordList)->i32
     dispose_words (wl);
     return rval;
   }
-  
 }
 
 #[no_mangle]
@@ -1357,10 +1355,12 @@ pub extern "C" fn r_compopt_builtin (listt:* mut WordList)->i32
           if cs == std::ptr::null_mut() {
             builtin_error (CString::new("%s: no completion specification").unwrap().as_ptr(), (*((*list).word)).word);
             ret = EXECUTION_FAILURE!();
+          l = (*l).next;
             continue;
           }
           if opts_on == 0 && opts_off == 0 {
             r_print_compopts ((*((*list).word)).word, cs, 1);
+          l = (*l).next;
             continue;			/* XXX -- fill in later */
           }
 

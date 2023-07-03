@@ -2,7 +2,7 @@ use std::ffi::CStr;
 use std::{ffi::CString};
 use libc::{size_t, c_int, c_uint, c_char, c_long, c_void, PT_NULL, c_ulong, strchr, };
 
-use rcommon::{r_builtin_usage,r_sh_invalidid,r_sh_wrerror,r_builtin_bind_variable,SHELL_VAR, savestring};
+use rcommon::{r_builtin_usage,r_sh_invalidid,r_sh_wrerror,r_builtin_bind_variable,SHELL_VAR, r_savestring};
 
 include!(concat!("intercdep.rs"));
 
@@ -524,7 +524,7 @@ unsafe {
                     let xp: *mut c_char;
                     let p = getstr();
                     if !p.is_null() && *p == 0 {
-                        xp = savestring(b"''\0".as_ptr() as *mut c_char);
+                        xp = r_savestring(b"''\0".as_ptr() as *mut c_char);
                         //xp = savestring(b"''\0".as_ptr() as *const c_char);
                     } else if ansic_shouldquote(p) != 0 {
                         xp = ansic_quote(p, 0, PT_NULL as *mut c_int);
