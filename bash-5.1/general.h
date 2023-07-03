@@ -169,7 +169,7 @@ typedef struct {
 
 /* More convenience definitions that possibly save system or libc calls. */
 #define STRLEN(s) (((s) && (s)[0]) ? ((s)[1] ? ((s)[2] ? strlen(s) : 2) : 1) : 0)
-#define FREE(s)  do { if (s) free (s); } while (0)
+#define FREE(s)  do { if (s) free (s); s = NULL; } while (0)
 #define MEMBER(c, s) (((c) && c == (s)[0] && !(s)[1]) || (member(c, s)))
 
 /* A fairly hairy macro to check whether an allocated string has more room,
