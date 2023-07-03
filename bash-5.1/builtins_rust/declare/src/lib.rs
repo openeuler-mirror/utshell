@@ -1021,7 +1021,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 				  if nodefs !=0 {
 					t=(*var).name;
 				  } else {
-					named_function_string (name, function_cell (var), FUNC_MULTILINE!()|FUNC_EXTERNAL!());
+					t = named_function_string (name, function_cell (var), FUNC_MULTILINE!()|FUNC_EXTERNAL!());
 				  }
 				  println!("{}",CStr::from_ptr(t).to_str().unwrap());
 			      any_failed = sh_chkwrite (any_failed);
