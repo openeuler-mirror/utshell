@@ -52,7 +52,6 @@ unsafe {
         }
         opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
     }
-
     list = loptend;
 
     if !list.is_null() {
@@ -88,10 +87,10 @@ unsafe {
             assign = assignment(name, 0);
             aflags = 0;
             if assign != 0 {
-                *((name as usize + assign as usize) as *mut c_char) = b'\0' as c_char;
-                if *((name as usize + assign as usize - 1) as *mut c_char) == b'+' as c_char {
+                *(name.offset(assign  as isize ) ) = b'\0' as c_char;
+                if *((name.offset((assign-1)  as isize))) == b'+' as c_char {
                     aflags |= ASS_APPEND;
-                    *((name as usize + assign as usize - 1) as *mut c_char) = b'\0' as c_char;
+                    *(name.offset((assign-1)  as isize))  = b'\0' as c_char;
                 }
             }
 
@@ -107,9 +106,9 @@ unsafe {
             }
 
             if assign != 0 {
-                *((name as usize + assign as usize) as *mut c_char) = b'=' as c_char;
+                *(name.offset(assign  as isize)) = b'=' as c_char;
                 if (aflags & ASS_APPEND) != 0 {
-                    *((name as usize + assign as usize - 1) as *mut c_char) = b'+' as c_char;
+                    *(name.offset((assign-1) as isize)) = b'+' as c_char;
                 }
 
                 if arrays_only != 0 || assoc_only != 0 {
@@ -149,22 +148,24 @@ unsafe {
                 } else if do_assignment_no_expand(name) == 0 {
                     assign_error += 1;
                 }
-                *((name as usize + assign as usize) as *mut c_char) = b'\0' as c_char;
+                *(name.offset(assign  as isize))  = b'\0' as c_char;
                 if (aflags & ASS_APPEND) != 0 {
-                    *((name as usize + assign as usize - 1) as *mut c_char) = b'\0' as c_char;
+                    *(name.offset((assign-1)  as isize))  = b'\0' as c_char;
                 }
             }
 
             set_var_attribute(name, attribute, undo);
             if assign != 0 {
+                *(name.offset(assign  as isize))  = b'=' as c_char;
                 *((name as usize + assign as usize) as *mut c_char) = b'=' as c_char;
                 if (aflags & ASS_APPEND) != 0 {
-                    *((name as usize + assign as usize - 1) as *mut c_char) = b'+' as c_char;
+                    *(name.offset((assign-1)  as isize))  = b'+' as c_char;
                 }
             }
             list = (*list).next;
         }
-    } else {
+    }
+    else {
         let mut variable_list: *mut *mut SHELL_VAR;
         if (attribute & att_function) != 0 || functions_only {
             variable_list = all_shell_functions();
@@ -190,15 +191,15 @@ unsafe {
         if !variable_list.is_null() {
             let mut i = 0;
             loop {
-                    var = *((variable_list as usize + (8*i))as  *mut *mut SHELL_VAR)  as  *mut SHELL_VAR;
-                
+                var =  *(variable_list.offset(i))  as  *mut SHELL_VAR;
                 if var.is_null() {
                     break;
                 }
 
-                if arrays_only != 0 && ((*var).attributes & att_array) != 0 {
+                if arrays_only != 0 && ((*var).attributes & att_array) == 0 {
+                    i += 1;
                     continue;
-                } else if assoc_only != 0 && ((*var).attributes & assoc_only) != 0 {
+                } else if assoc_only != 0 && ((*var).attributes & assoc_only) == 0 {
                     i += 1;
                     continue;
                 }
