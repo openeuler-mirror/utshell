@@ -976,6 +976,16 @@ $cmdName ->
         Returns success unless MODE is invalid or an invalid option is given.
     
 [return] 
+    Return from a shell function.
+
+        Causes a function or sourced script to exit with the return value
+        specified by N.  If N is omitted, the return status is that of the
+        last command executed within the function or script.
+
+        Exit Status:
+        Returns N, or failure if the shell is not executing a function or script.
+    
+[wait] 
     Wait for job completion and return exit status.
     
         Waits for each process identified by an ID, which may be a process ID or 
@@ -984,17 +994,14 @@ $cmdName ->
         status is zero.  If ID is a job specification, waits for all processes
         in that job's pipeline.
         
-        If the -n option is supplied, waits for a single job from the list of 
-        IDs,
-        or, if no IDs are supplied, for the next job to complete and returns 
-        its
+        If the -n option is supplied, waits for a single job from the list of IDs,
+        or, if no IDs are supplied, for the next job to complete and returns its 
         exit status.
         
         If the -p option is supplied, the process or job identifier of the job
         for which the exit status is returned is assigned to the variable VAR
         named by the option argument. The variable will be unset initially, 
-        before
-        any assignment. This is useful only when the -n option is supplied.
+        before any assignment. This is useful only when the -n option is supplied.
         
         If the -f option is supplied, and job control is enabled, waits for the
         specified ID to terminate, instead of waiting for it to change status.
@@ -1004,19 +1011,6 @@ $cmdName ->
         option is given, or if -n is supplied and the shell has no unwaited-for
         children.
     
-[wait] 
-    Wait for process completion and return exit status.
-    
-        Waits for each process specified by a PID and reports its termination 
-        status.
-        If PID is not given, waits for all currently active child processes,
-        and the return status is zero.  PID must be a process ID.
-        
-        Exit Status:
-        Returns the status of the last PID; fails if PID is invalid or an 
-        invalid
-        option is given.
-        
 [for] 
     Execute commands for each member in a list.
         
