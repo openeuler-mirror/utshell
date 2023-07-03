@@ -315,7 +315,7 @@ unsafe extern "C" fn enable_shell_command(
         if !set_cmd_enable(CStr::from_ptr(name).to_string_lossy().into_owned(), false) {
             insert_empty_cmd(CStr::from_ptr(name).to_string_lossy().into_owned());
             set_cmd_enable(CStr::from_ptr(name).to_string_lossy().into_owned(), false);
-            get_cmd_enable(CStr::from_ptr(name).to_string_lossy().into_owned());
+            //get_cmd_enable(CStr::from_ptr(name).to_string_lossy().into_owned());
         }
     } else if restricted != 0 && (*b).flags & BUILTIN_ENABLED == 0 {
         sh_restricted(0 as *mut libc::c_void as *mut libc::c_char);
