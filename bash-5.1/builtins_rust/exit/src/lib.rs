@@ -10,7 +10,7 @@ use std::ffi::CString;
 
 use rjobs::{PROCESS, COMMAND, r_jobs_builtin, JLIST_STANDARD};
 
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,err_translate_fn};
+use rcommon::{WordList, EX_USAGE, EXECUTION_FAILURE,err_translate_fn};
 use rhelp::r_builtin_help;
 
 #[repr(C)]
