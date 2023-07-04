@@ -353,7 +353,7 @@ fn show_helpsynopsis( i : i32)
     let mut pattern = value.value().expect("partern err");
     let mut errors = vec![];
     let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
-     println!("    {}", msg1);
+     println!(" {}", msg1);
 }
 
 fn show_desc (i :i32){
