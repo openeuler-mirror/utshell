@@ -397,7 +397,7 @@ extern "C" {
       l=(*l).next;
   }
    
-  let mut c_str_jobs_builtin = CString::new("jobs_builtin").unwrap();
+  let c_str_jobs_builtin = CString::new("jobs_builtin").unwrap();
   /* Next make a new simple command and execute it. */
   begin_unwind_frame (c_str_jobs_builtin.as_ptr() as * mut c_char);
 
@@ -433,7 +433,7 @@ pub extern "C" fn r_jobs_builtin(mut list:*mut WordList)->i32 {
     unsafe {
     reset_internal_getopt();
     
-    let mut c_str_lpnxrs = CString::new("lpnxrs").unwrap(); // from a &str, creates a new allocation
+    let c_str_lpnxrs = CString::new("lpnxrs").unwrap(); // from a &str, creates a new allocation
 
     opt = internal_getopt (list, c_str_lpnxrs.as_ptr() as * mut c_char);
     while  opt != -1 {
@@ -444,7 +444,7 @@ pub extern "C" fn r_jobs_builtin(mut list:*mut WordList)->i32 {
             'n'=>{form = JLIST_CHANGED_ONLY!();}
             'x'=>{
                 if form != JLIST_STANDARD!() {
-                    let mut c_str_err = CString::new("no other options allowed with `-x'").unwrap(); // from a &str, creates a new allocation
+                    let c_str_err = CString::new("no other options allowed with `-x'").unwrap(); // from a &str, creates a new allocation
                     builtin_error (c_str_err.as_ptr());
                     return EXECUTION_FAILURE!();
                 }
@@ -519,7 +519,7 @@ pub extern "C" fn r_disown_builtin (list:* mut WordList)->libc::c_int {
   let mut pid_value:c_long=0;
   unsafe {
   reset_internal_getopt ();
-  let mut c_str_ahr = CString::new("ahr").unwrap(); // from a &str, creates a new allocation
+  let c_str_ahr = CString::new("ahr").unwrap(); // from a &str, creates a new allocation
   opt = internal_getopt (list, c_str_ahr.as_ptr() as * mut c_char);
   while  opt != -1 {
     let opt_char:char= opt as u8 as char;
@@ -551,7 +551,7 @@ pub extern "C" fn r_disown_builtin (list:* mut WordList)->libc::c_int {
 	    return EXECUTION_SUCCESS!();
   }
   BLOCK_CHILD !(Some(&mut set), Some(&mut oset));
-  if (loptend !=std::ptr::null_mut() && legal_number ((*(*loptend).word).word, &mut pid_value) !=0 && pid_value ==  pid_value) {
+  if loptend !=std::ptr::null_mut() && legal_number ((*(*loptend).word).word, &mut pid_value) !=0 && pid_value ==  pid_value {
      job=get_job_by_pid ( pid_value as i32, 0, 0 as *mut*mut PROCESS);
   }else {
     job = get_job_spec (loptend);

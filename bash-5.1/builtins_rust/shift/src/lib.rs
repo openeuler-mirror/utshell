@@ -19,7 +19,7 @@ unsafe {
         return EX_USAGE;
     }
 
-    let mut times: c_int = 0;
+    let times: c_int = 0;
     if get_numeric_arg(list, 0, std::mem::transmute(&times)) == 0 {
         return EXECUTION_FAILURE;
     }
