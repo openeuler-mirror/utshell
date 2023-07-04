@@ -792,7 +792,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
       name = r_savestring ((*(*list).word).word);
       wflags = (*(*list).word).flags;
 
-      assoc_noexpand = (assoc_expand_once !=0 && (wflags & (1 << 2)) !=0);
+      assoc_noexpand = assoc_expand_once !=0 && (wflags & (1 << 2)) !=0;
       //　分出=
       if assoc_noexpand {
 		offset = assignment (name,  2);
@@ -1309,7 +1309,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		if array_subscript_assignment && array_exists !=0 && creating_array == 0 {
 			simple_array_assign = 1;
 		} else if (making_array_special !=0 || creating_array !=0 || array_exists !=0) && offset!=0 {
-	      let mut vlen:i32;
+	      let vlen:i32;
 	      vlen = libc::strlen (value) as i32;
 		  /*itrace("declare_builtin: name = %s value = %s flags = %d", name, value, wflags);*/
 	      if shell_compatibility_level > 43 && (wflags & W_COMPASSIGN!()) == 0 && *value == '(' as c_char && *(value.offset((vlen-1) as isize) as * mut c_char) == ')' as c_char {
