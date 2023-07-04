@@ -1,7 +1,7 @@
 //# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-use std::ffi::CStr;
+
 use std::{ffi::CString};
 use libc::{size_t, c_int, c_uint, c_char, c_long, c_void, PT_NULL, c_ulong, strchr, };
 
@@ -186,8 +186,8 @@ unsafe {
             if *fmt == b'\\' as c_char {               
                 fmt = (fmt as usize + 1) as *mut c_char;
                 
-                let mut mbch: [libc::c_char;25] = [0; 25];
-                let mut mblen: c_int = 0;
+                let mbch: [libc::c_char;25] = [0; 25];
+                let mblen: c_int = 0;
                 fmt = (fmt as usize + tescape(fmt, mbch.as_ptr() as *mut c_char, std::mem::transmute(&mblen), PT_NULL as *mut c_int) as usize) as *mut c_char;
                 let mut mbind = 0;
                
@@ -502,7 +502,7 @@ unsafe {
                     }
                 }
                 b'b' => {
-                    let mut rlen: c_int = 0;
+                    let rlen: c_int = 0;
                     let mut r: c_int = 0;
                     ch = 0;
                     let p = getstr();
@@ -999,9 +999,9 @@ unsafe fn tescape(estart: *mut c_char, cp:*mut c_char, lenp: *mut c_int, sawc: *
 unsafe fn bexpand(string: *mut c_char, len: c_int, sawc: *mut c_int, lenp: *mut c_int) -> *mut c_char
 {
     let mut mbch:[c_char; 25];
-    let mut mblen: c_int = 0;
+    let mblen: c_int = 0;
 
-    let mut ret: *mut c_char;
+    let ret: *mut c_char;
     let mut r: *mut c_char;
     let mut s: *mut c_char;
     let mut c: c_char;
@@ -1030,7 +1030,7 @@ unsafe fn bexpand(string: *mut c_char, len: c_int, sawc: *mut c_int, lenp: *mut 
             continue;
         }
 
-        let mut temp: c_int = 0;
+        let temp: c_int = 0;
         mbch = [0; 25];
         let n = tescape(s, mbch.as_mut_ptr() as *mut c_char,
         std::mem::transmute(&mblen), std::mem::transmute(&temp));
@@ -1154,7 +1154,7 @@ unsafe fn getintmax() -> c_long
         return asciicode();
     }
 
-    let mut ep: *mut c_char = PT_NULL as *mut c_char;
+    let ep: *mut c_char = PT_NULL as *mut c_char;
     *libc::__errno_location() = 0;
     let ret = libc::strtol((*(*garglist).word).word, std::mem::transmute(&ep), 0);
     if *ep != 0 {
@@ -1179,7 +1179,7 @@ unsafe fn getuintmax() -> c_ulong
     }
 
     *libc::__errno_location() = 0;
-    let mut ep: *mut c_char = PT_NULL as *mut c_char;
+    let ep: *mut c_char = PT_NULL as *mut c_char;
     let ret = libc::strtoul((*(*garglist).word).word, std::mem::transmute(&ep), 0);
     if *ep != 0 {
         sh_invalidnum((*(*garglist).word).word);

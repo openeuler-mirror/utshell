@@ -11,7 +11,7 @@ include!(concat!("intercdep.rs"));
 pub extern "C" fn r_let_builtin(mut list: *mut WordList) -> i32 {
 unsafe {
     let mut ret: c_long = 0;
-	let mut expok: c_int = 0;
+	let expok: c_int = 0;
 
 	if !list.is_null() && !(*list).word.is_null() &&
 		libc::strcmp((*((*list).word)).word, "--help\0".as_ptr() as *const c_char) == 0 {
@@ -43,10 +43,10 @@ unsafe {
 }
 
 #[no_mangle]
-pub extern "C" fn r_exp_builtin(mut list: *mut WordList) -> i32 {
+pub extern "C" fn r_exp_builtin(list: *mut WordList) -> i32 {
 
 unsafe {
-	let mut expok: c_int = 0;
+	let expok: c_int = 0;
 
 	if list.is_null() {
 		let names = String::from("letwarn");

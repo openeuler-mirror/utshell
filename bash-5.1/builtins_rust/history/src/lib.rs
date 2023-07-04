@@ -24,7 +24,7 @@ pub extern "C" fn r_history_builtin(mut list: *mut WordList) -> i32 {
     let mut opt: c_int;
     let mut result: c_int;
 
-    let mut filename: *mut c_char;
+    let filename: *mut c_char;
     let mut delete_arg: *mut c_char = PT_NULL as *mut c_char;
     let mut range: *mut c_char;
 
@@ -206,7 +206,7 @@ fn histtime(hlist: *mut HIST_ENTRY, histtimefmt: *const c_char) -> *mut c_char
 unsafe {
     static mut timestr: [c_char;128] = [0;128];
 
-    let mut t = history_get_time(hlist);
+    let t = history_get_time(hlist);
     let tm = if t != 0 {libc::localtime(&t)} else {PT_NULL as *mut libc::tm};
     if t != 0 && !tm.is_null() {
         strftime(std::mem::transmute(&timestr),
@@ -239,7 +239,7 @@ unsafe fn quit()
 unsafe fn display_history(list: *mut WordList) -> c_int
 {
     let mut limit:c_long = 0;
-    let mut histtimefmt: *mut c_char;
+    let histtimefmt: *mut c_char;
     let mut timestr: *mut c_char;
 
     if !list.is_null() {
@@ -317,7 +317,7 @@ fn expand_and_print_history(mut list: *mut WordList) -> c_int
 {
 unsafe {
 
-    let mut s: *mut c_char = PT_NULL as *mut c_char;
+    let s: *mut c_char = PT_NULL as *mut c_char;
     let mut result: c_int;
 
     if hist_last_line_pushed == 0 && hist_last_line_added != 0 && bash_delete_last_history() == 0 {
