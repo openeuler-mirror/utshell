@@ -1,7 +1,7 @@
 //# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable,WordList,WordDesc};
+use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable,WordList};
 pub type SHELL_VAR = rcommon::SHELL_VAR;
 use rhelp::r_builtin_help;
 pub type __intmax_t = c_long;
