@@ -4,10 +4,10 @@
 use std::ffi::{CString,CStr};
 extern crate rcmd;
 use libc::c_char;
-use std::path::Path;
-use libloading::Library;
+
+
 use rcmd::*;
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use rhelp::r_builtin_help;
 /*
 #define ENABLED  1
@@ -274,7 +274,7 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
 }
 
 //仅仅-p的时候会调用，打印，filter决定是enable，disable
-unsafe extern "C" fn list_some_builtins(mut filter: libc::c_int) {
+unsafe extern "C" fn list_some_builtins(filter: libc::c_int) {
     let mut i: i32 = 0;
 
     while i < num_shell_builtins {
@@ -305,8 +305,8 @@ unsafe extern "C" fn list_some_builtins(mut filter: libc::c_int) {
     }
 }
 unsafe extern "C" fn enable_shell_command(
-    mut name: *mut libc::c_char,
-    mut disable_p: libc::c_int,
+    name: *mut libc::c_char,
+    disable_p: libc::c_int,
 ) -> libc::c_int {
     let mut b: *mut builtin = 0 as *mut builtin;
     b = builtin_address_internal(name, 1);
@@ -336,8 +336,8 @@ unsafe extern "C" fn enable_shell_command(
 }
 unsafe extern "C" fn dyn_load_builtin(
     mut list: *mut WordList,
-    mut flags: libc::c_int,
-    mut filename: *mut libc::c_char,
+    flags: libc::c_int,
+    filename: *mut libc::c_char,
 ) -> libc::c_int {
     let mut l: *mut WordList = 0 as *mut WordList;
     let mut handle: *mut libc::c_void = 0 as *mut libc::c_void;
@@ -563,7 +563,7 @@ unsafe extern "C" fn dyn_load_builtin(
     free(new_builtins as *mut libc::c_void);
     return 0 as libc::c_int;
 }
-unsafe extern "C" fn delete_builtin(mut b: *mut builtin) {
+unsafe extern "C" fn delete_builtin(b: *mut builtin) {
     let mut ind: libc::c_int = 0;
     let mut size: libc::c_int = 0;
     let mut new_shell_builtins: *mut builtin = 0 as *mut builtin;
@@ -595,10 +595,10 @@ unsafe extern "C" fn delete_builtin(mut b: *mut builtin) {
     num_shell_builtins -= 1;
     shell_builtins = new_shell_builtins;
 }
-unsafe extern "C" fn local_dlclose(mut handle: *mut libc::c_void) -> libc::c_int {
+unsafe extern "C" fn local_dlclose(handle: *mut libc::c_void) -> libc::c_int {
     return dlclose(handle);
 }
-unsafe extern "C" fn dyn_unload_builtin(mut name: *mut libc::c_char) -> libc::c_int {
+unsafe extern "C" fn dyn_unload_builtin(name: *mut libc::c_char) -> libc::c_int {
     let mut b: *mut builtin = 0 as *mut builtin;
     let mut handle: *mut libc::c_void = 0 as *mut libc::c_void;
     let mut funcname: *mut libc::c_char = 0 as *mut libc::c_char;

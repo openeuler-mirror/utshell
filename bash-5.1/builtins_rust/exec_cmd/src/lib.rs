@@ -47,9 +47,9 @@ use rtype::r_type_builtin;
 use rulimit::r_ulimit_builtin;
 use rumask::r_umask_builtin;
 use rwait::r_wait_builtin;
-use std::ffi::CStr;
-use std::ffi::CString;
-use libc::{strcmp};
+
+
+
 
 enum CMDType {
     AliasCmd,
@@ -198,7 +198,7 @@ impl CommandExec for FalseComand{
 }
   struct CommonComand;
   impl CommandExec for CommonComand{
-    fn  excute(&self,list : *mut WordList)-> i32{
+    fn  excute(&self,_list : *mut WordList)-> i32{
         0
     }
 }
@@ -374,7 +374,7 @@ impl CommandExec for DirsCommand{
 }
   struct ReservedComand;
   impl CommandExec for ReservedComand{
-    fn  excute(&self,list : *mut WordList)-> i32{
+    fn  excute(&self,_list : *mut WordList)-> i32{
        // r_reserve_builtin(list)
        0
     }
@@ -387,7 +387,7 @@ impl CommandExec for DirsCommand{
 }
   struct SetattrComand;
   impl CommandExec for SetattrComand{
-    fn  excute(&self,list : *mut WordList)-> i32{
+    fn  excute(&self,_list : *mut WordList)-> i32{
        //r_setattr_builtin(list);
        /*unkown enter which func */
        0
@@ -916,7 +916,7 @@ unsafe fn get_cmd_type (command : *mut libc::c_char) -> CMDType{
 }
 
 #[no_mangle]
-pub extern "C" fn r_exec_cmd(command : *mut libc::c_char, mut list :*mut WordList) -> i32 {
+pub extern "C" fn r_exec_cmd(command : *mut libc::c_char, list :*mut WordList) -> i32 {
 
     // println!("enter r_exec_cmd");
     // unsafe {
