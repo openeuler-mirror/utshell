@@ -12,6 +12,9 @@ libc = "*"
 nix = "*"
 rcommon = {path ="../common"}
 rhelp = {path ="../help"}
+fluent = "*"
+fluent-bundle = "*"
+fluent-resmgr = "*"
 
 [lib]
 crate-type = ["staticlib","rlib"]

@@ -3,7 +3,7 @@ extern crate nix;
 
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage, savestring};
 use rhelp::r_builtin_help;
 
 #[repr(u8)]
@@ -264,11 +264,6 @@ pub extern "C" fn r_maybe_pop_dollar_vars ()
   }
 }
 
-unsafe fn  savestring(x:* mut c_char)->* mut c_char
-{
-  let str1:* mut c_char=libc::malloc(1 + libc::strlen (x as * const c_char)) as * mut c_char;
-  return libc::strcpy(str1,x as * const c_char);
-}
 
 unsafe fn TRAP_STRING(s:i32)->* mut c_char {
   if signal_is_trapped (s) !=0 && signal_is_ignored (s) == 0 {
