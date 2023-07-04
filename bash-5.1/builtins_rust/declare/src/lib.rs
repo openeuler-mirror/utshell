@@ -5,7 +5,7 @@ use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, r_savestring};
 use rhelp::r_builtin_help;
-use rsetattr::{show_name_attributes,set_or_show_attributes};
+use rsetattr::{show_name_attributes,set_or_show_attributes,show_all_var_attributes};
 use std::ffi::CStr;
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -463,7 +463,7 @@ extern "C" {
     fn builtin_usage();
     static mut loptend:*mut WordList;
     fn show_local_var_attributes (v:i32, nodefs:i32)->i32;
-    fn show_all_var_attributes (v:i32, nodefs:i32)->i32;
+    // fn show_all_var_attributes (v:i32, nodefs:i32)->i32;
     fn set_builtin (list:*mut WordList)->i32;
     fn sh_chkwrite (ret:i32)->i32;
     fn show_func_attributes (name:* mut c_char, nodefs:i32)->i32;
@@ -651,7 +651,6 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
   let mut shell_fn:*mut function_def;
 
   refvar = std::ptr::null_mut();
-
   unsafe {
   reset_internal_getopt ();
   let tmp = DECLARE_OPTS();
@@ -777,7 +776,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	  let wflags:i32;
 	  let mut created_var:i32;
 	  let mut namelen:i32;
-      let assoc_noexpand:i32;
+      let assoc_noexpand:bool;
 
       let mut making_array_special:i32;
 	  let mut compound_array_assign:i32;
@@ -785,14 +784,14 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
       let mut var_exists:i32;
 	  let mut array_exists:i32;
 	  let mut creating_array:i32;
-	  let mut array_subscript_assignment:i32;
+	  let mut array_subscript_assignment:bool;
 
       name = r_savestring ((*(*list).word).word);
       wflags = (*(*list).word).flags;
 
-      assoc_noexpand = (assoc_expand_once !=0 && (wflags & (1 << 2)) !=0) as i32;
+      assoc_noexpand = (assoc_expand_once !=0 && (wflags & (1 << 2)) !=0);
       //　分出=
-      if assoc_noexpand !=0 {
+      if assoc_noexpand {
 		offset = assignment (name,  2);
 	  } else {
 		offset = assignment (name,  0);
@@ -816,15 +815,14 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 
       if offset !=0 {	/* declare [-aAfFirx] name=value */
 	  	*name.offset(offset as isize) = '\0' as c_char;
-	  	value = (name as usize + (offset + 1) as usize) as * mut c_char;
-	  	if *((name as usize + (offset - 1) as usize) as * mut c_char) == '+' as c_char {
+	  	value = name.offset((offset + 1) as isize) ; 
+	  	if *(name.offset((offset - 1) as isize)) == '+' as c_char {
 	      aflags |= ASS_APPEND!();
-	      *((name as usize + (offset - 1) as usize) as * mut c_char) = '\0' as c_char;
+	      *(name.offset((offset - 1) as isize))= '\0' as c_char;
 	    }
 	  } else {
 		value = tmpValue.as_ptr() as * mut c_char;
 	  }
-
       /* Do some lexical error checking on the LHS and RHS of the assignment
 	 that is specific to nameref variables. */
       if (flags_on & att_nameref!()) !=0 {
@@ -861,7 +859,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	  creating_array = 0;
       compound_array_assign = 0;
 	  simple_array_assign = 0;
-      array_subscript_assignment = 0;
+      array_subscript_assignment = false;
       subscript_start = std::ptr::null_mut();
 	  t = libc::strchr (name, '[' as libc::c_int);
       if t !=std::ptr::null_mut() && (flags_on & att_function!()) == 0	{/* ] */
@@ -878,7 +876,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		subscript_start = t;
 		*t = '\0' as c_char;
 		making_array_special = 1;	/* XXX - should this check offset? */
-		array_subscript_assignment = (offset != 0) as i32;
+		array_subscript_assignment = offset != 0;
 	 } else {
 		making_array_special = 0;
 	 }
@@ -1103,7 +1101,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 				var =find_variable (nameref_cell (refvar));
 			}
 		  }
-	    } else if var == std::ptr::null_mut() && offset !=0 && array_subscript_assignment !=0 {
+	    } else if var == std::ptr::null_mut() && offset !=0 && array_subscript_assignment {
 			/* If we have an array assignment to a nameref, remove the nameref
 	     attribute and go on. */
 		 if mkglobal !=0 {
@@ -1160,24 +1158,25 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		  libc::strcpy (name, nameref_cell (refvar));
 
 		  if subscript_start != std::ptr::null_mut() {
-			libc::strcpy ((name as usize + (libc::strlen (nameref_cell (refvar))) as usize) as * mut c_char, subscript_start);
+			libc::strcpy (name.offset(libc::strlen (nameref_cell (refvar)) as isize), subscript_start);
 		  }
 
 		  /* We are committed to using the new name, so reset */
 		  if offset !=0 {
 		      /* Rebuild assignment and restore offset and value */
 		      if (aflags & ASS_APPEND!()) !=0 {
-				*((name as usize + namelen as usize) as * mut c_char) = '+' as c_char;
+				*(name.offset( namelen as isize)  as * mut c_char) = '+' as c_char;
+
 				namelen+=1;
 			  }
-
-			  *((name as usize + namelen as usize) as * mut c_char) = '=' as c_char;
+              *(name.offset( namelen as isize)  as * mut c_char) = '=' as c_char;
+			//   *((name as usize + namelen as usize) as * mut c_char) = '=' as c_char;
 		      namelen+=1;
 
 			  if value != std::ptr::null_mut() && (*value) !=0 {
-				libc::strcpy ((name as usize + namelen as usize) as * mut c_char, value);
+				libc::strcpy (name.offset(namelen as isize), value);
 			  } else {
-				*((name as usize + namelen as usize) as * mut c_char) = '\0' as c_char;
+				*(name.offset( namelen as isize)  as * mut c_char) = '\0' as c_char;
 			  }
 
 		      offset = assignment (name, 0);
@@ -1192,8 +1191,9 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 				list = (*list).next;
 				continue 'outter; 
 			  }
-			  *((name as usize + offset as usize) as * mut c_char) = '\0' as c_char;		      
-		      value = (name as usize + namelen as usize) as * mut c_char;
+		        *(name.offset(offset as isize)) = '\0' as c_char;
+			      	      
+		      value = name.offset(namelen as isize) ;
 		    }
 		    libc::free (oldname as * mut c_void);
 
@@ -1303,13 +1303,13 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 
 		/* make declare a[2]=foo as similar to a[2]=foo as possible if
 			a is already an array or assoc variable. */
-		if array_subscript_assignment !=0 && array_exists !=0 && creating_array == 0 {
+		if array_subscript_assignment && array_exists !=0 && creating_array == 0 {
 			simple_array_assign = 1;
 		} else if (making_array_special !=0 || creating_array !=0 || array_exists !=0) && offset!=0 {
 	      let mut vlen:i32;
 	      vlen = libc::strlen (value) as i32;
 		  /*itrace("declare_builtin: name = %s value = %s flags = %d", name, value, wflags);*/
-	      if shell_compatibility_level > 43 && (wflags & W_COMPASSIGN!()) == 0 && *value == '(' as c_char && *((value as usize + (vlen-1) as usize) as * mut c_char) == ')' as c_char {
+	      if shell_compatibility_level > 43 && (wflags & W_COMPASSIGN!()) == 0 && *value == '(' as c_char && *(value.offset((vlen-1) as isize) as * mut c_char) == ')' as c_char {
 		  /* The warning is only printed when using compound assignment
 		     to an array variable that doesn't already exist.  We use
 		     creating_array to allow things like
@@ -1319,7 +1319,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 			}
 			compound_array_assign = (array_exists !=0 || creating_array !=0) as i32;
 			simple_array_assign = making_array_special;
-		 } else if *value == '(' as c_char && *((value as usize + (vlen-1) as usize) as * mut c_char) == ')' as c_char && (shell_compatibility_level < 44 || (wflags & W_COMPASSIGN!()) !=0 ) {
+		 } else if *value == '(' as c_char && *(value.offset((vlen-1) as isize) as * mut c_char) == ')' as c_char && (shell_compatibility_level < 44 || (wflags & W_COMPASSIGN!()) !=0 ) {
 			compound_array_assign = 1;
 		 } else {
 			simple_array_assign = 1;
@@ -1390,7 +1390,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 	      *subscript_start = '[' as c_char;	/* ] */
 	      /* XXX - problem here with appending */
 	      local_aflags = aflags&ASS_APPEND!();
-		  if assoc_noexpand !=0 {
+		  if assoc_noexpand  {
 			local_aflags |= ASS_NOEXPAND!();
 		  } else {
 			local_aflags |= 0;

@@ -16,3 +16,4 @@ libc = "*"
 nix = "*"
 rcommon = {path = "../common"}
 rhelp = {path ="../help"}
+rread = {path="../read"}

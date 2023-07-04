@@ -1,4 +1,5 @@
 use rcommon::{WordList};
+use rread::{ARRAY};
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct word_desc {
@@ -299,6 +300,22 @@ pub struct jobstats {
     pub j_lastasync: *mut JOB,
 }
 
+#[repr(C)]
+pub struct BUCKET_CONTENTS {
+	next:* mut BUCKET_CONTENTS,	/* Link to next hashed key in this bucket. */
+	key:* mut c_char,		/* What we look up. */
+	data:* mut c_void,			/* What we really want. */
+	khash:u32,		/* What key hashes to */
+	times_found:i32		/* Number of times this item has been found. */
+}
+
+#[repr(C)]
+pub struct HASH_TABLE {
+	bucket_array:*mut * mut BUCKET_CONTENTS,	/* Where the data is kept. */
+	nbuckets:i32,			/* How many buckets does this table have. */
+	nentries:i32			/* How many entries does this table have. */
+}
+
 pub type sh_builtin_func_t =
     unsafe extern "C" fn(arg1: *mut WordList) -> c_int;
 
@@ -378,5 +395,6 @@ extern "C" {
     pub fn bind_variable(name: *const c_char, value: *mut c_char, flags: c_int) -> *mut SHELL_VAR;
 
     pub fn stupidly_hack_special_variables(name: *mut c_char);
-
+    pub fn array_to_assign(a:*mut ARRAY,quote : c_int) -> *mut c_char;
+    pub fn assoc_to_assign(a:*mut HASH_TABLE,quote : c_int) -> *mut c_char;
 }

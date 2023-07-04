@@ -4,6 +4,7 @@ use libc::{c_int, c_uint, c_char, c_long, PT_NULL, c_void};
 use rhelp::r_builtin_help;
 include!(concat!("intercdep.rs"));
 use std::ffi::CStr;
+
 #[no_mangle]
 pub extern "C" fn r_export_builtin(list: *mut WordList) -> c_int {
     return set_or_show_attributes(list, att_exported, 0);
@@ -83,7 +84,6 @@ unsafe {
                 list = (*list).next;
                 continue;
             }
-
             assign = assignment(name, 0);
             aflags = 0;
             if assign != 0 {
@@ -157,7 +157,7 @@ unsafe {
             set_var_attribute(name, attribute, undo);
             if assign != 0 {
                 *(name.offset(assign  as isize))  = b'=' as c_char;
-                *((name as usize + assign as usize) as *mut c_char) = b'=' as c_char;
+                // *((name as usize + assign as usize) as *mut c_char) = b'=' as c_char;
                 if (aflags & ASS_APPEND) != 0 {
                     *(name.offset((assign-1)  as isize))  = b'+' as c_char;
                 }
@@ -190,15 +190,15 @@ unsafe {
         if !variable_list.is_null() {
             let mut i = 0;
             loop {
-                var =  *(variable_list.offset(i))  as  *mut SHELL_VAR;
+                var = *(variable_list.offset(i))  as  *mut SHELL_VAR;
                 if var.is_null() {
                     break;
                 }
 
-                if arrays_only != 0 && ((*var).attributes & att_array) == 0 {
+                if arrays_only != 0 && (((*var).attributes & att_array) == 0) {
                     i += 1;
                     continue;
-                } else if assoc_only != 0 && ((*var).attributes & assoc_only) == 0 {
+                } else if assoc_only != 0 && (((*var).attributes & att_assoc) == 0) {
                     i += 1;
                     continue;
                 }
@@ -211,7 +211,12 @@ unsafe {
                 if ((*var).attributes & attribute) != 0 {
                     let pattr = (this_shell_builtin as usize == r_readonly_builtin as usize) ||
                         (this_shell_builtin as usize == r_export_builtin as usize);
-                    show_var_attributes(var, pattr as c_int, nodefs);
+                    if pattr {
+                        show_var_attributes(var, 1, nodefs);
+                    }
+                    else {
+                        show_var_attributes(var, 0, nodefs);
+                    }
                     any_failed = sh_chkwrite(any_failed);
                     if any_failed != 0 {
                         break;
@@ -227,31 +232,34 @@ unsafe {
 }
 
 #[no_mangle]
-pub extern "C" fn show_all_var_attributes(list: *mut WordList, v: c_int, nodefs: c_int) -> c_int {
+pub extern "C" fn show_all_var_attributes(v: c_int, nodefs: c_int) -> c_int {
     let mut i = 0;
     let mut any_failed = 0;
     let mut var: *mut SHELL_VAR;
     let mut variable_list: *mut *mut SHELL_VAR;
 unsafe {
-    variable_list = if v != 0 {all_shell_variables()} else {all_shell_functions()};
+    variable_list =  if  v != 0 {all_shell_variables() } else {all_shell_functions()};
     if variable_list.is_null() {
         return EXECUTION_SUCCESS;
     }
 
     loop {
-        var = variable_list.offset(i) as *mut SHELL_VAR;
+        var = *(variable_list.offset(i));
         if var.is_null() {
             break;
         }
-
         let pattr = (this_shell_builtin as usize == r_readonly_builtin as usize) ||
             (this_shell_builtin as usize == r_export_builtin as usize);
-        show_var_attributes(var, pattr as c_int, nodefs);
+        if pattr {
+            show_var_attributes(var, 1, nodefs);
+        }
+        else {
+            show_var_attributes(var, 0, nodefs);
+        }
         any_failed = sh_chkwrite(any_failed);
         if any_failed != 0 {
             break;
         }
-
         i += 1;
     }
 
@@ -280,7 +288,12 @@ unsafe {
 
         let pattr = (this_shell_builtin as usize == r_readonly_builtin as usize) ||
             (this_shell_builtin as usize == r_export_builtin as usize);
-        show_var_attributes(var, pattr as c_int, nodefs);
+        if pattr {
+            show_var_attributes(var, 1, nodefs);
+        }
+        else {
+            show_var_attributes(var, 0, nodefs);
+        }
         any_failed = sh_chkwrite(any_failed);
         if any_failed != 0 {
             break;
@@ -295,62 +308,73 @@ unsafe {
 }
 
 #[no_mangle]
-pub extern "C" fn show_var_attributes(var: *mut SHELL_VAR, pattr: c_int, mut nodefs: c_int) -> c_int {
-
+pub unsafe extern "C"   fn show_var_attributes(var: *mut SHELL_VAR, pattr: c_int, mut nodefs: c_int) -> c_int {
     let mut flags = [0;16];
-unsafe {
     let i = var_attribute_string(var, pattr, flags.as_mut_ptr());
-    if ((*var).attributes & att_function) != 0 && nodefs == 0 &&
-        (pattr == 0 || posixly_correct == 0) {
-            println!("{}",CStr::from_ptr(named_function_string((*var).name, (*var).value as *mut COMMAND, FUNC_MULTILINE | FUNC_EXTERNAL)).to_str().unwrap());
+    if ((*var).attributes & att_function) != 0 && nodefs == 0 && (pattr == 0 || posixly_correct == 0) {
+        println!("{}",CStr::from_ptr(named_function_string((*var).name, (*var).value as *mut COMMAND, FUNC_MULTILINE | FUNC_EXTERNAL)).to_str().unwrap());
         nodefs += 1;
         if pattr == 0 && i == 1 && flags[0] == b'f' as c_char {
             return 0;
         }
     }
     if pattr == 0 || posixly_correct == 0 {
-        if i !=0 {
-            print!("declare -{} ", CStr::from_ptr(flags.as_ptr()).to_str().unwrap());
+        if i != 0 {
+            print!("declare -{} ",CStr::from_ptr(flags.as_ptr()).to_str().unwrap());
         }
         else {
             print!("declare -- ");
         }
     } 
     else if i != 0 {
-        print!("{} {}", CStr::from_ptr(this_command_name).to_str().unwrap(),CStr::from_ptr(flags.as_ptr()).to_str().unwrap());
+        print!("{} -{} ",CStr::from_ptr(this_command_name).to_str().unwrap(),CStr::from_ptr(flags.as_ptr()).to_str().unwrap());
     }
-     else {
-        print!("{}", CStr::from_ptr(this_command_name).to_str().unwrap());
+    else {
+        print!("{} ",CStr::from_ptr(this_command_name).to_str().unwrap());
     }
 
     if ((*var).attributes & att_invisible) != 0 &&
-        ((*var).attributes & att_array) != 0 &&
-        ((*var).attributes & att_assoc) != 0 {
+       (((*var).attributes & att_array) != 0 ||
+        ((*var).attributes & att_assoc) != 0 ){
             println!("{}",CStr::from_ptr((*var).name).to_str().unwrap());
     }
-     else if ((*var).attributes & att_array) != 0 {
-        print_array_assignment(var, 0);
+    else if ((*var).attributes & att_array) != 0 {
+        r_print_array_assignment(var, 0);
     } 
     else if ((*var).attributes & att_assoc) != 0 {
-        print_assoc_assignment(var, 0);
+        r_print_assoc_assignment(var, 0);
     } 
-    else if nodefs != 0 || (((*var).attributes & att_function) != 0 && pattr != 0 && posixly_correct != 0) {
+    else if nodefs != 0 || ((((*var).attributes & att_function) != 0 && pattr != 0 && posixly_correct != 0)) {
         println!("{}",CStr::from_ptr((*var).name).to_str().unwrap());
     } 
     else if ((*var).attributes & att_function) != 0 {
         println!("{}",CStr::from_ptr(named_function_string((*var).name, (*var).value as *mut COMMAND, FUNC_MULTILINE | FUNC_EXTERNAL)).to_str().unwrap());
-    } else if ((*var).attributes & att_invisible) != 0 || (*var).value.is_null() {
+    } 
+    else if ((*var).attributes & att_invisible) != 0 || (*var).value == std::ptr::null_mut() {
         println!("{}",CStr::from_ptr((*var).name).to_str().unwrap());
-    } else {
-        println!("{} = {}",CStr::from_ptr((*var).name).to_str().unwrap(),CStr::from_ptr(sh_double_quote(value_cell(var))).to_str().unwrap());
     }
-}
+    else {
+            let x = sh_double_quote (value_cell(var));
+            println!("{}={}",CStr::from_ptr((*var).name).to_str().unwrap(),CStr::from_ptr(x).to_str().unwrap());
+            libc::free(x as *mut c_void);
+    }
+
     return 0;
 }
 
 unsafe fn  value_cell(var:*mut SHELL_VAR)->* mut c_char
 {
   return (*var).value;
+}
+
+unsafe fn  array_cell(var:*mut SHELL_VAR)->* mut ARRAY
+{
+  return (*var).value as *mut ARRAY;
+}
+
+unsafe fn  assoc_cell(var:*mut SHELL_VAR)->* mut HASH_TABLE
+{
+  return (*var).value as *mut HASH_TABLE;
 }
 
 #[no_mangle]
@@ -360,7 +384,12 @@ unsafe {
     if !var.is_null() {
         let pattr = (this_shell_builtin as usize == r_readonly_builtin as usize) ||
             (this_shell_builtin as usize == r_export_builtin as usize);
-        show_var_attributes(var, pattr as c_int, nodefs);
+        if pattr { 
+            show_var_attributes(var, 1, nodefs);
+        }
+        else {
+            show_var_attributes(var, 0, nodefs);
+        }
         return 0;
     } else {
         return 1;
@@ -376,7 +405,12 @@ unsafe {
     if cond {
         let pattr = (this_shell_builtin as usize == r_readonly_builtin as usize) ||
             (this_shell_builtin as usize == r_export_builtin as usize);
-        show_var_attributes(var, pattr as c_int, nodefs);
+        if pattr {
+            show_var_attributes(var, 1, nodefs);
+        }
+        else {
+            show_var_attributes(var, 0, nodefs);
+        }
         return 0;
     } else {
         return 1;
@@ -391,7 +425,12 @@ pub extern "C" fn show_func_attributes(name: *mut c_char, nodefs: c_int) -> c_in
         if !var.is_null() {
             let pattr = (this_shell_builtin as usize == r_readonly_builtin as usize) ||
                 (this_shell_builtin as usize == r_export_builtin as usize);
-            show_var_attributes(var, pattr as c_int, nodefs);
+            if pattr {
+                show_var_attributes(var, 1, nodefs);
+            }
+            else {
+                show_var_attributes(var, 0, nodefs);
+            }
             return 0;
         } else {
             return 1;
@@ -540,9 +579,45 @@ unsafe {
 
    *(flags.offset(i as isize)) = b'\0' as c_char;
 }
-    return i as c_int;
+    return i ;
 }
 
 unsafe fn cmp_two(a: usize, b: usize) -> bool {
     return a == b;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn r_print_array_assignment(var: *mut SHELL_VAR, quote: c_int) {
+    let mut vstr  = array_to_assign(array_cell(var) as *mut ARRAY ,quote); 
+
+    if  vstr == std::ptr::null_mut() {
+        if quote != 0 {
+            println!("{}=\"\'()\'\"",CStr::from_ptr((*var).name).to_str().unwrap());
+        }
+        else {
+            println!("{}=\"()\"",CStr::from_ptr((*var).name).to_str().unwrap());
+        }
+    }
+    else {
+        println!("{}={}",CStr::from_ptr((*var).name).to_str().unwrap(),CStr::from_ptr(vstr).to_str().unwrap());
+        libc::free(vstr as *mut c_void);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn r_print_assoc_assignment(var: *mut SHELL_VAR, quote: c_int) {
+    let mut vstr  = assoc_to_assign(assoc_cell(var) as *mut HASH_TABLE ,quote); 
+
+    if  vstr == std::ptr::null_mut() {
+        if quote != 0 {
+            println!("{}=\"\'()\'\"",CStr::from_ptr((*var).name).to_str().unwrap());
+        }
+        else {
+            println!("{}=\"()\"",CStr::from_ptr((*var).name).to_str().unwrap());
+        }
+    }
+    else {
+        println!("{}={}",CStr::from_ptr((*var).name).to_str().unwrap(),CStr::from_ptr(vstr).to_str().unwrap());
+        libc::free(vstr as *mut c_void);
+    }
 }
