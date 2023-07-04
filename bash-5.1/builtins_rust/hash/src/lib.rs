@@ -1,7 +1,6 @@
+
 extern crate libc;
 extern crate rread;
-
-
 use libc::{c_char,c_int, strchr,free,c_void,strerror,EISDIR};
 use std::ffi::{CStr,CString};
 use std::io::{stdout, Write};
@@ -9,7 +8,8 @@ use rread::{SHELL_VAR};
 use rcommon::{r_find_shell_builtin,r_builtin_usage};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use rhelp::r_builtin_help;
-
+use std::fs;
+use std::os::linux::fs::MetadataExt;
 type PTR_T=c_void;
 #[repr (C)]
 pub struct bucket_contents{
@@ -20,7 +20,6 @@ pub struct bucket_contents{
     pub times_found:i32,
 }
 type BUCKET_CONTENTS=bucket_contents;
-
 #[repr (C)]
 pub struct hash_table{
     pub bucket_array:*mut *mut BUCKET_CONTENTS,
@@ -28,7 +27,6 @@ pub struct hash_table{
     pub nentries:i32,
 }
 type HASH_TABLE = hash_table;
-
 #[repr (C)]
 pub struct _pathdata{
     pub path:*mut c_char,
@@ -36,9 +34,6 @@ pub struct _pathdata{
 }
 type PATH_DATA = _pathdata;
 //enum
-
-
-
 #[macro_export]
 macro_rules! PARAMS {
     ($protos:expr) => {
@@ -52,7 +47,6 @@ pub unsafe fn hash_entries(ht: *mut HASH_TABLE) -> i32 {
         return 0;
     }
 }
-
 #[macro_export]
 macro_rules! HASH_ENTRIES {
     ($ht:expr) => {
@@ -64,7 +58,6 @@ macro_rules! HASH_ENTRIES {
         }
     };
 }
-
 fn HASH_ENTRIES(ht:*mut HASH_TABLE)->i32{
     unsafe{
         if ht != std::ptr::null_mut(){
@@ -74,17 +67,13 @@ fn HASH_ENTRIES(ht:*mut HASH_TABLE)->i32{
             return 0;
         }
     }
-
-
 }
-
 #[macro_export]
 macro_rules! pathdata {
     ($x:expr) => {
         (*$x).data as *mut PATH_DATA
     };
 }
-
 #[macro_export]
 macro_rules! FREE {
     ($s:expr) => {
@@ -93,11 +82,17 @@ macro_rules! FREE {
         }
     };
 }
-
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct alias {
+    pub name: *mut libc::c_char,
+    pub value: *mut libc::c_char,
+    pub flags: libc::c_char,
+}
+pub type AliasT = alias;
 // type i32 hash_efunc PARAMS(*mut BUCKET_CONTENTS);
 type hash_wfunc = extern  fn(*mut BUCKET_CONTENTS)->i32;
 type sh_builtin_func_t = extern fn (*mut WordList)->i32;
-
 //extern c
 extern "C"{
     static loptend:*mut WordList;
@@ -109,11 +104,10 @@ extern "C"{
     static shell_compatibility_level:i32;
     static hashed_filenames:*mut HASH_TABLE;
     static dot_found_in_search:i32;
-
     fn builtin_error(format:*const c_char,...);
     fn reset_internal_getopt();
     fn internal_getopt(list:*mut WordList,opts:*mut c_char)->i32;
-
+    fn all_aliases() -> *mut *mut AliasT;
     fn sh_needarg(s:*mut c_char);
     fn phash_flush();
     fn sh_restricted(s:*mut c_char);
@@ -131,6 +125,7 @@ extern "C"{
     fn printable_filename(f:*mut c_char,flage:i32)->*mut c_char;
 }
 
+static mut common_inode: c_int = 0;
 //rust
 /* Print statistics on the current state of hashed commands.  If LIST is
    not empty, then rehash (or hash in the first place) the specified
@@ -144,12 +139,10 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
     let mut opt:i32;
     let mut w:*mut c_char;
     let mut pathname:*mut c_char;
-
     unsafe{
         if hashing_enabled == 0{
             let c_str = CString::new("hashing disabled").unwrap();
             let c_str_ptr = c_str.as_ptr();
-
             builtin_error(c_str_ptr);
             return EXECUTION_FAILURE!();
         }
@@ -158,7 +151,6 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
         list_portably = 0;
         delete = 0;
         pathname = std::ptr::null_mut();
-
         reset_internal_getopt();
         let opts = CString::new("dlp:rt").unwrap();
         opt = internal_getopt(list,opts.as_ptr() as *mut c_char);
@@ -179,13 +171,10 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
                      r_builtin_usage();
                      return EX_USAGE;
                  }
-
             }
             opt = internal_getopt(list,opts.as_ptr() as *mut c_char);
         }
-
         list = loptend;
-
         /* hash -t requires at least one argument. */
         if list == std::ptr::null_mut() && (delete != 0 || list_targets != 0) {
             let temp:CString;
@@ -215,22 +204,18 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
             }
             return EXECUTION_SUCCESS!();
         }
-
         if expunge_hash_table != 0{
             phash_flush();
         }
-
         /* If someone runs `hash -r -t xyz' he will be disappointed. */
         if list_targets != 0{
             return r_list_hashed_filename_targets(list,list_portably);
         }
-
         if restricted != 0 && pathname != std::ptr::null_mut(){
             if strchr(pathname,'/' as c_int) != std::ptr::null_mut(){
                 sh_restricted(pathname);
                 return EXECUTION_FAILURE!();
             }
-
             /* If we are changing the hash table in a restricted shell, make sure the
              target pathname can be found using a $PATH search. */
             w = find_user_command(pathname);
@@ -241,7 +226,6 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
             }
             free(w as *mut c_void);
         }
-
         opt = EXECUTION_SUCCESS!();
         while list != std::ptr::null_mut(){
             /* Add, remove or rehash the specified commands. */
@@ -251,15 +235,16 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
             }
             else if pathname != std::ptr::null_mut(){
                 if is_directory(pathname) != 0{
-
                     let c_err = CString::new("%s:%s").unwrap();
                     let c_err_ptr = c_err.as_ptr();
                     builtin_error(c_err_ptr,pathname,strerror(EISDIR));
                     opt = EXECUTION_SUCCESS!();
-
                 }
                 else{
-                    phash_insert(w,pathname,0,0);
+                    if legal_hash_rust(w,pathname) == 0{
+                        phash_insert(w,pathname,0,0);
+                    } 
+                    
                 }
             }
             else if delete != 0{
@@ -273,22 +258,17 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
             }
             list = (*list).next;
         }
-
         stdout().flush();
         return opt;
     }//unsafe
 }
-
 extern "C" fn r_add_hashed_command(w:*mut c_char,quiet:i32)->i32{
     let mut rv:i32;
     let full_path:*mut c_char;
-
     rv = 0;
-
     unsafe{
         if find_function(w).is_null() && find_shell_builtin(w).is_null(){
         // if find_function(w).is_null() && r_find_shell_builtin(w).is_null(){
-            // println!("1111");
             phash_remove(w);
             full_path = find_user_command(w);
             if full_path != std::ptr::null_mut() && executable_file(full_path) != 0{
@@ -302,12 +282,9 @@ extern "C" fn r_add_hashed_command(w:*mut c_char,quiet:i32)->i32{
             }
             FREE!(full_path);
         }
-
         return rv;
-
     }//unsafe
 }
-
 extern "C" fn r_print_hash_info(item:*mut BUCKET_CONTENTS)->i32{
     
     unsafe{
@@ -317,19 +294,16 @@ extern "C" fn r_print_hash_info(item:*mut BUCKET_CONTENTS)->i32{
     }//unsafe
     0
 }
-
 #[no_mangle]
 extern "C" fn r_print_portable_hash_info(item:*mut BUCKET_CONTENTS)->i32{
     let fp:*mut c_char;
     let f:*mut c_char;
-
     unsafe{
         fp = printable_filename((*pathdata!(item)).path,1);
         f = printable_filename((*item).key,1);
         let fp_string = CStr::from_ptr(fp).to_str().unwrap();//.to_owned()
         let f_string = CStr::from_ptr(f).to_str().unwrap();//.to_owned()
         println!("builtin hash -p {} {}",fp_string,f_string);
-
         if fp != (*pathdata!(item)).path{
             free(fp as *mut c_void);
         }
@@ -339,13 +313,10 @@ extern "C" fn r_print_portable_hash_info(item:*mut BUCKET_CONTENTS)->i32{
         return 0;
     }//unsafe
 }
-
 #[no_mangle]
 extern "C" fn r_print_hashed_commands(fmt:i32)->i32{
     unsafe{
-
         if hashed_filenames.is_null() || hash_entries(hashed_filenames) == 0 {
-
             return 0;
         }
         if fmt == 0{
@@ -362,14 +333,12 @@ extern "C" fn r_print_hashed_commands(fmt:i32)->i32{
         return 1;
     }
 }
-
 #[no_mangle]
 extern "C" fn r_list_hashed_filename_targets(list:*mut WordList,fmt:i32)->i32{
     let mut all_found:i32;
     let multiple:i32;
     let mut target:*mut c_char;
     let mut l:*mut WordList;
-
     all_found = 1;
   
     unsafe{
@@ -379,7 +348,6 @@ extern "C" fn r_list_hashed_filename_targets(list:*mut WordList,fmt:i32)->i32{
         else{
             multiple = 0;
         }
-
         l = list;
         while !l.is_null(){
             target = phash_search((*(*l).word).word);
@@ -412,5 +380,58 @@ extern "C" fn r_list_hashed_filename_targets(list:*mut WordList,fmt:i32)->i32{
             return EXECUTION_FAILURE!();
         }
     }
+}
+unsafe  fn legal_hash_rust(name :*mut libc::c_char,value :*mut libc::c_char ) -> libc::c_int {  
+    let alias_list: *mut *mut AliasT  = all_aliases();
+    let mut t: *mut AliasT;
+    let mut offset;
+    let mut name_w:*mut libc::c_char;
+    let mut target:*mut c_char;
+    offset = 0;
+    if !alias_list.is_null() {
+        t =  *alias_list.offset(offset as isize);
+        while !t.is_null() {
+            if !(*t).name.is_null() {
+                if  libc::strcmp(name,(*t).name) == 0 {
+                    println!("Prohibit setting existing variables that is already in alias");
+                    println!("{} = {}" ,CStr::from_ptr((*t).name).to_string_lossy().into_owned(),CStr::from_ptr((*t).value).to_string_lossy().into_owned());
+                    return 1;
+                }
+            }
+            offset += 1;
+            t =  *alias_list.offset(offset as isize);
+         }
+    }
+    if find_shell_builtin(name) !=  std::ptr::null_mut() {
+        println!("Prohibit setting existing variables {} is a shell builtin",CStr::from_ptr(name).to_string_lossy().into_owned());
+        return 1;
+    }
+    else if find_function(name) !=  std::ptr::null_mut() {
+        println!("Prohibit setting existing variables {} is a function",CStr::from_ptr(name).to_string_lossy().into_owned());
+        return 1;
+    }
+    name_w = find_user_command(name) ;
+    if name_w !=  std::ptr::null_mut() {
+        file_inode(CStr::from_ptr(name_w).to_str().unwrap(),CStr::from_ptr(value).to_str().unwrap());
+        if common_inode == 1 {
+            return 1;
+        }
+    }
+    target = phash_search(name);
+    if target != std::ptr::null_mut() {
+        println!("{} is already in hash", CStr::from_ptr(name).to_string_lossy().into_owned());
+        return  1;
+    }
+    return 0;
+}
 
+unsafe fn file_inode(pathname : &str,pathname2 : &str) -> std::io::Result<()> {
+    let meta = fs::metadata( pathname )?;
+    let meta2 = fs::metadata( pathname2 )?;
+    common_inode = 0;
+    if (meta.st_ino() != meta2.st_ino()) {
+        println!("The name and value point to different executable files");
+        common_inode = 1;
+    }
+    Ok(())
 }
