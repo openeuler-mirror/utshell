@@ -323,7 +323,6 @@ static REDIRECTEE redir;
 
 static FILE *yyoutstream;
 static FILE *yyerrstream;
-extern int r_exit_builtin ( WORD_LIST *list);
 %}
 
 %union {
@@ -6444,8 +6443,8 @@ handle_eof_input_unit ()
       reset_parser ();
 
       last_shell_builtin = this_shell_builtin;
-      this_shell_builtin = r_exit_builtin;
-      r_exit_builtin ((WORD_LIST *)NULL);
+      this_shell_builtin = exit_builtin;
+      exit_builtin ((WORD_LIST *)NULL);
     }
   else
     {

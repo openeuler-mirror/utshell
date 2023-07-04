@@ -70,6 +70,7 @@ zgetline (fd, lineptr, n, delim, unbuffered_read)
 {
   int nr, retval;
   char *line, c;
+
   if (lineptr == 0 || n == 0 || (*lineptr == 0 && *n != 0))
     return -1;
 
@@ -78,8 +79,7 @@ zgetline (fd, lineptr, n, delim, unbuffered_read)
   
   while (1)
     {
-      //retval = unbuffered_read ? zread (fd, &c, 1) : zreadc(fd, &c);
-      retval = unbuffered_read ? zreadc(fd, &c) : zreadc(fd, &c);  //修复mapfile使用-d参数时执行多余输入问题
+      retval = unbuffered_read ? zread (fd, &c, 1) : zreadc(fd, &c);
 
       if (retval <= 0)
 	{
