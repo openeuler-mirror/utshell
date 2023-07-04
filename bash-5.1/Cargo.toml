@@ -2,6 +2,10 @@
 name = "rsbash"
 version = "0.1.0"
 edition = "2018"
+build = "build.rs"
+
+[build-dependencies]
+bindgen = "0.20.0"
 
 [lib]
 name = "rsbash"
@@ -62,10 +66,12 @@ members=[
  "builtins_rust/setattr",
  "builtins_rust/source",
  "builtins_rust/exec_cmd",
+ "u_src",
 ]
 
 [dependencies]
  libc = "*"
+ bindgen = "*"
  rread = {path = "./builtins_rust/read"}
  rhistory = {path = "./builtins_rust/history"}
  rkill = {path = "./builtins_rust/kill"}
@@ -102,3 +108,5 @@ members=[
  rwait = {path = "./builtins_rust/wait"}
  rdeclare = {path = "./builtins_rust/declare"}
  rexec_cmd = {path = "./builtins_rust/exec_cmd"}
+
+ r_main = {path = "./u_src"}
