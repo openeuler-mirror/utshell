@@ -9,9 +9,6 @@ edition = "2018"
 libc = "*"
 nix = "*"
 unic-langid = "*"
-fluent = "*"
-fluent-bundle = "*"
-fluent-resmgr = "*"
 
 [lib]
 crate-type = ["staticlib","rlib"]

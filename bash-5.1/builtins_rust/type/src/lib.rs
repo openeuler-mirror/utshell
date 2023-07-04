@@ -5,11 +5,8 @@ use libc::c_void;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::ptr;
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage,get_local_str};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 use rhelp::r_builtin_help;
-
-use fluent_bundle::{FluentBundle, FluentResource, FluentValue, FluentArgs};
-use fluent_resmgr::resource_manager::ResourceManager;
 
 #[macro_export]
 macro_rules! CDESC_ALL{
@@ -549,8 +546,7 @@ fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
         }
         else if dflags & CDESC_SHORTDESC!()  != 0 {
             unsafe{
-                let name = String::from("iskeyword");
-                translation_fn(&name,command,std::ptr::null_mut());
+                println! ("{:?} is a shell keyword\n", CStr::from_ptr(command));
             }
         }
         else if dflags & CDESC_REUSABLE!()  != 0 {
@@ -576,8 +572,7 @@ fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
       else if dflags & CDESC_SHORTDESC!() != 0 {
           let mut result : *mut libc::c_char;
           unsafe {
-            let name = String::from("isfunction");
-            translation_fn(&name,command,std::ptr::null_mut());
+            println!("{:?} is a function",CStr::from_ptr(command));
             result = named_function_string (command, function_cell(find_function (command)), FUNC_MULTILINE!()|FUNC_EXTERNAL!());
                 println!("{:?}",CStr::from_ptr(result));
           }
@@ -608,15 +603,13 @@ fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
     else if dflags & CDESC_SHORTDESC!() != 0{
         if unsafe {posixly_correct}!= 0 && unsafe {find_special_builtin (command)} != std::ptr::null_mut() {
             unsafe {
-                 let name = String::from("special");
-                 translation_fn(&name,command,std::ptr::null_mut());
+                 println!("{:?} is a special shell builtin", CStr::from_ptr(command));
             }
 
         }
         else {
             unsafe {
-                let name = String::from("isbuiltin");
-                translation_fn(&name,command,std::ptr::null_mut());
+                println!("{:?} is a shell builtin", CStr::from_ptr(command));
             }
         }
     }
@@ -648,8 +641,7 @@ fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
        }
        else if dflags & CDESC_SHORTDESC!() != 0 {
            unsafe {
-               let name = String::from("is");
-               translation_fn(&name,command,command);
+               println!("{:?} is {:?}", CStr::from_ptr(command),CStr::from_ptr(command));
            }
        }
        else if dflags & (CDESC_REUSABLE!()|CDESC_PATH_ONLY!()) != 0{
@@ -679,8 +671,7 @@ fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
     }
     else if dflags & CDESC_SHORTDESC!() != 0{
         unsafe{
-            let name = String::from("hashed");
-            translation_fn(&name,command,full_path);
+            println! ("{:?} is hashed ({:?})", CStr::from_ptr(command), CStr::from_ptr(full_path));
         }
     }
     else if (dflags & (CDESC_REUSABLE!()|CDESC_PATH_ONLY!())) != 0{
@@ -779,8 +770,7 @@ fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
     }
     else if dflags & CDESC_SHORTDESC!() != 0{
         unsafe{
-            let name = String::from("is");
-            translation_fn(&name,command,full_path);
+            println! ("{:?} is {:?}", CStr::from_ptr(command), CStr::from_ptr(full_path));
         }
        
     }
@@ -801,28 +791,4 @@ fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
 	
     }
    found
-}
-
-unsafe fn translation_fn (command:&String,args1 : *mut libc::c_char,args2 : *mut libc::c_char) {
-    let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
-    let resources = vec![ "message.ftl".into()];
-    let mut args = FluentArgs::new();
-    if args1 !=  std::ptr::null_mut(){
-        args.set("str1",format!("{:?}",CStr::from_ptr(args1).to_str().unwrap()));
-    }
-    if args2 !=  std::ptr::null_mut(){
-        args.set("str2",format!("{:?}",CStr::from_ptr(args2).to_str().unwrap()));
-    }
-    let bundle = mgr.get_bundle(get_local_str(), resources);
-    let mut value = bundle.get_message(command).unwrap();
-    let mut pattern = value.value().expect("partern err");
-    let mut errors = vec![];
-    if args1 !=  std::ptr::null_mut(){
-        let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
-        println!("{msg1}");
-    }
-    else{
-        let mut msg1 = bundle.format_pattern(&pattern, None, &mut errors);
-        println!("{msg1}");
-    } 
 }

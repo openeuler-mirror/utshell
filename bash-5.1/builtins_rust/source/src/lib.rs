@@ -3,7 +3,7 @@ extern crate nix;
 
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage, r_savestring};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
 use rhelp::r_builtin_help;
 
 #[repr(u8)]
@@ -264,6 +264,11 @@ pub extern "C" fn r_maybe_pop_dollar_vars ()
   }
 }
 
+unsafe fn  savestring(x:* mut c_char)->* mut c_char
+{
+  let str1:* mut c_char=libc::malloc(1 + libc::strlen (x as * const c_char)) as * mut c_char;
+  return libc::strcpy(str1,x as * const c_char);
+}
 
 unsafe fn TRAP_STRING(s:i32)->* mut c_char {
   if signal_is_trapped (s) !=0 && signal_is_ignored (s) == 0 {
@@ -307,9 +312,9 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
   filename = std::ptr::null_mut();
   /* XXX -- should this be absolute_pathname? */
   if posixly_correct !=0 && libc::strchr ((*(*llist).word).word, '/' as libc::c_int) != std::ptr::null_mut() {
-    filename = r_savestring ((*(*llist).word).word);
+    filename = savestring ((*(*llist).word).word);
   } else if absolute_pathname ((*(*llist).word).word) !=0 {
-    filename = r_savestring ((*(*llist).word).word);
+    filename = savestring ((*(*llist).word).word);
   } else if source_uses_path !=0 {
     filename = find_path_file ((*(*llist).word).word);
   }
@@ -328,7 +333,7 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
       }
       return EXECUTION_FAILURE!();
 	  } else {
-      filename = r_savestring ((*(*llist).word).word);
+      filename = savestring ((*(*llist).word).word);
     }
   }
 
@@ -357,7 +362,7 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
      don't. */
   debug_trap = TRAP_STRING (DEBUG_TRAP());
   if debug_trap != std::ptr::null_mut() && function_trace_mode == 0  {
-      debug_trap = r_savestring (debug_trap);
+      debug_trap = savestring (debug_trap);
       let xf1:Functions=Functions{f_xfree :xfree};
       add_unwind_protect (xf1, debug_trap);
 

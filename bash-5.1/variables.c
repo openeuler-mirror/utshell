@@ -2393,6 +2393,7 @@ find_global_variable_noref (name)
 
   if (var == 0)
     return ((SHELL_VAR *)NULL);
+
   return (var->dynamic_value ? (*(var->dynamic_value)) (var) : var);
 }
 
@@ -2612,7 +2613,7 @@ make_local_variable (name, flags)
 {
   SHELL_VAR *new_var, *old_var, *old_ref;
   VAR_CONTEXT *vc;
-  int was_tmpvar = 0;
+  int was_tmpvar;
   char *old_value;
 
   /* We don't want to follow the nameref chain when making local variables; we
@@ -2623,13 +2624,7 @@ make_local_variable (name, flags)
   /* local foo; local foo;  is a no-op. */
   old_var = find_variable (name);
   if (old_ref == 0 && old_var && local_p (old_var) && old_var->context == variable_context)
-  {
-    if (old_var->value) {
-	    free(old_var->value);
-	    old_var->value = NULL;
-    }
     return (old_var);
-  }
 
   /* local -n foo; local -n foo;  is a no-op. */
   if (old_ref && local_p (old_ref) && old_ref->context == variable_context)

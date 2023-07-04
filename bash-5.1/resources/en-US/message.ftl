@@ -1787,22 +1787,3 @@ information =     These shell commands are defined internally.  Type 'help' to s
   A star (*) next to a name means that the command is disabled.
 
 helperr = "no help topics match {$name} .Try 'help help' or 'man -k {$name}' or info {$name}"
-
-is = {$str1} is {$str2}
-special = {$str1} is a special shell builtin 
-hashd = {$str1} is hashed {$str2} 
-isfunction = {$str1} is a function 
-iskeyword = {$str1} is a shell keyword
-isalias = {$str1} is aliased to {$str2} 
-isbuiltin = {$str1} is a shell builtin
-killargerr = {$str1} : arguments must be process or job IDs
-letwarn = utshell : let :  expression expected
-bindvia = {$str1} can be invoked via 
-bindnokeys = {$str1} is not bound to any keys.
-unknowdfunction = {$str1} : unknown function name
-unbindfaild = {$str1} : cannot unbind
-invaildmap = {$str1} : invalid keymap name
-logout = logout
-nologinsh = not login shell: use 'exit'
-stoppedjobs = There are stopped jobs.
-runjobs = There are running jobs.
