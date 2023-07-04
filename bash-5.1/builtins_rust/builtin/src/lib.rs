@@ -16,7 +16,7 @@ pub extern "C" fn r_builtin_builtin(mut list: *mut WordList) -> i32 {
         if list == std::ptr::null_mut() {
             return EXECUTION_SUCCESS!();
         }
-        let mut command: &CStr = CStr::from_ptr((*(*list).word).word as *mut c_char);
+        let command: &CStr = CStr::from_ptr((*(*list).word).word as *mut c_char);
         function = find_shell_builtin(command.as_ptr() as *mut c_char);
         if function.is_none() {
             sh_notbuiltin(command.as_ptr() as *mut c_char);
