@@ -613,6 +613,7 @@ read_octal (string)
    FOR_WHOM is the name of the caller for error printing.  */
 char *the_current_working_directory = (char *)NULL;
 
+// job.c : dir = get_working_directory ("job-working-directory");
 char *
 get_working_directory (for_whom)
      char *for_whom;

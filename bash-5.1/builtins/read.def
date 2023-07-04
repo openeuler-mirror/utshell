@@ -135,7 +135,7 @@ static sighandler sigalrm PARAMS((int));
 static void reset_alarm PARAMS((void));
 
 /* Try this to see what the rest of the shell can do with the information. */
-procenv_t alrmbuf;
+extern procenv_t alrmbuf;
 int sigalrm_seen;
 
 static int reading, tty_modified;
