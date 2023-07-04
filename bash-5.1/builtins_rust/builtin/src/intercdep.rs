@@ -2,7 +2,7 @@
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 
 extern "C" {
     static mut loption :*mut WordList;

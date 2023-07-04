@@ -4,8 +4,8 @@
 
 use std::ffi::CStr;
 //extern crate rcommon;
-use rcommon::r_sh_notfound;
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage,SHELL_VAR};
+
+use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage,SHELL_VAR};
 use rhelp::r_builtin_help;
 use std::ffi::CString;
 extern "C" {
@@ -144,7 +144,7 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int
                 any_failed += 1;
             } else {
                 let slice= CStr::from_ptr(value);
-                let mut r_str=slice.to_str().unwrap().to_owned();
+                let r_str=slice.to_str().unwrap().to_owned();
                 let new_str =  CString::new(r_str).unwrap();
                 if legal_alias_rust(name,new_str.as_ptr() as *mut libc::c_char) == 0 {
                     add_alias(name, value);
@@ -238,13 +238,13 @@ unsafe extern "C" fn print_alias( alias: *mut AliasT,  flags: libc::c_int) {
 }
 unsafe  fn legal_alias_rust(name :*mut libc::c_char,value  :*mut libc::c_char ) -> libc::c_int {  
     
-    let mut name_w:*mut libc::c_char;
-    let mut value_w:*mut libc::c_char;
-    let mut new_value:*mut libc::c_char;
+    let name_w:*mut libc::c_char;
+    let value_w:*mut libc::c_char;
+    let new_value:*mut libc::c_char;
     let mut new_value_2:*mut libc::c_char;
-    let mut shell_bui : *mut libc::c_char;
+    let mut _shell_bui : *mut libc::c_char;
     let mut t: *mut AliasT;
-    let mut dflags ;
+    let dflags ;
     dflags = if posixly_correct != 0 { 0 as libc::c_int } else { 0x1 as libc::c_int };
     
     if libc::strstr(value,CString::new(";").unwrap().as_ptr() as *mut libc::c_char) != std::ptr::null_mut() {
