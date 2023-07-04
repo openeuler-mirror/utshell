@@ -10,7 +10,7 @@ use std::{ffi::{CString,CStr}};
 use std::fs::File;
 use nix::errno::errno;
 use rcommon::{r_builtin_usage,r_sh_chkwrite,err_translate_fn,translate_fn};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use rhelp::r_builtin_help;
 
 #[repr (C)]
