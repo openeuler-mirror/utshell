@@ -4,7 +4,7 @@ extern crate nix;
 use libc::{c_char, c_long, c_void, c_int};
 use nix::sys::termios::SpecialCharacterIndices;
 use std::{ffi::{CString,CStr}, i32, io::{Write, stdout}, ops::Add, string, u32};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage,savestring};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage,r_savestring};
 use rhelp::r_builtin_help;
 
 #[repr(i8)]
@@ -548,8 +548,8 @@ pub extern "C" fn r_fc_builtin (mut list:* mut WordList)->i32
 	      *sep = char::from('\0') as c_char ;
 	      rl = libc::malloc (  std::mem::size_of::<& REPL>() ) as * mut REPL;
 	      (*rl).next = std::ptr::null_mut();
-	      (*rl).pat = savestring ((*(*list).word).word);
-        (*rl).rep = savestring (sep);
+	      (*rl).pat = r_savestring ((*(*list).word).word);
+        (*rl).rep = r_savestring (sep);
 
         if rlist == std::ptr::null_mut(){
           rlist = rl;
@@ -913,7 +913,7 @@ pub extern "C" fn r_fc_gethist (command:* mut c_char, hlist:* mut * mut HIST_ENT
   i = r_fc_gethnum (command, hlist, mode);
   unsafe {
     if i >= 0 {
-      return savestring ((*(*((hlist as usize + (8*i) as usize) as * mut * mut HIST_ENTRY))).line );
+      return r_savestring ((*(*((hlist as usize + (8*i) as usize) as * mut * mut HIST_ENTRY))).line );
     }  else {
       return std::ptr::null_mut();
     }
@@ -1061,7 +1061,7 @@ pub extern "C" fn r_fc_dosubs (command:* mut c_char, subs:* mut REPL)->* mut c_c
   let mut t:* mut c_char;
   let mut r:* mut REPL;
   unsafe {
-    new = savestring (command);
+    new = r_savestring (command);
     while subs !=std::ptr::null_mut() {
       r = subs;
       t = strsub (new, (*r).pat, (*r).rep, 1);

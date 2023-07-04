@@ -1527,7 +1527,7 @@ evalerror (msg)
    from [0-9][a-z][A-Z]_@ (a = 10, z = 35, A = 36, Z = 61, @ = 62, _ = 63 --
    you get the picture). */
 
-#define VALID_NUMCHAR(c)	(ISALNUM(c) || ((c) == '_') || ((c) == '@'))
+#define VALID_NUMCHAR(c)	( ((base==16)? ISXDIGIT(c) :((base==8)?ISOCTAL(c): DIGIT(c)) ) || ((c) == '_') || ((c) == '@'))
 
 static intmax_t
 strlong (num)
@@ -1599,8 +1599,10 @@ strlong (num)
 
 	  val = (val * base) + c;
 	}
-      else
-	break;
+      else {
+	      *(s-1) = ' ';
+      }
+	//break;
     }
 
   return (val);
