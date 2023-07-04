@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* assoc.h -- definitions for the interface exported by assoc.c that allows
    the rest of the shell to manipulate associative array variables. */
 

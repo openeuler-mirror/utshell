@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* trap.h -- data structures used in the trap mechanism. */
 
 /* Copyright (C) 1993-2013 Free Software Foundation, Inc.

@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* redir.c -- Functions to perform input and output redirection. */
 
 /* Copyright (C) 1997-2020 Free Software Foundation, Inc.

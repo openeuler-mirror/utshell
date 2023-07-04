@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* findcmd.c -- Functions to search for commands by name. */
 
 /* Copyright (C) 1997-2020 Free Software Foundation, Inc.

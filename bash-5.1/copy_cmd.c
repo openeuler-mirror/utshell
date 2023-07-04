@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* copy_command.c -- copy a COMMAND structure.  This is needed
    primarily for making function definitions, but I'm not sure
    that anyone else will need it.  */

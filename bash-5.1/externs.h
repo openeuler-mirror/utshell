@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* externs.h -- extern function declarations which do not appear in their
    own header file. */
 

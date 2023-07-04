@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* conftypes.h -- defines for build and host system. */
 
 /* Copyright (C) 2001, 2005, 2008,2009 Free Software Foundation, Inc.

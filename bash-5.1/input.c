@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* input.c -- functions to perform buffered input with synchronization. */
 
 /* Copyright (C) 1992-2020 Free Software Foundation, Inc.

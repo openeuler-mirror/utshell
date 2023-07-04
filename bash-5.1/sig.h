@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* sig.h -- header file for signal handler definitions. */
 
 /* Copyright (C) 1994-2013 Free Software Foundation, Inc.

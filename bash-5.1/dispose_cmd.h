@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* dispose_cmd.h -- Functions appearing in dispose_cmd.c. */
 
 /* Copyright (C) 1993-2020 Free Software Foundation, Inc.

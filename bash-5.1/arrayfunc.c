@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* arrayfunc.c -- High-level array functions used by other parts of the shell. */
 
 /* Copyright (C) 2001-2020 Free Software Foundation, Inc.

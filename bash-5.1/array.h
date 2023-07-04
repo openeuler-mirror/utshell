@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* array.h -- definitions for the interface exported by array.c that allows
    the rest of the shell to manipulate array variables. */
 

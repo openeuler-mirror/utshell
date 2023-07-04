@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* list.c - Functions for manipulating linked lists of objects. */
 
 /* Copyright (C) 1996-2009 Free Software Foundation, Inc.

@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* flags.c -- Everything about flags except the `set' command.  That
    is in builtins.c */
 

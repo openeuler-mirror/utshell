@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* alias.c -- Not a full alias, but just the kind that we use in the
    shell.  Csh style alias is somewhere else (`over there, in a box'). */
 

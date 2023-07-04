@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* execute_cmd.h - functions from execute_cmd.c. */
 
 /* Copyright (C) 1993-2017 Free Software Foundation, Inc.

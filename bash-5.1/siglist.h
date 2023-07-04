@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* siglist.h -- encapsulate various definitions for sys_siglist */
 
 /* Copyright (C) 1993, 2001, 2005, 2008-2020 Free Software Foundation, Inc.

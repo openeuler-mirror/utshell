@@ -1,3 +1,6 @@
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 extern crate  libc;
 extern crate nix;
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};

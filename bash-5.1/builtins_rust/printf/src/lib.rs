@@ -1,3 +1,6 @@
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use std::ffi::CStr;
 use std::{ffi::CString};
 use libc::{size_t, c_int, c_uint, c_char, c_long, c_void, PT_NULL, c_ulong, strchr, };

@@ -1,3 +1,6 @@
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use rcommon::WordList;
 use ralias::{r_alias_builtin,r_unalias_builtin};
 use rbind::r_bind_builtin;

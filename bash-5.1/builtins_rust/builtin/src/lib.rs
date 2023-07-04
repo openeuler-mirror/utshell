@@ -1,3 +1,6 @@
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use libc::{c_int, c_char};
 use std::ffi::CStr;
 include!(concat!("intercdep.rs"));

@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* flags.h -- a list of all the flags that the shell knows about.  You add
    a flag to this program by adding the name here, and in flags.c. */
 

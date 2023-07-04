@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* subst.c -- The part of the shell that does parameter, command, arithmetic,
    and globbing substitutions. */
 

@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* execute_cmd.c -- Execute a COMMAND structure. */
 
 /* Copyright (C) 1987-2020 Free Software Foundation, Inc.

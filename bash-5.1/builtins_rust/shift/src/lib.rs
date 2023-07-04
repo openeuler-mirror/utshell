@@ -1,3 +1,6 @@
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use libc::{c_int, c_char, c_long, PT_NULL};
 use rcommon::{r_sh_erange,};
 use rhelp::r_builtin_help;
