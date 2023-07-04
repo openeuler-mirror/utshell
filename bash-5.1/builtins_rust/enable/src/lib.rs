@@ -293,7 +293,7 @@ unsafe extern "C" fn list_some_builtins(mut filter: libc::c_int) {
                             & BUILTIN_ENABLED == 0 as libc::c_int
                     {
                         let name= unsafe{CStr::from_ptr((*shell_builtins.offset(i as isize)).name)};
-                        println!("!!enable -n {}", name.to_str().expect("name cannot trans"));
+                        println!("enable -n {}", name.to_str().expect("name cannot trans"));
   
                 }
             }
