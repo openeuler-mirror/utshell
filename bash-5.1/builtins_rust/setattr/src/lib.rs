@@ -1,7 +1,7 @@
 //# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-use std::mem::size_of_val;
+
 
 use libc::{c_int, c_uint, c_char, c_long, PT_NULL, c_void};
 use rhelp::r_builtin_help;
@@ -168,7 +168,7 @@ unsafe {
             list = (*list).next;
         }
     } else {
-        let mut variable_list: *mut *mut SHELL_VAR;
+        let variable_list: *mut *mut SHELL_VAR;
         if (attribute & att_function) != 0 || functions_only {
             variable_list = all_shell_functions();
             if attribute != att_function {
@@ -239,7 +239,7 @@ pub extern "C" fn show_all_var_attributes(v: c_int, nodefs: c_int) -> c_int {
     let mut i = 0;
     let mut any_failed = 0;
     let mut var: *mut SHELL_VAR;
-    let mut variable_list: *mut *mut SHELL_VAR;
+    let variable_list: *mut *mut SHELL_VAR;
 unsafe {
     variable_list =  if  v != 0 {all_shell_variables() } else {all_shell_functions()};
     if variable_list.is_null() {
@@ -272,11 +272,11 @@ unsafe {
 }
 
 #[no_mangle]
-pub extern "C" fn show_local_var_attributes(v: c_int, nodefs: c_int) -> c_int {
+pub extern "C" fn show_local_var_attributes(_v: c_int, nodefs: c_int) -> c_int {
     let mut i = 0;
     let mut any_failed = 0;
     let mut var: *mut SHELL_VAR;
-    let mut variable_list: *mut *mut SHELL_VAR;
+    let variable_list: *mut *mut SHELL_VAR;
 unsafe {
     variable_list = all_local_variables(0);
     if variable_list.is_null() {
@@ -444,7 +444,7 @@ pub extern "C" fn show_func_attributes(name: *mut c_char, nodefs: c_int) -> c_in
 #[no_mangle]
 pub extern "C" fn set_var_attribute(name: *mut c_char, attribute: c_int, undo: c_int) {
     let mut var: *mut SHELL_VAR;
-    let mut tvalue: *mut c_char;
+    let tvalue: *mut c_char;
 unsafe {
     if undo != 0 {
         var = find_variable(name);
@@ -591,7 +591,7 @@ unsafe fn cmp_two(a: usize, b: usize) -> bool {
 
 #[no_mangle]
 pub unsafe extern "C" fn r_print_array_assignment(var: *mut SHELL_VAR, quote: c_int) {
-    let mut vstr  = array_to_assign(array_cell(var) as *mut ARRAY ,quote); 
+    let vstr  = array_to_assign(array_cell(var) as *mut ARRAY ,quote); 
 
     if  vstr == std::ptr::null_mut() {
         if quote != 0 {
@@ -609,7 +609,7 @@ pub unsafe extern "C" fn r_print_array_assignment(var: *mut SHELL_VAR, quote: c_
 
 #[no_mangle]
 pub unsafe extern "C" fn r_print_assoc_assignment(var: *mut SHELL_VAR, quote: c_int) {
-    let mut vstr  = assoc_to_assign(assoc_cell(var) as *mut HASH_TABLE ,quote); 
+    let vstr  = assoc_to_assign(assoc_cell(var) as *mut HASH_TABLE ,quote); 
 
     if  vstr == std::ptr::null_mut() {
         if quote != 0 {

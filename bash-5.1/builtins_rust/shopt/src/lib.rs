@@ -6,7 +6,7 @@ use std::ffi::*;
 use rset::r_set_shellopts;
 use libc::*;
 
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use rhelp::r_builtin_help;
 /*
 /* First, the user-visible attributes */
@@ -1260,7 +1260,7 @@ unsafe extern "C" fn list_some_o_options(
 unsafe extern "C" fn set_shopt_o_options(
     mode: i32,
     list: *mut WordList,
-    quiet: i32,
+    _quiet: i32,
 ) -> i32 {
     //let mut l: *mut WordList =0 as *mut WordList;
     let mut l: *mut WordList;
@@ -1277,15 +1277,15 @@ unsafe extern "C" fn set_shopt_o_options(
     return rval;
 }
 unsafe extern "C" fn set_shellopts_after_change(
-     option_name: *mut libc::c_char,
-     mode: i32,
+     _option_name: *mut libc::c_char,
+     _mode: i32,
 ) -> i32 {
     r_set_shellopts();
     return 0;
 }
 unsafe extern "C" fn shopt_set_debug_mode(
-     option_name: *mut libc::c_char,
-     mode: i32,
+     _option_name: *mut libc::c_char,
+     _mode: i32,
 ) -> i32 {
     function_trace_mode = debugging_mode;
     error_trace_mode = function_trace_mode;
@@ -1296,7 +1296,7 @@ unsafe extern "C" fn shopt_set_debug_mode(
     return 0;
 }
 unsafe extern "C" fn shopt_enable_hostname_completion(
-    option_name: *mut libc::c_char,
+    _option_name: *mut libc::c_char,
     mode: i32,
 ) -> i32 {
     return enable_hostname_completion(mode);
@@ -1379,15 +1379,15 @@ pub unsafe extern "C" fn r_set_compatibility_opts() {
     };
 }
 unsafe extern "C" fn shopt_set_complete_direxpand(
-     option_name: *mut libc::c_char,
-     mode: i32,
+     _option_name: *mut libc::c_char,
+     _mode: i32,
 ) -> i32 {
     set_directory_hook();
     return 0;
 }
 unsafe extern "C" fn set_restricted_shell(
-     option_name: *mut libc::c_char,
-     mode: i32,
+     _option_name: *mut libc::c_char,
+     _mode: i32,
 ) -> i32 {
     static mut SAVE_RESTRICTED:i32 = -1;
     if SAVE_RESTRICTED == -1 {
@@ -1398,8 +1398,8 @@ unsafe extern "C" fn set_restricted_shell(
 }
 #[no_mangle]
 pub unsafe extern "C" fn r_set_login_shell(
-     option_name: *mut libc::c_char,
-     mode: i32,
+     _option_name: *mut libc::c_char,
+     _mode: i32,
 ) -> i32 {
     SHOPT_LOGIN_SHELL = if login_shell != 0 {1} else{0};
     return 0;
