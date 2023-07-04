@@ -592,10 +592,10 @@ pub unsafe extern "C" fn r_print_array_assignment(var: *mut SHELL_VAR, quote: c_
 
     if  vstr == std::ptr::null_mut() {
         if quote != 0 {
-            println!("{}=\"\'()\'\"",CStr::from_ptr((*var).name).to_str().unwrap());
+            println!("{}=\'()\'",CStr::from_ptr((*var).name).to_str().unwrap());
         }
         else {
-            println!("{}=\"()\"",CStr::from_ptr((*var).name).to_str().unwrap());
+            println!("{}=()",CStr::from_ptr((*var).name).to_str().unwrap());
         }
     }
     else {
@@ -610,10 +610,10 @@ pub unsafe extern "C" fn r_print_assoc_assignment(var: *mut SHELL_VAR, quote: c_
 
     if  vstr == std::ptr::null_mut() {
         if quote != 0 {
-            println!("{}=\"\'()\'\"",CStr::from_ptr((*var).name).to_str().unwrap());
+            println!("{}=\'()\'",CStr::from_ptr((*var).name).to_str().unwrap());
         }
         else {
-            println!("{}=\"()\"",CStr::from_ptr((*var).name).to_str().unwrap());
+            println!("{}=()",CStr::from_ptr((*var).name).to_str().unwrap());
         }
     }
     else {
