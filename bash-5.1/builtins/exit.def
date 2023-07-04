@@ -58,6 +58,7 @@ int
 exit_builtin (list)
      WORD_LIST *list;
 {
+printf("exit_builtin\n");
 r_exit_builtin(list);
   CHECK_HELPOPT (list);
 

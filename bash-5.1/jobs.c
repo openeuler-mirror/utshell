@@ -112,7 +112,6 @@ extern int killpg PARAMS((pid_t, int));
 #define DEL_WARNSTOPPED		1	/* warn about deleting stopped jobs */
 #define DEL_NOBGPID		2	/* don't add pgrp leader to bgpids */
 
-int wait_intr_flag = 0;
 /* Take care of system dependencies that must be handled when waiting for
    children.  The arguments to the WAITPID macro match those to the Posix.1
    waitpid() function. */
@@ -237,7 +236,6 @@ PROCESS *last_procsub_child = (PROCESS *)NULL;
 /* Functions local to this file. */
 
 void debug_print_pgrps (void);
-procenv_t wait_intr_buf;
 
 static sighandler wait_sigint_handler PARAMS((int));
 static sighandler sigchld_handler PARAMS((int));

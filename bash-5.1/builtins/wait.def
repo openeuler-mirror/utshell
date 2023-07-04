@@ -87,7 +87,7 @@ $END
 
 extern int wait_signal_received;
 
-extern procenv_t wait_intr_buf;
+procenv_t wait_intr_buf;
 int wait_intr_flag;
 
 static int set_waitlist PARAMS((WORD_LIST *));

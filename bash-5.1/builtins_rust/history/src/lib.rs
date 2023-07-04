@@ -328,10 +328,8 @@ unsafe {
             builtin_error( c_err.as_ptr(), (*((*list).word)).word);
             result = EXECUTION_FAILURE;
         } else {
-            println!("{}",CStr::from_ptr(s).to_str().unwrap());
-            //println!("{}",String::from(CStr::from_ptr(s).to_str().unwrap()));
-            //std::io::stdout().lock().write_all(CStr::from_ptr(s).to_bytes()).unwrap();
-            //libc::putchar(b'\n' as c_int);
+            std::io::stdout().lock().write_all(CStr::from_ptr(s).to_bytes()).unwrap();
+            libc::putchar(b'\n' as c_int);
         }
         if !s.is_null() {
             libc::free(s as *mut c_void);
