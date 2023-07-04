@@ -5,8 +5,8 @@ extern crate  libc;
 extern crate nix;
 
 use libc::{c_char, c_long, c_void, c_int};
-use nix::sys::termios::SpecialCharacterIndices;
-use std::{ffi::{CString,CStr}, i32, io::{Write, stdout}, ops::Add, string, u32};
+
+use std::{ffi::{CString}, i32, io::{Write}};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage,r_savestring};
 use rhelp::r_builtin_help;
 
@@ -907,7 +907,7 @@ pub extern "C" fn r_fc_builtin (mut list:* mut WordList)->i32
 #[no_mangle]
 pub extern "C" fn r_fc_gethist (command:* mut c_char, hlist:* mut * mut HIST_ENTRY, mode:i32)->* mut c_char
 {
-  let mut i:i32;
+  let i:i32;
 
   if hlist == std::ptr::null_mut() {
     return std::ptr::null_mut();
@@ -928,13 +928,13 @@ pub extern "C" fn r_fc_gethnum (command:* mut c_char, hlist:* mut * mut HIST_ENT
 {
   let mut sign:i32;
   let mut n:i32;
-  let mut clen:i32;
-  let mut rh:i32;
+  let clen:i32;
+  let rh:i32;
   let mut i:i32=0;
   let mut j:i32;
   let mut last_hist:i32;
   let mut real_last:i32;
-  let mut listing:i32;
+  let listing:i32;
 
   let mut s:* mut c_char;
   

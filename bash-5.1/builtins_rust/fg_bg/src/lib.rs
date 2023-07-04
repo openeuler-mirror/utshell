@@ -4,9 +4,9 @@
 extern crate  libc;
 extern crate nix;
 
-use libc::{c_char, c_long};
+use libc::{c_char};
 use std::{ffi::CString, ops::Add};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use rhelp::r_builtin_help;
 
 #[repr(i8)]
@@ -437,7 +437,7 @@ pub extern "C" fn r_fg_bg (list:*mut WordList, foreground:i32)->i32{
       if list != std::ptr::null_mut() {
         sh_badjob ( (*(*list).word).word );
       } else {
-        let mut c_str_current = CString::new("current").unwrap(); // from a &str, creates a new allocation
+        let c_str_current = CString::new("current").unwrap(); // from a &str, creates a new allocation
         sh_badjob (c_str_current.as_ptr() as * mut c_char);
       }
     }

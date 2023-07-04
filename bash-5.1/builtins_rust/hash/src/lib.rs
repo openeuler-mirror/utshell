@@ -8,8 +8,8 @@ use libc::{c_char,c_int, strchr,free,c_void,strerror,EISDIR};
 use std::ffi::{CStr,CString};
 use std::io::{stdout, Write};
 use rread::{SHELL_VAR};
-use rcommon::{r_find_shell_builtin,r_builtin_usage};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{r_builtin_usage};
+use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use rhelp::r_builtin_help;
 use std::fs;
 use std::os::linux::fs::MetadataExt;
@@ -388,8 +388,8 @@ unsafe  fn legal_hash_rust(name :*mut libc::c_char,value :*mut libc::c_char ) ->
     let alias_list: *mut *mut AliasT  = all_aliases();
     let mut t: *mut AliasT;
     let mut offset;
-    let mut name_w:*mut libc::c_char;
-    let mut target:*mut c_char;
+    let name_w:*mut libc::c_char;
+    let target:*mut c_char;
     offset = 0;
     if !alias_list.is_null() {
         t =  *alias_list.offset(offset as isize);
@@ -432,7 +432,7 @@ unsafe fn file_inode(pathname : &str,pathname2 : &str) -> std::io::Result<()> {
     let meta = fs::metadata( pathname )?;
     let meta2 = fs::metadata( pathname2 )?;
     common_inode = 0;
-    if (meta.st_ino() != meta2.st_ino()) {
+    if meta.st_ino() != meta2.st_ino() {
         println!("The name and value point to different executable files");
         common_inode = 1;
     }
