@@ -9,7 +9,7 @@ extern crate nix;
 use std::ffi::CString;
 use libc::c_long;
 
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use rhelp::r_builtin_help;
 
 
@@ -59,7 +59,7 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern "C" fn r_break_builtin(mut list :*mut WordList) -> i32 {
+pub extern "C" fn r_break_builtin(list :*mut WordList) -> i32 {
     //println!("enter r_break_builtin");
     let  mut  newbreak : intmax_t = 1 as intmax_t;
     unsafe {
@@ -71,7 +71,7 @@ pub extern "C" fn r_break_builtin(mut list :*mut WordList) -> i32 {
         get_numeric_arg(list, 1, &mut newbreak as *mut intmax_t);
 
     if newbreak <= 0{
-        let mut tmp = CString::new("loop count ").unwrap();
+        let tmp = CString::new("loop count ").unwrap();
         sh_erange ((*(*list).word).word, tmp.as_ptr() as * mut libc::c_char);
             //set_breaking (get_loop_level());
             breaking =  loop_level;
@@ -84,29 +84,29 @@ pub extern "C" fn r_break_builtin(mut list :*mut WordList) -> i32 {
   breaking =  newbreak as i32;
  // set_breaking(newbreak as i32);
   }
-  return (EXECUTION_SUCCESS!());
+  return EXECUTION_SUCCESS!();
 }
 
 #[no_mangle]
-pub extern "C" fn r_continue_builtin (mut list :*mut WordList) -> i32 {
+pub extern "C" fn r_continue_builtin (list :*mut WordList) -> i32 {
     let mut newcont : intmax_t = 0 as intmax_t;
     unsafe {
         //CHECK_HELPOPT! (list);
         checkhelp(list);
     }
     if check_loop_level() == 0 {
-        return (EXECUTION_SUCCESS!());
+        return EXECUTION_SUCCESS!();
     }
     unsafe {
         get_numeric_arg(list, 1, &mut newcont  as *mut intmax_t);
     }
     unsafe {
     if newcont <= 0{
-        let mut tmp = CString::new("loop count ").unwrap();
+        let tmp = CString::new("loop count ").unwrap();
         sh_erange ((*(*list).word).word, tmp.as_ptr() as * mut libc::c_char);
         //set_breaking(get_loop_level());
         breaking =  loop_level;
-      return (EXECUTION_FAILURE!());
+      return EXECUTION_FAILURE!();
     }
    if newcont > loop_level.into(){
       newcont = loop_level as i64;
@@ -115,7 +115,7 @@ pub extern "C" fn r_continue_builtin (mut list :*mut WordList) -> i32 {
     //set_continuing(newcont as i32);
 
     }
-    return (EXECUTION_SUCCESS!());
+    return EXECUTION_SUCCESS!();
 }
 
 #[no_mangle]

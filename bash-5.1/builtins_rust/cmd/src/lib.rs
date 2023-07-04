@@ -45,7 +45,7 @@ pub fn insert_cmd(cmd:&str, item: Box<Cmd>) -> Option<Box<Cmd>>{
 }
 
 pub fn get_cmd_enable(cmd:String) -> Result<bool,String>{
-    let mut cmd_table = CMD.lock().unwrap();
+    let cmd_table = CMD.lock().unwrap();
     let item = cmd_table.get(&cmd);
     match item {
         Some(c) => {
