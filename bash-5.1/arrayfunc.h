@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* arrayfunc.h -- declarations for miscellaneous array functions in arrayfunc.c */
 
 /* Copyright (C) 2001-2020 Free Software Foundation, Inc.

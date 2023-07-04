@@ -1,3 +1,6 @@
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 extern crate libc;
 
 use libc::{c_char,c_int, c_void, FILE, size_t, intmax_t,c_long, strcmp};

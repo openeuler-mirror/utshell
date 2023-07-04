@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* siglist.c -- signal list for those machines that don't have one. */
 
 /* Copyright (C) 1989-2009 Free Software Foundation, Inc.

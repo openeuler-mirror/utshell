@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* sig.c - interface for shell signal handlers and signal initialization. */
 
 /* Copyright (C) 1994-2020 Free Software Foundation, Inc.

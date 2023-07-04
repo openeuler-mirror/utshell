@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* pathexp.c -- The shell interface to the globbing library. */
 
 /* Copyright (C) 1995-2020 Free Software Foundation, Inc.

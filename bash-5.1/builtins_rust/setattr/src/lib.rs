@@ -1,3 +1,6 @@
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use std::mem::size_of_val;
 
 use libc::{c_int, c_uint, c_char, c_long, PT_NULL, c_void};

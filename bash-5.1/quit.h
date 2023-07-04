@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* quit.h -- How to handle SIGINT gracefully. */
 
 /* Copyright (C) 1993-2013 Free Software Foundation, Inc.

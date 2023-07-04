@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* bashhist.h -- interface to the bash history functions in bashhist.c. */
 
 /* Copyright (C) 1993-2020 Free Software Foundation,  Inc.

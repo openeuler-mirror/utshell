@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /*
  * array.c - functions to create, destroy, access, and manipulate arrays
  *	     of strings.

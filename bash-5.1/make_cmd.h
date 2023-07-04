@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* make_cmd.h -- Declarations of functions found in make_cmd.c */
 
 /* Copyright (C) 1993-2009,2020  Free Software Foundation, Inc.

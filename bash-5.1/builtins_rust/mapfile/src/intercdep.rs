@@ -1,3 +1,6 @@
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use rcommon::{WordList};
 use rhelp::r_builtin_help;
 pub type arrayind_t = c_long;

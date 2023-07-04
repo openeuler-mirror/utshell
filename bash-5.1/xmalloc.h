@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* xmalloc.h -- defines for the `x' memory allocation functions */
 
 /* Copyright (C) 2001-2020 Free Software Foundation, Inc.

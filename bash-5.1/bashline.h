@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* bashline.h -- interface to the bash readline functions in bashline.c. */
 
 /* Copyright (C) 1993-2019 Free Software Foundation, Inc.

@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* locale.c - Miscellaneous internationalization functions. */
 
 /* Copyright (C) 1996-2009,2012,2016,2020 Free Software Foundation, Inc.

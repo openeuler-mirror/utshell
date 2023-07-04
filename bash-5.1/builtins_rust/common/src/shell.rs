@@ -1,3 +1,6 @@
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 pub static EX_BADUSAGE:i32     = 2;
 
 pub static EX_MISCERROR:i32 = 2;

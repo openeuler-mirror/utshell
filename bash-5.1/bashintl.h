@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* bashintl.h -- Internationalization functions and defines. */
 
 /* Copyright (C) 1996-2009 Free Software Foundation, Inc.

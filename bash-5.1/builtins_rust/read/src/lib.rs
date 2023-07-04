@@ -1,3 +1,6 @@
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use libc::{c_int, c_char, c_long, c_ulong, c_uint, size_t, c_void, PT_NULL, ssize_t};
 use nix::errno::errno;
 use std::{ffi::{CString, CStr}, ptr::null_mut,};

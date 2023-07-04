@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* bashjmp.h -- wrapper for setjmp.h with necessary bash definitions. */
 
 /* Copyright (C) 1987-2009 Free Software Foundation, Inc.

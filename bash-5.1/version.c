@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* version.c -- distribution and version numbers. */
 
 /* Copyright (C) 1989-2020 Free Software Foundation, Inc.

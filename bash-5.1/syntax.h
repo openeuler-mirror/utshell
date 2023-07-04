@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* syntax.h -- Syntax definitions for the shell */
 
 /* Copyright (C) 2000, 2001, 2005, 2008, 2009-2020 Free Software Foundation, Inc.

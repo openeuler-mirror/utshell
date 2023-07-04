@@ -1,3 +1,4 @@
+//# This file was modified by UnionTech Software Technology Co., Ltd. in 2023/05/30 
 /* xmalloc.c -- safe versions of malloc and realloc */
 
 /* Copyright (C) 1991-2016 Free Software Foundation, Inc.

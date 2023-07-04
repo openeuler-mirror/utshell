@@ -1,3 +1,6 @@
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use rcommon::{r_builtin_usage,r_sh_invalidsig,r_sh_badpid,r_sh_badjob,r_get_job_spec,r_display_signal_list,WordList,WordDesc,err_translate_fn};
 use rhelp::r_builtin_help;
 // #[repr(C)]
