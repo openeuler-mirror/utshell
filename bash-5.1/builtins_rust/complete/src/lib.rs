@@ -645,7 +645,7 @@ pub extern "C" fn r_find_compact (name:* mut c_char)->i32
   unsafe {
     let compacts:CompactsArray=CompactsArray::new();
     while compacts.compactsArr[i as usize].actname != std::ptr::null_mut() {
-      let tmp = CStr::from_ptr(compacts.compactsArr[i as usize].actname);
+      let _tmp = CStr::from_ptr(compacts.compactsArr[i as usize].actname);
       if STREQ (name, compacts.compactsArr[i as usize].actname) {
         return i;
       }
@@ -848,7 +848,7 @@ pub extern "C" fn r_complete_builtin (listt: *mut WordList)->i32
   let mut cs:* mut COMPSPEC;
   let mut oflags:_optflags=_optflags{pflag:0,rflag:0,Dflag:0,Eflag:0,Iflag:0};
   let mut l: *mut WordList;
-  let mut wl: *mut WordList;
+  let wl: *mut WordList;
 
   unsafe {
     let mut list:* mut WordList=listt.clone();
@@ -1265,7 +1265,7 @@ pub extern "C" fn r_compopt_builtin (listt:* mut WordList)->i32
   let mut Eflag:i32=0;
   let mut Iflag:i32=0;
   let mut l:* mut WordList;
-  let mut wl:* mut WordList;
+  let wl:* mut WordList;
   let mut cs:* mut COMPSPEC;
 
   ret = EXECUTION_SUCCESS!();

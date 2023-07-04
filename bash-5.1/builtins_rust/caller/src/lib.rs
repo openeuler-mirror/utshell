@@ -4,8 +4,8 @@
 extern crate libc;
 extern crate rread;
 
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
-use libc::{c_char,c_int,PT_NULL,c_long,};
+use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use libc::{c_char,PT_NULL,c_long,};
 use std::ffi::{CStr,CString};
 
 use rread::{SHELL_VAR,ARRAY,intmax_t,};
