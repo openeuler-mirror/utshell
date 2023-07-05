@@ -300,5 +300,28 @@ unsafe extern "C" fn bash_history_inhibit_expansion(mut string: *mut c_char, mut
     {
         return 1 ;
     }
-return 0 
+            
+        
+    
+    si = 0;
+    if history_quoting_state == '\'' as i32 {
+        si = skip_to_delim(string,0 ,b"'\0" as *const u8 as *mut c_char,SD_NOJMP as c_int | SD_HISTEXP as c_int);
+        if *string.offset(si as isize) == 0  || si >= i {
+            return 1 ;
+        }
+        si += 1;
+    }
+
+    t = skip_to_histexp(string, si, hx.as_mut_ptr(), SD_NOJMP as c_int| SD_HISTEXP as c_int);
+    if t > 0 {
+        while t < i {
+            t = skip_to_histexp(string, t + 1 as c_int, hx.as_mut_ptr(), SD_NOJMP as c_int| SD_HISTEXP as c_int);
+            if t <= 0 {
+                return 0 ;
+            }
+        }
+        return (t > i) as c_int;
+    } else {
+        return 0 
+    };
 }

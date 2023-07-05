@@ -351,23 +351,33 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
                 falarm(tmsec, tmusec);
             }
 
-            if delim != b'\n' as c_char {
-                set_eol_delim(delim as c_int);
-                add_unwind_protect(reset_eol_delim as *mut c_void, PT_NULL as *mut c_char);
-            }
-        } else if input_is_tty != 0 { //-d  -n
-            // termsave.unwrap().fd = fd;
-            termsave.fd = fd;
-            ttgetattr(fd, &mut ttattrs as *mut libc::termios);
-            // termsave.unwrap().attrs = ttattrs;
-            termsave.attrs = ttattrs;
+            if nchars > 0 || delim != b'\n' as c_char {
+                //-d -n
+                if edit != 0 {
+                    if nchars > 0 {
+                        unwind_protect_mem(
+                            &mut rl_num_chars_to_read as *mut c_int,
+                            std::mem::size_of_val(&rl_num_chars_to_read) as c_int,
+                        );
+                        rl_num_chars_to_read = nchars;
+                    }
 
-            ttset = ttattrs;
-            if silent != 0 {
-                i = ttfd_cbreak(fd, std::mem::transmute(&ttset));
-            } else {
-                i = ttfd_onechar(fd, std::mem::transmute(&ttset));
-            }
+                    if delim != b'\n' as c_char {
+                        set_eol_delim(delim as c_int);
+                        add_unwind_protect(reset_eol_delim as *mut c_void, PT_NULL as *mut c_char);
+                    }
+                } else if input_is_tty != 0 {
+                    //-d  -n
+                    termsave.fd = fd;
+                    ttgetattr(fd, &mut ttattrs as *mut libc::termios);
+                    termsave.attrs = ttattrs;
+
+                    ttset = ttattrs;
+                    if silent != 0 {
+                        i = ttfd_cbreak(fd, std::mem::transmute(&ttset));
+                    } else {
+                        i = ttfd_onechar(fd, std::mem::transmute(&ttset));
+                    }
 
             if i < 0 {
                 sh_ttyerror(1);
