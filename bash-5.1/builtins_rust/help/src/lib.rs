@@ -4,13 +4,12 @@
 extern crate  libc;
 extern crate nix;
 extern crate std;
-use libc::{c_char,  c_void ,putchar, free};
-use std::{ffi::{CString,CStr}, i32, io::{Read, stdout, Write}, mem, string, u32};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, 
-  EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,
-  r_builtin_usage,get_local_str};
+use libc::{c_char,  c_void};
+use std::{ffi::{CString,CStr}, i32, io::{Write}};
+use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, 
+  EXECUTION_FAILURE,get_local_str};
 
-use fluent_bundle::{FluentBundle, FluentResource, FluentValue, FluentArgs};
+use fluent_bundle::{FluentArgs};
 use fluent_resmgr::resource_manager::ResourceManager;
 pub enum Option<T> {
     None,
@@ -108,16 +107,16 @@ extern "C"{
 pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
    // let mut i:i32;
     let mut plen:usize;
-    let mut match_found:i32;
+    let mut _match_found:i32;
     let mut sflag :i32 =  0;
     let mut dflag : i32 = 0;
     let mut mflag : i32 = 0;
     let mut m: bool;
-    let  pass:i32 = 0;
-    let mut this_found:i32;
-    let mut pattern:*mut c_char;
-    let mut name:*mut c_char; 
-    let  l:*mut WordList= list;
+    let  _pass:i32 = 0;
+    let mut _this_found:i32;
+    let mut _pattern:*mut c_char;
+    let mut _name:*mut c_char; 
+    let  _l:*mut WordList= list;
     let  mut  i : i32;
     unsafe {
         reset_internal_getopt();
@@ -233,13 +232,13 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
         let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
         let resources = vec![ "message.ftl".into()];
         let mut args = FluentArgs::new();
-        let s1 = String::from("command");
+        let _s1 = String::from("command");
         args.set("name",format!("{:?}",CStr::from_ptr(pattern)));
         let bundle = mgr.get_bundle(get_local_str(), resources);
-        let mut value = bundle.get_message("helperr").unwrap();
-        let mut pattern = value.value().expect("partern err");
+        let value = bundle.get_message("helperr").unwrap();
+        let pattern = value.value().expect("partern err");
         let mut errors = vec![];
-        let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+        let msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
         println!("utshell: help: {}", msg1);
         return EXECUTION_FAILURE!();
     }
@@ -252,7 +251,7 @@ pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
 
 
 #[no_mangle]
-pub extern "C" fn  r_help_null_builtin (mut list:*mut WordList) -> i32{
+pub extern "C" fn  r_help_null_builtin (_list:*mut WordList) -> i32{
   unsafe {
     show_shell_version(0);
   }
@@ -293,7 +292,7 @@ pub  extern "C"  fn r_builtin_help (){
 
 fn open_helpfile(name :*mut c_char) -> i32{
   
-    let mut  fd  : i32;
+    let fd  : i32;
     unsafe {
     fd = open (name, 0);
 
@@ -325,10 +324,10 @@ fn show_longdoc(i : i32){
         args.set("cmdName",msg);}
   }
     let bundle = mgr.get_bundle(get_local_str(), resources);
-    let mut value = bundle.get_message("helplongdoc").unwrap();
-    let mut pattern = value.value().expect("partern err");
+    let value = bundle.get_message("helplongdoc").unwrap();
+    let pattern = value.value().expect("partern err");
     let mut errors = vec![];
-    let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+    let msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
      println!("    {}", msg1);
 }
 
@@ -352,10 +351,10 @@ fn show_helpsynopsis( i : i32)
         args.set("cmdName",msg);}
    }
     let bundle = mgr.get_bundle(get_local_str(), resources);
-    let mut value = bundle.get_message("helpsynopsis").unwrap();
-    let mut pattern = value.value().expect("partern err");
+    let value = bundle.get_message("helpsynopsis").unwrap();
+    let pattern = value.value().expect("partern err");
     let mut errors = vec![];
-    let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+    let msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
      println!(" {}", msg1);
 }
 
@@ -378,14 +377,14 @@ fn show_desc (i :i32){
       args.set("cmdName",msg);}
  }
   let bundle = mgr.get_bundle(get_local_str(), resources);
-  let mut value = bundle.get_message("helpname").unwrap();
-  let mut pattern = value.value().expect("partern err");
+  let value = bundle.get_message("helpname").unwrap();
+  let pattern = value.value().expect("partern err");
   let mut errors = vec![];
-  let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+  let msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
    println!("    {}", msg1);
 }
 
-fn show_manpage (name : *mut c_char, i : i32){
+fn show_manpage (_name : *mut c_char, i : i32){
   /* NAME */
   println! ("NAME\n");
   show_desc(i);
@@ -416,15 +415,15 @@ fn show_manpage (name : *mut c_char, i : i32){
 }
 
 #[no_mangle]
-pub extern "C" fn  dispcolumn (i : i32, buf : *mut c_char, bufsize :libc::c_int, width : usize, height : i32){
-    let mut j : i32;
-    let mut dispcols : usize;
+pub extern "C" fn  dispcolumn (i : i32, buf : *mut c_char, _bufsize :libc::c_int, width : usize, height : i32){
+    let mut _j : i32;
+    let dispcols : usize;
     let mut helpdoc :*mut  libc::c_char;
      /* first column */
     let mut builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
     helpdoc = builtin1.short_doc;
     unsafe {
-    libc::strncpy (((buf as usize + 4 as usize ) as * mut c_char), helpdoc, width - 2);
+    libc::strncpy ((buf as usize + 4 as usize ) as * mut c_char, helpdoc, width - 2);
      *((buf as usize + (width - 2) as usize) as * mut c_char)='>' as c_char;
      *((buf as usize+(width - 1) as usize) as * mut c_char)='\0' as c_char;
      }
@@ -438,7 +437,7 @@ pub extern "C" fn  dispcolumn (i : i32, buf : *mut c_char, bufsize :libc::c_int,
     }
     dispcols = unsafe {libc::strlen(buf)};
     /* two spaces */
-    for j in  dispcols .. width{
+    for _j in  dispcols .. width{
          std::io::stdout().write(b" ");
   }
   /* second column */
@@ -451,24 +450,24 @@ pub extern "C" fn  dispcolumn (i : i32, buf : *mut c_char, bufsize :libc::c_int,
   else{
       *((buf as usize) as * mut c_char)='*' as c_char;
   }
-  libc::strncpy (((buf as usize + 4 as usize ) as * mut c_char), helpdoc, width - 3);
+  libc::strncpy ((buf as usize + 4 as usize ) as * mut c_char, helpdoc, width - 3);
   *((buf as usize + (width - 3) as usize) as * mut c_char)='>' as c_char;
   *((buf as usize+(width - 2) as usize) as * mut c_char)='\0' as c_char;
   }
    println! ("{:?}\n", buf);
 }
 
-pub fn  wdispcolumn (i : i32, buf :*mut c_char, bufsize : i32, width : i32, height : i32){
-    let  mut j : i32;
+pub fn  wdispcolumn (i : i32, _buf :*mut c_char, _bufsize : i32, _width : i32, _height : i32){
+    let  mut _j : i32;
     show_helpsynopsis(i);
 }
 
 fn show_builtin_command_help (){
-    let mut i : i32;
-    let mut j : i32;
+    let mut _i : i32;
+    let mut _j : i32;
     let  height : i32 = 76;
     let mut width : usize;
-    let mut t :*mut libc::c_char;
+    let mut _t :*mut libc::c_char;
     let mut blurb:[libc::c_char;128] = ['0' as  libc::c_char;128];
     let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
     let resources = vec!["message.ftl".into()];
