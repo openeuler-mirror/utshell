@@ -50,162 +50,165 @@ static mut default_buffered_input: c_int = -1;
 
 #[no_mangle]
 pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
+    let mut varname: *mut c_char = libc::PT_NULL as *mut c_char;
+    let mut size: c_int = 0;
+    let mut nr: c_int = 0;
+    let mut pass_next: c_int = 0;
+    let mut saw_escape: c_int = 0;
+    let mut eof: c_int;
+    let mut opt: c_int;
+    let mut retval: c_int;
+    let mut code: c_int;
+    let mut print_ps2: c_int;
+    let mut nflag: c_int = 0;
 
-    let mut varname :*mut c_char = libc::PT_NULL as *mut c_char;
-    let mut size : c_int = 0;
-    let mut nr : c_int = 0;
-    let mut pass_next : c_int = 0;
-    let mut saw_escape : c_int = 0;
-    let mut eof : c_int;
-    let mut opt : c_int;
-    let mut retval : c_int;
-    let mut code : c_int;
-    let mut print_ps2 : c_int;
-    let mut nflag : c_int = 0;
+    let mut i: c_int = 0;
 
-    let mut i : c_int = 0;
+    let mut input_is_tty: c_int = 0;
+    let mut input_is_pipe: c_int = 0;
+    let mut unbuffered_read: c_int = 0;
+    let mut skip_ctlesc: c_int;
+    let mut skip_ctlnul: c_int;
 
-    let mut input_is_tty : c_int = 0;
-    let mut input_is_pipe : c_int = 0;
-    let mut unbuffered_read : c_int = 0;
-    let mut skip_ctlesc : c_int;
-    let mut skip_ctlnul : c_int;
+    let mut raw: c_int = 0;
+    let mut edit: c_int = 0;
+    let mut nchars: c_int = 0;
+    let mut silent: c_int = 0;
+    let mut have_timeout: c_int = 0;
+    let mut ignore_delim: c_int = 0;
+    let mut fd: c_int = 0;
 
-    let mut raw : c_int = 0;
-    let mut edit : c_int = 0;
-    let mut nchars : c_int = 0;
-    let mut silent : c_int = 0;
-    let mut have_timeout : c_int = 0;
-    let mut ignore_delim : c_int = 0;
-    let mut fd : c_int = 0;
+    let mut lastsig: c_int = 0;
+    let t_errno: c_int;
 
-    let mut lastsig : c_int = 0;
-    let t_errno : c_int;
+    let mut _mb_cur_max: c_int;
 
-    let mut _mb_cur_max : c_int;
+    let mut tmsec: c_uint = 0;
+    let mut tmusec: c_uint = 0;
 
-    let mut tmsec : c_uint = 0;
-    let mut tmusec : c_uint = 0;
+    let mut ival: c_long = 0;
+    let mut uval: c_long = 0;
+    let mut intval: c_long = 0;
 
-    let mut ival : c_long = 0;
-    let mut uval : c_long = 0;
-    let mut intval : c_long = 0;
+    let mut c: c_char = 0;
 
-    let mut c : c_char = 0;
-
-    let mut input_string : *mut c_char;
-    let mut orig_input_string : *mut c_char;
+    let mut input_string: *mut c_char;
+    let mut orig_input_string: *mut c_char;
     let ifs_chars_null = CString::new("").unwrap();
-    let mut ifs_chars : *mut c_char;
-    let mut prompt : *mut c_char = PT_NULL as *mut c_char;
-    let mut arrayname : *mut c_char = PT_NULL as *mut c_char;
+    let mut ifs_chars: *mut c_char;
+    let mut prompt: *mut c_char = PT_NULL as *mut c_char;
+    let mut arrayname: *mut c_char = PT_NULL as *mut c_char;
 
-    let mut e : *mut c_char;
-    let t : *mut c_char;
-    let t1 : *mut c_char;
-    let mut ps2 : *mut c_char;
-    let mut tofree : *mut c_char;
+    let mut e: *mut c_char;
+    let t: *mut c_char;
+    let t1: *mut c_char;
+    let mut ps2: *mut c_char;
+    let mut tofree: *mut c_char;
 
-    let mut tsb : libc::stat;
+    let mut tsb: libc::stat;
 
-    let mut var : *mut SHELL_VAR = PT_NULL as *mut SHELL_VAR;
+    let mut var: *mut SHELL_VAR = PT_NULL as *mut SHELL_VAR;
 
-    let mut ttattrs : libc::termios;
-    let mut ttset : libc::termios;
+    let mut ttattrs: libc::termios;
+    let mut ttset: libc::termios;
     unsafe {
         ttattrs = std::mem::zeroed();
         ttset = std::mem::zeroed();
     }
 
-    let alist : *mut WordList;
+    let alist: *mut WordList;
 
-    let vflags : c_int;
-    let mut rlbuf : *mut c_char = null_mut();
-    let mut itext : *mut c_char = null_mut();
+    let vflags: c_int;
+    let mut rlbuf: *mut c_char = null_mut();
+    let mut itext: *mut c_char = null_mut();
 
-    let mut rlind : c_int = 0;
+    let mut rlind: c_int = 0;
 
+    let mut save_instream: *mut libc::FILE;
 
-    let mut save_instream : *mut libc::FILE;
+    let mut mb_cur_max: c_int = 1;
 
-    let mut mb_cur_max : c_int =  1;
+    unsafe {
+        // if termsave.is_none() {
+        //     let tmp: tty_save  = std::mem::zeroed();
+        //     termsave = Some(tmp);
+        // }
+        // ptermsave = std::mem::transmute(&termsave.unwrap());
 
-unsafe {
-
-    // if termsave.is_none() {
-    //     let tmp: tty_save  = std::mem::zeroed();
-    //     termsave = Some(tmp);
-    // }
-    // ptermsave = std::mem::transmute(&termsave.unwrap());
-
-    reset_internal_getopt();
-    let opt_str = CString::new("ersa:d:i:n:p:t:u:N:").unwrap();
-    opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
-    while  opt != -1 {
-        let opt_char:char=char::from(opt as u8);
-        match opt_char {
-            'r' => raw = 1,
-            'p' => prompt = list_optarg,
-            's' => silent = 1,
-            'e' => edit = 1,
-            'i' => itext = list_optarg,
-            'a' => arrayname = list_optarg,
-            't' => {
-                code = uconvert(list_optarg, &mut ival, &mut uval, PT_NULL as *mut *mut c_char);
-                if code == 0 || ival < 0 || uval < 0 {
-                    let c_err = CString::new("%s: invalid timeout specification").unwrap();
-                    builtin_error( c_err.as_ptr(), list_optarg);
-                    return EXECUTION_FAILURE;
-                } else {
-                    have_timeout = 1;
-                    tmsec = ival as c_uint;
-                    tmusec = uval as c_uint;
+        reset_internal_getopt();
+        let opt_str = CString::new("ersa:d:i:n:p:t:u:N:").unwrap();
+        opt = internal_getopt(list, opt_str.as_ptr() as *mut c_char);
+        while opt != -1 {
+            let opt_char: char = char::from(opt as u8);
+            match opt_char {
+                'r' => raw = 1,
+                'p' => prompt = list_optarg,
+                's' => silent = 1,
+                'e' => edit = 1,
+                'i' => itext = list_optarg,
+                'a' => arrayname = list_optarg,
+                't' => {
+                    code = uconvert(
+                        list_optarg,
+                        &mut ival,
+                        &mut uval,
+                        PT_NULL as *mut *mut c_char,
+                    );
+                    if code == 0 || ival < 0 || uval < 0 {
+                        let c_err = CString::new("%s: invalid timeout specification").unwrap();
+                        builtin_error(c_err.as_ptr(), list_optarg);
+                        return EXECUTION_FAILURE;
+                    } else {
+                        have_timeout = 1;
+                        tmsec = ival as c_uint;
+                        tmusec = uval as c_uint;
+                    }
                 }
-            }
-            'N' | 'n' => {
-                if opt_char == 'N' {
-                    ignore_delim = 1;
-                    delim = 255 as u8 as libc::c_char;
+                'N' | 'n' => {
+                    if opt_char == 'N' {
+                        ignore_delim = 1;
+                        delim = 255 as u8 as libc::c_char;
+                    }
+                    nflag = 1;
+                    code = legal_number(list_optarg, &mut intval);
+                    if code == 0 || intval < 0 || intval != (intval as c_int) as c_long {
+                        sh_invalidnum(list_optarg);
+                        return EXECUTION_FAILURE;
+                    } else {
+                        nchars = intval as c_int;
+                    }
                 }
-                nflag = 1;
-                code = legal_number(list_optarg, &mut intval);
-                if code == 0 || intval < 0 || intval != (intval as c_int) as c_long {
-                    sh_invalidnum(list_optarg);
-                    return EXECUTION_FAILURE;
-                } else {
-                    nchars = intval as c_int;
+                'u' => {
+                    code = legal_number(list_optarg, &mut intval);
+                    if code == 0 || intval < 0 || intval != (intval as c_int) as c_long {
+                        let c_err =
+                            CString::new("%s: invalid file descriptor specification").unwrap();
+                        builtin_error(c_err.as_ptr(), list_optarg);
+                        return EXECUTION_FAILURE;
+                    } else {
+                        fd = intval as c_int;
+                    }
+                    if sh_validfd(fd) == 0 {
+                        let c_err = CString::new("%d: invalid file descriptor: %s").unwrap();
+                        builtin_error(c_err.as_ptr(), fd, libc::strerror(nix::errno::errno()));
+                        return EXECUTION_FAILURE;
+                    }
                 }
-            }
-            'u' => {
-                code = legal_number(list_optarg, &mut intval);
-                if code == 0 || intval < 0 || intval != (intval as c_int) as c_long {
-                    let c_err = CString::new("%s: invalid file descriptor specification").unwrap();
-                    builtin_error(c_err.as_ptr(), list_optarg);
-                    return EXECUTION_FAILURE;
-                } else {
-                    fd = intval as c_int;
-                }
-                if sh_validfd(fd) == 0 {
-                    let c_err = CString::new("%d: invalid file descriptor: %s").unwrap();
-                    builtin_error(c_err.as_ptr(), fd, libc::strerror(nix::errno::errno()));
-                    return EXECUTION_FAILURE;
-                }
-            }
-            'd' => {
+                'd' => {
                     delim = *list_optarg;
                 }
-               
-            _ => {
-                if opt == -99 {
-                    r_builtin_help();
+
+                _ => {
+                    if opt == -99 {
+                        r_builtin_help();
+                        return EX_USAGE;
+                    }
+                    r_builtin_usage();
                     return EX_USAGE;
                 }
-            r_builtin_usage ();
-            return EX_USAGE;
             }
+            opt = internal_getopt(list, opt_str.as_ptr() as *mut c_char);
         }
-        opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
-    }
 
     list = loptend;
 
