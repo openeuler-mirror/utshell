@@ -310,24 +310,26 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
         }
     }
 
-    if tmsec > 0 || tmusec > 0 {
-        code = __sigsetjmp(&mut alrmbuf as *mut __jmp_buf_tag, 0);
-        if code != 0 {
-            sigalrm_seen = 0;
-            orig_input_string = PT_NULL as *mut c_char;
-            *input_string.offset(i as isize) = b'\0' as c_char;
-            if i == 0 {
-                t = libc::malloc(1) as *mut c_char;
-                *t = b'\0' as c_char;
-            } else {
-                t = libc::strcpy( xmalloc(
-                    (libc::strlen(input_string) + 1) as size_t) as *mut c_char, input_string);
-            }
-            run_unwind_frame(frame_name.as_ptr() as *mut c_char);
-            input_string = t;
-            retval = 128 + libc::SIGALRM;
-            break 'out_assig_vars;
-        }
+            if tmsec > 0 || tmusec > 0 {
+                code = __sigsetjmp(&mut alrmbuf as *mut __jmp_buf_tag, 0);
+                if code != 0 {
+                    sigalrm_seen = 0;
+                    orig_input_string = PT_NULL as *mut c_char;
+                    *input_string.offset(i as isize) = b'\0' as c_char;
+                    if i == 0 {
+                        t = libc::malloc(1) as *mut c_char;
+                        *t = b'\0' as c_char;
+                    } else {
+                        t = libc::strcpy(
+                            xmalloc((libc::strlen(input_string) + 1) as size_t) as *mut c_char,
+                            input_string,
+                        );
+                    }
+                    run_unwind_frame(frame_name.as_ptr() as *mut c_char);
+                    input_string = t;
+                    retval = 128 + libc::SIGALRM;
+                    break 'out_assig_vars;
+                }
 
         if interactive_shell == 0 {
             initialize_terminating_signals();
