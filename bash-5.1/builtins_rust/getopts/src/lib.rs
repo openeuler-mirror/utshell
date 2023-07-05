@@ -3,7 +3,7 @@
 //# SPDX-License-Identifier: GPL-3.0-or-later
 extern crate  libc;
 extern crate nix;
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,GETOPT_HELP, r_builtin_usage};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,GETOPT_HELP};
 use libc::{c_char, c_long, c_void};
 use std::{ffi::CString};
 use rhelp::r_builtin_help;

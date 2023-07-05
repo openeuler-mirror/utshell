@@ -4,11 +4,11 @@
 extern crate libc;
 extern crate rcommon;
 
-use libc::{c_char,c_int};
+use libc::{c_char};
 use std::ffi::{CString};
 use rcommon::{r_no_options};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
-use rhelp::r_builtin_help;
+use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS};
+
 
 #[macro_export]
 macro_rules! SEVAL_NOHIST {
