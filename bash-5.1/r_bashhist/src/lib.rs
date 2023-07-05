@@ -202,3 +202,19 @@ unsafe extern "C" fn member(c:i32, s:*const c_char) -> bool
         return false;
     }
 }
+
+static mut histignore: ignorevar = unsafe {
+    {
+        let mut init = ignorevar {
+            varname: b"HISTIGNORE\0" as *const u8 as *mut c_char,
+            ignores: 0 as *mut ign,
+            num_ignores: 0 as c_int,
+            last_ignoreval: 0 as *const c_char as *mut c_char,
+            item_func: ::std::mem::transmute::<
+                unsafe extern "C" fn(*mut ign) -> c_int,
+                sh_iv_item_func_t,
+            >( histignore_item_func as unsafe extern "C" fn(*mut ign) -> c_int),
+        };
+        init
+    }
+};
