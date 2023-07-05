@@ -4,10 +4,10 @@
 extern crate  libc;
 extern crate nix;
 
-use libc::{c_char, c_long, c_void};
+use libc::{c_char, c_void};
 use std::{ffi::CString};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage, r_savestring};
-use rhelp::r_builtin_help;
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_FAILURE, r_savestring};
+
 
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -285,7 +285,7 @@ unsafe fn DEBUG_TRAP()->i32
 pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
 {
   
-  let mut result:i32;
+  let result:i32;
   let mut filename:*mut c_char;
   let mut debug_trap:* mut c_char;
   let x:* mut c_char;
@@ -294,7 +294,7 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
     return EX_USAGE;
   }
 
-  let mut  llist:* mut WordList = loptend.clone();
+  let llist:* mut WordList = loptend.clone();
 
   if list == std::ptr::null_mut() {
     builtin_error (b"filename argument required\0" as *const u8 as *const libc::c_char as *mut libc::c_char );

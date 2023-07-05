@@ -7,11 +7,11 @@ extern crate nix;
 use libc::c_void;
 use std::ffi::CStr;
 use std::ffi::CString;
-use std::ptr;
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage,get_local_str};
+
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,get_local_str};
 use rhelp::r_builtin_help;
 
-use fluent_bundle::{FluentBundle, FluentResource, FluentValue, FluentArgs};
+use fluent_bundle::{FluentArgs};
 use fluent_resmgr::resource_manager::ResourceManager;
 
 #[macro_export]
@@ -395,15 +395,15 @@ pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
     //println!("rtype  is run");
     let  mut dflags : i32;
     let mut any_failed: i32 = 0 ;
-    let  mut opt : i32  = 0;
+    let  _opt : i32  = 0;
     let mut this : *mut WordList;
 
     dflags = CDESC_SHORTDESC!();	/* default */
     unsafe{
     this = list;  
     while this != std::ptr::null_mut() && char::from((*(*(*this).word).word) as u8) == '-' {
-         let mut flag  = (((*(*this).word).word) as usize + 1) as *mut libc::c_char;
-         let mut c_str_type = CString::new("type").unwrap();
+         let flag  = (((*(*this).word).word) as usize + 1) as *mut libc::c_char;
+         let c_str_type = CString::new("type").unwrap();
          let c_str_type1 = CString::new("-type").unwrap();
          let c_str_path = CString::new("path").unwrap();
          let c_str_path1 = CString::new("-path").unwrap();
@@ -475,7 +475,7 @@ pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
             }    
         }
         any_failed = found + any_failed;
-        any_failed == 0;
+        let _ = any_failed == 0;
      // (any_failed += found) == 0;
       unsafe {
         list = (*list).next;
@@ -494,14 +494,14 @@ pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
 
 fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
     let mut found : i32 = 0;
-    let mut i : i32;
+    let mut _i : i32;
     let mut found_file : i32 = 0;
     let mut f : i32;
-    let mut all : i32;
+    let all : i32;
     let mut full_path : *mut libc::c_char;
     let mut x : *mut libc::c_char;
     let mut pathlist : *mut libc::c_char;
-    let mut func : *mut SHELL_VAR = 0 as  *mut SHELL_VAR; 
+    let _func : *mut SHELL_VAR = 0 as  *mut SHELL_VAR; 
    // let mut alias : *mut alias_t;
 
     if (dflags & CDESC_ALL!()) != 0{
@@ -577,7 +577,7 @@ fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
           }
       }
       else if dflags & CDESC_SHORTDESC!() != 0 {
-          let mut result : *mut libc::c_char;
+          let result : *mut libc::c_char;
           unsafe {
             let name = String::from("isfunction");
             translation_fn(&name,command,std::ptr::null_mut());
@@ -700,7 +700,7 @@ fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
 
   /* Now search through $PATH. */
   #[warn(while_true)]
-  while true{
+  loop{
     if dflags & CDESC_STDPATH!() != 0 {
           	/* command -p, all cannot be non-zero */
               unsafe{
@@ -736,7 +736,7 @@ fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
         unsafe{
             f = file_status (full_path);
         }
-        if (f & FS_EXECABLE!() == 0){
+        if f & FS_EXECABLE!() == 0 {
             unsafe {
                 libc::free (full_path as *mut c_void);
 	            full_path =  std::ptr::null_mut() ;
@@ -817,15 +817,15 @@ unsafe fn translation_fn (command:&String,args1 : *mut libc::c_char,args2 : *mut
         args.set("str2",format!("{:?}",CStr::from_ptr(args2).to_str().unwrap()));
     }
     let bundle = mgr.get_bundle(get_local_str(), resources);
-    let mut value = bundle.get_message(command).unwrap();
-    let mut pattern = value.value().expect("partern err");
+    let value = bundle.get_message(command).unwrap();
+    let pattern = value.value().expect("partern err");
     let mut errors = vec![];
     if args1 !=  std::ptr::null_mut(){
-        let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+        let msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
         println!("{msg1}");
     }
     else{
-        let mut msg1 = bundle.format_pattern(&pattern, None, &mut errors);
+        let msg1 = bundle.format_pattern(&pattern, None, &mut errors);
         println!("{msg1}");
     } 
 }

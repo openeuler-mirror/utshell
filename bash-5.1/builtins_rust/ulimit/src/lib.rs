@@ -6,10 +6,10 @@ extern crate nix;
 
 use std::ffi::CStr;
 use std::ffi::CString;
-use std::fmt::format;
-use std::ptr;
-use std::mem;
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
+
+
+
+use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 use rhelp::r_builtin_help;
 
 #[derive(Copy, Clone)]
@@ -433,7 +433,7 @@ fn _findlim (opt:i32) -> i32{
 pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
 
     let mut  s : *mut libc::c_char;
-    let mut c : i32 ;
+    let c : i32 ;
     let mut limind : i32 ;
     let mut mode : i32 = 0 ;
     let mut opt : i32 = 0 ;
@@ -557,7 +557,7 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
   for d in 0..ncmd {
     //as *mut ULCMD) as ULCMD).cmd);
       let cmm = *((cmdlist as usize + (d as usize )*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD;
-      let dmd = cmm.cmd;
+      let _dmd = cmm.cmd;
 
       limind = _findlim ((*cmdlist.offset(d as isize)).cmd);
       if limind == -1 {
@@ -586,14 +586,14 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32{
 }
 
 unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32, multiple : i32) -> i32 {
-    let mut opt : i32 ;
-    let mut limind : i32 ;
-    let mut setting : i32 ;
-    let mut block_factor : i32 ;
+    let opt : i32 ;
+    let limind : i32 ;
+    let setting : i32 ;
+    let block_factor : i32 ;
     let mut soft_limit : RLIMTYPE = 0;
     let mut  hard_limit : RLIMTYPE  =0;
     let mut real_limit : RLIMTYPE = 0;
-    let mut limit : RLIMTYPE;
+    let limit : RLIMTYPE;
    
     if cmdarg != std::ptr::null_mut() {
         setting = 1;
@@ -631,9 +631,9 @@ unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32
     return EXECUTION_SUCCESS!();
   }
 
-  let mut c_str_hard = CString::new("hard").unwrap();
-  let mut c_str_soft = CString::new("soft").unwrap();
-  let mut c_str_unlimited = CString::new("unlimited").unwrap();
+  let c_str_hard = CString::new("hard").unwrap();
+  let c_str_soft = CString::new("soft").unwrap();
+  let c_str_unlimited = CString::new("unlimited").unwrap();
   if unsafe{STREQ!(cmdarg,c_str_hard.as_ptr() as *mut libc::c_char )}{
     real_limit = hard_limit;
   }
@@ -670,7 +670,7 @@ unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32
 
 }
 
-fn get_limit (mut ind : i32, softlim : *mut RLIMTYPE, hardlim : *mut RLIMTYPE ) -> i32 { 
+fn get_limit (ind : i32, softlim : *mut RLIMTYPE, hardlim : *mut RLIMTYPE ) -> i32 { 
     let mut value :  RLIMTYPE = 0 ;
     let mut limit: rlimit = rlimit { rlim_cur: 1, rlim_max: 1 };
 
@@ -793,19 +793,19 @@ unsafe fn getmaxvm(softlim : *mut RLIMTYPE , hardlim : *mut libc::c_char) -> i32
     return 0;
 }
  
-fn filesize(mut valuep: *mut rlim_t) -> i32 {
+fn filesize(_valuep: *mut rlim_t) -> i32 {
     unsafe {
         *__errno_location() = libc::EINVAL;
     }
     return -1;
 }
 
-unsafe fn pipesize(mut valuep: *mut rlim_t) -> i32 {
+unsafe fn pipesize(valuep: *mut rlim_t) -> i32 {
     *((valuep as usize) as *mut rlim_t) =  PIPE_BUF!() as rlim_t;
     return 0 ;
 }
 
-fn getmaxuprc(mut valuep: *mut rlim_t) -> i32 {
+fn getmaxuprc(valuep: *mut rlim_t) -> i32 {
     let mut maxchild: i64 = 0;
     maxchild = unsafe{getmaxchild()};
     if maxchild < 0 as i32 as libc::c_long {
@@ -854,7 +854,7 @@ fn print_all_limits (mut mode : i32) {
 
 fn  printone (limind : i32, curlim :RLIMTYPE  , pdesc : i32){
     let mut unitstr :[ libc::c_char; 64] = [0 ; 64];
-    let mut factor : i32 ;
+    let factor : i32 ;
 
     factor = BLOCKSIZE!(limits[limind as usize].block_factor);
     if pdesc > 0 {

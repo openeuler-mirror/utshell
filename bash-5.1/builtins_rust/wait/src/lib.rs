@@ -26,13 +26,13 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 
-use libc::{c_ulong, c_char, intmax_t,  c_short,c_int, c_long};
+use libc::{c_char, intmax_t,  c_short,c_int, c_long};
 use std::ffi::{CString,};
-use nix::sys::signal::{SigSet, Signal};
+use nix::sys::signal::{SigSet};
 use rjobs::{PROCESS,COMMAND, BLOCK_CHILD, UNBLOCK_CHILD};
 use rread::{SHELL_VAR, sh_var_value_func_t, sh_var_assign_func_t};
 use rcommon::{r_builtin_unbind_variable,r_builtin_usage,r_get_job_spec,WordList};
-use rcommon::{ WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN};
+use rcommon::{ EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 
 use rhelp::r_builtin_help;
 // 结构体
@@ -454,7 +454,7 @@ extern "C" fn r_set_waitlist(list:*mut WordList) -> i32{
     let mut set:SigSet = SigSet::empty();
     let mut oset:SigSet = SigSet::empty();
     let mut job:i32;
-    let mut r:i32;
+    let mut _r:i32;
     let mut njob:i32;
     let mut pid:intmax_t=0;
     let mut l:*mut WordList;

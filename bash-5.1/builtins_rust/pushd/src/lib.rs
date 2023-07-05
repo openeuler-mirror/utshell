@@ -4,10 +4,10 @@
 extern crate  libc;
 extern crate nix;
 
-use libc::{c_char, c_long, c_void};
-use std::{ffi::{CString,CStr}};
+use libc::{c_char, c_void};
+use std::{ffi::{CString}};
 
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage, r_savestring};
+use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, r_savestring};
 use rhelp::r_builtin_help;
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -469,7 +469,7 @@ while list != std::ptr::null_mut() {
       direction = *((*((*list).word)).word);
       if direction == '+' as c_char || direction == '-' as c_char {
 
-        if legal_number ((((*((*list).word)).word as usize + 1) as * mut c_char), & mut which) == 0 {
+        if legal_number (((*((*list).word)).word as usize + 1) as * mut c_char, & mut which) == 0 {
           sh_invalidnum ((*((*list).word)).word);
           builtin_usage ();
           return EX_USAGE;
@@ -850,7 +850,7 @@ pub extern "C" fn r_get_dirstack_from_string (strt:* mut c_char)-> * mut c_char
 #[no_mangle]
 pub extern "C" fn r_get_dirstack_element (ind:libc::c_long, sign:i32)-> * mut c_char
 {
-  let mut i:i32;
+  let i:i32;
   unsafe {
     i = r_get_dirstack_index (ind, sign, std::ptr::null_mut());
     if i < 0 || i > directory_list_offset {

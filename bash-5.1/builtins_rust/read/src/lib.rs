@@ -79,9 +79,9 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
     let mut fd : c_int = 0;
 
     let mut lastsig : c_int = 0;
-    let mut t_errno : c_int;
+    let t_errno : c_int;
 
-    let mut mb_cur_max : c_int;
+    let mut _mb_cur_max : c_int;
 
     let mut tmsec : c_uint = 0;
     let mut tmusec : c_uint = 0;
@@ -116,9 +116,9 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
         ttset = std::mem::zeroed();
     }
 
-    let mut alist : *mut WordList;
+    let alist : *mut WordList;
 
-    let mut vflags : c_int;
+    let vflags : c_int;
     let mut rlbuf : *mut c_char = null_mut();
     let mut itext : *mut c_char = null_mut();
 
@@ -833,7 +833,7 @@ unsafe {
 // }
 
 #[inline]
-unsafe extern "C" fn is_basic(mut c:libc::c_char)->libc::c_int{
+unsafe extern "C" fn is_basic(c:libc::c_char)->libc::c_int{
     return (*is_basic_table
         .as_ptr()
         .offset((c as libc::c_uchar as libc::c_int>>5 as libc::c_int)as isize)
@@ -862,18 +862,18 @@ unsafe {
 fn read_mbchar(fd: c_int, string: *mut c_char, ind: c_int, ch: c_int, unbuffered: c_int) -> c_int {
     let mut i: size_t = 1;
     let mut r: ssize_t;
-	let mut c: c_char = 0;
+	let c: c_char = 0;
 	let mut ret: ssize_t;
 
 unsafe {
     let mut mbchar: [c_char; MB_LEN_MAX as usize + 1] = std::mem::zeroed();
     let mut ps: mbstate_t = std::mem::zeroed();
     let mut ps_back: mbstate_t = std::mem::zeroed();
-    let mut wc: libc::wchar_t =  std::mem::zeroed();
+    let wc: libc::wchar_t =  std::mem::zeroed();
 
 'out: loop {
 	mbchar[0] = ch as c_char;
-	for n in 0..= MB_LEN_MAX {
+	for _n in 0..= MB_LEN_MAX {
 		ps_back = ps;
 		ret = mbrtowc(std::mem::transmute(&wc), std::mem::transmute(&mbchar), i, std::mem::transmute(&ps)) as ssize_t;
 		if ret == -2 {
@@ -934,7 +934,7 @@ fn check_alrm() {
 
 static mut old_attempted_completion_function: usize = 0;
 
-pub fn reset_attempted_completion_function(cp: *mut c_char)
+pub fn reset_attempted_completion_function(_cp: *mut c_char)
 {
 unsafe {
     if rl_attempted_completion_function as usize == 0 &&
@@ -1040,7 +1040,7 @@ fn edit_line(p : *mut c_char, itext : *mut c_char) -> *mut c_char {
 
 
 
-fn sigalrm(s : c_int) {
+fn sigalrm(_s : c_int) {
 unsafe {
     sigalrm_seen = 1;
 }
@@ -1068,7 +1068,7 @@ unsafe {
 // }
 // }
 
-unsafe extern "C" fn ttyrestore(mut ttp:*mut tty_save){
+unsafe extern "C" fn ttyrestore(ttp:*mut tty_save){
     ttsetattr((*ttp).fd,&mut (*ttp).attrs);
     tty_modified = 0 as libc::c_int;
 }
@@ -1129,7 +1129,7 @@ static mut delim_char: u8 = 0;
 
 fn set_eol_delim(c: c_int)
 {
-    let mut cmap:Keymap;
+    let cmap:Keymap;
 unsafe {
 	if bash_readline_initialized == 0 {
         initialize_readline();
@@ -1155,7 +1155,7 @@ unsafe {
 }
 }
 
-fn reset_eol_delim(cp: *mut c_char)
+fn reset_eol_delim(_cp: *mut c_char)
 {
 unsafe {
 	let cmap = rl_get_keymap();

@@ -1,9 +1,9 @@
 //# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-use std::{ffi::CString};
-use libc::{size_t, c_int, c_uint, c_char, c_long, c_void, PT_NULL, c_ulong, strchr};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+
+
+use rcommon::{WordList};
 
 #[cfg(test)]
 mod tests {
@@ -16,11 +16,11 @@ mod tests {
 
 
 #[no_mangle]
-pub extern "C" fn r_colon_builtin(ignore: *mut WordList )->i32 {
+pub extern "C" fn r_colon_builtin(_ignore: *mut WordList )->i32 {
     0
 }
 
 #[no_mangle]
-pub extern "C" fn r_false_builtin(ignore: *mut  WordList) -> i32 {
+pub extern "C" fn r_false_builtin(_ignore: *mut  WordList) -> i32 {
     1
 }

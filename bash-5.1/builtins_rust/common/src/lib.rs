@@ -4,7 +4,7 @@
 extern crate libc;
 
 use libc::{c_char,c_int, c_void, FILE, size_t, intmax_t,c_long, strcmp};
-use libc::{isdigit,strerror, __errno_location, fflush, ferror,clearerr, free,strcpy,strlen,strncmp,atoi,qsort};
+use libc::{isdigit,strerror, __errno_location, fflush, ferror,clearerr, free,strlen,strncmp,atoi,qsort};
 use std::ffi::{CStr, CString};
 use std::mem::size_of;
 use std::ptr::read_volatile;
@@ -15,7 +15,7 @@ include!(concat!("lib_readline_keymaps.rs"));
 
 include!(concat!("command.rs"));
 
-use fluent_bundle::{FluentBundle, FluentResource, FluentValue, FluentArgs};
+use fluent_bundle::{FluentArgs};
 use fluent_resmgr::resource_manager::ResourceManager;
 
 //struct
@@ -1428,7 +1428,7 @@ pub extern "C" fn r_get_job_spec(list:*mut WordList)->i32{
  * NOTE:  `kill' calls this function with forcecols == 0
  */
 pub extern "C" fn r_display_signal_list(mut list:*mut WordList,forcecols:i32)->i32{
-    let mut i:i32;
+    let mut _i:i32;
     let mut column:i32;
     let mut name:*mut c_char;
     let mut result:i32;
@@ -1546,10 +1546,10 @@ pub extern "C" fn r_display_signal_list(mut list:*mut WordList,forcecols:i32)->i
    DISABLED_OKAY means find it even if the builtin is disabled. */
 
 extern "C" fn r_print_builtin_name() {
-    let mut hi:i32;
-    let mut lo:i32;
-    let mut mid:i32 = 0;
-    let mut j:i32;
+    let hi:i32;
+    let lo:i32;
+    let _mid:i32 = 0;
+    let mut _j:i32;
 
     unsafe{
         hi = num_shell_builtins -1;
@@ -1790,15 +1790,15 @@ pub unsafe fn err_translate_fn (command:&String , args1 : *mut libc::c_char) {
     }
 
     let bundle = mgr.get_bundle(get_local_str(), resources);
-    let mut value = bundle.get_message(command).unwrap();
-    let mut pattern = value.value().expect("partern err");
+    let value = bundle.get_message(command).unwrap();
+    let pattern = value.value().expect("partern err");
     let mut errors = vec![];
     if args1 !=  std::ptr::null_mut(){
-        let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+        let msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
         eprint!("{msg1}");
     }
     else {
-        let mut msg1 = bundle.format_pattern(&pattern, None, &mut errors);
+        let msg1 = bundle.format_pattern(&pattern, None, &mut errors);
         eprint!("{msg1}");
     } 
 }
@@ -1812,15 +1812,15 @@ pub unsafe fn translate_fn (command:&String , args1 : *mut libc::c_char) {
     }
 
     let bundle = mgr.get_bundle(get_local_str(), resources);
-    let mut value = bundle.get_message(command).unwrap();
-    let mut pattern = value.value().expect("partern err");
+    let value = bundle.get_message(command).unwrap();
+    let pattern = value.value().expect("partern err");
     let mut errors = vec![];
     if args1 !=  std::ptr::null_mut(){
-        let mut msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+        let msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
         print!("{msg1}");
     }
     else {
-        let mut msg1 = bundle.format_pattern(&pattern, None, &mut errors);
+        let msg1 = bundle.format_pattern(&pattern, None, &mut errors);
         print!("{msg1}");
     } 
 }
