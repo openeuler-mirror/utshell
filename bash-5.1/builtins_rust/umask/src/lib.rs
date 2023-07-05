@@ -6,7 +6,7 @@ extern crate libc;
 use libc::{c_char,c_int};
 use std::ffi::{CString};
 use rcommon::{r_read_octal};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage};
+use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
 
 use rhelp::r_builtin_help;
 //结构体

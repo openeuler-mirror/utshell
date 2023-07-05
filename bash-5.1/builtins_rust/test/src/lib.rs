@@ -2,16 +2,16 @@
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 use libc::{c_int, c_char, c_void};
-use std::ffi::{CStr, CString};
+
 use rcommon::{r_make_builtin_argv,WordList};
 include!(concat!("intercdep.rs"));
-use rhelp::r_builtin_help;
+
 
 #[no_mangle]
 pub extern "C" fn r_test_builtin(list: *mut WordList) -> i32 {
 
     let result: c_int;
-    let mut argc: c_int = 0;
+    let argc: c_int = 0;
 unsafe {
     if list.is_null() {
         if *this_command_name == b'[' as c_char &&
