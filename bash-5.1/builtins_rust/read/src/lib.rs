@@ -284,17 +284,18 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
                 sync_buffered_stream(default_buffered_input);
             }
 
-    input_is_tty = libc::isatty(fd);
-    if input_is_tty == 0 {
-        input_is_pipe = (libc::lseek(fd, 0, libc::SEEK_CUR) < 0 && (errno() == libc::ESPIPE)) as c_int;
-    }
+            input_is_tty = libc::isatty(fd);
+            if input_is_tty == 0 {
+                input_is_pipe =
+                    (libc::lseek(fd, 0, libc::SEEK_CUR) < 0 && (errno() == libc::ESPIPE)) as c_int;
+            }
 
-    //如果设置 -p,-e,-s但输入不是终端，忽略
-    if (!prompt.is_null() || edit != 0 || silent != 0) && input_is_tty == 0 {
-        itext = PT_NULL as *mut c_char;
-        edit = 0;
-        silent = 0;
-    }
+            //如果设置 -p,-e,-s但输入不是终端，忽略
+            if (!prompt.is_null() || edit != 0 || silent != 0) && input_is_tty == 0 {
+                itext = PT_NULL as *mut c_char;
+                edit = 0;
+                silent = 0;
+            }
 
     if edit != 0 {
         add_unwind_protect(xfree as *mut c_void, rlbuf);
@@ -1069,10 +1070,9 @@ unsafe {
 }
 
 #[no_mangle]
-pub extern "C" fn read_tty_modified() -> c_int
-{
-unsafe {
-    return tty_modified;
+pub extern "C" fn read_tty_modified() -> c_int {
+    unsafe {
+        return tty_modified;
     }
 }
 
@@ -1111,18 +1111,17 @@ unsafe {
 }
 }
 
-fn reset_eol_delim(_cp: *mut c_char)
-{
-unsafe {
-	let cmap = rl_get_keymap();
-    let n = std::mem::size_of_val(&*cmap);
-    let ret_pos = (b'M' & 0x1f) as usize * n;
-    let delim_pos = (delim_char & 0x1f) as usize * n;
+fn reset_eol_delim(_cp: *mut c_char) {
+    unsafe {
+        let cmap = rl_get_keymap();
+        let n = std::mem::size_of_val(&*cmap);
+        let ret_pos = (b'M' & 0x1f) as usize * n;
+        let delim_pos = (delim_char & 0x1f) as usize * n;
 
-	(*((cmap as usize + ret_pos) as Keymap)).tp = old_newline_ctype as c_char;
-	(*((cmap as usize + ret_pos) as Keymap)).function = std::mem::transmute(old_newline_func);
+        (*((cmap as usize + ret_pos) as Keymap)).tp = old_newline_ctype as c_char;
+        (*((cmap as usize + ret_pos) as Keymap)).function = std::mem::transmute(old_newline_func);
 
-	(*((cmap as usize + delim_pos) as Keymap)).tp = old_delim_ctype as c_char;
-	(*((cmap as usize + delim_pos) as Keymap)).function = std::mem::transmute(old_delim_func);
-}
+        (*((cmap as usize + delim_pos) as Keymap)).tp = old_delim_ctype as c_char;
+        (*((cmap as usize + delim_pos) as Keymap)).function = std::mem::transmute(old_delim_func);
+    }
 }

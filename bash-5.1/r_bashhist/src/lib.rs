@@ -218,3 +218,15 @@ static mut histignore: ignorevar = unsafe {
         init
     }
 };
+
+
+pub type histdata_t = *mut c_void;
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct _hist_entry{
+    pub line: *mut c_char,
+    pub timestamp: *mut c_char,
+    pub data: histdata_t,
+}
+pub type HIST_ENTRY = _hist_entry;
