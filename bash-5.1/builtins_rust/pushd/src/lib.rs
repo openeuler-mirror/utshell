@@ -1,123 +1,149 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-extern crate  libc;
+extern crate libc;
 extern crate nix;
 
 use libc::{c_char, c_void};
-use std::{ffi::{CString}};
+use std::ffi::CString;
 
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, r_savestring};
+use rcommon::{r_savestring, WordDesc, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
 #[repr(u8)]
-enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
-    cm_connection, cm_function_def, cm_until, cm_group,
-    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc
+enum command_type {
+    cm_for,
+    cm_case,
+    cm_while,
+    cm_if,
+    cm_simple,
+    cm_select,
+    cm_connection,
+    cm_function_def,
+    cm_until,
+    cm_group,
+    cm_arith,
+    cm_cond,
+    cm_arith_for,
+    cm_subshell,
+    cm_coproc,
 }
 
 #[repr(u8)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 enum r_instruction {
-    r_output_direction, r_input_direction, r_inputa_direction,
-    r_appending_to, r_reading_until, r_reading_string,
-    r_duplicating_input, r_duplicating_output, r_deblank_reading_until,
-    r_close_this, r_err_and_out, r_input_output, r_output_force,
-    r_duplicating_input_word, r_duplicating_output_word,
-    r_move_input, r_move_output, r_move_input_word, r_move_output_word,
-    r_append_err_and_out
+    r_output_direction,
+    r_input_direction,
+    r_inputa_direction,
+    r_appending_to,
+    r_reading_until,
+    r_reading_string,
+    r_duplicating_input,
+    r_duplicating_output,
+    r_deblank_reading_until,
+    r_close_this,
+    r_err_and_out,
+    r_input_output,
+    r_output_force,
+    r_duplicating_input_word,
+    r_duplicating_output_word,
+    r_move_input,
+    r_move_output,
+    r_move_input_word,
+    r_move_output_word,
+    r_append_err_and_out,
 }
 
 #[repr(C)]
 pub union REDIRECT {
-  next:*mut REDIRECT,
-  redirector:libc::c_int,
-  rflags:libc::c_int,
-  flags:libc::c_int,
-  instruction:r_instruction,
-  redirectee:libc::c_int,
-  here_doc_eof:*mut c_char
+    next: *mut REDIRECT,
+    redirector: libc::c_int,
+    rflags: libc::c_int,
+    flags: libc::c_int,
+    instruction: r_instruction,
+    redirectee: libc::c_int,
+    here_doc_eof: *mut c_char,
 }
 
 /* FOR command. */
 #[repr(C)]
 pub struct for_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
-    next:* mut PATTERN_LIST,
-    patterns:* mut WordList,
-    action:*mut COMMAND,
-    flags:libc::c_int
+    next: *mut PATTERN_LIST,
+    patterns: *mut WordList,
+    action: *mut COMMAND,
+    flags: libc::c_int,
 }
 
 #[repr(C)]
 pub struct case_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    word:*mut WordDesc,
-    clauses:*mut PATTERN_LIST
+    flags: libc::c_int,
+    line: libc::c_int,
+    word: *mut WordDesc,
+    clauses: *mut PATTERN_LIST,
 }
 
 #[repr(C)]
 pub struct while_com {
-    flags:libc::c_int,
-    test:*mut COMMAND,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    test: *mut COMMAND,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct if_com {
-    flags:libc::c_int,
-    test:*mut COMMAND,
-    true_case:*mut COMMAND,
-    false_case:*mut COMMAND
+    flags: libc::c_int,
+    test: *mut COMMAND,
+    true_case: *mut COMMAND,
+    false_case: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct connection {
-    ignore:libc::c_int,
-    first:*mut COMMAND,
-    second:*mut COMMAND,
-    connector:libc::c_int
+    ignore: libc::c_int,
+    first: *mut COMMAND,
+    second: *mut COMMAND,
+    connector: libc::c_int,
 }
 
 #[repr(C)]
 pub struct simple_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    words:*mut WordList,
-    redirects:*mut REDIRECT
+    flags: libc::c_int,
+    line: libc::c_int,
+    words: *mut WordList,
+    redirects: *mut REDIRECT,
 }
 
 #[repr(C)]
 pub struct function_def {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
 pub struct group_com {
-    ignore:libc::c_int,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    ignore: libc::c_int,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
 pub struct select_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
@@ -186,33 +212,32 @@ pub struct COMMAND {
     value:VALUE_COMMAND
 }
 
-
 #[macro_export]
 macro_rules! NOCD {
-  () => {
-    0x01
-  }
+    () => {
+        0x01
+    };
 }
 
 #[macro_export]
 macro_rules! ROTATE {
-  () => {
-    0x02
-  }
+    () => {
+        0x02
+    };
 }
 
 #[macro_export]
 macro_rules! LONGFORM {
-  () => {
-    0x04
-  }
+    () => {
+        0x04
+    };
 }
 
 #[macro_export]
 macro_rules! CLEARSTAK {
-  () => {
-    0x08
-  }
+    () => {
+        0x08
+    };
 }
 
 extern "C" {
