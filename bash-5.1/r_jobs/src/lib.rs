@@ -17,7 +17,38 @@ extern "C" {
     static mut default_buffered_input: c_int;
     static mut shell_level: c_int;
     static mut wait_signal_received: c_int;
-}
+    static mut this_shell_builtin:sh_builtin_func_t;
+    static mut last_command_exit_value: c_int;
+    static mut last_command_exit_signal: c_int;
+    static mut rl_readline_state: libc::c_ulong;
+    static mut loop_level: c_int;
+    static mut shell_compatibility_level: c_int;
+    static mut executing_list: c_int;
+    static mut sourcelevel: c_int;
+    static mut this_command_name: *mut c_char;
+    static mut trap_list: [*mut c_char; 0];
+    static mut running_trap: c_int;
+    static mut executing_builtin: c_int;
+    static mut breaking: c_int;
+    static mut subst_assign_varlist: *mut WORD_LIST;
+    static mut temporary_env: *mut HASH_TABLE;
+    static mut startup_state: c_int;
+    static mut line_number: c_int;
+    
+    fn get_string_value(_:*const c_char) -> *mut c_char;
+    fn sys_error(format:*const c_char, ...);
+    fn list_reverse(list:*mut GENERIC_LIST) -> *mut GENERIC_LIST;
+    fn internal_warning(_: *const  c_char, _: ...);
+    fn coproc_reap();
+    fn programming_error(_: *const  c_char, _: ...);
+    fn signal_name(_: c_int) -> *mut  c_char;
+    fn sync_buffered_stream(_: c_int) -> c_int;
+    fn set_exit_status(_: c_int);
+    fn getpid() -> __pid_t;
+    fn unset_bash_input(_: c_int);
+    fn setpgid(__pid: __pid_t, __pgid: __pid_t) -> c_int;
+    fn signal_is_trapped(_: c_int) -> c_int;
+    fn signal_is_hard_ignored(_: c_int) -> c_int;}
 
 // pub  static mut SIG_IGN:__sighandler_t = 1;
 #[macro_export]
