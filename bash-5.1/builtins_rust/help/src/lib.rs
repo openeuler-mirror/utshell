@@ -1,15 +1,18 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 extern crate  libc;
 extern crate nix;
 extern crate std;
-use libc::{c_char,  c_void};
-use std::{ffi::{CString,CStr}, i32, io::{Write}};
-use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, 
-  EXECUTION_FAILURE,get_local_str};
+use libc::{c_char, c_void};
+use rcommon::{get_local_str, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
+use std::{
+    ffi::{CStr, CString},
+    i32,
+    io::Write,
+};
 
-use fluent_bundle::{FluentArgs};
+use fluent_bundle::FluentArgs;
 use fluent_resmgr::resource_manager::ResourceManager;
 pub enum Option<T> {
     None,
@@ -73,34 +76,38 @@ macro_rules! EXIT_FAILURE{
   () => {1}
 }
 
-extern "C"{
+extern "C" {
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
+    fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> i32;
     //fn builtin_error(err:*const c_char,...);
     fn builtin_usage();
-    fn show_shell_version(ver:i32);
-    fn glob_pattern_p(pattern:*const c_char) -> i32;    
-    fn zcatfd(fd : i32 ,id : i32, nn :*mut c_char) -> i32;
-    fn zmapfd(fd : i32, name :*mut *mut libc::c_char, nn: *mut libc::c_char) -> i32;
-    fn sh_builtin_func_t(list :*mut WordList) -> i32;
-    fn  builtin_address_internal(comand_name:*mut c_char, i:i32) -> *mut  builtin;
-    fn termsig_handler (sig:i32); 
+    fn show_shell_version(ver: i32);
+    fn glob_pattern_p(pattern: *const c_char) -> i32;
+    fn zcatfd(fd: i32, id: i32, nn: *mut c_char) -> i32;
+    fn zmapfd(fd: i32, name: *mut *mut libc::c_char, nn: *mut libc::c_char) -> i32;
+    fn sh_builtin_func_t(list: *mut WordList) -> i32;
+    fn builtin_address_internal(comand_name: *mut c_char, i: i32) -> *mut builtin;
+    fn termsig_handler(sig: i32);
     fn throw_to_top_level();
     fn default_columns() -> usize;
-    fn wcsnwidth (chaa : * mut libc::wchar_t, size :i32, i: i32) -> i32;
-    fn xstrmatch (string1 : * mut libc::c_char, string2 : * mut libc::c_char, i : libc::c_char) -> libc::c_char;
-    fn open(pathname : *const libc::c_char, oflag : i32) -> i32;
-    fn wcwidth( c :libc::wchar_t) -> i32;
-    static mut loptend:*mut WordList;
-    static bash_copyright : *const c_char;
-    static bash_license : *const c_char;
-    static mut terminating_signal:i32;
-    static this_command_name:*mut libc::c_char;
-    static mut interrupt_state:i32;
-    static mut num_shell_builtins : i32;
-    static mut static_shell_builtin : [builtin ; 100];
-    static  shell_builtins:*mut  builtin;
-    static  mut current_builtin :*mut builtin;
+    fn wcsnwidth(chaa: *mut libc::wchar_t, size: i32, i: i32) -> i32;
+    fn xstrmatch(
+        string1: *mut libc::c_char,
+        string2: *mut libc::c_char,
+        i: libc::c_char,
+    ) -> libc::c_char;
+    fn open(pathname: *const libc::c_char, oflag: i32) -> i32;
+    fn wcwidth(c: libc::wchar_t) -> i32;
+    static mut loptend: *mut WordList;
+    static bash_copyright: *const c_char;
+    static bash_license: *const c_char;
+    static mut terminating_signal: i32;
+    static this_command_name: *mut libc::c_char;
+    static mut interrupt_state: i32;
+    static mut num_shell_builtins: i32;
+    static mut static_shell_builtin: [builtin; 100];
+    static shell_builtins: *mut builtin;
+    static mut current_builtin: *mut builtin;
 }
 
 #[no_mangle]
@@ -305,30 +312,32 @@ fn open_helpfile(name :*mut c_char) -> i32{
     }
 }
 
-fn show_longdoc(i : i32){
-  let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-  let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
-  let resources = vec![ "message.ftl".into()];
-  let mut args = FluentArgs::new();
-  let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
-  let s1 = String::from("command");
-  match i {
-      0|1|2|3|4|5 => {
-                args.set("cmdName",format!("{}{}",s1,i));}
-      33 => {
-              args.set("cmdName",format!("{}{}",s1,6))}
-      75 => {
-            args.set("cmdName",format!("{}{}",s1,7))}
-      _ => {
-        let msg: &str = c_str.to_str().unwrap();
-        args.set("cmdName",msg);}
-  }
+fn show_longdoc(i: i32) {
+    let builtin1 = unsafe {
+        &(*((shell_builtins as usize + (i * BUILTIN_SIZEOF!()) as usize) as *mut builtin))
+    };
+    let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
+    let resources = vec!["message.ftl".into()];
+    let mut args = FluentArgs::new();
+    let c_str: &CStr = unsafe { CStr::from_ptr(builtin1.name) };
+    let s1 = String::from("command");
+    match i {
+        0 | 1 | 2 | 3 | 4 | 5 => {
+            args.set("cmdName", format!("{}{}", s1, i));
+        }
+        33 => args.set("cmdName", format!("{}{}", s1, 6)),
+        75 => args.set("cmdName", format!("{}{}", s1, 7)),
+        _ => {
+            let msg: &str = c_str.to_str().unwrap();
+            args.set("cmdName", msg);
+        }
+    }
     let bundle = mgr.get_bundle(get_local_str(), resources);
     let value = bundle.get_message("helplongdoc").unwrap();
     let pattern = value.value().expect("partern err");
     let mut errors = vec![];
     let msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
-     println!("    {}", msg1);
+    println!("    {}", msg1);
 }
 
 fn show_helpsynopsis( i : i32) 
