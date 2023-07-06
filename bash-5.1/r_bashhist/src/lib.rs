@@ -494,3 +494,15 @@ pub unsafe extern "C" fn read_history_cache()
 
 }
 
+pub unsafe extern "C" fn bash_really_add_history(mut line: *mut c_char) {
+        let mut add_it: c_int = 0;
+        let mut curlen: c_int = 0;
+        let mut current: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+        current=previous_history();
+        if !current.is_null() {
+            add_it =1;
+        }
+        if add_it != 0 {
+        really_add_history(line);
+    }
+}
