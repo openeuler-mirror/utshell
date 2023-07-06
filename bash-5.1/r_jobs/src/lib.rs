@@ -256,3 +256,26 @@ static mut zerojs: jobstats = {
     };
     init
 };
+
+
+#[no_mangle]
+pub static mut js: jobstats = {
+    let mut init = jobstats{
+        c_childmax: -(1 as libc::c_long),
+        c_living: 0 as  c_int,
+        c_reaped: 0 as  c_int,
+        c_injobs: 0 as  c_int,
+        c_totforked: 0 as  c_int,
+        c_totreaped: 0 as  c_int,
+        j_jobslots: 0 as  c_int,
+        j_lastj: 0 as  c_int,
+        j_firstj: 0 as  c_int,
+        j_njobs: 0 as  c_int,
+        j_ndead: 0 as  c_int,
+        j_current: -(1 as  c_int),
+        j_previous: -(1 as  c_int),
+        j_lastmade: 0 as *const JOB as *mut JOB,
+        j_lastasync: 0 as *const JOB as *mut JOB,
+    };
+    init
+};
