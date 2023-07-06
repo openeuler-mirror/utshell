@@ -450,3 +450,22 @@ pub unsafe extern "C" fn bash_clear_history()
     history_lines_this_session = 0;
 
 }
+
+#[no_mangle]
+
+pub unsafe extern "C" fn bash_delete_haitent(mut i:c_int) -> c_int
+{
+    return 0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bash_delete_history_range(mut first:c_int, mut last:c_int) -> c_int
+{
+    let mut i: c_int = 0;
+    for i in first.. last {
+        bash_delete_hitent(i);
+    }
+    return i;
+}
+
+
