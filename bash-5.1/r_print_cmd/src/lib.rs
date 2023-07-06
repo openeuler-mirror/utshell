@@ -24,3 +24,16 @@ const MB_LEN_MAX:usize = 16; //在C端这是一个宏，
 const MB_CUR_MAX:usize  =  1;
 const AND_AND:i32 = 288;
 const OR_OR:i32 = 289;
+
+/* 宏定义 */
+#[macro_export]
+macro_rules! CHECK_XTRACE_FP{
+    () => (
+        if !xtrace_fp.is_null(){
+            xtrace_fp = xtrace_fp;
+        } 
+        else{
+            xtrace_fp = stderr;
+        }
+    )
+}
