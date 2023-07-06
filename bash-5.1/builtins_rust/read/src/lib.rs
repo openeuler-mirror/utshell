@@ -226,19 +226,20 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
             return EXECUTION_FAILURE;
     }
 
-    //忽略界定符
-    if ignore_delim != 0{  //-N  ignore_delim = 1
-        delim = 255 as u8 as libc::c_char;
-    }
+        //忽略界定符
+        if ignore_delim != 0 {
+            //-N  ignore_delim = 1
+            delim = 255 as u8 as libc::c_char;
+        }
 
-    ifs_chars = getifs(); //ifs_chars is "\n"
-    if ifs_chars.is_null() {
-        ifs_chars = ifs_chars_null.as_ptr() as *mut c_char;
-    }
+        ifs_chars = getifs(); //ifs_chars is "\n"
+        if ifs_chars.is_null() {
+            ifs_chars = ifs_chars_null.as_ptr() as *mut c_char;
+        }
 
-    if ignore_delim != 0 {
-        ifs_chars = ifs_chars_null.as_ptr() as *mut c_char;
-    }
+        if ignore_delim != 0 {
+            ifs_chars = ifs_chars_null.as_ptr() as *mut c_char;
+        }
 
     skip_ctlesc = 0;
     skip_ctlnul = 0;

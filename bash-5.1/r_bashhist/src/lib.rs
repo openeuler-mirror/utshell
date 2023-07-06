@@ -188,3 +188,17 @@ macro_rules! FNM_NOMATCH {
     };
 
 }
+
+
+pub const st_stdin: stream_type = 1;
+
+
+unsafe extern "C" fn member(c:i32, s:*const c_char) -> bool
+{
+    if c != 0 {
+       return  mbschr(s, c) as c_char != 0 as c_char ;
+    }
+    else {
+        return false;
+    }
+}
