@@ -1051,31 +1051,29 @@ fn edit_line(p: *mut c_char, itext: *mut c_char) -> *mut c_char {
     }
 }
 
-fn sigalrm(_s : c_int) {
-unsafe {
-    sigalrm_seen = 1;
-}
-}
-
-fn reset_alarm()
-{
-unsafe {
-    falarm(0, 0);
-    set_signal_handler(libc::SIGALRM, old_alrm);
-}
+fn sigalrm(_s: c_int) {
+    unsafe {
+        sigalrm_seen = 1;
+    }
 }
 
-unsafe extern "C" fn ttyrestore(ttp:*mut tty_save){
-    ttsetattr((*ttp).fd,&mut (*ttp).attrs);
+fn reset_alarm() {
+    unsafe {
+        falarm(0, 0);
+        set_signal_handler(libc::SIGALRM, old_alrm);
+    }
+}
+
+unsafe extern "C" fn ttyrestore(ttp: *mut tty_save) {
+    ttsetattr((*ttp).fd, &mut (*ttp).attrs);
     tty_modified = 0 as libc::c_int;
 }
 
 #[no_mangle]
-pub extern "C" fn read_tty_cleanup()
-{
-unsafe {
-    if tty_modified != 0 {
-        ttyrestore(&mut termsave);
+pub extern "C" fn read_tty_cleanup() {
+    unsafe {
+        if tty_modified != 0 {
+            ttyrestore(&mut termsave);
         }
     }
 }
@@ -1094,32 +1092,31 @@ static mut old_newline_func: usize = 0;
 
 static mut delim_char: u8 = 0;
 
-fn set_eol_delim(c: c_int)
-{
-    let cmap:Keymap;
-unsafe {
-	if bash_readline_initialized == 0 {
-        initialize_readline();
+fn set_eol_delim(c: c_int) {
+    let cmap: Keymap;
+    unsafe {
+        if bash_readline_initialized == 0 {
+            initialize_readline();
+        }
+
+        // let cmap = rl_get_keymap();
+        cmap = rl_get_keymap();
+
+        old_newline_ctype = (*cmap.offset((b'M' as i32 & 0x1f) as isize)).tp as c_int;
+        old_newline_func = (*cmap.offset((b'M' as i32 & 0x1f) as isize)).function as usize;
+        old_delim_ctype = (*cmap.offset(c as isize)).tp as c_int;
+        old_delim_func = (*cmap.offset(c as isize)).function as usize;
+
+        /* Change newline to self-insert */
+        (*cmap.offset((b'M' as i32 & 0x1f) as isize)).tp = ISFUNC as c_char;
+        (*cmap.offset((b'M' as i32 & 0x1f) as isize)).function = rl_insert;
+
+        /* Bind the delimiter character to accept-line. */
+        (*cmap.offset(c as isize)).tp = ISFUNC as c_char;
+        (*cmap.offset(c as isize)).function = rl_newline;
+
+        delim_char = c as u8;
     }
-
-	// let cmap = rl_get_keymap();
-    cmap = rl_get_keymap();
-
-    old_newline_ctype =  (*cmap.offset((b'M' as i32 & 0x1f) as isize)).tp as c_int;
-    old_newline_func  =  (*cmap.offset((b'M' as i32 & 0x1f) as isize)).function as usize;
-    old_delim_ctype   =  (*cmap.offset(c as isize)).tp as c_int;
-    old_delim_func    =  (*cmap.offset(c as isize)).function as usize;
-
-    /* Change newline to self-insert */
-	(*cmap.offset((b'M' as i32 & 0x1f) as isize)).tp = ISFUNC as c_char;
-	(*cmap.offset((b'M' as i32 & 0x1f) as isize)).function = rl_insert;
-
-	/* Bind the delimiter character to accept-line. */
-	(*cmap.offset(c as isize)).tp = ISFUNC as c_char;
-	(*cmap.offset(c as isize)).function = rl_newline;
-
-	delim_char = c as u8;
-}
 }
 
 fn reset_eol_delim(_cp: *mut c_char) {
