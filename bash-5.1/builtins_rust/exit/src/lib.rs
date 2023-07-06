@@ -66,35 +66,39 @@ pub enum JOB_STATE {
 
 #[macro_export]
 macro_rules! get_job_by_jid {
-   ($ind:expr) => {
-    (*((jobs as usize + ($ind*8) as usize ) as *mut*mut JOB) as *mut JOB)
-    }
+    ($ind:expr) => {
+        (*((jobs as usize + ($ind * 8) as usize) as *mut *mut JOB) as *mut JOB)
+    };
 }
 
 #[macro_export]
 macro_rules! STOPPED {
     ($j:expr) => {
         (*get_job_by_jid!($j)).state == JOB_STATE::JSTOPPED
-    }
+    };
 }
 
 #[macro_export]
-macro_rules! RUNNING{
+macro_rules! RUNNING {
     ($j:expr) => {
         (*get_job_by_jid!($j)).state == JOB_STATE::JRUNNING
-    }
+    };
 }
 
 #[macro_export]
-macro_rules! EXITPROG{
-    () => { 3 }
+macro_rules! EXITPROG {
+    () => {
+        3
+    };
 }
 
 #[macro_export]
 macro_rules! SYS_BASH_LOGOOUT {
     () => {
-        CString::new(" \"/etc/bash.bash_logout\" ").unwrap().as_ptr()
-    }
+        CString::new(" \"/etc/bash.bash_logout\" ")
+            .unwrap()
+            .as_ptr()
+    };
 }
 
 //C库
