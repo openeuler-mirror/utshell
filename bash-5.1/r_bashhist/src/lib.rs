@@ -439,3 +439,14 @@ pub unsafe extern "C" fn load_history()
     }
 
 }
+#[no_mangle]
+
+pub unsafe extern "C" fn bash_clear_history()
+
+{
+
+    clear_hisroty();
+
+    history_lines_this_session = 0;
+
+}
