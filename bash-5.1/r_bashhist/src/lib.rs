@@ -420,9 +420,7 @@ pub unsafe extern "C" fn bash_delete_last_history() -> c_int
 
     r = bash_delete_histent(i);
     if where_history() > history_length {
-
-        history_set_pos(history_length);
-
+    history_set_pos(history_length);
     }
     return r;
 }
@@ -441,10 +439,7 @@ pub unsafe extern "C" fn bash_delete_first_history() -> c_int
     histent = history_get(history_base);
 
     r = bash_delete_histent(history_base);
-
-    if where_history() > history_length {
-        history_set_pos(0);
-    }
+    history_set_pos(0);
 
     return r;
 }
@@ -452,6 +447,7 @@ pub unsafe extern "C" fn bash_delete_first_history() -> c_int
 #[no_mangle]
 pub unsafe extern "C" fn bash_delete_item(i : i32) -> c_int
 {
+    let mut i: c_int = 0;
     let mut hlist: *mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
     let mut histent:*mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
     let mut r: c_int = 0;
@@ -473,6 +469,10 @@ pub unsafe extern "C" fn bash_delete_item(i : i32) -> c_int
     }
 
     r = bash_delete_histent(i);
+    if where_history() > history_length {
+        history_set_pos(history_length);
+    }
+
     return r;
 }
 
