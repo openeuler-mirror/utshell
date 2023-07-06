@@ -129,12 +129,6 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
     let mut mb_cur_max: c_int = 1;
 
     unsafe {
-        // if termsave.is_none() {
-        //     let tmp: tty_save  = std::mem::zeroed();
-        //     termsave = Some(tmp);
-        // }
-        // ptermsave = std::mem::transmute(&termsave.unwrap());
-
         reset_internal_getopt();
         let opt_str = CString::new("ersa:d:i:n:p:t:u:N:").unwrap();
         opt = internal_getopt(list, opt_str.as_ptr() as *mut c_char);
@@ -221,7 +215,6 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
     if !list.is_null() &&
         legal_identifier((*(*list).word).word) == 0 &&
         valid_array_reference((*(*list).word).word, vflags) == 0 {
-            // sh_invalidid((*(*list).word).word);
             r_sh_invalidid((*(*list).word).word);
             return EXECUTION_FAILURE;
     }
@@ -257,36 +250,39 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
     input_string = xmalloc(112) as *mut c_char;
     *input_string = b'\0' as c_char;
 
-'out_assig_vars: loop {
-    if nflag == 1 && nchars == 0 {
-        let mut gc : c_int = 0;
-        retval = libc::read(fd, &mut gc as *mut i32 as *mut c_void, 0) as c_int;
-        retval = if retval >= 0 {EXECUTION_SUCCESS} else {EXECUTION_FAILURE};
+        'out_assig_vars: loop {
+            if nflag == 1 && nchars == 0 {
+                let mut gc: c_int = 0;
+                retval = libc::read(fd, &mut gc as *mut i32 as *mut c_void, 0) as c_int;
+                retval = if retval >= 0 {
+                    EXECUTION_SUCCESS
+                } else {
+                    EXECUTION_FAILURE
+                };
 
-        break 'out_assig_vars;
-    }
+                break 'out_assig_vars;
+            }
 
-    //设置TMOUT后，TMOUT是默认读取时间
-    let str_val = CString::new("TMOUT").unwrap();
-    e = get_string_value(str_val.as_ptr());
-    if have_timeout == 0 && !e.is_null() {
-        code = uconvert(e, &mut ival, &mut uval, 0 as *mut *mut c_char);
-        if code == 0 || ival < 0 || uval < 0 {
-            tmsec = 0;
-            tmusec = 0;
-        } else {
-            tmsec = ival as c_uint;
-            tmusec = uval as c_uint;
-        }
-    }
+            //设置TMOUT后，TMOUT是默认读取时间
+            let str_val = CString::new("TMOUT").unwrap();
+            e = get_string_value(str_val.as_ptr());
+            if have_timeout == 0 && !e.is_null() {
+                code = uconvert(e, &mut ival, &mut uval, 0 as *mut *mut c_char);
+                if code == 0 || ival < 0 || uval < 0 {
+                    tmsec = 0;
+                    tmusec = 0;
+                } else {
+                    tmsec = ival as c_uint;
+                    tmusec = uval as c_uint;
+                }
+            }
 
-    let frame_name = CString::new("r_read_builtin").unwrap();    //有没有可能是r_read_builtin?
-    begin_unwind_frame(frame_name.as_ptr() as *mut c_char);
+            let frame_name = CString::new("r_read_builtin").unwrap(); //有没有可能是r_read_builtin?
+            begin_unwind_frame(frame_name.as_ptr() as *mut c_char);
 
-    
-    if interactive == 0 && default_buffered_input >= 0 && fd_is_bash_input(fd) != 0 {
-        sync_buffered_stream(default_buffered_input);
-    }
+            if interactive == 0 && default_buffered_input >= 0 && fd_is_bash_input(fd) != 0 {
+                sync_buffered_stream(default_buffered_input);
+            }
 
     input_is_tty = libc::isatty(fd);
     if input_is_tty == 0 {
