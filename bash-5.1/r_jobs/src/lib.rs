@@ -48,7 +48,55 @@ extern "C" {
     fn unset_bash_input(_: c_int);
     fn setpgid(__pid: __pid_t, __pgid: __pid_t) -> c_int;
     fn signal_is_trapped(_: c_int) -> c_int;
-    fn signal_is_hard_ignored(_: c_int) -> c_int;}
+    fn signal_is_hard_ignored(_: c_int) -> c_int;
+    fn set_original_signal(_: c_int, _: Option::<SigHandler>);
+    fn get_original_signal(_: c_int);
+    fn get_new_window_size(_: c_int, _: *mut c_int, _: *mut c_int);
+    fn internal_error(_: *const c_char, _: ...);
+    fn wait_builtin(_: *mut WORD_LIST) -> c_int;
+    fn siglongjmp(_: *mut __jmp_buf_tag, _: c_int) -> !;
+    
+    fn builtin_warning(_: *const c_char, _: ...);
+    fn waitpid(__pid: __pid_t,__stat_loc: *mut c_int,__options: c_int) -> __pid_t;
+    fn initialize_traps();
+    fn dispose_command(_: *mut COMMAND);
+    fn coproc_pidchk(_: pid_t, _: c_int);
+    fn find_procsub_child(_: pid_t) -> c_int;
+    fn set_procsub_status(_: c_int, _: pid_t, _: c_int);
+    fn queue_sigchld_trap(_: c_int);
+    fn signal_in_progress(_: c_int) -> c_int;
+    fn maybe_call_trap_handler(_: c_int) -> c_int;
+    fn set_pipestatus_array(_: *mut c_int, _: c_int);
+    fn unwind_protect_mem(_: *mut c_char, _: c_int);
+    fn set_impossible_sigchld_trap();
+    fn parse_and_execute(
+        _: *mut c_char,
+        _: *const c_char,
+        _: c_int,
+    ) -> c_int;
+    fn run_unwind_frame(_: *mut c_char);
+    fn get_name_for_error() -> *mut c_char;
+    fn begin_unwind_frame(_: *mut c_char);
+    fn getmaxchild() -> libc::c_long;
+    fn add_unwind_protect(cleanup:*mut Function, arg:*mut c_char);
+    
+    fn maybe_set_sigchld_trap(_: *mut c_char);
+
+    fn sh_xrealloc(
+        _: *mut libc::c_void,
+        _: size_t,
+        _: *const c_char,
+        _: c_int,
+    ) -> *mut libc::c_void;
+
+    fn sh_xmalloc(
+        _: size_t,
+        _: *const c_char,
+        _: c_int,
+    ) -> *mut libc::c_void;
+
+
+}
 
 // pub  static mut SIG_IGN:__sighandler_t = 1;
 #[macro_export]
