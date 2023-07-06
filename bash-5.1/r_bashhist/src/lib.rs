@@ -230,3 +230,51 @@ pub struct _hist_entry{
     pub data: histdata_t,
 }
 pub type HIST_ENTRY = _hist_entry;
+
+
+#[no_mangle]
+pub static mut remember_on_history:c_int = 0;
+#[no_mangle]
+pub static mut  enable_history_list:c_int = -1;
+#[no_mangle]
+pub static mut history_lines_this_session:c_int = 0;
+#[no_mangle]
+pub static mut history_expansion_inhibited:c_int = 0;
+#[no_mangle]
+pub static mut double_quotes_inhibit_history_expansion:c_int = 0;
+#[no_mangle]
+pub static mut command_oriented_history:c_int = 1;
+#[no_mangle]
+pub static mut current_command_first_line_saved:c_int = 0;
+#[no_mangle]
+pub static mut current_command_line_comment:c_int = 0;
+#[no_mangle]
+pub static mut literal_history:c_int = 0;
+#[no_mangle]
+pub static mut force_append_history:c_int = 0;
+#[no_mangle]
+pub static mut history_control:c_int = 0;
+#[no_mangle]
+pub static mut hist_last_line_added:c_int = 0;
+#[no_mangle]
+pub static mut hist_last_line_pushed:c_int = 0;
+#[no_mangle]
+pub static mut history_reediting:c_int = 0;
+#[no_mangle]
+pub static mut hist_verify:c_int = 0;
+#[no_mangle]
+pub static mut dont_save_function_defs:c_int = 0;
+unsafe extern "C" fn bash_history_inhibit_expansion(mut string: *mut c_char, mut i: c_int) -> c_int 
+{
+    let mut t: c_int = 0;
+    let mut si: c_int = 0;
+    let mut hx: [c_char; 2] = [0; 2];
+    hx[0 as usize] = history_expansion_char;
+    hx[1 as usize] = '\u{0}' as i32 as c_char;
+    if i > 0 as c_int
+        && *string.offset((i - 1) as isize) as c_int == '[' as i32
+        && member(']' as i32, string.offset(i as isize).offset(1 as c_int as isize))
+    {
+        return 1 
+    } 
+}
