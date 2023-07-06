@@ -206,7 +206,33 @@ macro_rules! PRUNNING {
     }   
 }
 
+#[macro_export]
+macro_rules! PALIVE {
+    ($p:expr) => {
+        PRUNNING!($p) || PSTOPPED!($p)
+    }   
+}
 
+#[macro_export]
+macro_rules! WAITPID {
+    ($pid:expr, $statusp:expr, $options:expr) => {
+        waitpid($pid as pid_t, $statusp, $options);
+    };
+}
 
+#[macro_export]
+macro_rules! getpgid {
+    ($p:expr) => {
+        getpgpr();
+    };
+}
 
+#[macro_export]
+macro_rules! REINSTALL_SIGCHLD_HANDLER {
+    () => {
+        
+    };
+}
+
+pub type sh_job_map_func_t = unsafe extern "C" fn(*mut JOB, c_int, c_int, c_int) -> c_int;
 
