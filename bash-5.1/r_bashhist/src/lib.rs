@@ -417,7 +417,14 @@ pub unsafe extern "C" fn bash_delete_last_history() -> c_int
         return 0;
     }
     histent = history_get(history_base + i);
-    return 0;
+
+    r = bash_delete_histent(i);
+    if where_history() > history_length {
+
+        history_set_pos(history_length);
+
+    }
+    return r;
 }
 
 pub unsafe extern "C" fn bash_delete_first_history() -> c_int
