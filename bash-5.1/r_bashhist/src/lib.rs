@@ -439,8 +439,14 @@ pub unsafe extern "C" fn bash_delete_first_history() -> c_int
         return 0;
     }
     histent = history_get(history_base);
-    r = bash_delete_histent(i);
-    return 0;
+
+    r = bash_delete_histent(history_base);
+
+    if where_history() > history_length {
+        history_set_pos(0);
+    }
+
+    return r;
 }
 
 #[no_mangle]

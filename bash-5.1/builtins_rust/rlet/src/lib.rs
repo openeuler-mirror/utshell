@@ -1,9 +1,8 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
+use libc::{c_char, c_int, c_long, c_void};
 use std::ffi::CStr;
-use libc::{c_int, c_char, c_long, c_void};
-
 
 include!(concat!("intercdep.rs"));
 
@@ -13,13 +12,15 @@ unsafe {
     let mut ret: c_long = 0;
 	let expok: c_int = 0;
 
-	if !list.is_null() && !(*list).word.is_null() &&
-		libc::strcmp((*((*list).word)).word, "--help\0".as_ptr() as *const c_char) == 0 {
-        r_builtin_help ();
-        return EX_USAGE;
-    }
+        if !list.is_null()
+            && !(*list).word.is_null()
+        {
+            r_builtin_help();
+            return EX_USAGE;
+        }
 
-	if !list.is_null() && !(*list).word.is_null() && is_option((*((*list).word)).word, b'-') {
+	if !list.is_null() && !(*list).word.is_null()
+           && is_option((*((*list).word)).word, b'-') {
 		list = (*list).next;
     }
 
@@ -38,8 +39,12 @@ unsafe {
         list = (*list).next;
 	}
 
-	return if ret == 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
-}
+        return if ret == 0 {
+            EXECUTION_FAILURE
+        } else {
+            EXECUTION_SUCCESS
+        };
+    }
 }
 
 #[no_mangle]
@@ -62,8 +67,7 @@ unsafe {
 }
 }
 
-unsafe fn is_option(s: *mut c_char, c: u8) -> bool
-{
+unsafe fn is_option(s: *mut c_char, c: u8) -> bool {
     let str = CStr::from_ptr(s).to_bytes_with_nul();
-    return str[0] == b'-' && str[1] == c && str[2] != 0
+    return str[0] == b'-' && str[1] == c && str[2] != 0;
 }
