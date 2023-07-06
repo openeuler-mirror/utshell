@@ -167,3 +167,46 @@ pub const EAGAIN:i32 = 11;
 pub const EX_NOEXEC:i32 = 126;
 
 pub const ECHILD:i32 = 10;
+
+
+#[macro_export]
+macro_rules! PRECYCLED {
+    ($p:expr) => {
+        0
+    };
+}
+
+#[macro_export]
+macro_rules! __WIFSTOPPED {
+    ($status:expr) => {
+        (($status) & 0xff) == 0x7f
+    };
+}
+
+
+#[macro_export]
+macro_rules! WIFSTOPPED {
+    ($status:expr) => {
+        (($status) & 0xff) == 0x7f
+    };
+}
+
+#[macro_export]
+macro_rules! PSTOPPED {
+    ($p:expr) => {
+        WIFSTOPPED!((*$p).status)
+    }
+    
+}
+
+#[macro_export]
+macro_rules! PRUNNING {
+    ($p:expr) => {
+        (*$p).running == PS_RUNNING as c_int
+    }   
+}
+
+
+
+
+
