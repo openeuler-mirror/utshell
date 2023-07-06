@@ -139,3 +139,31 @@ pub struct hash_table {
     pub nentries: c_int,
 }
 pub type HASH_TABLE = hash_table;
+
+pub type sigjmp_buf = [__jmp_buf_tag; 1];
+pub type __jmp_buf = [libc::c_long; 8];
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct __jmp_buf_tag {
+    pub __jmpbuf: __jmp_buf,
+    pub __mask_was_saved: c_int,
+    pub __saved_mask: __sigset_t,
+}
+
+
+pub const DEFAULT_CHILD_MAX:u32 = 4096;
+pub const MAX_CHILD_MAX:u32 = 32768;
+pub const MAX_JOBS_IN_ARRAY:u32 = 4096;
+pub const r_pidstat_table_SZ:i32 = 4096;
+pub const BGPIDS_TABLE_SZ:u32 = 512;
+pub const DEL_WARNSTOPPED:u32 = 1;
+pub const DEL_NOBGPID:u32 = 2;
+pub const JOB_SLOTS:u32 = 8;
+pub const NO_PIDSTAT:i32 = -1;
+pub const NO_PID:pid_t = -1;
+
+pub const EAGAIN:i32 = 11;
+pub const EX_NOEXEC:i32 = 126;
+
+pub const ECHILD:i32 = 10;
