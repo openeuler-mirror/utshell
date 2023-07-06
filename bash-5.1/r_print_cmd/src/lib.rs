@@ -1,4 +1,9 @@
 
+extern "C"{
+    static mut stdout: *mut FILE;
+    static mut stderr: *mut FILE;
+}
+
 pub const  FUNC_MULTILINE:i32 = 0x01;
 pub const  FUNC_EXTERNAL:i32 = 0x02;
 pub static mut indentation:c_int = 0;
