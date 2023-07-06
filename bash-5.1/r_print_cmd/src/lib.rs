@@ -1,5 +1,6 @@
-
-extern "C"{
+use libc::{c_int,c_char,FILE, c_void, fprintf,fileno, strnlen, size_t};
+use std::ffi::{CString, CStr, };
+use r_bash::*;extern "C"{
     static mut stdout: *mut FILE;
     static mut stderr: *mut FILE;
 }
