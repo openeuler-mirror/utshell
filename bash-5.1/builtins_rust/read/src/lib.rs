@@ -379,29 +379,29 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
                         i = ttfd_onechar(fd, std::mem::transmute(&ttset));
                     }
 
-            if i < 0 {
-                sh_ttyerror(1);
-            }
-            tty_modified = 1;
-            // add_unwind_protect(ttyrestore as *mut c_void, ptermsave);
-            add_unwind_protect(ttyrestore as *mut c_void, &mut termsave);
-            if interactive_shell == 0 {
-                initialize_terminating_signals();
-            }
+                    if i < 0 {
+                        sh_ttyerror(1);
+                    }
+                    tty_modified = 1;
+                    // add_unwind_protect(ttyrestore as *mut c_void, ptermsave);
+                    add_unwind_protect(ttyrestore as *mut c_void, &mut termsave);
+                    if interactive_shell == 0 {
+                        initialize_terminating_signals();
+                    }
+                }
+            } else if silent != 0 {
+                //-s
+                // termsave.unwrap().fd = fd;
+                termsave.fd = fd;
+                ttgetattr(fd, &mut ttattrs as *mut libc::termios);
+                // termsave.unwrap().attrs = ttattrs;
+                termsave.attrs = ttattrs;
 
-        }
-    } else if silent != 0 { //-s
-        // termsave.unwrap().fd = fd;
-        termsave.fd = fd;
-        ttgetattr(fd, &mut ttattrs as *mut libc::termios);
-        // termsave.unwrap().attrs = ttattrs;
-        termsave.attrs = ttattrs;
-
-        ttset = ttattrs;
-        i = ttfd_noecho(fd, std::mem::transmute(&ttset));
-        if i < 0 {
-            sh_ttyerror(1);
-        }
+                ttset = ttattrs;
+                i = ttfd_noecho(fd, std::mem::transmute(&ttset));
+                if i < 0 {
+                    sh_ttyerror(1);
+                }
 
         tty_modified = 1;
         // add_unwind_protect(ttyrestore as *mut c_void, ptermsave);
@@ -829,9 +829,9 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
     if !tofree.is_null() {
         libc::free(tofree as *mut c_void);
     }
-    libc::free(orig_input_string as *mut c_void);
-    return retval;
-} //unsafe
+        libc::free(orig_input_string as *mut c_void);
+        return retval;
+    } //unsafe
 }
 
 /* ---------------------------------------------------------------------------------- */
@@ -844,19 +844,18 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
 // }
 
 #[inline]
-unsafe extern "C" fn is_basic(c:libc::c_char)->libc::c_int{
+unsafe extern "C" fn is_basic(c: libc::c_char) -> libc::c_int {
     return (*is_basic_table
         .as_ptr()
-        .offset((c as libc::c_uchar as libc::c_int>>5 as libc::c_int)as isize)
-        >>(c as libc::c_uchar as libc::c_int & 31 as libc::c_int)
+        .offset((c as libc::c_uchar as libc::c_int >> 5 as libc::c_int) as isize)
+        >> (c as libc::c_uchar as libc::c_int & 31 as libc::c_int)
         & 1 as libc::c_int as libc::c_uint) as libc::c_int;
 }
 
-pub fn bind_read_variable(name: *mut c_char, value: *mut c_char) -> * mut SHELL_VAR {
+pub fn bind_read_variable(name: *mut c_char, value: *mut c_char) -> *mut SHELL_VAR {
     let v: *mut SHELL_VAR;
-unsafe {
-    // v = builtin_bind_variable(name, value, 0);
-	v = r_builtin_bind_variable(name, value, 0);
+    unsafe {
+        v = r_builtin_bind_variable(name, value, 0);
 
         if v.is_null() {
             return v;
@@ -876,11 +875,11 @@ fn read_mbchar(fd: c_int, string: *mut c_char, ind: c_int, ch: c_int, unbuffered
     let c: c_char = 0;
     let mut ret: ssize_t;
 
-unsafe {
-    let mut mbchar: [c_char; MB_LEN_MAX as usize + 1] = std::mem::zeroed();
-    let mut ps: mbstate_t = std::mem::zeroed();
-    let mut ps_back: mbstate_t = std::mem::zeroed();
-    let wc: libc::wchar_t =  std::mem::zeroed();
+    unsafe {
+        let mut mbchar: [c_char; MB_LEN_MAX as usize + 1] = std::mem::zeroed();
+        let mut ps: mbstate_t = std::mem::zeroed();
+        let mut ps_back: mbstate_t = std::mem::zeroed();
+        let wc: libc::wchar_t = std::mem::zeroed();
 
 'out: loop {
 	mbchar[0] = ch as c_char;
@@ -1013,9 +1012,8 @@ unsafe {
 // }
 // }
 
-
-fn edit_line(p : *mut c_char, itext : *mut c_char) -> *mut c_char {
-    let mut len:i32;
+fn edit_line(p: *mut c_char, itext: *mut c_char) -> *mut c_char {
+    let mut len: i32;
     unsafe {
         if bash_readline_initialized == 0 {
             initialize_readline();
@@ -1044,7 +1042,7 @@ fn edit_line(p : *mut c_char, itext : *mut c_char) -> *mut c_char {
         ret = xrealloc(ret as *mut c_void, (len + 2) as usize) as *mut c_char;
         *ret.offset(len as isize) = delim;
         len += 1;
-        *ret.offset(len as isize) =  b'\0'  as c_char;
+        *ret.offset(len as isize) = b'\0' as c_char;
         return ret;
     }
 }
@@ -1074,8 +1072,8 @@ pub extern "C" fn read_tty_cleanup()
 unsafe {
     if tty_modified != 0 {
         ttyrestore(&mut termsave);
+        }
     }
-}
 }
 
 #[no_mangle]
