@@ -215,10 +215,16 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
             };
         }
 
-    vflags = if assoc_expand_once != 0 {(VA_NOEXPAND | VA_ONEWORD) as c_int} else {0};
-    if !list.is_null() &&
-        legal_identifier((*(*list).word).word) == 0 &&
-        valid_array_reference((*(*list).word).word, vflags) == 0 {
+        vflags = if assoc_expand_once != 0 {
+            (VA_NOEXPAND | VA_ONEWORD) as c_int
+        } else {
+            0
+        };
+        if !list.is_null()
+            && legal_identifier((*(*list).word).word) == 0
+            && valid_array_reference((*(*list).word).word, vflags) == 0
+        {
+            // sh_invalidid((*(*list).word).word);
             r_sh_invalidid((*(*list).word).word);
             return EXECUTION_FAILURE;
         }
@@ -238,18 +244,18 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
             ifs_chars = ifs_chars_null.as_ptr() as *mut c_char;
         }
 
-    skip_ctlesc = 0;
-    skip_ctlnul = 0;
-    e = ifs_chars;
+        skip_ctlesc = 0;
+        skip_ctlnul = 0;
+        e = ifs_chars;
 
-    loop {
-        if *e == 0 {
-            break;
+        loop {
+            if *e == 0 {
+                break;
+            }
+            skip_ctlesc |= (*e == 1) as c_int;
+            skip_ctlnul |= (*e == 117) as c_int;
+            e = ((e as usize) + 1) as *mut c_char;
         }
-        skip_ctlesc |= (*e == 1) as c_int;
-        skip_ctlnul |= (*e == 117) as c_int;
-        e = ((e as usize) + 1) as *mut c_char;
-    }
 
         input_string = xmalloc(112) as *mut c_char;
         *input_string = b'\0' as c_char;
@@ -408,15 +414,18 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
                 }
 
         tty_modified = 1;
-        // add_unwind_protect(ttyrestore as *mut c_void, ptermsave);
+
         add_unwind_protect(ttyrestore as *mut c_void, &mut termsave );
         if interactive_shell == 0 {
             initialize_terminating_signals();
         }
     }
 
-    save_instream = std::mem::zeroed();
-    if edit != 0  && fd != 0 {
+            save_instream = std::mem::zeroed();
+            if edit != 0 && fd != 0 {
+                if bash_readline_initialized == 0 {
+                    initialize_readline();
+                }
 
         if bash_readline_initialized == 0 {
             initialize_readline();
