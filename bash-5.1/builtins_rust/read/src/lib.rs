@@ -1,27 +1,29 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-use libc::{c_int, c_char, c_long, c_ulong, c_uint, size_t, c_void, PT_NULL, ssize_t};
+use libc::{c_char, c_int, c_long, c_uint, c_ulong, c_void, size_t, ssize_t, PT_NULL};
 use nix::errno::errno;
-use std::{ffi::{CString, CStr}, ptr::null_mut,};
-//use rcommon::{r_builtin_usage,r_sh_invalidid,r_builtin_bind_variable,SHELL_VAR};
+use std::{
+    ffi::{CStr, CString},
+    ptr::null_mut,
+};
 
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
-pub static mut alrmbuf:sigjmp_buf = [__jmp_buf_tag{
-    __jmpbuf:[0;8],
-    __mask_was_saved:0,
-    __saved_mask:__sigset_t{__val:[0;16]},
-};1];
+pub static mut alrmbuf: sigjmp_buf = [__jmp_buf_tag {
+    __jmpbuf: [0; 8],
+    __mask_was_saved: 0,
+    __saved_mask: __sigset_t { __val: [0; 16] },
+}; 1];
 
-static mut old_alrm : *mut SigHandler = PT_NULL as *mut SigHandler;
+static mut old_alrm: *mut SigHandler = PT_NULL as *mut SigHandler;
 
 // static mut sigalrm_seen : c_int = 0;
-static mut reading : c_int = 0;
-static mut tty_modified : c_int = 0;
+static mut reading: c_int = 0;
+static mut tty_modified: c_int = 0;
 
-static mut delim : c_char= b'\n' as c_char;
+static mut delim: c_char = b'\n' as c_char;
 #[derive(Clone, Copy)]
 pub struct tty_save {
     fd: i32,
@@ -29,23 +31,22 @@ pub struct tty_save {
 }
 
 // static mut termsave : Option<tty_save> =  None;
-static mut termsave:tty_save = tty_save{
-    fd:0,
-    attrs:libc::termios {
-         c_iflag: (0),
-         c_oflag: (0),
-         c_cflag: (0), 
-         c_lflag: (0), 
-         c_line: (0), 
-         c_cc: [0;32], 
-         c_ispeed: (0), 
-         c_ospeed: (0) 
-    }
+static mut termsave: tty_save = tty_save {
+    fd: 0,
+    attrs: libc::termios {
+        c_iflag: (0),
+        c_oflag: (0),
+        c_cflag: (0),
+        c_lflag: (0),
+        c_line: (0),
+        c_cc: [0; 32],
+        c_ispeed: (0),
+        c_ospeed: (0),
+    },
 };
 
-static mut interactive : c_int = 0;
-static mut default_buffered_input : c_int = -1;
-
+static mut interactive: c_int = 0;
+static mut default_buffered_input: c_int = -1;
 
 #[no_mangle]
 pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
@@ -1038,8 +1039,6 @@ fn edit_line(p : *mut c_char, itext : *mut c_char) -> *mut c_char {
     }
 }
 
-
-
 fn sigalrm(_s : c_int) {
 unsafe {
     sigalrm_seen = 1;
@@ -1053,20 +1052,6 @@ unsafe {
     set_signal_handler(libc::SIGALRM, old_alrm);
 }
 }
-
-// fn ttyrestore()
-// {
-// unsafe {
-//     if termsave.is_none() {
-//         let tmp: tty_save  = std::mem::zeroed();
-//         termsave = Some(tmp);
-//     }
-
-//     let ter = termsave.unwrap();
-// 	ttsetattr(ter.fd, std::mem::transmute(&(ter.attrs)));
-// 	tty_modified = 0;
-// }
-// }
 
 unsafe extern "C" fn ttyrestore(ttp:*mut tty_save){
     ttsetattr((*ttp).fd,&mut (*ttp).attrs);
@@ -1097,35 +1082,6 @@ static mut old_newline_ctype: c_int = 0;
 static mut old_newline_func: usize = 0;
 
 static mut delim_char: u8 = 0;
-// fn set_eol_delim(c: c_int)
-// {
-// unsafe {
-// 	if bash_readline_initialized == 0 {
-//         initialize_readline();
-//     }
-
-// 	let cmap = rl_get_keymap();
-//     let n = std::mem::size_of_val(&*cmap);
-//     let ret_pos = (b'M' & 0x1f) as usize * n;
-//     let c_pos = (c & 0x1f) as usize * n;
-
-// 	/* Save the old delimiter char binding */
-// 	old_newline_ctype = (*((cmap as usize + ret_pos) as Keymap)).tp as c_int;
-// 	old_newline_func = (*((cmap as usize + ret_pos) as Keymap)).function as usize;
-// 	old_delim_ctype =  (*((cmap as usize + c_pos) as Keymap)).tp as c_int;
-// 	old_delim_func = (*((cmap as usize + c_pos) as Keymap)).function as usize;
-
-// 	/* Change newline to self-insert */
-// 	(*((cmap as usize + ret_pos) as Keymap)).tp = ISFUNC as c_char;
-// 	(*((cmap as usize + ret_pos) as Keymap)).function = rl_insert;
-
-// 	/* Bind the delimiter character to accept-line. */
-// 	(*((cmap as usize + c_pos) as Keymap)).tp = ISFUNC as c_char;
-// 	(*((cmap as usize + c_pos) as Keymap)).function = rl_newline;
-
-// 	delim_char = c as u8;
-// }
-// }
 
 fn set_eol_delim(c: c_int)
 {
