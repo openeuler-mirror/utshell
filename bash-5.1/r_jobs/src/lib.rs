@@ -279,3 +279,35 @@ pub static mut js: jobstats = {
     };
     init
 };
+
+#[no_mangle]
+pub static mut r_pidstat_table:[ps_index_t; 4096] = [0; 4096];
+
+pub static mut bgpids:bgpids = {
+    let init = bgpids{
+        storage: 0 as *const pidstat as *mut pidstat,
+        head: 0 as ps_index_t,
+        nalloc: 0 as ps_index_t,
+        npid: 0 as c_int,
+    };
+    init
+};
+
+pub static mut procsubs:procchain = {
+    let mut init = procchain{
+        head: 0 as *mut PROCESS,
+        end: 0 as *mut PROCESS,
+        nproc: 0 as c_int,
+    };
+    init
+};
+
+
+#[no_mangle]
+pub static mut wait_intr_buf: sigjmp_buf = [
+    __jmp_buf_tag{
+        __jmpbuf: [0;8],
+        __mask_was_saved: 0 as c_int,
+        __saved_mask: __sigset_t{__val:[0;16usize]},
+}  ];
+
