@@ -346,14 +346,16 @@ pub unsafe extern "C" fn bash_initialize_history() {
 
 pub unsafe extern "C" fn bash_history_reinit(mut interact:c_int)
 {
-
     history_expansion = if interact == 0 {
-
         histexp_flag
-
     } else {
-
         HISTEXPAND_DEFAULT as c_int
-
     };
+
+    history_inhibit_expansion_function = std::mem::transmute::<
+        unsafe extern "C" fn(*mut c_char, c_int)->c_int,
+        Option::<rl_linebuf_func_t>,
+    >(bash_history_inhibit_expansion);
+
+    remember_on_history = enable_history_list;
 }
