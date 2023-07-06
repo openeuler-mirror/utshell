@@ -331,27 +331,24 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
                     break 'out_assig_vars;
                 }
 
-        if interactive_shell == 0 {
-            initialize_terminating_signals();
-        }
+                if interactive_shell == 0 {
+                    initialize_terminating_signals();
+                }
 
-        old_alrm = set_signal_handler(libc::SIGALRM, sigalrm as *mut SigHandler);
-        add_unwind_protect(reset_alarm as *mut c_void, PT_NULL as *mut c_char);
+                old_alrm = set_signal_handler(libc::SIGALRM, sigalrm as *mut SigHandler);
+                add_unwind_protect(reset_alarm as *mut c_void, PT_NULL as *mut c_char);
 
-        if edit != 0 {
-            add_unwind_protect(reset_attempted_completion_function as *mut c_void,
-                PT_NULL as *mut c_char);
-            add_unwind_protect(bashline_reset_event_hook as *mut c_void,
-                PT_NULL as *mut c_char);
-        }
-        falarm(tmsec, tmusec);
-    }
-
-    if nchars > 0 || delim != b'\n' as c_char { //-d -n
-        if edit != 0 {
-            if nchars > 0 {
-                unwind_protect_mem(&mut rl_num_chars_to_read as *mut c_int, std::mem::size_of_val(&rl_num_chars_to_read) as c_int);
-                rl_num_chars_to_read = nchars;
+                if edit != 0 {
+                    add_unwind_protect(
+                        reset_attempted_completion_function as *mut c_void,
+                        PT_NULL as *mut c_char,
+                    );
+                    add_unwind_protect(
+                        bashline_reset_event_hook as *mut c_void,
+                        PT_NULL as *mut c_char,
+                    );
+                }
+                falarm(tmsec, tmusec);
             }
 
             if delim != b'\n' as c_char {
@@ -851,23 +848,23 @@ unsafe {
     // v = builtin_bind_variable(name, value, 0);
 	v = r_builtin_bind_variable(name, value, 0);
 
-    if v.is_null() {
-        return  v;
-    } else {
-        if ((*v).attributes & 0x0000002) != 0 || ((*v).attributes & 0x0004000) != 0 {
-            return PT_NULL as *mut SHELL_VAR;
-        } else {
+        if v.is_null() {
             return v;
+        } else {
+            if ((*v).attributes & 0x0000002) != 0 || ((*v).attributes & 0x0004000) != 0 {
+                return PT_NULL as *mut SHELL_VAR;
+            } else {
+                return v;
+            }
         }
     }
-}
 }
 
 fn read_mbchar(fd: c_int, string: *mut c_char, ind: c_int, ch: c_int, unbuffered: c_int) -> c_int {
     let mut i: size_t = 1;
     let mut r: ssize_t;
-	let c: c_char = 0;
-	let mut ret: ssize_t;
+    let c: c_char = 0;
+    let mut ret: ssize_t;
 
 unsafe {
     let mut mbchar: [c_char; MB_LEN_MAX as usize + 1] = std::mem::zeroed();
@@ -911,8 +908,8 @@ unsafe {
             r += 1;
         }
     }
-	return (i - 1) as c_int;
-}
+        return (i - 1) as c_int;
+    }
 }
 
 fn quit() {
@@ -1013,7 +1010,7 @@ fn edit_line(p : *mut c_char, itext : *mut c_char) -> *mut c_char {
         if bash_readline_initialized == 0 {
             initialize_readline();
         }
-    
+
         old_attempted_completion_function = std::mem::transmute(rl_attempted_completion_function);
         rl_attempted_completion_function = std::mem::transmute(0 as usize);
         bashline_set_event_hook();
@@ -1022,17 +1019,17 @@ fn edit_line(p : *mut c_char, itext : *mut c_char) -> *mut c_char {
             rl_startup_hook = std::mem::transmute(set_itext as usize);
             deftext = itext;
         }
-    
+
         let mut ret = readline(p);
-    
+
         rl_attempted_completion_function = std::mem::transmute(old_attempted_completion_function);
         old_attempted_completion_function = std::mem::transmute(0 as usize);
         bashline_reset_event_hook();
-    
+
         if ret.is_null() {
             return ret;
         }
-        
+
         len = libc::strlen(ret) as i32;
         ret = xrealloc(ret as *mut c_void, (len + 2) as usize) as *mut c_char;
         *ret.offset(len as isize) = delim;

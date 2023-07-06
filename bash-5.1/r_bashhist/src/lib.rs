@@ -271,10 +271,34 @@ unsafe extern "C" fn bash_history_inhibit_expansion(mut string: *mut c_char, mut
     let mut hx: [c_char; 2] = [0; 2];
     hx[0 as usize] = history_expansion_char;
     hx[1 as usize] = '\u{0}' as i32 as c_char;
+
     if i > 0 as c_int
         && *string.offset((i - 1) as isize) as c_int == '[' as i32
         && member(']' as i32, string.offset(i as isize).offset(1 as c_int as isize))
     {
         return 1 
     } 
+    else if i > 1 as c_int
+            && *string.offset((i - 1 as c_int) as isize) as c_int
+                == '{' as i32
+            && *string.offset((i - 2 as c_int) as isize) as c_int
+                == '$' as i32
+            && member('}' as i32, string.offset(i as isize).offset(1 as c_int as isize))
+    {
+        return 1 
+    } 
+    else if i > 1 as c_int
+                && *string.offset((i - 1 as c_int) as isize) as c_int
+                    == '$' as i32
+                && *string.offset(i as isize) as c_int == '!' as i32
+    {
+        return 1 
+    } 
+    else if extended_glob != 0 && i > 1 as c_int
+            && *string.offset((i + 1 as c_int) as isize) as c_int == '(' as i32
+            && member(')' as i32, string.offset(i as isize).offset(2 as c_int as isize))
+    {
+        return 1 ;
+    }
+return 0 
 }
