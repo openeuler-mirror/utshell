@@ -44,3 +44,147 @@ extern "C" {
     fn strmatch( _: *mut c_char, _: *mut c_char, _: c_int) -> c_int;
 
 }
+
+pub type rl_linebuf_func_t = unsafe extern "C" fn(*mut c_char, c_int) -> c_int;
+
+
+
+
+
+#[macro_export]
+
+macro_rules! HISTSIZE_DEFAULT {
+
+    () => {
+
+        b"500\0" as *const u8 as *mut c_char
+
+    };
+
+}
+
+
+
+#[macro_export]
+
+macro_rules! HIGN_EXPAND {
+
+    () => {
+
+        0x01
+
+    };
+
+}
+
+
+
+#[macro_export]
+
+macro_rules! ENOENT {
+
+    () => {
+
+        2
+
+    };
+
+}
+
+
+
+#[macro_export]
+
+macro_rules! errno {
+
+    () => {
+
+        *__errno_location()
+
+    };
+
+}
+
+
+
+#[macro_export]
+
+macro_rules! whitespace {
+
+    ($c:expr) => {
+
+        ($c as c_int == ' ' as i32 || $c as c_int == '\t' as i32)
+
+    };
+
+}
+
+
+
+
+
+#[macro_export]
+
+macro_rules! STREQ {
+
+    ($a:expr, $b:expr) => {
+
+        *$a.offset(0 as isize) == *$b.offset(0 as isize)
+
+        && strcmp($a, $b) == 0
+
+    };
+
+}
+
+
+
+#[macro_export]
+
+macro_rules! savestring {
+
+    ($x:expr) => {
+
+        strcpy(malloc((1 + strlen($x)) as usize) as *mut c_char, $x,)
+
+    };
+
+}
+
+
+
+#[macro_export]
+
+macro_rules! FNMATCH_EXTFLAG {
+
+    () => {
+
+        if extended_glob != 0 {
+
+            (1 as c_int) << 5 as c_int
+
+        } else {
+
+            0 as c_int
+
+        }
+
+    };
+
+}
+
+
+
+
+
+#[macro_export]
+
+macro_rules! FNM_NOMATCH {
+
+    () => {
+
+        1
+
+    };
+
+}
