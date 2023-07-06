@@ -455,6 +455,18 @@ pub unsafe extern "C" fn bash_clear_history()
 
 pub unsafe extern "C" fn bash_delete_haitent(mut i:c_int) -> c_int
 {
+        let mut discard:*mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+
+    discard = remove_history(i);
+
+    if !discard.is_null() {
+
+        free_history_entry(discard);
+
+        history_lines_this_session  -= 1;
+
+    }
+
     return 0
 }
 
