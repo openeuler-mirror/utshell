@@ -394,80 +394,76 @@ pub unsafe extern "C" fn bash_delete_haitent(mut i:c_int) -> c_int
 pub unsafe extern "C" fn bash_delete_history_range(mut first:c_int, mut last:c_int) -> c_int
 
 {
-
     let mut i: c_int = 0;
-
     let mut discard_list:*mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
-
     discard_list = remove_history_range(first, last);
-
     i = 0 as c_int;
-
     for i in first..last {
         free_history_entry(*discard_list.offset(i as isize));
     }
-
     history_lines_this_session -= i;
-
     return 1 as c_int;
-
 } 
 
 #[no_mangle]
-
 pub unsafe extern "C" fn bash_delete_last_history() -> c_int
-
 {
-
     let mut i: c_int = 0;
-
     let mut hlist: *mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
-
     let mut histent:*mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-
     let mut r: c_int = 0;
-
-
-
     hlist = history_list();
-
     if hlist.is_null() {
-
         return 0;
-
     }
-        histent = history_get(history_base + i);
-        return 0;
+    histent = history_get(history_base + i);
+    return 0;
 }
+
 pub unsafe extern "C" fn bash_delete_first_history() -> c_int
-
 {
-
     let mut i: c_int = 0;
-
     let mut hlist: *mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
-
     let mut histent:*mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-
     let mut r: c_int = 0;
 
-
-
     hlist = history_list();
-
     if hlist.is_null() {
-
         return 0;
-
     }
-        histent = history_get(history_base);
-        return 0;
+    histent = history_get(history_base);
+    r = bash_delete_histent(i);
+    return 0;
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn bash_delete_item(i : i32) -> c_int
+{
+    let mut hlist: *mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
+    let mut histent:*mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+    let mut r: c_int = 0;
 
+    hlist = history_list();
+    if hlist.is_null() {
+        return 0;
+    }
+
+    i = 0;
+    while !(*hlist.offset(i as isize)).is_null(){
+        i += 1;
+    }
+
+    i -= 1;
+    histent = history_get(history_base + i);
+    if histent.is_null() {
+        return 0;
+    }
+
+    r = bash_delete_histent(i);
+    return r;
+}
 
 pub unsafe extern "C" fn read_history_cache()
-
 {
     let mut hf:*mut c_char;
     set_if_not(b"HISTSIZE\0" as *const u8 as *mut c_char, HISTSIZE_DEFAULT!() );
