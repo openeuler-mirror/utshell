@@ -342,3 +342,18 @@ pub static mut already_making_children: c_int = 0;
 pub static mut check_window_size: c_int = CHECKWINSIZE_DEFAULT as i32;
 #[no_mangle]
 pub static mut last_procsub_child:*mut PROCESS = 0 as *const c_void as *mut c_void as *mut PROCESS;
+
+pub static mut pstatuses:*mut c_int = 0 as *mut c_int;
+pub static mut statsize:c_int = 0;
+
+pub static mut sigchld:c_int = 0;
+pub static mut queue_sigchld:c_int = 0;
+
+
+#[macro_export]
+macro_rules! QUEUE_SIGCHLD {
+    ($os:expr) => {
+        $os = sigchld;
+        queue_sigchld += 1;
+    };
+}
