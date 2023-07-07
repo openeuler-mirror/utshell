@@ -115,10 +115,13 @@ macro_rules! FNM_NOMATCH {
 
 pub const st_stdin: stream_type = 1;
 
-unsafe extern "C" fn member(c: i32, s: *const c_char) -> bool {
+
+unsafe extern "C" fn member(c:i32, s:*const c_char) -> bool
+{
     if c != 0 {
-        return mbschr(s, c) as c_char != 0 as c_char;
-    } else {
+       return  mbschr(s, c) as c_char != 0 as c_char ;
+    }
+    else {
         return false;
     }
 }
@@ -383,16 +386,28 @@ pub unsafe extern "C" fn bash_delete_last_history() -> c_int
     let mut hlist: *mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
     let mut histent:*mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
     let mut r: c_int = 0;
+
     hlist = history_list();
     if hlist.is_null() {
         return 0;
     }
+
+    i = 0;
+    while !(*hlist.offset(i as isize)).is_null(){
+        i += 1;
+    }
+
+    i -= 1;
     histent = history_get(history_base + i);
+    if histent.is_null() {
+        return 0;
+    }
 
     r = bash_delete_histent(i);
     if where_history() > history_length {
-    history_set_pos(history_length);
+        history_set_pos(history_length);
     }
+
     return r;
 }
 
@@ -434,7 +449,7 @@ pub unsafe extern "C" fn bash_delete_item(i : i32) -> c_int
     }
 
     i -= 1;
-    histent = history_get(history_base + i);
+    histent = history_get(i);
     if histent.is_null() {
         return 0;
     }
