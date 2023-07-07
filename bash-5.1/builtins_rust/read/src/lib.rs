@@ -204,12 +204,16 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
             opt = internal_getopt(list, opt_str.as_ptr() as *mut c_char);
         }
 
-    list = loptend;
+        list = loptend;
 
-    //-t
-    if have_timeout != 0 && tmsec == 0 && tmusec == 0 {
-        return if input_avail(fd) != 0 {EXECUTION_SUCCESS} else {EXECUTION_FAILURE};
-    }
+        //-t
+        if have_timeout != 0 && tmsec == 0 && tmusec == 0 {
+            return if input_avail(fd) != 0 {
+                EXECUTION_SUCCESS
+            } else {
+                EXECUTION_FAILURE
+            };
+        }
 
     vflags = if assoc_expand_once != 0 {(VA_NOEXPAND | VA_ONEWORD) as c_int} else {0};
     if !list.is_null() &&
@@ -217,7 +221,7 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
         valid_array_reference((*(*list).word).word, vflags) == 0 {
             r_sh_invalidid((*(*list).word).word);
             return EXECUTION_FAILURE;
-    }
+        }
 
         //忽略界定符
         if ignore_delim != 0 {
@@ -247,8 +251,8 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
         e = ((e as usize) + 1) as *mut c_char;
     }
 
-    input_string = xmalloc(112) as *mut c_char;
-    *input_string = b'\0' as c_char;
+        input_string = xmalloc(112) as *mut c_char;
+        *input_string = b'\0' as c_char;
 
         'out_assig_vars: loop {
             if nflag == 1 && nchars == 0 {
