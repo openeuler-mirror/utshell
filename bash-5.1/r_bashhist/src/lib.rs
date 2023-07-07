@@ -399,3 +399,43 @@ pub unsafe extern "C" fn bash_history_enable()
     sv_histignore(b"HISTIGNORE\0" as *const u8 as *mut c_char);
 
 }
+
+#[no_mangle]
+
+pub unsafe extern "C" fn load_history()
+
+{
+
+    let mut hf:*mut c_char;
+
+
+
+    set_if_not(b"HISTSIZE\0" as *const u8 as *mut c_char, HISTSIZE_DEFAULT!() );
+
+    sv_histsize(b"HISTSIZE\0" as *const u8 as *mut c_char);
+
+
+
+    set_if_not(b"HISTFILESIZE\0" as *const u8 as *mut c_char,
+
+                get_string_value(b"HISTSIZE\0" as *const u8 as *mut c_char));
+
+    sv_histsize(b"HISTFILESIZE\0" as *const u8 as *mut c_char);
+
+
+
+    hf = get_string_value(b"HISTFILE\0" as *const u8 as *mut c_char);
+
+
+
+    if !hf.is_null() && *hf as c_int != 0 && file_exits(hf) != 0{
+
+        read_history(hf);
+
+        history_lines_in_file = history_lines_read_from_file;
+
+        using_history();
+
+    }
+
+}
