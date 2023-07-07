@@ -473,4 +473,28 @@ unsafe extern "C"  fn  current_working_directory() -> *mut c_char
     }
 }
 
+unsafe extern "C"  fn  job_working_directory() -> *mut c_char
+{
+    let mut dir:*mut c_char;
+
+    dir = get_string_value(b"PWD\0" as *const u8 as *const c_char);
+    dir = r_get_working_directory(b"job-working-directory\0" as * const u8 as *mut c_char);
+    if !dir.is_null() {
+        return r_savestring(dir) ;
+    }
+
+    return r_savestring(b"<unknown>\0" as *const u8 as *const c_char);
+}
+
+#[no_mangle]
+pub unsafe extern "C"  fn  making_children()
+{
+    if already_making_children != 0 {
+        return;
+    }
+
+    already_making_children = 1;
+    start_pipeline();
+}
+
 
