@@ -53,12 +53,12 @@ pub extern "C" fn r_exp_builtin(list: *mut WordList) -> i32 {
 unsafe {
 	let expok: c_int = 0;
 
-	if list.is_null() {
-		let names = String::from("letwarn");
-        err_translate_fn(&names,std::ptr::null_mut());
-		println!();
-		return EXECUTION_FAILURE;
-	}
+        if list.is_null() {
+            let names = String::from("letwarn");
+            err_translate_fn(&names, std::ptr::null_mut());
+            println!();
+            return EXECUTION_FAILURE;
+        }
 
 	let exp = string_list(list);
 	let ret = evalexp(exp, EXP_EXPANDED, std::mem::transmute(&expok));
