@@ -425,6 +425,20 @@ pub static mut saved_already_making_children:c_int = 0;
 pub static mut jobs_list_frozen:c_int = 0;
 pub static mut retcode_name_buffer:[c_char; 64] = [0; 64];
 
+#[no_mangle]
+pub unsafe extern "C" fn BLOCK_CHILD(nvar:*mut sigset_t,ovar:*mut sigset_t)
+{
+    sigemptyset (nvar); 
+    sigaddset (nvar, SIGCHLD as c_int); 
+    sigemptyset (ovar); 
+    sigprocmask (SIG_BLOCK as i32, nvar, ovar); 
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn UNBLOCK_CHILD(over:*const sigset_t)
+{
+    sigprocmask(SIG_SETMASK as  c_int, over, 0 as *mut  c_void as *mut sigset_t);
+}
 
 
 
