@@ -4,12 +4,12 @@ use libc::{c_char, c_int, c_void};
 use r_bash::*;
 
 extern "C" {
-    static mut history_expansion_char: c_char;
-    static mut history_quoting_state: c_int;
-    static mut history_quotes_inhibit_expansion: c_int;
-    static mut history_search_delimiter_chars: *mut c_char;
-    static mut history_inhibit_expansion_function: Option<rl_linebuf_func_t>;
-    static mut history_lines_read_from_file: c_int;
+    static mut history_expansion_char:c_char;
+    static mut history_quoting_state:c_int;
+    static mut history_quotes_inhibit_expansion:c_int;
+    static mut history_search_delimiter_chars:*mut c_char;
+    static mut history_inhibit_expansion_function:Option<rl_linebuf_func_t>;
+    static mut history_lines_read_from_file:c_int;
     static mut history_base: c_int;
     static mut history_length: c_int;
     static mut history_lines_written_to_file: c_int;
@@ -20,13 +20,13 @@ extern "C" {
     static mut history_max_entries: c_int;
 
     fn mbschr(_: *const c_char, _: c_int) -> *mut c_char;
-    fn read_history(_: *const c_char) -> c_int;
+    fn read_history(_:*const c_char) -> c_int;
     fn using_history();
-    fn file_exits(_: *const c_char) -> c_int;
+    fn file_exits(_:*const c_char) -> c_int;
     fn clear_hisroty();
-    fn remove_history(_: c_int) -> *mut HIST_ENTRY;
+    fn remove_history(_:c_int) -> *mut HIST_ENTRY;
     fn free_history_entry(_: *mut HIST_ENTRY) -> histdata_t;
-    fn remove_history_range(_: c_int, _: c_int) -> *mut *mut HIST_ENTRY;
+    fn remove_history_range(_:c_int, _:c_int) -> *mut *mut HIST_ENTRY;
     fn history_list() -> *mut *mut HIST_ENTRY;
     fn history_get(_: c_int) -> *mut HIST_ENTRY;
     fn where_history() -> c_int;
@@ -39,8 +39,7 @@ extern "C" {
     fn replace_history_entry(_: c_int, _: *const c_char, _: histdata_t) -> *mut HIST_ENTRY;
     fn history_is_stifled() -> c_int;
     fn add_history(_: *const c_char);
-    fn strmatch(_: *mut c_char, _: *mut c_char, _: c_int) -> c_int;
-
+    fn strmatch( _: *mut c_char, _: *mut c_char, _: c_int) -> c_int;
 }
 
 pub type rl_linebuf_func_t = unsafe extern "C" fn(*mut c_char, c_int) -> c_int;
@@ -136,9 +135,7 @@ static mut histignore: ignorevar = unsafe {
             item_func: ::std::mem::transmute::<
                 unsafe extern "C" fn(*mut ign) -> c_int,
                 sh_iv_item_func_t,
-            >(
-                histignore_item_func as unsafe extern "C" fn(*mut ign) -> c_int
-            ),
+            >( histignore_item_func as unsafe extern "C" fn(*mut ign) -> c_int),
         };
         init
     }
@@ -199,35 +196,31 @@ unsafe extern "C" fn bash_history_inhibit_expansion(
 
     if i > 0 as c_int
         && *string.offset((i - 1) as isize) as c_int == '[' as i32
-        && member(
-            ']' as i32,
-            string.offset(i as isize).offset(1 as c_int as isize),
-        )
+        && member(']' as i32, string.offset(i as isize).offset(1 as c_int as isize))
     {
-        return 1;
-    } else if i > 1 as c_int
-        && *string.offset((i - 1 as c_int) as isize) as c_int == '{' as i32
-        && *string.offset((i - 2 as c_int) as isize) as c_int == '$' as i32
-        && member(
-            '}' as i32,
-            string.offset(i as isize).offset(1 as c_int as isize),
-        )
+        return 1 
+    } 
+    else if i > 1 as c_int
+            && *string.offset((i - 1 as c_int) as isize) as c_int
+                == '{' as i32
+            && *string.offset((i - 2 as c_int) as isize) as c_int
+                == '$' as i32
+            && member('}' as i32, string.offset(i as isize).offset(1 as c_int as isize))
     {
-        return 1;
-    } else if i > 1 as c_int
-        && *string.offset((i - 1 as c_int) as isize) as c_int == '$' as i32
-        && *string.offset(i as isize) as c_int == '!' as i32
+        return 1 
+    } 
+    else if i > 1 as c_int
+                && *string.offset((i - 1 as c_int) as isize) as c_int
+                    == '$' as i32
+                && *string.offset(i as isize) as c_int == '!' as i32
     {
-        return 1;
-    } else if extended_glob != 0
-        && i > 1 as c_int
-        && *string.offset((i + 1 as c_int) as isize) as c_int == '(' as i32
-        && member(
-            ')' as i32,
-            string.offset(i as isize).offset(2 as c_int as isize),
-        )
+        return 1 
+    } 
+    else if extended_glob != 0 && i > 1 as c_int
+            && *string.offset((i + 1 as c_int) as isize) as c_int == '(' as i32
+            && member(')' as i32, string.offset(i as isize).offset(2 as c_int as isize))
     {
-        return 1;
+        return 1 ;
     }
 
     si = 0;
@@ -259,12 +252,12 @@ unsafe extern "C" fn bash_history_inhibit_expansion(
                 SD_NOJMP as c_int | SD_HISTEXP as c_int,
             );
             if t <= 0 {
-                return 0;
+                return 0 ;
             }
         }
         return (t > i) as c_int;
     } else {
-        return 0;
+        return 0 
     };
 }
 
@@ -344,8 +337,8 @@ pub unsafe extern "C" fn load_history() {
         using_history();
     }
 }
-#[no_mangle]
 
+#[no_mangle]
 pub unsafe extern "C" fn bash_clear_history() {
     clear_hisroty();
     history_lines_this_session = 0;
@@ -403,29 +396,14 @@ pub unsafe extern "C" fn bash_delete_last_history() -> c_int
         return 0;
     }
 
-    r = bash_delete_histent(i);
-    if where_history() > history_length {
-        history_set_pos(history_length);
-    }
-
+    r = bash_delete_item(i);
     return r;
 }
 
 pub unsafe extern "C" fn bash_delete_first_history() -> c_int
 {
     let mut i: c_int = 0;
-    let mut hlist: *mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
-    let mut histent:*mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-    let mut r: c_int = 0;
-
-    hlist = history_list();
-    if hlist.is_null() {
-        return 0;
-    }
-    histent = history_get(history_base);
-
-    r = bash_delete_histent(history_base);
-    history_set_pos(0);
+    let r = bash_delete_item(i);
 
     return r;
 }
@@ -534,4 +512,12 @@ pub unsafe extern "C" fn maybe_append_history(mut filename: *mut c_char) -> c_in
   } 
       history_lines_this_session = 0;
   return result;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn maybe_save_shell_history() -> c_int {
+    let mut result: c_int = 0;
+    let mut hf: *mut c_char = 0 as *mut c_char;
+    result = 0 ;
+    return result;
 }
