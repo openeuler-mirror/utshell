@@ -411,7 +411,7 @@ pub unsafe extern "C" fn bash_delete_first_history() -> c_int
 #[no_mangle]
 pub unsafe extern "C" fn bash_delete_item(i : i32) -> c_int
 {
-    let mut i: c_int = 0;
+    // let mut i: c_int = 0;
     let mut hlist: *mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
     let mut histent:*mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
     let mut r: c_int = 0;
@@ -427,7 +427,7 @@ pub unsafe extern "C" fn bash_delete_item(i : i32) -> c_int
     }
 
     i -= 1;
-    histent = history_get(i);
+    histent = history_get(history_base + i);
     if histent.is_null() {
         return 0;
     }
@@ -473,8 +473,9 @@ pub unsafe extern "C" fn bash_really_add_history(mut line: *mut c_char) {
     }
     using_history();
 }
+
 #[no_mangle]
-pub unsafe extern "C" fn maybe_append_history(mut filename: *mut c_char) -> c_int
+pub unsafe extern "C" fn maybe_append_history(mut filename: *mut c_char) -> c_int 
 {
     let mut fd: c_int = 0;
     let mut result: c_int = 0;
@@ -496,8 +497,8 @@ pub unsafe extern "C" fn maybe_append_history(mut filename: *mut c_char) -> c_in
         st_ctim: timespec { tv_sec: 0, tv_nsec: 0 },
         __glibc_reserved: [0; 3],
     };
-  result = EXECUTION_SUCCESS as i32;
-  if history_lines_this_session > 0  {
+    result = EXECUTION_SUCCESS as i32;
+    if history_lines_this_session > 0  {
         if stat(filename, &mut buf) == -1 && errno!() == ENOENT!() 
         {
             fd = open(filename,O_WRONLY as i32| O_CREAT as i32,0o600 as c_int);
