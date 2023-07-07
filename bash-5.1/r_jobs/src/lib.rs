@@ -379,3 +379,32 @@ pub unsafe extern "C" fn PSTOPPED(p:*mut PROCESS) -> c_int
         return 0;
     }
 }
+
+#[macro_export]
+macro_rules! DEADJOB {
+    ($j:expr) => {
+        (**jobs.offset($j as isize)).state as  c_int == JDEAD 
+    };
+}
+
+#[macro_export]
+macro_rules! IS_NOTIFIED {
+    ($j:expr) => {
+         (**jobs.offset($j as isize)).flags & J_NOTIFIED as  c_int != 0 as  c_int 
+    };
+}
+
+
+#[macro_export]
+macro_rules! JOBSTATE {
+    ($job:expr) => {
+        (**jobs.offset($job as isize)).state
+    };
+}
+
+#[macro_export]
+macro_rules! STOPPED {
+    ($job:expr) => {
+        (**jobs.offset($job as isize)).state == JSTOPPED 
+    };
+}
