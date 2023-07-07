@@ -53,9 +53,8 @@ unsafe {
 
 #[no_mangle]
 pub extern "C" fn r_exp_builtin(list: *mut WordList) -> i32 {
-
-unsafe {
-	let expok: c_int = 0;
+    unsafe {
+        let expok: c_int = 0;
 
         if list.is_null() {
             let names = String::from("letwarn");
@@ -64,11 +63,15 @@ unsafe {
             return EXECUTION_FAILURE;
         }
 
-	let exp = string_list(list);
-	let ret = evalexp(exp, EXP_EXPANDED, std::mem::transmute(&expok));
-	libc::free(exp as *mut c_void);
-	return if ret == 0 || expok == 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
-}
+        let exp = string_list(list);
+        let ret = evalexp(exp, EXP_EXPANDED, std::mem::transmute(&expok));
+        libc::free(exp as *mut c_void);
+        return if ret == 0 || expok == 0 {
+            EXECUTION_FAILURE
+        } else {
+            EXECUTION_SUCCESS
+        };
+    }
 }
 
 unsafe fn is_option(s: *mut c_char, c: u8) -> bool {
