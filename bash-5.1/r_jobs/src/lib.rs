@@ -440,5 +440,37 @@ pub unsafe extern "C" fn UNBLOCK_CHILD(over:*const sigset_t)
     sigprocmask(SIG_SETMASK as  c_int, over, 0 as *mut  c_void as *mut sigset_t);
 }
 
+/* 函数部分重构 */
+#[no_mangle]
+pub unsafe extern "C"  fn  init_job_stats() 
+{
+    js = zerojs;
+}
+
+
+unsafe extern "C"  fn  current_working_directory() -> *mut c_char
+{
+    let mut dir:*mut c_char;
+    let mut d:[c_char; PATH_MAX as usize] = [0; PATH_MAX as usize]; 
+    
+    dir = get_string_value(b"PWD\0" as *const u8 as *const c_char);
+
+    if dir.is_null() && !the_current_working_directory.is_null() && no_symbolic_links != 0 {
+        dir = the_current_working_directory;
+    }
+
+    if dir.is_null() {
+        dir = getcwd(d.as_mut_ptr(), (::std::mem::size_of::<[ c_char; 4096]>() as libc::c_ulong).try_into().unwrap());
+        if !dir.is_null() {
+            dir = d.as_mut_ptr();
+        } 
+    }
+
+    if dir.is_null() {
+        return b"<unknown>\0" as *const u8 as *mut c_char;
+    } else {
+        return dir;
+    }
+}
 
 
