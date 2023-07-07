@@ -1,7 +1,7 @@
 //# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-extern crate  libc;
+extern crate libc;
 extern crate nix;
 extern crate std;
 use libc::{c_char, c_void};
@@ -19,61 +19,77 @@ pub enum Option<T> {
     Some(T),
 }
 
-#[repr (C)]
-#[derive(Copy,Clone)]
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct builtin {
-   name : *mut libc::c_char,
-   function :*mut sh_builtin_func_t,
-   flags : bool,
-   long_doc :*mut *mut c_char,
-   short_doc :*mut  libc::c_char,
-   handle :*mut libc::c_char
+    name: *mut libc::c_char,
+    function: *mut sh_builtin_func_t,
+    flags: bool,
+    long_doc: *mut *mut c_char,
+    short_doc: *mut libc::c_char,
+    handle: *mut libc::c_char,
 }
 type sh_builtin_func_t = fn(WordList) -> i32;
 
 #[repr(C)]
 struct FieldStruct {
-    name : *mut  c_char,
+    name: *mut c_char,
 }
 
 #[macro_export]
 macro_rules! FNMATCH_EXTFLAG {
-    () => {0}
+    () => {
+        0
+    };
 }
 
 #[macro_export]
 macro_rules! EX_USAGE {
-   () => {258}
+    () => {
+        258
+    };
 }
 
 #[macro_export]
-macro_rules! MB_CUR_MAX	{
-     () => {6}
- }
-
-#[macro_export]
-macro_rules! BASE_INDENT{
-    () => {4}
+macro_rules! MB_CUR_MAX {
+    () => {
+        6
+    };
 }
 
 #[macro_export]
-macro_rules! BUILTIN_ENABLED{
-    () => {1}
+macro_rules! BASE_INDENT {
+    () => {
+        4
+    };
 }
 
 #[macro_export]
-macro_rules! FNM_NOMATCH{
-    () => {1}
+macro_rules! BUILTIN_ENABLED {
+    () => {
+        1
+    };
 }
 
 #[macro_export]
-macro_rules! BUILTIN_SIZEOF{
-    () => {48}
+macro_rules! FNM_NOMATCH {
+    () => {
+        1
+    };
 }
 
 #[macro_export]
-macro_rules! EXIT_FAILURE{
-  () => {1}
+macro_rules! BUILTIN_SIZEOF {
+    () => {
+        48
+    };
+}
+
+#[macro_export]
+macro_rules! EXIT_FAILURE {
+    () => {
+        1
+    };
 }
 
 extern "C" {
