@@ -311,3 +311,34 @@ pub static mut wait_intr_buf: sigjmp_buf = [
         __saved_mask: __sigset_t{__val:[0;16usize]},
 }  ];
 
+#[no_mangle]
+pub static mut jobs: *mut *mut JOB = 0 as *const c_void as *mut c_void  as *mut *mut JOB;
+
+#[no_mangle]
+pub static mut shell_tty:c_int = -1;
+#[no_mangle]
+pub static mut shell_pgrp:pid_t = -1 as c_int; 
+pub static mut terminal_pgrp:pid_t = -1;
+#[no_mangle]
+pub static mut original_pgrp:pid_t = -1;
+#[no_mangle]
+pub static mut pipeline_pgrp:pid_t = 0 as pid_t;
+
+#[no_mangle]
+pub static mut pgrp_pipe:[c_int; 2] = [-1 as c_int, -1 as c_int];
+#[no_mangle]
+pub static mut last_made_pid:pid_t = -1;
+#[no_mangle]
+pub static mut last_asynchronous_pid: pid_t = -1;
+#[no_mangle]
+pub static mut the_pipeline:*mut PROCESS = 0 as *const c_void as *mut c_void as *mut PROCESS;
+#[no_mangle]
+pub static mut job_control: c_int = 1;
+#[no_mangle]
+pub static mut running_in_background: c_int = 0;
+#[no_mangle]
+pub static mut already_making_children: c_int = 0;
+#[no_mangle]
+pub static mut check_window_size: c_int = CHECKWINSIZE_DEFAULT as i32;
+#[no_mangle]
+pub static mut last_procsub_child:*mut PROCESS = 0 as *const c_void as *mut c_void as *mut PROCESS;
