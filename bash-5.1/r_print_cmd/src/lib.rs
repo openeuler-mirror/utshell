@@ -56,3 +56,15 @@ macro_rules! PRINT_DEFERRED_HEREDOCS{
         }
     )
 }
+
+#[macro_export]
+macro_rules! RESIZE_MALLOCED_BUFFER{
+    ($str:expr, $cind:expr, $room:expr, $csize:expr, $simcr:expr) => (
+        if $cind + $room >= $csize {
+            while $cind + $room >= $csize {
+                $csize = $csize + $simcr;
+            }
+            $str = libc::realloc($str as *mut c_void, $csize as usize ) as *mut c_char;
+        }
+    )
+}
