@@ -415,6 +415,12 @@ pub const JSTOPPED: JOB_STATE = 2;
 pub const JRUNNING: JOB_STATE = 1;
 pub const JNONE: JOB_STATE = -1;
 
+pub static mut old_tstp:*mut  SigHandler = 0 as *mut SigHandler;
+pub static mut old_ttou:*mut  SigHandler = 0 as *mut SigHandler;
+pub static mut old_ttin:*mut  SigHandler = 0 as *mut SigHandler;
+pub static mut old_cont:*mut  SigHandler = 0 as *mut SigHandler; //SIG_DFL 
+pub static mut saved_pipeline:*mut pipeline_saver = 0 as *mut pipeline_saver;
+pub static mut saved_already_making_children:c_int = 0;
 
 pub static mut jobs_list_frozen:c_int = 0;
 pub static mut retcode_name_buffer:[c_char; 64] = [0; 64];
