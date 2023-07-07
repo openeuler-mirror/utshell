@@ -411,34 +411,34 @@ fn show_desc(i: i32) {
     println!("    {}", msg1);
 }
 
-fn show_manpage (_name : *mut c_char, i : i32){
-  /* NAME */
-  println! ("NAME\n");
-  show_desc(i);
+fn show_manpage(_name: *mut c_char, i: i32) {
+    /* NAME */
+    println!("NAME\n");
+    show_desc(i);
 
-  /* SYNOPSIS */
-  println! ("SYNOPSIS\n");
-  show_helpsynopsis(i);
-  println! ("DESCRIPTION\n");
-  show_longdoc(i);
-  /* SEE ALSO */
-  println! ("SEE ALSO\n");
-  println! ("    utshell(1) {} \n\n"," ");
+    /* SYNOPSIS */
+    println!("SYNOPSIS\n");
+    show_helpsynopsis(i);
+    println!("DESCRIPTION\n");
+    show_longdoc(i);
+    /* SEE ALSO */
+    println!("SEE ALSO\n");
+    println!("    utshell(1) {} \n\n", " ");
 
-  /* IMPLEMENTATION */
-  println! ("IMPLEMENTATION\n");
-  println! ("    ");
-  unsafe {
-    show_shell_version (0);
-  }
-  println! ("    ");
-  unsafe {
-    println! ("{:?}", CStr::from_ptr(bash_copyright));
-  }
-  println! ("    ");
-  unsafe {
-     println! ("{:?}", CStr::from_ptr(bash_license));
-  }
+    /* IMPLEMENTATION */
+    println!("IMPLEMENTATION\n");
+    println!("    ");
+    unsafe {
+        show_shell_version(0);
+    }
+    println!("    ");
+    unsafe {
+        println!("{:?}", CStr::from_ptr(bash_copyright));
+    }
+    println!("    ");
+    unsafe {
+        println!("{:?}", CStr::from_ptr(bash_license));
+    }
 }
 
 #[no_mangle]
