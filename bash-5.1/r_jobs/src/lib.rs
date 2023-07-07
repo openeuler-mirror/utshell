@@ -497,4 +497,25 @@ pub unsafe extern "C"  fn  making_children()
     start_pipeline();
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  stop_making_children()
+{
+    already_making_children = 0;
+}
 
+#[no_mangle]
+pub unsafe extern "C"  fn  cleanup_the_pipeline()
+{
+    let mut disposer:*mut PROCESS;
+    let mut set:sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset:sigset_t = __sigset_t { __val: [0; 16] };
+
+    BLOCK_CHILD(&mut set, &mut oset);
+    disposer = the_pipeline;
+    the_pipeline = 0 as *mut PROCESS;
+    UNBLOCK_CHILD(&mut oset);
+
+    if !disposer.is_null() {
+        discard_pipeline(disposer);
+    }
+}
