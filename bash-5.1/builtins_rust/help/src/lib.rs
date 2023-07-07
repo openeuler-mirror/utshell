@@ -277,43 +277,42 @@ pub extern "C" fn r_help_builtin(mut list: *mut WordList) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn  r_help_null_builtin (_list:*mut WordList) -> i32{
-  unsafe {
-    show_shell_version(0);
-  }
-  show_builtin_command_help (); 
-  return EXECUTION_SUCCESS!();
+pub extern "C" fn r_help_null_builtin(_list: *mut WordList) -> i32 {
+    unsafe {
+        show_shell_version(0);
+    }
+    show_builtin_command_help();
+    return EXECUTION_SUCCESS!();
 }
 
-unsafe fn QUIT ()
-{
-  if terminating_signal !=0 {
-    termsig_handler (terminating_signal);
-  }
+unsafe fn QUIT() {
+    if terminating_signal != 0 {
+        termsig_handler(terminating_signal);
+    }
 
-  if interrupt_state !=0{
-    throw_to_top_level();
-  }
+    if interrupt_state != 0 {
+        throw_to_top_level();
+    }
 }
 
-pub  extern "C"  fn r_builtin_help (){
+pub extern "C" fn r_builtin_help() {
     // print  all  command usage
     let mut ind: i32 = 5;
     let d: i32;
     unsafe {
         current_builtin = builtin_address_internal(this_command_name, 0);
-            if current_builtin == 0 as *mut  builtin{
-                return ;
-        }   
+        if current_builtin == 0 as *mut builtin {
+            return;
+        }
 
-        d = (current_builtin as usize  - shell_builtins as usize) as i32;
+        d = (current_builtin as usize - shell_builtins as usize) as i32;
     }
-    ind = d/BUILTIN_SIZEOF!() ;
+    ind = d / BUILTIN_SIZEOF!();
     unsafe {
-       print!("{:?} : ",CStr::from_ptr(this_command_name));
+        print!("{:?} : ", CStr::from_ptr(this_command_name));
     }
     show_helpsynopsis(ind);
-    show_longdoc (ind);
+    show_longdoc(ind);
 }
 
 fn open_helpfile(name :*mut c_char) -> i32{
