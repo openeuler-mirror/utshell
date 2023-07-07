@@ -4,37 +4,35 @@
 extern crate libc;
 extern crate nix;
 
-use std::ffi::CStr;
-use std::ffi::CString;
-use std::ptr;
-use std::mem;
-use std::io;
+use std::ffi::{CStr, CString};
+use std::{ptr, mem, io};
 use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage, r_savestring};
 use rhelp::r_builtin_help;
 
 #[macro_export]
 macro_rules! FLAG_UNKNOWN {
-    () => {0 as *mut i32}
+    () => {
+        0 as *mut i32
+    };
 }
 
 #[macro_export]
-macro_rules! MINUS_O_FORMAT{
-    () => {CString::new("%-15s\t%s\n")}
+macro_rules! MINUS_O_FORMAT {
+    () => {
+        CString::new("%-15s\t%s\n")
+    };
 }
 
 #[macro_export]
- macro_rules! GET_BINARY_O_OPTION_VALUE {
-    ($a:expr,$b:expr) =>{
+macro_rules! GET_BINARY_O_OPTION_VALUE {
+    ($a:expr,$b:expr) => {
         if (o_options[$a as usize].get_func).is_some() {
-          (Some(
-            (o_options[$a as usize].get_func)
-                .expect("non-null function pointer"),
-        ))
-            .expect("non-null function pointer")($b)
-    } else {
-        *o_options[$a as usize].variable
-    }
-  }
+            (Some((o_options[$a as usize].get_func).expect("non-null function pointer")))
+                .expect("non-null function pointer")($b)
+        } else {
+            *o_options[$a as usize].variable
+        }
+    };
 }
 
 #[macro_export]
@@ -244,7 +242,6 @@ pub struct variable {
 //        (*$a==*$b) && (libc::strcmp($a,$b)==0)
 //     }
 // }
-
 
 #[macro_export]
 macro_rules! FLAG_ERROR{
@@ -883,11 +880,11 @@ type sh_var_value_func_t =  unsafe extern "C" fn (
   _ : *mut SHELL_VAR 
 ) -> *mut SHELL_VAR;
 
-type  sh_var_assign_func_t =  unsafe extern "C" fn (
-  _ : *mut SHELL_VAR ,
-  _ : *mut libc::c_char,
-  _ : arrayind_t,
-  _ : *mut libc::c_char
+type sh_var_assign_func_t = unsafe extern "C" fn(
+    _: *mut SHELL_VAR,
+    _: *mut libc::c_char,
+    _: arrayind_t,
+    _: *mut libc::c_char,
 ) -> *mut SHELL_VAR;
 
 //type check = String::from_utf8(cc::Build::new().file("../builtins/set.def").expand()).unwrap();
@@ -908,9 +905,6 @@ unsafe fn find_minus_o_option (mut name : *mut libc::c_char) -> i32 {
   let mut  i : i32 = 0;
   for j in 0..N_O_OPTIONS!()-1 {
     i = j as i32;
-    //println! ("i  is  {}, j is  {}",i,j);
-    let  ooo = o_options[j];
-    //println! ("i  is  {}, j is  {}",i,j);
     if STREQ(name, o_options[j as usize].name) {
       return i;
     }
@@ -934,7 +928,7 @@ unsafe fn minus_o_option_value (name : *mut libc::c_char) -> i32{
       return unsafe {*on_or_off};
     }
   else{
-     unsafe {GET_BINARY_O_OPTION_VALUE!(i, name)}
+      return unsafe {GET_BINARY_O_OPTION_VALUE!(i, name)}
   }
 }
 
