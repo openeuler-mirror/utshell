@@ -67,4 +67,16 @@ macro_rules! RESIZE_MALLOCED_BUFFER{
             $str = libc::realloc($str as *mut c_void, $csize as usize ) as *mut c_char;
         }
     )
+
+}
+
+pub  fn MBLEN(s: *const c_char ,n:size_t) -> c_int
+{
+    if MB_CUR_MAX > 1
+    {
+        return unsafe { mblen(s,n) };
+    }
+    else {
+        return  1;
+    }
 }
