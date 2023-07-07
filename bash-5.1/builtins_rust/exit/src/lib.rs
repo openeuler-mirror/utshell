@@ -1,55 +1,56 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 extern crate libc;
-extern crate rjobs;
 extern crate nix;
+extern crate rjobs;
 
 use libc::c_char;
 use std::ffi::CString;
 
-use rjobs::{PROCESS, COMMAND, r_jobs_builtin, JLIST_STANDARD};
+use rjobs::{r_jobs_builtin, COMMAND, JLIST_STANDARD, PROCESS};
 
-use rcommon::{WordList, EX_USAGE, EXECUTION_FAILURE,err_translate_fn};
+use rcommon::{
+    err_translate_fn, WordDesc, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE,
+};
 use rhelp::r_builtin_help;
 
 #[repr(C)]
 pub struct JOB {
     wd: *mut c_char,
     pipe: *mut PROCESS,
-    pgrp:i32,
-    state:JOB_STATE,
-    flags:i32,
-    deferred:*mut COMMAND,
-    j_cleanup:*mut fn(),
-    cleanarg:* mut fn()
+    pgrp: i32,
+    state: JOB_STATE,
+    flags: i32,
+    deferred: *mut COMMAND,
+    j_cleanup: *mut fn(),
+    cleanarg: *mut fn(),
 }
 
 #[repr(C)]
 pub struct jobstats {
     /* limits */
-    c_childmax:libc::c_long,
+    c_childmax: libc::c_long,
     /* child process statistics */
-    c_living:libc::c_int,       /* running or stopped child processes */
-    c_reaped:libc::c_int,   /* exited child processes still in jobs list */
-    c_injobs:libc::c_int,   /* total number of child processes in jobs list */
+    c_living: libc::c_int, /* running or stopped child processes */
+    c_reaped: libc::c_int, /* exited child processes still in jobs list */
+    c_injobs: libc::c_int, /* total number of child processes in jobs list */
     /* child process totals */
-    c_totforked:libc::c_int,    /* total number of children this shell has forked */
-    c_totreaped:libc::c_int,    /* total number of children this shell has reaped */
+    c_totforked: libc::c_int, /* total number of children this shell has forked */
+    c_totreaped: libc::c_int, /* total number of children this shell has reaped */
     /* job counters and indices */
-    j_jobslots:libc::c_int,/* total size of jobs array */
-    j_lastj:libc::c_int,        /* last (newest) job allocated */
-    j_firstj:libc::c_int,   /* first (oldest) job allocated */
-    j_njobs:libc::c_int,        /* number of non-NULL jobs in jobs array */
-    j_ndead:libc::c_int,        /* number of JDEAD jobs in jobs array */
+    j_jobslots: libc::c_int, /* total size of jobs array */
+    j_lastj: libc::c_int,    /* last (newest) job allocated */
+    j_firstj: libc::c_int,   /* first (oldest) job allocated */
+    j_njobs: libc::c_int,    /* number of non-NULL jobs in jobs array */
+    j_ndead: libc::c_int,    /* number of JDEAD jobs in jobs array */
     /* */
-    j_current:libc::c_int,  /* current job */
-    j_previous:libc::c_int, /* previous job */
+    j_current: libc::c_int,  /* current job */
+    j_previous: libc::c_int, /* previous job */
     /* */
-    j_lastmade:* mut JOB,   /* last job allocated by stop_pipeline */
-    j_lastasync:* mut JOB   /* last async job allocated by stop_pipeline */
+    j_lastmade: *mut JOB,  /* last job allocated by stop_pipeline */
+    j_lastasync: *mut JOB, /* last async job allocated by stop_pipeline */
 }
-
 
 //枚举
 #[repr(i8)]
@@ -59,7 +60,7 @@ pub enum JOB_STATE {
     JRUNNING = 1,
     JSTOPPED = 2,
     JDEAD = 4,
-    JMIXED = 8
+    JMIXED = 8,
 }
 
 //宏
@@ -102,30 +103,30 @@ macro_rules! SYS_BASH_LOGOOUT {
 }
 
 //C库
-extern "C"{
-    static mut interactive:i32;
-    static mut login_shell:i32;
+extern "C" {
+    static mut interactive: i32;
+    static mut login_shell: i32;
     // static mut last_shell_builtin:*mut fn(v:*mut WordList)->i32;
-    static mut last_shell_builtin:extern  fn(v:*mut WordList)->i32;
+    static mut last_shell_builtin: extern "C" fn(v: *mut WordList) -> i32;
     // static mut this_shell_builtin:*mut fn(v:*mut WordList)->i32;
-    static mut this_shell_builtin:extern fn(v:*mut WordList)->i32;
-    static  js:jobstats ;
-    static mut check_jobs_at_exit:i32;
-    static mut jobs:*mut*mut JOB;
-    static mut running_trap:i32;
-    static mut trap_saved_exit_value:i32;
-    static mut last_command_exit_value:i32;
-    static subshell_environment:i32;
+    static mut this_shell_builtin: extern "C" fn(v: *mut WordList) -> i32;
+    static js: jobstats;
+    static mut check_jobs_at_exit: i32;
+    static mut jobs: *mut *mut JOB;
+    static mut running_trap: i32;
+    static mut trap_saved_exit_value: i32;
+    static mut last_command_exit_value: i32;
+    static subshell_environment: i32;
 
-    fn builtin_error(err:*const c_char,...);
-    fn list_all_jobs(form:i32);
-    fn get_exitstat(list:*mut WordList) -> i32;
-    fn jump_to_top_level(level:i32);
-    fn maybe_execute_file(fname:*const c_char,force_noninteractive:i32)->i32;
+    fn builtin_error(err: *const c_char, ...);
+    fn list_all_jobs(form: i32);
+    fn get_exitstat(list: *mut WordList) -> i32;
+    fn jump_to_top_level(level: i32);
+    fn maybe_execute_file(fname: *const c_char, force_noninteractive: i32) -> i32;
 }
 
-unsafe fn STREQ(a:*const c_char,b:*const c_char)->bool{
-    return *a == *b && libc::strcmp(a,b) == 0;
+unsafe fn STREQ(a: *const c_char, b: *const c_char) -> bool {
+    return *a == *b && libc::strcmp(a, b) == 0;
 }
 
 // unsafe fn printToStderr(str:*mut c_char) -> std::io::Result<()>{
@@ -136,17 +137,19 @@ unsafe fn STREQ(a:*const c_char,b:*const c_char)->bool{
 // }
 
 //
-static mut sourced_logout:i32 = 0;
+static mut sourced_logout: i32 = 0;
 
 #[no_mangle]
 pub extern "C" fn r_exit_builtin(list:*mut WordList) -> i32{
     unsafe{
         let c_str = CString::new("--help").unwrap();
         let c_ptr = c_str.as_ptr();
-        if list != std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && 
-           STREQ((*(*list).word).word, c_ptr){
-               r_builtin_help();
-               return EX_USAGE;
+        if list != std::ptr::null_mut()
+            && (*list).word != std::ptr::null_mut()
+            && STREQ((*(*list).word).word, c_ptr)
+        {
+            r_builtin_help();
+            return EX_USAGE;
         }
 
         if interactive != 0 {
