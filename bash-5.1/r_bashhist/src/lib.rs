@@ -414,6 +414,31 @@ pub unsafe extern "C" fn bash_delete_last_history() -> c_int
         histent = history_get(history_base + i);
         return 0;
 }
+pub unsafe extern "C" fn bash_delete_first_history() -> c_int
+
+{
+
+    let mut i: c_int = 0;
+
+    let mut hlist: *mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
+
+    let mut histent:*mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+
+    let mut r: c_int = 0;
+
+
+
+    hlist = history_list();
+
+    if hlist.is_null() {
+
+        return 0;
+
+    }
+        histent = history_get(history_base);
+        return 0;
+}
+
 
 
 pub unsafe extern "C" fn read_history_cache()
