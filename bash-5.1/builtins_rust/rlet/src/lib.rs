@@ -31,13 +31,17 @@ unsafe {
 		return EXECUTION_FAILURE;
 	}
 
-	while !list.is_null() {
-		ret = evalexp((*((*list).word)).word, EXP_EXPANDED, std::mem::transmute(&expok));
-		if expok == 0 {
-			return EXECUTION_FAILURE;
+        while !list.is_null() {
+            ret = evalexp(
+                (*((*list).word)).word,
+                EXP_EXPANDED,
+                std::mem::transmute(&expok),
+            );
+            if expok == 0 {
+                return EXECUTION_FAILURE;
+            }
+            list = (*list).next;
         }
-        list = (*list).next;
-	}
 
         return if ret == 0 {
             EXECUTION_FAILURE
