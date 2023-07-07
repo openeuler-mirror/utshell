@@ -357,3 +357,25 @@ macro_rules! QUEUE_SIGCHLD {
         queue_sigchld += 1;
     };
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn UNQUEUE_SIGCHLD(os: c_int) {
+    queue_sigchld -= 1;
+    if queue_sigchld == 0 && os != sigchld {
+        queue_sigchld = 1;
+        waitchld(-1, 0);
+        queue_sigchld = 0;
+    }
+}
+
+
+
+#[no_mangle]
+pub unsafe extern "C" fn PSTOPPED(p:*mut PROCESS) -> c_int
+{
+    if (*p).status & 0xff == 0x7f {
+        return 1;
+    } else {
+        return 0;
+    }
+}
