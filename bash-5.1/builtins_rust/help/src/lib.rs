@@ -442,46 +442,64 @@ fn show_manpage(_name: *mut c_char, i: i32) {
 }
 
 #[no_mangle]
-pub extern "C" fn  dispcolumn (i : i32, buf : *mut c_char, _bufsize :libc::c_int, width : usize, height : i32){
-    let mut _j : i32;
-    let dispcols : usize;
-    let mut helpdoc :*mut  libc::c_char;
-     /* first column */
-    let mut builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
+pub extern "C" fn dispcolumn(
+    i: i32,
+    buf: *mut c_char,
+    _bufsize: libc::c_int,
+    width: usize,
+    height: i32,
+) {
+    let mut _j: i32;
+    let dispcols: usize;
+    let mut helpdoc: *mut libc::c_char;
+    /* first column */
+    let mut builtin1 = unsafe {
+        &(*((shell_builtins as usize + (i * BUILTIN_SIZEOF!()) as usize) as *mut builtin))
+    };
     helpdoc = builtin1.short_doc;
     unsafe {
-    libc::strncpy ((buf as usize + 4 as usize ) as * mut c_char, helpdoc, width - 2);
-     *((buf as usize + (width - 2) as usize) as * mut c_char)='>' as c_char;
-     *((buf as usize+(width - 1) as usize) as * mut c_char)='\0' as c_char;
-     }
+        libc::strncpy(
+            (buf as usize + 4 as usize) as *mut c_char,
+            helpdoc,
+            width - 2,
+        );
+        *((buf as usize + (width - 2) as usize) as *mut c_char) = '>' as c_char;
+        *((buf as usize + (width - 1) as usize) as *mut c_char) = '\0' as c_char;
+    }
     /* indicate truncation */
-    println! ("{:?}", buf);
+    println!("{:?}", buf);
     unsafe {
-    if ((i << 1) >= num_shell_builtins) || (i+height >= num_shell_builtins){
-        println! ("\n");
-        return;
+        if ((i << 1) >= num_shell_builtins) || (i + height >= num_shell_builtins) {
+            println!("\n");
+            return;
+        }
     }
-    }
-    dispcols = unsafe {libc::strlen(buf)};
+    dispcols = unsafe { libc::strlen(buf) };
     /* two spaces */
-    for _j in  dispcols .. width{
-         std::io::stdout().write(b" ");
-  }
-  /* second column */
-  builtin1 = unsafe{&(*((shell_builtins as usize + (((i+height)*BUILTIN_SIZEOF!()) as usize)) as *mut builtin))};
-  helpdoc = builtin1.short_doc as *mut libc::c_char;
-  unsafe {
-  if  builtin1.flags && BUILTIN_ENABLED!()==1 {
-       *((buf as usize) as * mut c_char)=' ' as c_char;
-  }
-  else{
-      *((buf as usize) as * mut c_char)='*' as c_char;
-  }
-  libc::strncpy ((buf as usize + 4 as usize ) as * mut c_char, helpdoc, width - 3);
-  *((buf as usize + (width - 3) as usize) as * mut c_char)='>' as c_char;
-  *((buf as usize+(width - 2) as usize) as * mut c_char)='\0' as c_char;
-  }
-   println! ("{:?}\n", buf);
+    for _j in dispcols..width {
+        std::io::stdout().write(b" ");
+    }
+    /* second column */
+    builtin1 = unsafe {
+        &(*((shell_builtins as usize + (((i + height) * BUILTIN_SIZEOF!()) as usize))
+            as *mut builtin))
+    };
+    helpdoc = builtin1.short_doc as *mut libc::c_char;
+    unsafe {
+        if builtin1.flags && BUILTIN_ENABLED!() == 1 {
+            *((buf as usize) as *mut c_char) = ' ' as c_char;
+        } else {
+            *((buf as usize) as *mut c_char) = '*' as c_char;
+        }
+        libc::strncpy(
+            (buf as usize + 4 as usize) as *mut c_char,
+            helpdoc,
+            width - 3,
+        );
+        *((buf as usize + (width - 3) as usize) as *mut c_char) = '>' as c_char;
+        *((buf as usize + (width - 2) as usize) as *mut c_char) = '\0' as c_char;
+    }
+    println!("{:?}\n", buf);
 }
 
 pub fn  wdispcolumn (i : i32, _buf :*mut c_char, _bufsize : i32, _width : i32, _height : i32){
