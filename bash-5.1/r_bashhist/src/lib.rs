@@ -83,7 +83,8 @@ macro_rules! whitespace {
 #[macro_export]
 macro_rules! STREQ {
     ($a:expr, $b:expr) => {
-        *$a.offset(0 as isize) == *$b.offset(0 as isize) && strcmp($a, $b) == 0
+        *$a.offset(0 as isize) == *$b.offset(0 as isize) 
+        && strcmp($a, $b) == 0 
     };
 }
 
@@ -278,7 +279,6 @@ pub unsafe extern "C" fn bash_initialize_history() {
 }
 
 #[no_mangle]
-
 pub unsafe extern "C" fn bash_history_reinit(mut interact: c_int) {
     history_expansion = if interact == 0 {
         histexp_flag
@@ -290,7 +290,6 @@ pub unsafe extern "C" fn bash_history_reinit(mut interact: c_int) {
         unsafe extern "C" fn(*mut c_char, c_int) -> c_int,
         Option<rl_linebuf_func_t>,
     >(bash_history_inhibit_expansion);
-
     remember_on_history = enable_history_list;
 }
 
@@ -298,19 +297,14 @@ pub unsafe extern "C" fn bash_history_reinit(mut interact: c_int) {
 
 pub unsafe extern "C" fn bash_history_disable() {
     remember_on_history = 0;
-
     history_expansion_inhibited = 1;
 }
 
 #[no_mangle]
-
 pub unsafe extern "C" fn bash_history_enable() {
     remember_on_history = 1;
-
     enable_history_list = 1;
-
     history_expansion_inhibited = 0;
-
     history_inhibit_expansion_function = std::mem::transmute::<
         unsafe extern "C" fn(*mut c_char, c_int) -> c_int,
         Option<rl_linebuf_func_t>,
@@ -322,7 +316,6 @@ pub unsafe extern "C" fn bash_history_enable() {
 }
 
 #[no_mangle]
-
 pub unsafe extern "C" fn load_history() {
     let mut hf: *mut c_char;
 
@@ -344,9 +337,7 @@ pub unsafe extern "C" fn load_history() {
 
     if !hf.is_null() && *hf as c_int != 0 && file_exits(hf) != 0 {
         read_history(hf);
-
         history_lines_in_file = history_lines_read_from_file;
-
         using_history();
     }
 }
@@ -354,43 +345,32 @@ pub unsafe extern "C" fn load_history() {
 
 pub unsafe extern "C" fn bash_clear_history() {
     clear_hisroty();
-
     history_lines_this_session = 0;
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn bash_delete_haitent(mut i:c_int) -> c_int
-
 {
-
     let mut discard:*mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-
     discard = remove_history(i);
-
     if !discard.is_null() {
-
         free_history_entry(discard);
-
         history_lines_this_session  -= 1;
-
     }
-
     return (discard != 0 as *mut HIST_ENTRY) as c_int;
-
 }
-
-
 
 #[no_mangle]
 pub unsafe extern "C" fn bash_delete_history_range(mut first:c_int, mut last:c_int) -> c_int
-
 {
     let mut i: c_int = 0;
     let mut discard_list:*mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
+
     discard_list = remove_history_range(first, last);
     i = 0 as c_int;
-    for i in first..last {
+    while !discard_list.is_null() && !(*discard_list.offset(i as isize)).is_null(){
         free_history_entry(*discard_list.offset(i as isize));
+        i += 1;
     }
     history_lines_this_session -= i;
     return 1 as c_int;
@@ -525,6 +505,15 @@ pub unsafe extern "C" fn maybe_append_history(mut filename: *mut c_char) -> c_in
     };
   result = EXECUTION_SUCCESS as i32;
   if history_lines_this_session > 0  {
+        if stat(filename, &mut buf) == -1 && errno!() == ENOENT!() 
+        {
+            fd = open(filename,O_WRONLY as i32| O_CREAT as i32,0o600 as c_int);
+            if fd < 0 as c_int {
+                builtin_error(b"%s: cannot create: %s\0" as *const u8 as *const c_char,filename,strerror(errno!()));
+                return 1 as c_int;
+            }
+            close(fd);
+        }
       history_do_write (filename, nelements, 0);
       history_lines_in_file += history_lines_this_session;
   } 
