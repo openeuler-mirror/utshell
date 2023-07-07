@@ -523,4 +523,11 @@ pub unsafe extern "C" fn maybe_append_history(mut filename: *mut c_char) -> c_in
         st_ctim: timespec { tv_sec: 0, tv_nsec: 0 },
         __glibc_reserved: [0; 3],
     };
+  result = EXECUTION_SUCCESS as i32;
+  if history_lines_this_session > 0  {
+      history_do_write (filename, nelements, 0);
+      history_lines_in_file += history_lines_this_session;
+  } 
+      history_lines_this_session = 0;
+  return result;
 }
