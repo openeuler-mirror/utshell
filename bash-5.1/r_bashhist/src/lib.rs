@@ -359,3 +359,43 @@ pub unsafe extern "C" fn bash_history_reinit(mut interact:c_int)
 
     remember_on_history = enable_history_list;
 }
+
+#[no_mangle]
+
+pub unsafe extern "C" fn bash_history_disable()
+
+{
+
+    remember_on_history = 0;
+
+    history_expansion_inhibited = 1;
+
+}
+
+
+
+#[no_mangle]
+
+pub unsafe extern "C" fn bash_history_enable()
+
+{
+
+    remember_on_history = 1;
+
+    enable_history_list = 1;
+
+    history_expansion_inhibited = 0;
+
+    history_inhibit_expansion_function = std::mem::transmute::<
+
+        unsafe extern "C" fn (*mut c_char, c_int) -> c_int ,
+
+        Option::<rl_linebuf_func_t>,
+
+    >(bash_history_inhibit_expansion);
+
+    sv_history_control(b"HISTCONTROL\0" as *const u8 as *mut c_char );
+
+    sv_histignore(b"HISTIGNORE\0" as *const u8 as *mut c_char);
+
+}
