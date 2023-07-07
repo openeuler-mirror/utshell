@@ -1,4 +1,4 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 extern crate libc;
@@ -1547,6 +1547,7 @@ unsafe fn reset_shell_options () {
               
               continue;
             }
+
             unsafe {
               list = (*list).next; /* Skip over option name. */
             }
@@ -1646,9 +1647,7 @@ pub  extern "C"  fn r_unset_builtin(mut list: *mut WordList) -> i32 {
           return EX_USAGE;
         }
       }
-      opt =internal_getopt (list, c_str_fnv.as_ptr() as * mut libc::c_char);
     }
-    //println!("unset func={},  unset val=%{}", global_unset_func, global_unset_var);
 
   list = loptend;
 
