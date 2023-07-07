@@ -37,3 +37,22 @@ macro_rules! CHECK_XTRACE_FP{
         }
     )
 }
+#[macro_export]
+macro_rules! EXPCHAR{
+    ($c:expr) => (
+        if $c == b'{' as c_char || $c == b'~' as c_char || $c == b'$' as c_char || $c == b'`' as c_char{
+            1
+        }
+        else{
+            0
+        }
+    )
+}
+#[macro_export]
+macro_rules! PRINT_DEFERRED_HEREDOCS{
+    ($x:expr) => (
+        if !deferred_heredocs.is_null(){
+            print_deferred_heredocs($x);
+        }
+    )
+}
