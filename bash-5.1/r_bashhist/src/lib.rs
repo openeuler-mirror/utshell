@@ -368,25 +368,50 @@ pub unsafe extern "C" fn bash_clear_history() {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bash_delete_haitent(mut i: c_int) -> c_int {
-    let mut discard: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+pub unsafe extern "C" fn bash_delete_haitent(mut i:c_int) -> c_int
+
+{
+
+    let mut discard:*mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+
     discard = remove_history(i);
 
     if !discard.is_null() {
+
         free_history_entry(discard);
-        history_lines_this_session -= 1;
+
+        history_lines_this_session  -= 1;
+
     }
+
     return (discard != 0 as *mut HIST_ENTRY) as c_int;
+
 }
 
+
+
 #[no_mangle]
-pub unsafe extern "C" fn bash_delete_history_range(mut first: c_int, mut last: c_int) -> c_int {
+pub unsafe extern "C" fn bash_delete_history_range(mut first:c_int, mut last:c_int) -> c_int
+
+{
+
     let mut i: c_int = 0;
+
+    let mut discard_list:*mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
+
+    discard_list = remove_history_range(first, last);
+
+    i = 0 as c_int;
+
     for i in first..last {
-        bash_delete_hitent(i);
+        free_history_entry(*discard_list.offset(i as isize));
     }
-    return i;
-}
+
+    history_lines_this_session -= i;
+
+    return 1 as c_int;
+
+} 
 
 #[no_mangle]
 
