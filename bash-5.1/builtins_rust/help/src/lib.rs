@@ -127,151 +127,154 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern "C" fn r_help_builtin(mut list:*mut WordList)->i32 {
-   // let mut i:i32;
-    let mut plen:usize;
-    let mut _match_found:i32;
-    let mut sflag :i32 =  0;
-    let mut dflag : i32 = 0;
-    let mut mflag : i32 = 0;
+pub extern "C" fn r_help_builtin(mut list: *mut WordList) -> i32 {
+    // let mut i:i32;
+    let mut plen: usize;
+    let mut _match_found: i32;
+    let mut sflag: i32 = 0;
+    let mut dflag: i32 = 0;
+    let mut mflag: i32 = 0;
     let mut m: bool;
-    let  _pass:i32 = 0;
-    let mut _this_found:i32;
-    let mut _pattern:*mut c_char;
-    let mut _name:*mut c_char; 
-    let  _l:*mut WordList= list;
-    let  mut  i : i32;
+    let _pass: i32 = 0;
+    let mut _this_found: i32;
+    let mut _pattern: *mut c_char;
+    let mut _name: *mut c_char;
+    let _l: *mut WordList = list;
+    let mut i: i32;
     unsafe {
         reset_internal_getopt();
     }
     let c_str_dms = CString::new("dms").unwrap(); // from a &str, creates a new allocation
-     unsafe {
-       i = internal_getopt (list, c_str_dms.as_ptr() as * mut c_char);
-     }
+    unsafe {
+        i = internal_getopt(list, c_str_dms.as_ptr() as *mut c_char);
+    }
     while i != -1 {
-        let optu8:u8= i as u8;
-        let optChar:char=char::from(optu8);
-        match optChar{
-           'd'=> {dflag = 1; }
-           'm'=> {mflag = 1; }
-           's'=> {sflag = 1; }
-            _=>{
-                unsafe {
-                  if i == -99 {
+        let optu8: u8 = i as u8;
+        let optChar: char = char::from(optu8);
+        match optChar {
+            'd' => {
+                dflag = 1;
+            }
+            'm' => {
+                mflag = 1;
+            }
+            's' => {
+                sflag = 1;
+            }
+            _ => unsafe {
+                if i == -99 {
                     r_builtin_help();
                     return EX_USAGE;
-                  }
-                  builtin_usage ();
-                  return EX_USAGE;
                 }
-            }
-        } 
-        unsafe{
-          i = internal_getopt (list, c_str_dms.as_ptr() as * mut c_char);    
+                builtin_usage();
+                return EX_USAGE;
+            },
+        }
+        unsafe {
+            i = internal_getopt(list, c_str_dms.as_ptr() as *mut c_char);
         }
     }
-    if list == std::ptr::null_mut(){
-      unsafe {
-        show_shell_version (0);
-      }
-      show_builtin_command_help ();
-      return EXECUTION_SUCCESS!();
+    if list == std::ptr::null_mut() {
+        unsafe {
+            show_shell_version(0);
+        }
+        show_builtin_command_help();
+        return EXECUTION_SUCCESS!();
     }
-   unsafe {
-    let mut  pattern = 0;
-   pattern =  glob_pattern_p ((*(*list).word).word);
-   if pattern == 1 {
-       println!("Shell commands matching keyword, Shell commands matching keyword");
-       if  list != std::ptr::null_mut() && (*list).next !=std::ptr::null_mut() {
-            println!("Shell commands matching keywords");
-       }
-       else {
-             println!("Shell commands matching keyword");
-       }
-       println!("{:?} ,",list);
-   }
-  //  let mut  loptendt=*list;
+    unsafe {
+        let mut pattern = 0;
+        pattern = glob_pattern_p((*(*list).word).word);
+        if pattern == 1 {
+            println!("Shell commands matching keyword, Shell commands matching keyword");
+            if list != std::ptr::null_mut() && (*list).next != std::ptr::null_mut() {
+                println!("Shell commands matching keywords");
+            } else {
+                println!("Shell commands matching keyword");
+            }
+            println!("{:?} ,", list);
+        }
+        //  let mut  loptendt=*list;
 
-   let mut match_found = 0;
-   let mut pattern:*mut c_char =  0 as *mut libc::c_char;
-   while list !=std::ptr::null_mut() {
-       pattern = (*(*list).word).word;
-       plen = libc::strlen (pattern);
-       let mut  this_found = 0;
-       let mut v : Vec<*mut libc::c_char> = Vec::new();
-       for val in 0..=75 {
-           //let nname = &shell_builtins[val].name;
-           let  builtin1  = unsafe{&(*((shell_builtins as usize + (val*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-           if  builtin1.name != std::ptr::null_mut(){
-               v.push(builtin1.name);
-           }
-       }
-       for val in 1..3 {
-           //for &mut namee in &mut v {
-           for  i in  0..v.len(){
-                QUIT();
-               /* First val: look for exact string or pattern matches.
-                 Second val: look for prefix matches like bash-4.2 */
-              if val == 1{
-                  m = (libc::strcmp (pattern,v[i]) == 0)||
-                    (strmatch (pattern,v[i], FNMATCH_EXTFLAG!()) != FNM_NOMATCH!());
-              }
-              else{
-                 m = libc::strncmp (pattern, v[i], plen) == 0;
-              }
-              if m {
-                  this_found = 1;
-                  match_found = match_found +1 ;
-                  if dflag == 1{
-                      show_desc (i as i32);
-                      continue;
-                  }
-                  else if mflag ==1{
-                    show_manpage (v[i], i as  i32); 
-                    continue;
-                    }
-                    let  builtin1 = unsafe{&(*((shell_builtins as usize + (i*BUILTIN_SIZEOF!()) as usize) as *mut builtin))};
-                    print!("{:?}:",CStr::from_ptr(builtin1.name));
-                    show_helpsynopsis(i as i32);
-                    if sflag == 0{
-                      show_longdoc(i as i32);    
-                  }
+        let mut match_found = 0;
+        let mut pattern: *mut c_char = 0 as *mut libc::c_char;
+        while list != std::ptr::null_mut() {
+            pattern = (*(*list).word).word;
+            plen = libc::strlen(pattern);
+            let mut this_found = 0;
+            let mut v: Vec<*mut libc::c_char> = Vec::new();
+            for val in 0..=75 {
+                //let nname = &shell_builtins[val].name;
+                let builtin1 = unsafe {
+                    &(*((shell_builtins as usize + (val * BUILTIN_SIZEOF!()) as usize)
+                        as *mut builtin))
+                };
+                if builtin1.name != std::ptr::null_mut() {
+                    v.push(builtin1.name);
                 }
-              }
-              if val == 1 && this_found == 1{
-                 break;
-              }
-       }
-      if (*list).next != std::ptr::null_mut(){
-       list = (*list).next;
-
-      }
-      else {
-
-        break;
-      }
-   }
-  if match_found == 0{
-        let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
-        let resources = vec![ "message.ftl".into()];
-        let mut args = FluentArgs::new();
-        let _s1 = String::from("command");
-        args.set("name",format!("{:?}",CStr::from_ptr(pattern)));
-        let bundle = mgr.get_bundle(get_local_str(), resources);
-        let value = bundle.get_message("helperr").unwrap();
-        let pattern = value.value().expect("partern err");
-        let mut errors = vec![];
-        let msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
-        println!("utshell: help: {}", msg1);
-        return EXECUTION_FAILURE!();
+            }
+            for val in 1..3 {
+                //for &mut namee in &mut v {
+                for i in 0..v.len() {
+                    QUIT();
+                    /* First val: look for exact string or pattern matches.
+                    Second val: look for prefix matches like bash-4.2 */
+                    if val == 1 {
+                        m = (libc::strcmp(pattern, v[i]) == 0)
+                            || (strmatch(pattern, v[i], FNMATCH_EXTFLAG!()) != FNM_NOMATCH!());
+                    } else {
+                        m = libc::strncmp(pattern, v[i], plen) == 0;
+                    }
+                    if m {
+                        this_found = 1;
+                        match_found = match_found + 1;
+                        if dflag == 1 {
+                            show_desc(i as i32);
+                            continue;
+                        } else if mflag == 1 {
+                            show_manpage(v[i], i as i32);
+                            continue;
+                        }
+                        let builtin1 = unsafe {
+                            &(*((shell_builtins as usize + (i * BUILTIN_SIZEOF!()) as usize)
+                                as *mut builtin))
+                        };
+                        print!("{:?}:", CStr::from_ptr(builtin1.name));
+                        show_helpsynopsis(i as i32);
+                        if sflag == 0 {
+                            show_longdoc(i as i32);
+                        }
+                    }
+                }
+                if val == 1 && this_found == 1 {
+                    break;
+                }
+            }
+            if (*list).next != std::ptr::null_mut() {
+                list = (*list).next;
+            } else {
+                break;
+            }
+        }
+        if match_found == 0 {
+            let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
+            let resources = vec!["message.ftl".into()];
+            let mut args = FluentArgs::new();
+            let _s1 = String::from("command");
+            args.set("name", format!("{:?}", CStr::from_ptr(pattern)));
+            let bundle = mgr.get_bundle(get_local_str(), resources);
+            let value = bundle.get_message("helperr").unwrap();
+            let pattern = value.value().expect("partern err");
+            let mut errors = vec![];
+            let msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
+            println!("utshell: help: {}", msg1);
+            return EXECUTION_FAILURE!();
+        }
     }
-   }
-   unsafe {
-       std::io::stdout().flush();
-   }
-  return EXECUTION_SUCCESS!();
+    unsafe {
+        std::io::stdout().flush();
+    }
+    return EXECUTION_SUCCESS!();
 }
-
 
 #[no_mangle]
 pub extern "C" fn  r_help_null_builtin (_list:*mut WordList) -> i32{
