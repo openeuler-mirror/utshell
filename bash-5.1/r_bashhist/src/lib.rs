@@ -46,7 +46,6 @@ extern "C" {
 pub type rl_linebuf_func_t = unsafe extern "C" fn(*mut c_char, c_int) -> c_int;
 
 #[macro_export]
-
 macro_rules! HISTSIZE_DEFAULT {
     () => {
         b"500\0" as *const u8 as *mut c_char
@@ -54,7 +53,6 @@ macro_rules! HISTSIZE_DEFAULT {
 }
 
 #[macro_export]
-
 macro_rules! HIGN_EXPAND {
     () => {
         0x01
@@ -62,7 +60,6 @@ macro_rules! HIGN_EXPAND {
 }
 
 #[macro_export]
-
 macro_rules! ENOENT {
     () => {
         2
@@ -70,7 +67,6 @@ macro_rules! ENOENT {
 }
 
 #[macro_export]
-
 macro_rules! errno {
     () => {
         *__errno_location()
@@ -78,7 +74,6 @@ macro_rules! errno {
 }
 
 #[macro_export]
-
 macro_rules! whitespace {
     ($c:expr) => {
         ($c as c_int == ' ' as i32 || $c as c_int == '\t' as i32)
@@ -86,7 +81,6 @@ macro_rules! whitespace {
 }
 
 #[macro_export]
-
 macro_rules! STREQ {
     ($a:expr, $b:expr) => {
         *$a.offset(0 as isize) == *$b.offset(0 as isize) && strcmp($a, $b) == 0
@@ -94,7 +88,6 @@ macro_rules! STREQ {
 }
 
 #[macro_export]
-
 macro_rules! savestring {
     ($x:expr) => {
         strcpy(malloc((1 + strlen($x)) as usize) as *mut c_char, $x)
@@ -102,7 +95,6 @@ macro_rules! savestring {
 }
 
 #[macro_export]
-
 macro_rules! FNMATCH_EXTFLAG {
     () => {
         if extended_glob != 0 {
@@ -114,7 +106,6 @@ macro_rules! FNMATCH_EXTFLAG {
 }
 
 #[macro_export]
-
 macro_rules! FNM_NOMATCH {
     () => {
         1
@@ -495,6 +486,8 @@ pub unsafe extern "C" fn read_history_cache()
 }
 
 pub unsafe extern "C" fn bash_really_add_history(mut line: *mut c_char) {
+    hist_last_line_added = 1 ;
+    hist_last_line_pushed = 0 ;
         let mut add_it: c_int = 0;
         let mut curlen: c_int = 0;
         let mut current: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
@@ -503,6 +496,7 @@ pub unsafe extern "C" fn bash_really_add_history(mut line: *mut c_char) {
             add_it =1;
         }
         if add_it != 0 {
-        really_add_history(line);
+        add_history(line);
     }
+    using_history();
 }
