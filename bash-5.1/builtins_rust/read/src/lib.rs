@@ -413,7 +413,6 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
                 }
 
                 tty_modified = 1;
-
                 add_unwind_protect(ttyrestore as *mut c_void, &mut termsave);
                 if interactive_shell == 0 {
                     initialize_terminating_signals();
@@ -422,10 +421,6 @@ pub extern "C" fn r_read_builtin(mut list: *mut WordList) -> i32 {
 
             save_instream = std::mem::zeroed();
             if edit != 0 && fd != 0 {
-                if bash_readline_initialized == 0 {
-                    initialize_readline();
-                }
-
                 if bash_readline_initialized == 0 {
                     initialize_readline();
                 }
