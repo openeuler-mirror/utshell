@@ -408,3 +408,17 @@ macro_rules! STOPPED {
         (**jobs.offset($job as isize)).state == JSTOPPED 
     };
 }
+
+pub const JMIXED: JOB_STATE = 8;
+pub const JDEAD: JOB_STATE = 4;
+pub const JSTOPPED: JOB_STATE = 2;
+pub const JRUNNING: JOB_STATE = 1;
+pub const JNONE: JOB_STATE = -1;
+
+
+pub static mut jobs_list_frozen:c_int = 0;
+pub static mut retcode_name_buffer:[c_char; 64] = [0; 64];
+
+
+
+
