@@ -133,30 +133,30 @@ macro_rules! assoc_p {
 
 #[macro_export]
 macro_rules! array_p {
-  ($var:expr) => {
-    (*$var).attributes & att_array!()
-  }
+    ($var:expr) => {
+        (*$var).attributes & att_array!()
+    };
 }
 
 #[macro_export]
-macro_rules!  non_unsettable_p {
-  ($var:expr) => {
-    (*$var).attributes & att_nounset!()
-  }
+macro_rules! non_unsettable_p {
+    ($var:expr) => {
+        (*$var).attributes & att_nounset!()
+    };
 }
 
 #[macro_export]
 macro_rules! readonly_p {
-  ($var:expr) => {
-    (*$var).attributes & att_readonly!()
-  }
+    ($var:expr) => {
+        (*$var).attributes & att_readonly!()
+    };
 }
 
 #[macro_export]
 macro_rules! nameref_p {
-  ($var:expr) => {
-    (*$var).attributes & att_nameref!()
-  }
+    ($var:expr) => {
+        (*$var).attributes & att_nameref!()
+    };
 }
 
 #[macro_export]
