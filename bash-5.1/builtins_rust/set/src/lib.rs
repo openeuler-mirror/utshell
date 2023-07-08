@@ -6,7 +6,10 @@ extern crate nix;
 
 use std::ffi::{CStr, CString};
 use std::{ptr, mem, io};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, EX_NOTFOUND, EX_NOEXEC, SUBSHELL_PAREN,r_builtin_usage, r_savestring};
+use rcommon::{
+    r_builtin_usage, r_savestring, WordDesc, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS,
+    EX_NOEXEC, EX_NOTFOUND, EX_USAGE, SUBSHELL_PAREN,
+};
 use rhelp::r_builtin_help;
 
 #[macro_export]
@@ -161,23 +164,23 @@ macro_rules! nameref_p {
 
 #[macro_export]
 macro_rules! nameref_cell {
-  ($var:expr) => {
-    (*$var).value
-  }
+    ($var:expr) => {
+        (*$var).value
+    };
 }
 
 #[macro_export]
-macro_rules! att_nameref{
-  () => {
-    0x0000800
-  }
+macro_rules! att_nameref {
+    () => {
+        0x0000800
+    };
 }
 
 #[macro_export]
-macro_rules! att_readonly{
-  () => {
-    0x0000002
-  }
+macro_rules! att_readonly {
+    () => {
+        0x0000002
+    };
 }
 
 #[macro_export]
