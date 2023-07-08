@@ -1219,23 +1219,22 @@ unsafe fn set_minus_o_option (on_or_off : i32, option_name : *mut libc::c_char) 
     }
   }
 
-unsafe fn print_all_shell_variables (){
+unsafe fn print_all_shell_variables() {
+    let mut vars = 0 as *mut *mut SHELL_VAR;
 
-  let mut vars = 0 as *mut *mut SHELL_VAR;
-
-  vars = all_shell_variables ();
-  if vars != std::ptr::null_mut() {
-      print_var_list (vars);
-      libc::free (*vars as *mut libc::c_void );
+    vars = all_shell_variables();
+    if vars != std::ptr::null_mut() {
+        print_var_list(vars);
+        libc::free(*vars as *mut libc::c_void);
     }
-  /* POSIX.2 does not allow function names and definitions to be output when
-     `set' is invoked without options (PASC Interp #202). */
-  if posixly_correct == 0 {
-      vars = all_shell_functions ();
-      if vars != std::ptr::null_mut() {
-          print_func_list (vars);
-          libc::free (*vars as *mut libc::c_void );
-      }
+    /* POSIX.2 does not allow function names and definitions to be output when
+    `set' is invoked without options (PASC Interp #202). */
+    if posixly_correct == 0 {
+        vars = all_shell_functions();
+        if vars != std::ptr::null_mut() {
+            print_func_list(vars);
+            libc::free(*vars as *mut libc::c_void);
+        }
     }
 }
 

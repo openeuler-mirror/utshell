@@ -153,41 +153,41 @@ pub struct _hist_entry{
 pub type HIST_ENTRY = _hist_entry;
 
 #[no_mangle]
-pub static mut remember_on_history: c_int = 0;
+pub static mut remember_on_history:c_int = 0;
 #[no_mangle]
-pub static mut enable_history_list: c_int = -1;
+pub static mut  enable_history_list:c_int = -1;
 #[no_mangle]
-pub static mut history_lines_this_session: c_int = 0;
+pub static mut history_lines_this_session:c_int = 0;
 #[no_mangle]
-pub static mut history_expansion_inhibited: c_int = 0;
+pub static mut history_expansion_inhibited:c_int = 0;
 #[no_mangle]
-pub static mut double_quotes_inhibit_history_expansion: c_int = 0;
+pub static mut double_quotes_inhibit_history_expansion:c_int = 0;
 #[no_mangle]
-pub static mut command_oriented_history: c_int = 1;
+pub static mut command_oriented_history:c_int = 1;
 #[no_mangle]
-pub static mut current_command_first_line_saved: c_int = 0;
+pub static mut current_command_first_line_saved:c_int = 0;
 #[no_mangle]
-pub static mut current_command_line_comment: c_int = 0;
+pub static mut current_command_line_comment:c_int = 0;
 #[no_mangle]
-pub static mut literal_history: c_int = 0;
+pub static mut literal_history:c_int = 0;
 #[no_mangle]
-pub static mut force_append_history: c_int = 0;
+pub static mut force_append_history:c_int = 0;
 #[no_mangle]
-pub static mut history_control: c_int = 0;
+pub static mut history_control:c_int = 0;
 #[no_mangle]
-pub static mut hist_last_line_added: c_int = 0;
+pub static mut hist_last_line_added:c_int = 0;
 #[no_mangle]
-pub static mut hist_last_line_pushed: c_int = 0;
+pub static mut hist_last_line_pushed:c_int = 0;
 #[no_mangle]
-pub static mut history_reediting: c_int = 0;
+pub static mut history_reediting:c_int = 0;
 #[no_mangle]
-pub static mut hist_verify: c_int = 0;
+pub static mut hist_verify:c_int = 0;
 #[no_mangle]
-pub static mut dont_save_function_defs: c_int = 0;
-unsafe extern "C" fn bash_history_inhibit_expansion(
-    mut string: *mut c_char,
-    mut i: c_int,
-) -> c_int {
+pub static mut dont_save_function_defs:c_int = 0;
+
+
+unsafe extern "C" fn bash_history_inhibit_expansion(mut string: *mut c_char, mut i: c_int) -> c_int 
+{
     let mut t: c_int = 0;
     let mut si: c_int = 0;
     let mut hx: [c_char; 2] = [0; 2];
@@ -534,6 +534,12 @@ pub unsafe extern "C" fn maybe_save_shell_history() -> c_int {
          }
     }
     return result;
+}
+
+unsafe extern "C" fn re_edit(mut text: *mut c_char) {
+    if bash_input.type_ as libc::c_uint == st_stdin as c_int as libc::c_uint {
+        bash_re_edit(text);
+    }
 }
 
 #[no_mangle]
