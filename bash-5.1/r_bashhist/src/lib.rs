@@ -285,7 +285,6 @@ pub unsafe extern "C" fn bash_history_reinit(mut interact: c_int) {
 }
 
 #[no_mangle]
-
 pub unsafe extern "C" fn bash_history_disable() {
     remember_on_history = 0;
     history_expansion_inhibited = 1;
@@ -524,5 +523,13 @@ pub unsafe extern "C" fn maybe_save_shell_history() -> c_int {
                     close(file);
                 }
             }
+    return result;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn maybe_save_shell_history() -> c_int {
+    let mut result: c_int = 0;
+    let mut hf: *mut c_char = 0 as *mut c_char;
+    result = 0 ;
     return result;
 }
