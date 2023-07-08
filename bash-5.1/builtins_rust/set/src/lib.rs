@@ -185,16 +185,16 @@ macro_rules! att_readonly {
 
 #[macro_export]
 macro_rules! att_nounset {
-  () => {
-    0x0002000
-  }
+    () => {
+        0x0002000
+    };
 }
 
 #[macro_export]
 macro_rules! name_cell {
-  ($var:expr) => {
-    (*$var).name
-  }
+    ($var:expr) => {
+        (*$var).name
+    };
 }
 
 #[macro_export]
