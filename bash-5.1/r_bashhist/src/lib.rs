@@ -90,7 +90,7 @@ macro_rules! STREQ {
 #[macro_export]
 macro_rules! savestring {
     ($x:expr) => {
-        strcpy(malloc((1 + strlen($x)) as usize) as *mut c_char, $x)
+        strcpy(malloc((1 + strlen($x)) as usize) as *mut c_char, $x,)
     };
 }
 
@@ -145,7 +145,7 @@ pub type histdata_t = *mut c_void;
 
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct _hist_entry {
+pub struct _hist_entry{
     pub line: *mut c_char,
     pub timestamp: *mut c_char,
     pub data: histdata_t,
@@ -225,14 +225,9 @@ unsafe extern "C" fn bash_history_inhibit_expansion(
 
     si = 0;
     if history_quoting_state == '\'' as i32 {
-        si = skip_to_delim(
-            string,
-            0,
-            b"'\0" as *const u8 as *mut c_char,
-            SD_NOJMP as c_int | SD_HISTEXP as c_int,
-        );
-        if *string.offset(si as isize) == 0 || si >= i {
-            return 1;
+        si = skip_to_delim(string,0 ,b"'\0" as *const u8 as *mut c_char,SD_NOJMP as c_int | SD_HISTEXP as c_int);
+        if *string.offset(si as isize) == 0  || si >= i {
+            return 1 ;
         }
         si += 1;
     }
@@ -339,7 +334,8 @@ pub unsafe extern "C" fn load_history() {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bash_clear_history() {
+pub unsafe extern "C" fn bash_clear_history()
+{
     clear_hisroty();
     history_lines_this_session = 0;
 }
@@ -520,5 +516,13 @@ pub unsafe extern "C" fn maybe_save_shell_history() -> c_int {
     let mut result: c_int = 0;
     let mut hf: *mut c_char = 0 as *mut c_char;
     result = 0 ;
+        hf = get_string_value(b"HISTFILE\0" as *const u8 as *const c_char);
+            if file_exists(hf) == 0  {
+                let mut file: c_int = 0;
+                file = open(hf,O_CREAT as c_int | O_TRUNC as c_int | O_WRONLY as c_int,0o600 as c_int);
+                if file != -1 {
+                    close(file);
+                }
+            }
     return result;
 }
