@@ -507,11 +507,17 @@ pub unsafe extern "C" fn maybe_append_history(mut filename: *mut c_char) -> c_in
             }
             close(fd);
         }
-      history_do_write (filename, nelements, 0);
-      history_lines_in_file += history_lines_this_session;
-  } 
-      history_lines_this_session = 0;
-  return result;
+        histlen = where_history();
+        if histlen > 0  && history_lines_this_session > histlen {
+            history_lines_this_session = histlen;
+        }
+        result = append_history(history_lines_this_session, filename);
+        history_lines_in_file += history_lines_this_session;
+        history_lines_this_session = 0;
+    } else {
+        history_lines_this_session = 0;
+    }
+    return result;
 }
 
 #[no_mangle]
