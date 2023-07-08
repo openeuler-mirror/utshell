@@ -232,20 +232,10 @@ unsafe extern "C" fn bash_history_inhibit_expansion(mut string: *mut c_char, mut
         si += 1;
     }
 
-    t = skip_to_histexp(
-        string,
-        si,
-        hx.as_mut_ptr(),
-        SD_NOJMP as c_int | SD_HISTEXP as c_int,
-    );
+    t = skip_to_histexp(string, si, hx.as_mut_ptr(), SD_NOJMP as c_int| SD_HISTEXP as c_int);
     if t > 0 {
         while t < i {
-            t = skip_to_histexp(
-                string,
-                t + 1 as c_int,
-                hx.as_mut_ptr(),
-                SD_NOJMP as c_int | SD_HISTEXP as c_int,
-            );
+            t = skip_to_histexp(string, t + 1 as c_int, hx.as_mut_ptr(), SD_NOJMP as c_int| SD_HISTEXP as c_int);
             if t <= 0 {
                 return 0 ;
             }
@@ -555,6 +545,12 @@ unsafe extern "C" fn re_edit(mut text: *mut c_char) {
     if bash_input.type_ as libc::c_uint == st_stdin as c_int as libc::c_uint {
         bash_re_edit(text);
     }
+}
+
+unsafe extern "C" fn history_expansion_p(mut line: *mut c_char) -> c_int {
+    let mut s: *mut c_char = 0 as *mut c_char;
+    s = line;
+    return 0;
 }
 
 #[no_mangle]
