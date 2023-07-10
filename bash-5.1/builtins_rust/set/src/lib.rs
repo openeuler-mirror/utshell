@@ -1307,51 +1307,39 @@ pub unsafe fn r_set_shellopts() {
     libc::free(value as *mut libc::c_void);
 }
 
-unsafe fn parse_shellopts(value: *mut libc::c_char) {
-    let mut vname: *mut libc::c_char;
-    let mut vptr: i32 = 0;
-    loop {
-        vname = extract_colon_unit(value, &mut vptr);
-        if vname != std::ptr::null_mut() {
-            break;
+unsafe fn initialize_shell_options (no_shellopts : i32) {
+  let mut temp: *mut libc::c_char;
+  let mut var : *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+  
+  if no_shellopts == 0 {
+      var = find_variable (b"SHELLOPTS\0" as *const u8 as *const libc::c_char);
+      /* set up any shell options we may have inherited. */
+      if !var.is_null() && imported_p!(var) != 0  {
+        if assoc_p! (var) != 0 || array_p !(var) != 0{
+          temp = std::ptr::null_mut();
         }
-        set_minus_o_option(FLAG_ON!(), vname);
-        libc::free(vname as *mut libc::c_void);
-    }
-}
-
-unsafe fn initialize_shell_options(no_shellopts: i32) {
-    let mut temp: *mut libc::c_char;
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-
-    if no_shellopts == 0 {
-        var = find_variable(b"SHELLOPTS\0" as *const u8 as *const libc::c_char);
-        /* set up any shell options we may have inherited. */
-        if !var.is_null() && imported_p!(var) != 0 {
-            if assoc_p!(var) != 0 || array_p!(var) != 0 {
-                temp = std::ptr::null_mut();
-            } else {
-                temp = r_savestring(value_cell!(var));
-            }
-
-            if temp != std::ptr::null_mut() {
-                parse_shellopts(temp);
-                libc::free(temp as *mut libc::c_void);
-            }
+        else {
+          temp = r_savestring(value_cell!(var));
         }
+
+	      if temp != std::ptr::null_mut() {
+	        parse_shellopts (temp);
+	        libc::free (temp as *mut libc::c_void );
+	      }
+    	}
     }
 
-    /* Set up the $SHELLOPTS variable. */
-    r_set_shellopts();
+  /* Set up the $SHELLOPTS variable. */
+  r_set_shellopts ();
 }
 
-unsafe fn reset_shell_options() {
-    pipefail_opt = 0;
-    ignoreeof = 0;
-    posixly_correct = 0;
-    dont_save_function_defs = 0;
-    enable_history_list = 1;
-    remember_on_history = enable_history_list;
+unsafe fn reset_shell_options () {
+  pipefail_opt  = 0;
+  ignoreeof  = 0 ;
+  posixly_correct = 0 ;
+  dont_save_function_defs = 0;
+  enable_history_list = 1 ;
+  remember_on_history = enable_history_list ;
 }
 
 #[no_mangle]
@@ -1413,10 +1401,7 @@ unsafe fn reset_shell_options() {
           r_builtin_help();
           return EX_USAGE;
         }
-       // unsafe {
-       //   builtin_usage ();
-       // }
-       //   return EX_USAGE;
+
         }
       }
    // opt = unsafe {internal_getopt(list, optflags.as_ptr() as *mut libc::c_char)};
