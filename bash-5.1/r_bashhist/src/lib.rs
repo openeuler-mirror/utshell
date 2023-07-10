@@ -587,6 +587,21 @@ pub unsafe extern "C" fn pre_process_line(mut line: *mut c_char, mut print_chang
     return_value = line;
     expanded = 0 ;
 
+        let mut old_len: c_int = 0;
+        old_len = history_length;
+        if history_length > 0 && command_oriented_history != 0
+            && current_command_first_line_saved != 0
+            && current_command_line_count > 1  
+        {
+            history_length -= 1;
+        }
+        expanded = history_expand(line, &mut history_value);
+        if history_length >= 0 && command_oriented_history != 0
+            && current_command_first_line_saved != 0
+            && current_command_line_count > 1  
+        {
+            history_length = old_len;
+        }
     if addit != 0 && remember_on_history != 0 && *return_value as c_int != 0 {
         maybe_add_history(return_value);
     }
