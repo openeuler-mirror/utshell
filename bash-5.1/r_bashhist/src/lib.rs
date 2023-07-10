@@ -260,7 +260,8 @@ pub unsafe extern "C" fn bash_initialize_history() {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bash_history_reinit(mut interact: c_int) {
+pub unsafe extern "C" fn bash_history_reinit(mut interact:c_int)
+{
     history_expansion = if interact == 0 {
         histexp_flag
     } else {
@@ -273,14 +274,15 @@ pub unsafe extern "C" fn bash_history_reinit(mut interact: c_int) {
         0
     };
     history_inhibit_expansion_function = std::mem::transmute::<
-        unsafe extern "C" fn(*mut c_char, c_int) -> c_int,
-        Option<rl_linebuf_func_t>,
+        unsafe extern "C" fn(*mut c_char, c_int)->c_int,
+        Option::<rl_linebuf_func_t>,
     >(bash_history_inhibit_expansion);
     remember_on_history = enable_history_list;
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bash_history_disable() {
+pub unsafe extern "C" fn bash_history_disable()
+{
     remember_on_history = 0;
     history_expansion_inhibited = 1;
 }
@@ -300,26 +302,20 @@ pub unsafe extern "C" fn bash_history_enable()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn load_history() {
-    let mut hf: *mut c_char;
+pub unsafe extern "C" fn load_history()
+{
+    let mut hf:*mut c_char;
 
-    set_if_not(
-        b"HISTSIZE\0" as *const u8 as *mut c_char,
-        HISTSIZE_DEFAULT!(),
-    );
-
+    set_if_not(b"HISTSIZE\0" as *const u8 as *mut c_char, HISTSIZE_DEFAULT!() );
     sv_histsize(b"HISTSIZE\0" as *const u8 as *mut c_char);
 
-    set_if_not(
-        b"HISTFILESIZE\0" as *const u8 as *mut c_char,
-        get_string_value(b"HISTSIZE\0" as *const u8 as *mut c_char),
-    );
-
+    set_if_not(b"HISTFILESIZE\0" as *const u8 as *mut c_char,
+                get_string_value(b"HISTSIZE\0" as *const u8 as *mut c_char));
     sv_histsize(b"HISTFILESIZE\0" as *const u8 as *mut c_char);
 
     hf = get_string_value(b"HISTFILE\0" as *const u8 as *mut c_char);
 
-    if !hf.is_null() && *hf as c_int != 0 && file_exits(hf) != 0 {
+    if !hf.is_null() && *hf as c_int != 0 && file_exits(hf) != 0{
         read_history(hf);
         history_lines_in_file = history_lines_read_from_file;
         using_history();
@@ -550,6 +546,14 @@ unsafe extern "C" fn re_edit(mut text: *mut c_char) {
 unsafe extern "C" fn history_expansion_p(mut line: *mut c_char) -> c_int {
     let mut s: *mut c_char = 0 as *mut c_char;
     s = line;
+    while *s != 0 {
+        if *s as c_int == history_expansion_char as c_int
+            || *s as c_int == history_subst_char as c_int
+        {
+            return 1;
+        }
+        s = s.offset(1);
+    }
     return 0;
 }
 
@@ -571,4 +575,20 @@ pub unsafe extern "C" fn maybe_save_shell_history() -> c_int {
         }
     }
     return result;
+}
+
+
+#[no_mangle]
+pub unsafe extern "C" fn pre_process_line(mut line: *mut c_char, mut print_changes: c_int, mut addit: c_int) -> *mut c_char 
+{
+    let mut history_value: *mut c_char = 0 as *mut c_char;
+    let mut return_value: *mut c_char = 0 as *mut c_char;
+    let mut expanded: c_int = 0;
+    return_value = line;
+    expanded = 0 ;
+
+    if addit != 0 && remember_on_history != 0 && *return_value as c_int != 0 {
+        maybe_add_history(return_value);
+    }
+    return return_value;
 }

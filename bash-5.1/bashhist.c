@@ -888,7 +888,7 @@ bash_add_history (line)
 		(current_command_line_count > 2)
 	 don't add a newline here. This will also take care of the literal_history
 	 case if the other conditions are met. */
-      if ((parser_state & PST_HEREDOC) && current_command_line_count > 2 && line[strlen (line) - 1] == '\n')
+      if ((parser_state & PST_HEREDOC) && current_command_line_count > 2 && line[strlen (line) - 1] == '\n') //判断HEREDOC?
 	chars_to_add = "";
       else if (current_command_line_count == current_command_line_comment+1)
 	chars_to_add = "\n";
@@ -930,7 +930,7 @@ bash_add_history (line)
 				      + strlen (chars_to_add));
 	  sprintf (new_line, "%s%s%s", current->line, chars_to_add, line);
 	  offset = where_history ();
-	  old = replace_history_entry (offset, new_line, current->data);
+	  old = replace_history_entry (offset, new_line, current->data); //把history entry最后一项替换?
 	  free (new_line);
 
 	  if (old)
