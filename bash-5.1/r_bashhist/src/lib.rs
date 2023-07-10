@@ -253,11 +253,13 @@ pub unsafe extern "C" fn bash_initialize_history() {
         as *mut c_char;
 
     history_inhibit_expansion_function = std::mem::transmute::<
-        unsafe extern "C" fn(*mut c_char, c_int) -> c_int,
-        Option<rl_linebuf_func_t>,
-    >(bash_history_inhibit_expansion);
+        unsafe extern "C" fn (*mut c_char, c_int) -> c_int,
+        Option::<rl_linebuf_func_t>,
+        >(bash_history_inhibit_expansion);
 
-    sv_histchars(b"histchars\0" as *const u8 as *const c_char as *mut c_char);
+    sv_histchars(
+        b"histchars\0" as *const u8 as *const c_char as *mut c_char,
+    );
 }
 
 #[no_mangle]
@@ -656,9 +658,25 @@ unsafe extern "C" fn shell_comment(mut line: *mut c_char) -> c_int {
     if !p.is_null() && *p as c_int == '#' as i32 {
         return 1 ;
     }
+    n = skip_to_delim(
+        line,
+        p.offset_from(line) as c_int,
+        b"#\0" as *const u8 as *mut c_char,
+        SD_NOJMP as c_int | SD_GLOB as c_int | SD_EXTGLOB as c_int
+            | SD_COMPLETE as c_int);
     return if *line.offset(n as isize) as c_int == '#' as i32 {
         return 2  
     } else {
         return 0;
     };
+}
+
+
+unsafe extern "C" fn check_history_control(mut line: *mut c_char) -> c_int {
+    let mut temp: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+    let mut r: c_int = 0;
+    if history_control == 0  {
+        return 1  ;
+    }
+    return 1;
 }

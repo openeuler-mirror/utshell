@@ -67,17 +67,17 @@ macro_rules! N_O_OPTIONS {
 }
 
 #[macro_export]
-macro_rules! FLAG_ON {
-    () => {
-        b'-' as i32
-    };
+macro_rules! FLAG_ON{
+  () =>{
+    b'-' as i32
+  }
 }
 
 #[macro_export]
-macro_rules! FLAG_OFF {
-    () => {
-        b'+' as i32
-    };
+macro_rules! FLAG_OFF{
+  () =>{
+    b'+' as i32
+  }
 }
 
 #[macro_export]
