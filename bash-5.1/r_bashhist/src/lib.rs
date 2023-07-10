@@ -602,6 +602,34 @@ pub unsafe extern "C" fn pre_process_line(mut line: *mut c_char, mut print_chang
         {
             history_length = old_len;
         }
+        if expanded != 0 {
+            if print_changes != 0 {
+                if expanded < 0 {
+                    internal_error(b"%s\0" as *const u8 as *const c_char, history_value);
+                } else if hist_verify == 0 || expanded == 2 
+                    {
+                    println!("{}", CStr::from_ptr(history_value).to_str().unwrap())
+                }
+            }
+            if expanded < 0  || expanded == 2 {
+                if expanded == 2 as c_int && rl_dispatching == 0 
+                    && *history_value as c_int != 0
+                {
+                    maybe_add_history(history_value);
+                }
+                libc::free(history_value as *mut c_void);
+                if history_reediting != 0 && expanded < 0   && rl_done != 0
+                {
+                    re_edit(line);
+                }
+                return 0  as *mut c_char;
+            }
+            if hist_verify != 0 && expanded == 1  {
+                re_edit(history_value);
+                libc::free(history_value as *mut c_void);
+                return 0  as *mut c_char;
+            }
+        }
     if addit != 0 && remember_on_history != 0 && *return_value as c_int != 0 {
         maybe_add_history(return_value);
     }
