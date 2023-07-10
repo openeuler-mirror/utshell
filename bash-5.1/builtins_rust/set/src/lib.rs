@@ -1323,39 +1323,38 @@ unsafe fn parse_shellopts (value : *mut  libc::c_char) {
   };
 }
 
-unsafe fn initialize_shell_options (no_shellopts : i32) {
-  let mut temp: *mut libc::c_char;
-  let mut var : *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-  
-  if no_shellopts == 0 {
-      var = find_variable (b"SHELLOPTS\0" as *const u8 as *const libc::c_char);
-      /* set up any shell options we may have inherited. */
-      if !var.is_null() && imported_p!(var) != 0  {
-        if assoc_p! (var) != 0 || array_p !(var) != 0{
-          temp = std::ptr::null_mut();
-        }
-        else {
-          temp = r_savestring(value_cell!(var));
-        }
+unsafe fn initialize_shell_options(no_shellopts: i32) {
+    let mut temp: *mut libc::c_char;
+    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
 
-	      if temp != std::ptr::null_mut() {
-	        parse_shellopts (temp);
-	        libc::free (temp as *mut libc::c_void );
-	      }
-    	}
+    if no_shellopts == 0 {
+        var = find_variable(b"SHELLOPTS\0" as *const u8 as *const libc::c_char);
+        /* set up any shell options we may have inherited. */
+        if !var.is_null() && imported_p!(var) != 0 {
+            if assoc_p!(var) != 0 || array_p!(var) != 0 {
+                temp = std::ptr::null_mut();
+            } else {
+                temp = r_savestring(value_cell!(var));
+            }
+
+            if temp != std::ptr::null_mut() {
+                parse_shellopts(temp);
+                libc::free(temp as *mut libc::c_void);
+            }
+        }
     }
 
-  /* Set up the $SHELLOPTS variable. */
-  r_set_shellopts ();
+    /* Set up the $SHELLOPTS variable. */
+    r_set_shellopts();
 }
 
-unsafe fn reset_shell_options () {
-  pipefail_opt  = 0;
-  ignoreeof  = 0 ;
-  posixly_correct = 0 ;
-  dont_save_function_defs = 0;
-  enable_history_list = 1 ;
-  remember_on_history = enable_history_list ;
+unsafe fn reset_shell_options() {
+    pipefail_opt = 0;
+    ignoreeof = 0;
+    posixly_correct = 0;
+    dont_save_function_defs = 0;
+    enable_history_list = 1;
+    remember_on_history = enable_history_list;
 }
 
 #[no_mangle]
