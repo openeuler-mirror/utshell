@@ -1598,201 +1598,212 @@ unsafe fn reset_shell_options () {
 }
 
 #[no_mangle]
-pub  extern "C"  fn r_unset_builtin(mut list: *mut WordList) -> i32 {
-  let mut unset_function: i32 = 0;
-  let mut unset_variable: i32 = 0;
-  let mut unset_array: i32 = 0;
-  let mut opt: i32 = 0;
-  let mut nameref: i32 = 0;
-  let mut any_failed: i32 = 0;
-  let mut global_unset_func: i32 = 0;
-  let mut global_unset_var: i32 = 0;
-  let mut vflags: i32 = 0;
-  let mut valid_id: i32 = 0;
-  let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
-  let mut tname: *mut libc::c_char = 0 as *mut libc::c_char;
+pub extern "C" fn r_unset_builtin(mut list: *mut WordList) -> i32 {
+    let mut unset_function: i32 = 0;
+    let mut unset_variable: i32 = 0;
+    let mut unset_array: i32 = 0;
+    let mut opt: i32 = 0;
+    let mut nameref: i32 = 0;
+    let mut any_failed: i32 = 0;
+    let mut global_unset_func: i32 = 0;
+    let mut global_unset_var: i32 = 0;
+    let mut vflags: i32 = 0;
+    let mut valid_id: i32 = 0;
+    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut tname: *mut libc::c_char = 0 as *mut libc::c_char;
 
-  //println!("enter  r_unset by huanhuan");
-  let mut c_str_fnv   = CString::new("fnv").unwrap();
-  unsafe {
-    reset_internal_getopt();
-    opt= internal_getopt (list, c_str_fnv.as_ptr() as * mut libc::c_char);
-  
-    while  opt != -1 {
-      let optu8:u8= opt as u8;
-      let optChar:char=char::from(optu8);
-      match optChar {
-        'f'=>{global_unset_func = 1;}  
-        'v'=>{global_unset_var = 0;} 
-        'n'=>{nameref = 1;}
-        _=>{
-          if opt == -99 {
-            r_builtin_help();
-            return EX_USAGE;
-        }
-          builtin_usage ();
-          return EX_USAGE;
-        }
-      }
-      opt =internal_getopt (list, c_str_fnv.as_ptr() as * mut libc::c_char);
-    }
+    //println!("enter  r_unset by huanhuan");
+    let mut c_str_fnv = CString::new("fnv").unwrap();
+    unsafe {
+        reset_internal_getopt();
+        opt = internal_getopt(list, c_str_fnv.as_ptr() as *mut libc::c_char);
 
-  list = loptend;
-
-  if global_unset_func != 0 && global_unset_var != 0 {
-      builtin_error (b"cannot simultaneously unset a function and a variable \0" as *const u8
-      as *const libc::c_char);
-      return EXECUTION_FAILURE!();
-    }
-  else if unset_function != 0  && nameref != 0 {
-    nameref = 0;
-  }
-
-  if assoc_expand_once != 0 {
-    vflags =  VA_NOEXPAND!()|VA_ONEWORD!();
-  }  
-  else {
-    vflags = 0;
-  }
-  while !list.is_null() {
-    let mut var : *mut SHELL_VAR;
-    let mut tem : i32  = 0;
-
-    let mut t : *mut libc::c_char = 0 as *mut libc::c_char;
-
-    name =  (*(*list).word).word; 
-    unset_function = global_unset_func;
-    unset_variable = global_unset_var;
-    unset_array = 0 ;
-
-    if !unset_function == 0 && nameref == 0 && valid_array_reference (name, vflags) != 0 {
-      t = libc::strchr (name, '[' as i32);
-	    *t.offset(1 as isize) = b'\0' as i32 as libc::c_char;
-	    unset_array = unset_array + 1;
-    }
-
-    valid_id = legal_identifier (name);
-
-    if global_unset_func == 0 && global_unset_var == 0 && valid_id == 0 {
-      unset_array = 0;
-      unset_variable = unset_array ;
-      unset_function = 1;
-    }
-
-    if (unset_function == 0 && valid_id == 0)
-    {
-      sh_invalidid (name);
-      any_failed = any_failed + 1;
-      list = (*list).next;
-    }
-  
-    if unset_function != 0 {
-      var = find_function (name);
-    }
-    else {
-      if nameref != 0 {
-        var = find_variable_last_nameref (name, 0) ;
-      }
-      else {
-        var = find_variable (name);
-      }
-    }
-
-    if var !=  std::ptr::null_mut() && unset_function == 0 && non_unsettable_p!(var) != 0 {
-      builtin_error (b"%s: cannot unset \0" as *const u8
-      as *const libc::c_char, name);
-      any_failed = any_failed + 1;
-      list = (*list).next;
-    }
-
-    if var != std::ptr::null_mut() && unset_function == 0 && nameref == 0 && STREQ (name, name_cell!(var)) {
-      name = name_cell!(var);
-    }
-   
-    if var == std::ptr::null_mut() && nameref == 0 &&  unset_variable == 0 && unset_function == 0{
-      var = find_function (name);
-      if var != std::ptr::null_mut() {
-        unset_function = 1;
-      }
-    }
-
-    if var!= std::ptr::null_mut() && readonly_p! (var)!= 0 {
-      if unset_function != 0 {
-        builtin_error (b"%s: cannot unset: readonly %s  \0 " as *const u8 as *mut libc::c_char,
-        (*var).name, b"function\0" as *const u8 as *mut libc::c_char);
-      }
-      else {
-        builtin_error (b"%s: cannot unset: readonly %s \0" as *const u8 as *mut libc::c_char,
-        (*var).name, b"variable\0" as *const u8 as *mut libc::c_char);
-      }
-      any_failed = any_failed + 1;
-      list = (*list).next;
-    }
-   // #if defined (ARRAY_VARS)
-    if var != std::ptr::null_mut() && unset_array != 0 {
-    /* Let unbind_array_element decide what to do with non-array vars */
-      tem = unbind_array_element (var, t, vflags);	/* XXX new third arg */
-      if tem == -2 && array_p!(var) == 0 && assoc_p! (var) == 0 {
-        builtin_error (b"%s: not an array variable\0" as *const u8
-        as *const libc::c_char, (*var).name);
-        any_failed = any_failed + 1;
-        list = (*list).next;
-      }
-      else if tem < 0 {
-        any_failed = any_failed + 1;
-      }
-    }
-   
-    else {
-      if var ==  std::ptr::null_mut() && nameref == 0 && unset_function == 0 {
-        var = find_variable_last_nameref (name, 0);
-        if var !=  std::ptr::null_mut() && nameref_p!(var) != 0 { 
-          if valid_array_reference (nameref_cell!(var), 0) != 0 {
-            tname = r_savestring(nameref_cell!(var));
-            var = array_variable_part (tname, 0,  &mut t, &mut 0);
-            if var != std::ptr::null_mut() {
-              tem = unbind_array_element (var, t, vflags);	/* XXX new third arg */
+        while opt != -1 {
+            let optu8: u8 = opt as u8;
+            let optChar: char = char::from(optu8);
+            match optChar {
+                'f' => {
+                    global_unset_func = 1;
+                }
+                'v' => {
+                    global_unset_var = 0;
+                }
+                'n' => {
+                    nameref = 1;
+                }
+                _ => {
+                    if opt == -99 {
+                        r_builtin_help();
+                        return EX_USAGE;
+                    }
+                    builtin_usage();
+                    return EX_USAGE;
+                }
             }
-            libc::free (tname as *mut libc::c_void );
-          }
-        
-          else {
-            tem = unbind_variable(nameref_cell! (var));
-          }
+            opt = internal_getopt(list, c_str_fnv.as_ptr() as *mut libc::c_char);
         }
-        else {
-          tem = unbind_variable (name);
-        }
-      }
-      else {
-        if unset_function != 0 {
-          tem = unbind_func (name);
-        }
-        else if nameref != 0 {
-          tem = unbind_nameref (name);
-        }
-        else {
-          tem =  unbind_variable (name);
-        }
-      }
-    }
-    
-    if tem == -1 && nameref == 0 && unset_function == 0 && unset_variable == 0 {
-      tem = unbind_func (name);
-    }
-    name = (*(*list).word).word;
+        //println!("unset func={},  unset val=%{}", global_unset_func, global_unset_var);
 
-    if unset_function == 0 {
-      stupidly_hack_special_variables (name);
-    }
-    list = (*list).next;
-  }
+        list = loptend;
 
-  if any_failed != 0 {
-    return EXECUTION_FAILURE!();
-  }
-  else {
-    return EXECUTION_SUCCESS!();
-  }
-}
+        if global_unset_func != 0 && global_unset_var != 0 {
+            builtin_error(
+                b"cannot simultaneously unset a function and a variable \0" as *const u8
+                    as *const libc::c_char,
+            );
+            return EXECUTION_FAILURE!();
+        } else if unset_function != 0 && nameref != 0 {
+            nameref = 0;
+        }
+
+        if assoc_expand_once != 0 {
+            vflags = VA_NOEXPAND!() | VA_ONEWORD!();
+        } else {
+            vflags = 0;
+        }
+        while !list.is_null() {
+            let mut var: *mut SHELL_VAR;
+            let mut tem: i32 = 0;
+
+            let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+
+            name = (*(*list).word).word;
+            unset_function = global_unset_func;
+            unset_variable = global_unset_var;
+            unset_array = 0;
+
+            if !unset_function == 0 && nameref == 0 && valid_array_reference(name, vflags) != 0 {
+                t = libc::strchr(name, '[' as i32);
+                *t.offset(1 as isize) = b'\0' as i32 as libc::c_char;
+                unset_array = unset_array + 1;
+            }
+
+            valid_id = legal_identifier(name);
+
+            if global_unset_func == 0 && global_unset_var == 0 && valid_id == 0 {
+                unset_array = 0;
+                unset_variable = unset_array;
+                unset_function = 1;
+            }
+
+            if (unset_function == 0 && valid_id == 0) {
+                sh_invalidid(name);
+                any_failed = any_failed + 1;
+                list = (*list).next;
+            }
+
+            if unset_function != 0 {
+                var = find_function(name);
+            } else {
+                if nameref != 0 {
+                    var = find_variable_last_nameref(name, 0);
+                } else {
+                    var = find_variable(name);
+                }
+            }
+
+            if var != std::ptr::null_mut() && unset_function == 0 && non_unsettable_p!(var) != 0 {
+                builtin_error(
+                    b"%s: cannot unset \0" as *const u8 as *const libc::c_char,
+                    name,
+                );
+                any_failed = any_failed + 1;
+                list = (*list).next;
+            }
+
+            if var != std::ptr::null_mut()
+                && unset_function == 0
+                && nameref == 0
+                && STREQ(name, name_cell!(var))
+            {
+                name = name_cell!(var);
+            }
+
+            if var == std::ptr::null_mut()
+                && nameref == 0
+                && unset_variable == 0
+                && unset_function == 0
+            {
+                var = find_function(name);
+                if var != std::ptr::null_mut() {
+                    unset_function = 1;
+                }
+            }
+
+            if var != std::ptr::null_mut() && readonly_p!(var) != 0 {
+                if unset_function != 0 {
+                    builtin_error(
+                        b"%s: cannot unset: readonly %s  \0 " as *const u8 as *mut libc::c_char,
+                        (*var).name,
+                        b"function\0" as *const u8 as *mut libc::c_char,
+                    );
+                } else {
+                    builtin_error(
+                        b"%s: cannot unset: readonly %s \0" as *const u8 as *mut libc::c_char,
+                        (*var).name,
+                        b"variable\0" as *const u8 as *mut libc::c_char,
+                    );
+                }
+                any_failed = any_failed + 1;
+                list = (*list).next;
+            }
+            // #if defined (ARRAY_VARS)
+            if var != std::ptr::null_mut() && unset_array != 0 {
+                /* Let unbind_array_element decide what to do with non-array vars */
+                tem = unbind_array_element(var, t, vflags); /* XXX new third arg */
+                if tem == -2 && array_p!(var) == 0 && assoc_p!(var) == 0 {
+                    builtin_error(
+                        b"%s: not an array variable\0" as *const u8 as *const libc::c_char,
+                        (*var).name,
+                    );
+                    any_failed = any_failed + 1;
+                    list = (*list).next;
+                } else if tem < 0 {
+                    any_failed = any_failed + 1;
+                }
+            } else {
+                if var == std::ptr::null_mut() && nameref == 0 && unset_function == 0 {
+                    var = find_variable_last_nameref(name, 0);
+                    if var != std::ptr::null_mut() && nameref_p!(var) != 0 {
+                        if valid_array_reference(nameref_cell!(var), 0) != 0 {
+                            tname = r_savestring(nameref_cell!(var));
+                            var = array_variable_part(tname, 0, &mut t, &mut 0);
+                            if var != std::ptr::null_mut() {
+                                tem = unbind_array_element(var, t, vflags); /* XXX new third arg */
+                            }
+                            libc::free(tname as *mut libc::c_void);
+                        } else {
+                            tem = unbind_variable(nameref_cell!(var));
+                        }
+                    } else {
+                        tem = unbind_variable(name);
+                    }
+                } else {
+                    if unset_function != 0 {
+                        tem = unbind_func(name);
+                    } else if nameref != 0 {
+                        tem = unbind_nameref(name);
+                    } else {
+                        tem = unbind_variable(name);
+                    }
+                }
+            }
+
+            if tem == -1 && nameref == 0 && unset_function == 0 && unset_variable == 0 {
+                tem = unbind_func(name);
+            }
+            name = (*(*list).word).word;
+
+            if unset_function == 0 {
+                stupidly_hack_special_variables(name);
+            }
+            list = (*list).next;
+        }
+
+        if any_failed != 0 {
+            return EXECUTION_FAILURE!();
+        } else {
+            return EXECUTION_SUCCESS!();
+        }
+    }
 }
