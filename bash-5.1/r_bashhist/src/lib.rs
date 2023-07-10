@@ -722,6 +722,13 @@ pub unsafe extern "C" fn check_add_history(mut line: *mut c_char, mut force: c_i
             hc_erasedups(line);
         }
 
+        if force != 0 {
+            really_add_history(line);
+            using_history();
+        } else {
+            bash_add_history(line);
+
+        }
         return 1  ;
     }
     return 0 ;

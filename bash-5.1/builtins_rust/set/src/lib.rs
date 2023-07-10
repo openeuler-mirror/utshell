@@ -14,27 +14,28 @@ use rhelp::r_builtin_help;
 
 #[macro_export]
 macro_rules! FLAG_UNKNOWN {
-    () => {0 as *mut i32}
+    () => {
+        0 as *mut i32
+    };
 }
 
 #[macro_export]
-macro_rules! MINUS_O_FORMAT{
-    () => {CString::new("%-15s\t%s\n")}
+macro_rules! MINUS_O_FORMAT {
+    () => {
+        CString::new("%-15s\t%s\n")
+    };
 }
 
 #[macro_export]
- macro_rules! GET_BINARY_O_OPTION_VALUE {
-    ($a:expr,$b:expr) =>{
+macro_rules! GET_BINARY_O_OPTION_VALUE {
+    ($a:expr,$b:expr) => {
         if (o_options[$a as usize].get_func).is_some() {
-          (Some(
-            (o_options[$a as usize].get_func)
-                .expect("non-null function pointer"),
-        ))
-            .expect("non-null function pointer")($b)
-    } else {
-        *o_options[$a as usize].variable
-    }
-  }
+            (Some((o_options[$a as usize].get_func).expect("non-null function pointer")))
+                .expect("non-null function pointer")($b)
+        } else {
+            *o_options[$a as usize].variable
+        }
+    };
 }
 
 #[macro_export]
@@ -85,24 +86,24 @@ macro_rules! VUNSETATTR {
 
 #[macro_export]
 macro_rules! att_exported {
-  () => {
-    0x0000001
-  }
+    () => {
+        0x0000001
+    };
 }
 
 #[macro_export]
-macro_rules!  exported_p {
-  ($var:expr) => {
-    (*$var).attributes & att_exported!() 
-  }
+macro_rules! exported_p {
+    ($var:expr) => {
+        (*$var).attributes & att_exported!()
+    };
 }
 
 #[macro_export]
 macro_rules! VSETATTR {
-  ($var:expr,$attr:expr) => {
-    (*$var).attributes = (*$var).attributes | (&$attr);
-    (*$var).attributes
-  }
+    ($var:expr,$attr:expr) => {
+        (*$var).attributes = (*$var).attributes | (&$attr);
+        (*$var).attributes
+    };
 }
 
 #[macro_export]
