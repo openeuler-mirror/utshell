@@ -125,5 +125,8 @@ extern "C" {
 #[no_mangle]
 pub unsafe extern "C" fn r_print_command(command:*mut COMMAND)
 {
+    let _str:*mut c_char;
+    command_string_index = 0;
+    print!("{}",CStr::from_ptr(r_make_command_string(command)).to_str().unwrap());
 
 }
