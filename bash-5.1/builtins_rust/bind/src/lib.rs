@@ -1,27 +1,26 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 extern crate libc;
 extern crate nix;
 extern crate rcommon;
 
-use libc::{c_char,c_int,strerror,free, c_void, strlen, size_t,};
-use std::{ffi::{CString,CStr}};
-use std::fs::File;
+use libc::{c_char, c_int, c_void, free, size_t, strerror, strlen};
 use nix::errno::errno;
-use rcommon::{r_builtin_usage,r_sh_chkwrite,err_translate_fn,translate_fn};
-use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{err_translate_fn, r_builtin_usage, r_sh_chkwrite, translate_fn};
+use rcommon::{WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
+use std::ffi::{CStr, CString};
+use std::fs::File;
 
-#[repr (C)]
-pub struct _keymap_entry{
-    pub Type:c_char,
-    pub function:rl_command_func_t,
+#[repr(C)]
+pub struct _keymap_entry {
+    pub Type: c_char,
+    pub function: rl_command_func_t,
 }
 type KEYMAP_ENTRY = _keymap_entry;
 type Keymap = *mut KEYMAP_ENTRY;
-type rl_command_func_t = extern fn(c_int,c_int)->c_int;
-//emun
+type rl_command_func_t = extern "C" fn(c_int, c_int) -> c_int;
 
 #[macro_export]
 macro_rules! LFLAG {
