@@ -531,3 +531,20 @@ unsafe extern "C"  fn  alloc_pipeline_saver() -> *mut pipeline_saver
     
     return ret;
 }
+
+#[no_mangle]
+pub unsafe extern "C"  fn  save_pipeline(clear:c_int) 
+{
+    let mut set:sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset:sigset_t = __sigset_t { __val: [0; 16] };
+    let mut saver:*mut pipeline_saver;
+
+    BLOCK_CHILD(&mut set, &mut oset);
+    saver = alloc_pipeline_saver();
+    (*saver).pipeline = the_pipeline;
+    (*saver).next = saved_pipeline;
+    saved_pipeline = saver;
+
+    saved_already_making_children = already_making_children;
+    UNBLOCK_CHILD(&mut oset);
+}
