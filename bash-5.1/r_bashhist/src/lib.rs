@@ -684,9 +684,19 @@ unsafe extern "C" fn hc_erasedups(mut line: *mut c_char) {
     let mut temp: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
     let mut r: c_int = 0;
     using_history();
-    temp = remove_history(r);
-    if !temp.is_null() {
-        free_history_entry(temp);
+    loop {
+        temp = previous_history();
+        if temp.is_null() {
+            break;
+        }
+        if STREQ!((*temp).line, line)
+        {
+            r = where_history();
+            temp = remove_history(r);
+            if !temp.is_null() {
+                free_history_entry(temp);
+            }
+        }
     }
     using_history();
 }
