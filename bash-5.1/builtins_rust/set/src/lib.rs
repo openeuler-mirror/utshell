@@ -96,18 +96,18 @@ macro_rules! att_exported {
 }
 
 #[macro_export]
-macro_rules! exported_p {
-    ($var:expr) => {
-        (*$var).attributes & att_exported!()
-    };
+macro_rules!  exported_p {
+  ($var:expr) => {
+    (*$var).attributes & att_exported!() 
+  }
 }
 
 #[macro_export]
 macro_rules! VSETATTR {
-    ($var:expr,$attr:expr) => {
-        (*$var).attributes = (*$var).attributes | (&$attr);
-        (*$var).attributes
-    };
+  ($var:expr,$attr:expr) => {
+    (*$var).attributes = (*$var).attributes | (&$attr);
+    (*$var).attributes
+  }
 }
 
 #[macro_export]
@@ -922,7 +922,7 @@ unsafe fn minus_o_option_value (name : *mut libc::c_char) -> i32{
       return unsafe {*on_or_off};
     }
   else{
-      return unsafe {GET_BINARY_O_OPTION_VALUE!(i, name)}
+     unsafe {GET_BINARY_O_OPTION_VALUE!(i, name)}
   }
 }
 
@@ -1204,10 +1204,11 @@ unsafe fn set_minus_o_option (on_or_off : i32, option_name : *mut libc::c_char) 
     }
 
   if o_options[i as usize].letter == 0{
-        previous_option_value = GET_BINARY_O_OPTION_VALUE!(i, o_options[i as usize].name);
-        SET_BINARY_O_OPTION_VALUE!(i, on_or_off, option_name);
-        return EXECUTION_SUCCESS!();
-    } else{
+      previous_option_value = GET_BINARY_O_OPTION_VALUE!(i, o_options[i as usize].name);
+      SET_BINARY_O_OPTION_VALUE!(i, on_or_off, option_name);
+      return EXECUTION_SUCCESS!();
+    }
+  else{
       previous_option_value = change_flag (o_options[i as usize].letter,on_or_off) ;
       if previous_option_value == FLAG_ERROR!(){
         sh_invalidoptname (option_name);
