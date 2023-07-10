@@ -753,4 +753,11 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
 	{
 	    chars_to_add = b"\0" as *const u8 as *mut c_char;
 	}
+        using_history();
+        current = previous_history();
+        current_command_line_comment = if is_comment != 0 {
+            current_command_line_count
+        } else {
+            -(2 as c_int)
+        };
 }
