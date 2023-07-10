@@ -652,7 +652,34 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
         }
     }
 
+    if (interactive_shell == 0 || subshell_environment != 0) && 
+        i == js.j_jobslots && js.j_jobslots >= MAX_JOBS_IN_ARRAY as i32{
+            i = compact_jobs_list (0 as c_int);
+        }
+
+    if i == js.j_jobslots {
+        js.j_jobslots += JOB_SLOTS as i32;
+        jobs = xrealloc (jobs as *mut c_void, (js.j_jobslots * std::mem::size_of::<*mut JOB>() as c_int) as usize) as *mut *mut JOB;
+
+        j = i;
+        while j < js.j_jobslots {
+            (*jobs.offset(j as isize)) = 0 as *mut JOB;
+            j += 1;
+        }
+    }
+
+
+
     stop_making_children ();
     UNBLOCK_CHILD (&mut oset);
     return if !newjob.is_null() { i } else { js.j_current };
 }
+
+
+
+
+
+
+
+
+
