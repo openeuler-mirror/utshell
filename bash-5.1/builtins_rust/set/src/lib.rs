@@ -624,91 +624,78 @@ pub static mut o_options: [opp; 28] = unsafe {
 };
 
 extern "C" {
-     fn setopt_set_func_t (i :i32 , name : *mut libc::c_char) -> i32;
-     fn setopt_get_func_t (name : *mut libc::c_char)-> i32;
-     fn xmalloc(_: u64) -> *mut libc::c_void;
-     fn unbind_variable_noref(_: *const libc::c_char) -> i32;
-     fn unbind_nameref(_: *const libc::c_char) -> i32;
-     fn unbind_func(_: *const libc::c_char) -> i32;
-     fn strvec_create(_: i32) -> *mut *mut libc::c_char;
-     fn all_shell_variables() -> *mut *mut SHELL_VAR;
-     fn print_var_list(_: *mut *mut SHELL_VAR);
-     fn print_func_list(_: *mut *mut SHELL_VAR);
-     fn change_flag(_: i32, _: i32) -> i32;
-     fn strlen(_: *const libc::c_char) -> u64;
-     fn builtin_usage();
-     fn find_function (name:* const libc::c_char)->* mut SHELL_VAR;
-     fn bind_variable(
-      _: *const libc::c_char,
-      _: *mut libc::c_char,
-      _: i32,
-    ) -> *mut SHELL_VAR;
+    fn setopt_set_func_t(i: i32, name: *mut libc::c_char) -> i32;
+    fn setopt_get_func_t(name: *mut libc::c_char) -> i32;
+    fn xmalloc(_: u64) -> *mut libc::c_void;
+    fn unbind_variable_noref(_: *const libc::c_char) -> i32;
+    fn unbind_nameref(_: *const libc::c_char) -> i32;
+    fn unbind_func(_: *const libc::c_char) -> i32;
+    fn strvec_create(_: i32) -> *mut *mut libc::c_char;
+    fn all_shell_variables() -> *mut *mut SHELL_VAR;
+    fn print_var_list(_: *mut *mut SHELL_VAR);
+    fn print_func_list(_: *mut *mut SHELL_VAR);
+    fn change_flag(_: i32, _: i32) -> i32;
+    fn strlen(_: *const libc::c_char) -> u64;
+    fn builtin_usage();
+    fn find_function(name: *const libc::c_char) -> *mut SHELL_VAR;
+    fn bind_variable(_: *const libc::c_char, _: *mut libc::c_char, _: i32) -> *mut SHELL_VAR;
 
     fn find_variable(_: *const libc::c_char) -> *mut SHELL_VAR;
-    fn rl_variable_bind (_: *const libc::c_char, _: *const libc::c_char) -> i32;
-    fn find_variable_last_nameref(
-    _: *const libc::c_char,
-    _: i32,
+    fn rl_variable_bind(_: *const libc::c_char, _: *const libc::c_char) -> i32;
+    fn find_variable_last_nameref(_: *const libc::c_char, _: i32) -> *mut SHELL_VAR;
+
+    fn extract_colon_unit(_: *mut libc::c_char, _: *mut i32) -> *mut libc::c_char;
+
+    fn valid_array_reference(_: *const libc::c_char, _: i32) -> i32;
+
+    fn array_variable_part(
+        _: *const libc::c_char,
+        _: i32,
+        _: *mut *mut libc::c_char,
+        _: *mut i32,
     ) -> *mut SHELL_VAR;
-
-    fn extract_colon_unit(
-      _: *mut libc::c_char,
-      _: *mut i32,
-  ) -> *mut libc::c_char;
-
-  fn valid_array_reference (
-    _ : *const libc::c_char ,
-    _ : i32
-  )-> i32;
-
-  fn array_variable_part (
-    _: *const libc::c_char,
-    _: i32,
-    _:*mut *mut libc::c_char,
-    _:*mut  i32
-    ) -> *mut SHELL_VAR;
-   fn all_shell_functions () -> *mut *mut SHELL_VAR;
-   fn num_posix_options() -> i32;
-   fn find_flag(_: i32) -> *mut i32;
-   fn internal_getopt (list:*mut WordList , opts:*mut libc::c_char)->i32;
-   fn get_posix_options(_: *mut libc::c_char) -> *mut libc::c_char;
-   fn sh_chkwrite (_:i32)->i32;
-   fn  reset_internal_getopt();
-   fn sh_invalidopt (value:* mut libc::c_char);
-   fn sv_ignoreeof (_ : *mut  libc::c_char);
-   fn sv_strict_posix (_: *mut libc::c_char);  
-   fn with_input_from_stdin();
-   fn sh_invalidoptname (value:* mut libc::c_char);
-   fn bash_history_enable();
-   fn load_history();
-   fn bash_history_disable();
-   fn remember_args (list:* mut WordList, argc:i32);
-   fn sh_invalidid (value:* mut libc::c_char);
-   fn legal_identifier (_:*const libc::c_char) -> i32;
-   fn unbind_array_element(_: *mut SHELL_VAR, _:*mut libc::c_char,_: i32) -> i32;
-   fn unbind_variable (_: *const libc::c_char) -> i32;
-   fn with_input_from_stream (_:libc::FILE , _: *const libc::c_char);
-   fn stupidly_hack_special_variables (_ : *mut libc::c_char);
-   fn builtin_error(_: *const libc::c_char, _: ...);
-     static mut posixly_correct : i32;
-     static mut enable_history_list : i32;
-     static mut ignoreeof : i32 ;
-     static mut interactive_comments : i32;
-     static mut dont_save_function_defs : i32;
-     static mut pipefail_opt : i32;
-     static mut mark_modified_vars: i32;
-     static mut remember_on_history: i32;
-     static mut optflags: [libc::c_char; 0];
-     static mut list_opttype:i32;
-     static mut no_line_editing :i32;
-     static mut interactive : i32;
-     static mut interactive_shell : i32;
-     static mut history_lines_this_session : i32;
-     static mut  rl_editing_mode : i32;
-     static mut  list_optopt :i8;
-     static mut loptend:*mut WordList;
-     static assoc_expand_once:i32;
-     static mut stdin : libc::FILE;
+    fn all_shell_functions() -> *mut *mut SHELL_VAR;
+    fn num_posix_options() -> i32;
+    fn find_flag(_: i32) -> *mut i32;
+    fn internal_getopt(list: *mut WordList, opts: *mut libc::c_char) -> i32;
+    fn get_posix_options(_: *mut libc::c_char) -> *mut libc::c_char;
+    fn sh_chkwrite(_: i32) -> i32;
+    fn reset_internal_getopt();
+    fn sh_invalidopt(value: *mut libc::c_char);
+    fn sv_ignoreeof(_: *mut libc::c_char);
+    fn sv_strict_posix(_: *mut libc::c_char);
+    fn with_input_from_stdin();
+    fn sh_invalidoptname(value: *mut libc::c_char);
+    fn bash_history_enable();
+    fn load_history();
+    fn bash_history_disable();
+    fn remember_args(list: *mut WordList, argc: i32);
+    fn sh_invalidid(value: *mut libc::c_char);
+    fn legal_identifier(_: *const libc::c_char) -> i32;
+    fn unbind_array_element(_: *mut SHELL_VAR, _: *mut libc::c_char, _: i32) -> i32;
+    fn unbind_variable(_: *const libc::c_char) -> i32;
+    fn with_input_from_stream(_: libc::FILE, _: *const libc::c_char);
+    fn stupidly_hack_special_variables(_: *mut libc::c_char);
+    fn builtin_error(_: *const libc::c_char, _: ...);
+    static mut posixly_correct: i32;
+    static mut enable_history_list: i32;
+    static mut ignoreeof: i32;
+    static mut interactive_comments: i32;
+    static mut dont_save_function_defs: i32;
+    static mut pipefail_opt: i32;
+    static mut mark_modified_vars: i32;
+    static mut remember_on_history: i32;
+    static mut optflags: [libc::c_char; 0];
+    static mut list_opttype: i32;
+    static mut no_line_editing: i32;
+    static mut interactive: i32;
+    static mut interactive_shell: i32;
+    static mut history_lines_this_session: i32;
+    static mut rl_editing_mode: i32;
+    static mut list_optopt: i8;
+    static mut loptend: *mut WordList;
+    static assoc_expand_once: i32;
+    static mut stdin: libc::FILE;
 }
 
 type setopt_set_func_t = unsafe extern "C" fn(i: i32, name: *mut libc::c_char) -> i32;

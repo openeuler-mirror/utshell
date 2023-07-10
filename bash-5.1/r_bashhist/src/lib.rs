@@ -384,42 +384,6 @@ pub unsafe extern "C" fn bash_delete_last_history() -> c_int
         return 0;
     }
 
-    r = bash_delete_item(i);
-    return r;
-}
-
-pub unsafe extern "C" fn bash_delete_first_history() -> c_int
-{
-    let mut i: c_int = 0;
-    let r = bash_delete_item(i);
-
-    return r;
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn bash_delete_item(i : i32) -> c_int
-{
-    // let mut i: c_int = 0;
-    let mut hlist: *mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
-    let mut histent:*mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-    let mut r: c_int = 0;
-
-    hlist = history_list();
-    if hlist.is_null() {
-        return 0;
-    }
-
-    i = 0;
-    while !(*hlist.offset(i as isize)).is_null(){
-        i += 1;
-    }
-
-    i -= 1;
-    histent = history_get(history_base + i);
-    if histent.is_null() {
-        return 0;
-    }
-
     r = bash_delete_histent(i);
     if where_history() > history_length {
         history_set_pos(history_length);
@@ -744,6 +708,8 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
     let mut old: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
     let mut chars_to_add: *mut c_char = 0 as *mut c_char;
     let mut new_line: *mut c_char = 0 as *mut c_char;
+    add_it = 1  ;
+    if command_oriented_history != 0 && current_command_line_count > 1  {
 	is_comment = if parser_state & PST_HEREDOC as c_int != 0 {
 	    0  
 	} else {
@@ -762,6 +728,7 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
         } else {
             chars_to_add = history_delimiting_chars(line);
         }
+    }
         using_history();
         current = previous_history();
         current_command_line_comment = if is_comment != 0 {
