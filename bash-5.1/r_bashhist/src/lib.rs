@@ -744,4 +744,15 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
     let mut old: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
     let mut chars_to_add: *mut c_char = 0 as *mut c_char;
     let mut new_line: *mut c_char = 0 as *mut c_char;
+	is_comment = if parser_state & PST_HEREDOC as c_int != 0 {
+	    0  
+	} else {
+	    shell_comment(line)
+	};
+	if parser_state & PST_HEREDOC as c_int != 0
+	    && current_command_line_count > 2  
+	    && *line.offset(((strlen(line)) -1) as isize) as c_int == '\n' as i32
+	{
+	    chars_to_add = b"\0" as *const u8 as *mut c_char;
+	}
 }
