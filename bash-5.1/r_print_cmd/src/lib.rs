@@ -1,5 +1,6 @@
 use libc::{c_int,c_char,FILE, c_void, fprintf,fileno, strnlen, size_t};
 use std::ffi::{CString, CStr, };
+
 use r_bash::*;extern "C"{
     static mut stdout: *mut FILE;
     static mut stderr: *mut FILE;
@@ -37,6 +38,7 @@ macro_rules! CHECK_XTRACE_FP{
         }
     )
 }
+
 #[macro_export]
 macro_rules! EXPCHAR{
     ($c:expr) => (
@@ -48,6 +50,7 @@ macro_rules! EXPCHAR{
         }
     )
 }
+
 #[macro_export]
 macro_rules! PRINT_DEFERRED_HEREDOCS{
     ($x:expr) => (
@@ -80,3 +83,8 @@ pub  fn MBLEN(s: *const c_char ,n:size_t) -> c_int
         return  1;
     }
 }
+
+unsafe fn DIGIT(c:c_char) -> bool{
+    char::from(c as u8 ) >= '0' && char::from(c as u8) <= '9'
+}
+
