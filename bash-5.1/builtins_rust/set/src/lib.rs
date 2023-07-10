@@ -104,31 +104,31 @@ macro_rules! VSETATTR {
 }
 
 #[macro_export]
-macro_rules!  imported_p {
-  ($var:expr) => {
-    (*$var).attributes & att_imported!()
-  }
+macro_rules! imported_p {
+    ($var:expr) => {
+        (*$var).attributes & att_imported!()
+    };
 }
 
 #[macro_export]
 macro_rules! att_imported {
-  () => {
-    0x0008000
-  }
+    () => {
+        0x0008000
+    };
 }
 
 #[macro_export]
-macro_rules!  att_assoc{
-  () => {
-    0x0000040
-  }
+macro_rules! att_assoc {
+    () => {
+        0x0000040
+    };
 }
 
 #[macro_export]
 macro_rules! assoc_p {
-  ($var:expr) => {
-    (*$var).attributes & att_assoc!()
-  }
+    ($var:expr) => {
+        (*$var).attributes & att_assoc!()
+    };
 }
 
 #[macro_export]

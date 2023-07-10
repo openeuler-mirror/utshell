@@ -531,5 +531,17 @@ pub unsafe extern "C" fn maybe_save_shell_history() -> c_int {
     let mut result: c_int = 0;
     let mut hf: *mut c_char = 0 as *mut c_char;
     result = 0 ;
+    if history_lines_this_session > 0  {
+        hf = get_string_value(b"HISTFILE\0" as *const u8 as *const c_char);
+        if !hf.is_null() && *hf as c_int != 0 {
+            if file_exists(hf) == 0  {
+                let mut file: c_int = 0;
+                file = open(hf,O_CREAT as c_int | O_TRUNC as c_int | O_WRONLY as c_int,0o600 as c_int);
+                if file != -1 {
+                    close(file);
+                }
+            }
+        }
+    }
     return result;
 }
