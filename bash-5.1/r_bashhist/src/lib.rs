@@ -249,7 +249,8 @@ unsafe extern "C" fn bash_history_inhibit_expansion(mut string: *mut c_char, mut
 #[no_mangle]
 pub unsafe extern "C" fn bash_initialize_history() {
     history_quotes_inhibit_expansion = 1;
-    history_search_delimiter_chars = b";&()|<>\0" as *const u8 as *const c_char as *mut c_char;
+    history_search_delimiter_chars = b";&()|<>\0" as *const u8 as *const c_char
+        as *mut c_char;
 
     history_inhibit_expansion_function = std::mem::transmute::<
         unsafe extern "C" fn(*mut c_char, c_int) -> c_int,
@@ -652,5 +653,12 @@ unsafe extern "C" fn shell_comment(mut line: *mut c_char) -> c_int {
     {
         p = p.offset(1);
     }
-    return 0;
+    if !p.is_null() && *p as c_int == '#' as i32 {
+        return 1 ;
+    }
+    return if *line.offset(n as isize) as c_int == '#' as i32 {
+        return 2  
+    } else {
+        return 0;
+    };
 }

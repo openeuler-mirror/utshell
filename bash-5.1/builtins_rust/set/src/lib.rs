@@ -39,26 +39,31 @@ macro_rules! MINUS_O_FORMAT{
 
 #[macro_export]
 macro_rules! SET_BINARY_O_OPTION_VALUE {
-    ($a:expr,$onoff:expr,$c:expr) => {
-        unsafe {
-            if (o_options[$a as usize].set_func).is_some() {
-                (Some((o_options[$a as usize].set_func).expect("non-null function pointer")))
-                    .expect("non-null function pointer")($onoff, $c)
-            } else {
-                $onoff == FLAG_ON!();
-                let b = $onoff;
-                *o_options[$a as usize].variable = b;
-                *o_options[$a as usize].variable
-            }
-        }
-    };
+  ($a:expr,$onoff:expr,$c:expr) =>{
+    unsafe {
+      if (o_options[ $a as usize].set_func).is_some() {
+        (Some(
+          (o_options[$a as usize].set_func)
+              .expect("non-null function pointer"),
+      ))
+          .expect("non-null function pointer")($onoff, $c)
+    }
+    else {
+         $onoff == FLAG_ON!();
+        let b = $onoff;
+        *o_options[$a as usize].variable = b;
+        *o_options[$a as usize].variable
+    }
+  }
+  }
 }
 
 #[macro_export]
 macro_rules! N_O_OPTIONS {
-    () => {
-        (std::mem::size_of::<[opp; 28]>() as usize / std::mem::size_of::<opp>() as usize)
-    };
+  () => {
+    (std::mem::size_of::<[opp;28]>() as usize
+    / std::mem::size_of::<opp>() as usize)
+  }
 }
 
 #[macro_export]
