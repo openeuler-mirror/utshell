@@ -97,4 +97,13 @@ extern "C" {
     static mut the_printed_command:*mut c_char;
     static mut the_printed_command_size:c_int;
     static mut command_string_index:c_int ;
+
+    fn command_error(func:*const c_char, code:c_int, e:c_int, flags:c_int);
+    fn sh_validfd(fd:c_int)->c_int;
+
+ //fn internal_error(format:*mut c_char, arg1:*mut c_char, arg2:*mut c_char)->c_int;
+    fn internal_error(format:*const c_char, _:...);
+    fn internal_warning(_:*const c_char, _:...);
+    fn get_string_value(_:*const c_char)->*mut c_char;
+    //fn change_flag(flag:c_int, on_or_off:c_int)->c_int;
 }

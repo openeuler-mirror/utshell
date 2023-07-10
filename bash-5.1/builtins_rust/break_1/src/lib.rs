@@ -1,19 +1,20 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 #[macro_use]
 #[warn(temporary_cstring_as_ptr)]
-extern crate  libc;
+extern crate libc;
 extern crate nix;
 
 use std::ffi::CString;
 use libc::c_long;
+use std::ffi::CString;
 
-use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
 
-
 type intmax_t = c_long;
+
 /*
 #[macro_export]
 macro_rules! ISHELP {
@@ -32,14 +33,17 @@ macro_rules! CHECK_HELPOPT {
   }
 }
 */
-fn checkhelp(l: *mut WordList) -> i32{
+
+fn checkhelp(l: *mut WordList) -> i32 {
     unsafe {
-    let tmp=CString::new("--help").unwrap();
-    if l!=std::ptr::null_mut() && (*l).word !=std::ptr::null_mut() && 
-        libc::strcmp((*((*l).word)).word, tmp.as_ptr()) == 0 {
+        let tmp = CString::new("--help").unwrap();
+        if l != std::ptr::null_mut()
+            && (*l).word != std::ptr::null_mut()
+            && libc::strcmp((*((*l).word)).word, tmp.as_ptr()) == 0
+        {
             r_builtin_help();
         }
-            return EX_USAGE;
+        return EX_USAGE;
     }
 }
 
