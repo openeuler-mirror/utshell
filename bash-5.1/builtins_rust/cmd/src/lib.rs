@@ -1,4 +1,4 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 use std::collections::HashMap;
@@ -7,30 +7,27 @@ use std::sync::Mutex;
 extern crate lazy_static;
 
 pub struct Cmd {
-    name:String,
-    enable:bool,
+    name: String,
+    enable: bool,
 }
+
 impl Cmd {
-pub fn build_cmd(name:String, enable:bool) -> Cmd {
-    Cmd {
-        name,
-        enable,
+    pub fn build_cmd(name: String, enable: bool) -> Cmd {
+        Cmd { name, enable }
     }
 }
 
-pub fn set_enable(&mut self, is_enable:bool) -> &Cmd {
-    self.enable = is_enable;
-    self
-}
-pub fn get_enable(&self) -> bool {
-    return self.enable
-}
+    pub fn set_enable(&mut self, is_enable: bool) -> &Cmd {
+        self.enable = is_enable;
+        self
+    }
+    pub fn get_enable(&self) -> bool {
+        return self.enable;
+    }
 }
 
 lazy_static! {
-static ref CMD: Mutex<HashMap<String,Box<Cmd>>> = Mutex::new(HashMap::new());
-}
-fn init_cmd_table() {
+    static ref CMD: Mutex<HashMap<String, Box<Cmd>>> = Mutex::new(HashMap::new());
 }
 
 pub fn insert_empty_cmd(cmd:String) -> bool {
@@ -44,7 +41,7 @@ pub fn insert_cmd(cmd:&str, item: Box<Cmd>) -> Option<Box<Cmd>>{
     cmd_table.insert(String::from(cmd), item)
 }
 
-pub fn get_cmd_enable(cmd:String) -> Result<bool,String>{
+pub fn get_cmd_enable(cmd: String) -> Result<bool, String> {
     let cmd_table = CMD.lock().unwrap();
     let item = cmd_table.get(&cmd);
     match item {
@@ -54,7 +51,7 @@ pub fn get_cmd_enable(cmd:String) -> Result<bool,String>{
             return Ok(c.enable);
         }
         None => {
-            return Err(cmd+" not found");
+            return Err(cmd + " not found");
         }
     }
 }

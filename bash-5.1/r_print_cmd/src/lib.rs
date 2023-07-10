@@ -121,3 +121,9 @@ extern "C" {
     fn mblen(s:*const c_char, n:size_t)->c_int;
     fn cprintf(control:*const c_char,...);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn r_print_command(command:*mut COMMAND)
+{
+
+}
