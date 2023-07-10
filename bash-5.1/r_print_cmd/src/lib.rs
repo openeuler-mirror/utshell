@@ -88,3 +88,5 @@ unsafe fn DIGIT(c:c_char) -> bool{
     char::from(c as u8 ) >= '0' && char::from(c as u8) <= '9'
 }
 
+//pub type Function = unsafe extern "C" fn() -> c_int;
+pub type Function = ::std::option::Option<unsafe extern "C" fn() -> ::std::os::raw::c_int>;

@@ -522,7 +522,7 @@ fn show_builtin_command_help() {
     let mut errors = vec![];
     let msg1 = bundle.format_pattern(&pattern, None, &mut errors);
     println!("{}\n", msg1);
-    //println!("{}",("These shell commands are defined internally.  Type `help' to see this list.\n Type `help name' to find out more about the function `name'.\n Use `info bash' to find out more about the shell in general.\n Use `man -k' or `info' to find out more about commands not in this list.\n A star (*) next to a name means that the command is disabled.\n"));
+    println!("{}",("These shell commands are defined internally.  Type `help' to see this list.\n Type `help name' to find out more about the function `name'.\n Use `info bash' to find out more about the shell in general.\n Use `man -k' or `info' to find out more about commands not in this list.\n A star (*) next to a name means that the command is disabled.\n"));
 
     let ref2: &mut libc::c_char = &mut blurb[0];
 
@@ -576,7 +576,7 @@ fn xmalloc(size: usize) -> *mut c_void {
 //   let mut wc : libc::wchar_t;
 //   let mut len : i32 = 0;
 //   let mut l : i32;
-			
+
 //   while n-1 > 0 && *(pwcs as usize + 1 as usize) != '\0' as libc::wchar_t{
 //     wc = *(pwcs  += 1);
 //       if wcwidth(wc) < 0 {
