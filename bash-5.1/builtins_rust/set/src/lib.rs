@@ -1606,49 +1606,44 @@ unsafe fn reset_shell_options() {
 }
 
 #[no_mangle]
-pub extern "C" fn r_unset_builtin(mut list: *mut WordList) -> i32 {
-    let mut unset_function: i32 = 0;
-    let mut unset_variable: i32 = 0;
-    let mut unset_array: i32 = 0;
-    let mut opt: i32 = 0;
-    let mut nameref: i32 = 0;
-    let mut any_failed: i32 = 0;
-    let mut global_unset_func: i32 = 0;
-    let mut global_unset_var: i32 = 0;
-    let mut vflags: i32 = 0;
-    let mut valid_id: i32 = 0;
-    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut tname: *mut libc::c_char = 0 as *mut libc::c_char;
+pub  extern "C"  fn r_unset_builtin(mut list: *mut WordList) -> i32 {
+  let mut unset_function: i32 = 0;
+  let mut unset_variable: i32 = 0;
+  let mut unset_array: i32 = 0;
+  let mut opt: i32 = 0;
+  let mut nameref: i32 = 0;
+  let mut any_failed: i32 = 0;
+  let mut global_unset_func: i32 = 0;
+  let mut global_unset_var: i32 = 0;
+  let mut vflags: i32 = 0;
+  let mut valid_id: i32 = 0;
+  let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
+  let mut tname: *mut libc::c_char = 0 as *mut libc::c_char;
 
-    let mut c_str_fnv = CString::new("fnv").unwrap();
-    unsafe {
-        reset_internal_getopt();
-        opt = internal_getopt(list, c_str_fnv.as_ptr() as *mut libc::c_char);
-
-        while opt != -1 {
-            let optu8: u8 = opt as u8;
-            let optChar: char = char::from(optu8);
-            match optChar {
-                'f' => {
-                    global_unset_func = 1;
-                }
-                'v' => {
-                    global_unset_var = 0;
-                }
-                'n' => {
-                    nameref = 1;
-                }
-                _ => {
-                    if opt == -99 {
-                        r_builtin_help();
-                        return EX_USAGE;
-                    }
-                    builtin_usage();
-                    return EX_USAGE;
-                }
-            }
-            opt = internal_getopt(list, c_str_fnv.as_ptr() as *mut libc::c_char);
+  //println!("enter  r_unset by huanhuan");
+  let mut c_str_fnv   = CString::new("fnv").unwrap();
+  unsafe {
+    reset_internal_getopt();
+    opt= internal_getopt (list, c_str_fnv.as_ptr() as * mut libc::c_char);
+  
+    while  opt != -1 {
+      let optu8:u8= opt as u8;
+      let optChar:char=char::from(optu8);
+      match optChar {
+        'f'=>{global_unset_func = 1;}  
+        'v'=>{global_unset_var = 0;} 
+        'n'=>{nameref = 1;}
+        _=>{
+          if opt == -99 {
+            r_builtin_help();
+            return EX_USAGE;
         }
+          builtin_usage ();
+          return EX_USAGE;
+        }
+      }
+      opt =internal_getopt (list, c_str_fnv.as_ptr() as * mut libc::c_char);
+    }
 
   list = loptend;
 
