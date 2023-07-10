@@ -83,24 +83,24 @@ macro_rules! VUNSETATTR {
 
 #[macro_export]
 macro_rules! att_exported {
-  () => {
-    0x0000001
-  }
+    () => {
+        0x0000001
+    };
 }
 
 #[macro_export]
-macro_rules!  exported_p {
-  ($var:expr) => {
-    (*$var).attributes & att_exported!() 
-  }
+macro_rules! exported_p {
+    ($var:expr) => {
+        (*$var).attributes & att_exported!()
+    };
 }
 
 #[macro_export]
 macro_rules! VSETATTR {
-  ($var:expr,$attr:expr) => {
-    (*$var).attributes = (*$var).attributes | (&$attr);
-    (*$var).attributes
-  }
+    ($var:expr,$attr:expr) => {
+        (*$var).attributes = (*$var).attributes | (&$attr);
+        (*$var).attributes
+    };
 }
 
 #[macro_export]
