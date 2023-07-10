@@ -192,7 +192,7 @@ strcreplace (string, c, text, do_glob)
   int len, rlen, ind, tlen;
 
   len = STRLEN (text);
-  rlen = len + strlen (string) + 2;
+  rlen = len + strlen (string) + 2;  // 先预留出string和text之和的长度+2
   ret = (char *)xmalloc (rlen);
 
   for (p = string, r = ret; p && *p; )
@@ -214,7 +214,7 @@ strcreplace (string, c, text, do_glob)
 		}
 	      else
 		{
-		  RESIZE_MALLOCED_BUFFER (ret, ind, len, rlen, rlen);
+		  RESIZE_MALLOCED_BUFFER (ret, ind, len, rlen, rlen);//ret 2*strlen string, ind=offset ret, //里面会计算一下ind+len大于已分配的,就会realloc
 		  r = ret + ind;	/* in case reallocated */
 		  strcpy (r, text);
 		  r += len;

@@ -639,7 +639,7 @@ setup_ignore_patterns (ivp)
 
   this_ignoreval = get_string_value (ivp->varname);
 
-  /* If nothing has changed then just exit now. */
+  /* If nothing has changed then just exit now. */  //相等就退出,想更新?
   if ((this_ignoreval && ivp->last_ignoreval && STREQ (this_ignoreval, ivp->last_ignoreval)) ||
       (!this_ignoreval && !ivp->last_ignoreval))
     return;
@@ -668,11 +668,7 @@ setup_ignore_patterns (ivp)
 
   numitems = maxitems = ptr = 0;
 
-#if 0
-  while (colon_bit = extract_colon_unit (this_ignoreval, &ptr))
-#else
   while (colon_bit = split_ignorespec (this_ignoreval, &ptr))
-#endif
     {
       if (numitems + 1 >= maxitems)
 	{
