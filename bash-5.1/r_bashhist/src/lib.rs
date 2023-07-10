@@ -277,6 +277,11 @@ pub unsafe extern "C" fn bash_history_reinit(mut interact: c_int) {
         HISTEXPAND_DEFAULT as c_int
     };
 
+    history_expansion_inhibited = if interact == 0 {
+        1 - histexp_flag
+    } else {
+        0
+    };
     history_inhibit_expansion_function = std::mem::transmute::<
         unsafe extern "C" fn(*mut c_char, c_int) -> c_int,
         Option<rl_linebuf_func_t>,
@@ -291,17 +296,16 @@ pub unsafe extern "C" fn bash_history_disable() {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bash_history_enable() {
+pub unsafe extern "C" fn bash_history_enable()
+{
     remember_on_history = 1;
     enable_history_list = 1;
     history_expansion_inhibited = 0;
     history_inhibit_expansion_function = std::mem::transmute::<
-        unsafe extern "C" fn(*mut c_char, c_int) -> c_int,
-        Option<rl_linebuf_func_t>,
+        unsafe extern "C" fn (*mut c_char, c_int) -> c_int ,
+        Option::<rl_linebuf_func_t>,
     >(bash_history_inhibit_expansion);
-
-    sv_history_control(b"HISTCONTROL\0" as *const u8 as *mut c_char);
-
+    sv_history_control(b"HISTCONTROL\0" as *const u8 as *mut c_char );
     sv_histignore(b"HISTIGNORE\0" as *const u8 as *mut c_char);
 }
 
