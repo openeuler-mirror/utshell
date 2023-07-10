@@ -502,75 +502,75 @@ pub extern "C" fn dispcolumn(
     println!("{:?}\n", buf);
 }
 
-pub fn  wdispcolumn (i : i32, _buf :*mut c_char, _bufsize : i32, _width : i32, _height : i32){
-    let  mut _j : i32;
+pub fn wdispcolumn(i: i32, _buf: *mut c_char, _bufsize: i32, _width: i32, _height: i32) {
+    let mut _j: i32;
     show_helpsynopsis(i);
 }
 
-fn show_builtin_command_help (){
-    let mut _i : i32;
-    let mut _j : i32;
-    let  height : i32 = 76;
-    let mut width : usize;
-    let mut _t :*mut libc::c_char;
-    let mut blurb:[libc::c_char;128] = ['0' as  libc::c_char;128];
+fn show_builtin_command_help() {
+    let mut _i: i32;
+    let mut _j: i32;
+    let height: i32 = 76;
+    let mut width: usize;
+    let mut _t: *mut libc::c_char;
+    let mut blurb: [libc::c_char; 128] = ['0' as libc::c_char; 128];
     let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
     let resources = vec!["message.ftl".into()];
     let bundle = mgr.get_bundle(get_local_str(), resources);
     let value = bundle.get_message("information").unwrap();
-    let  pattern = value.value().expect("partern err");
+    let pattern = value.value().expect("partern err");
     let mut errors = vec![];
     let msg1 = bundle.format_pattern(&pattern, None, &mut errors);
     println!("{}\n", msg1);
     //println!("{}",("These shell commands are defined internally.  Type `help' to see this list.\n Type `help name' to find out more about the function `name'.\n Use `info bash' to find out more about the shell in general.\n Use `man -k' or `info' to find out more about commands not in this list.\n A star (*) next to a name means that the command is disabled.\n"));
 
-    let ref2: &mut libc::c_char= &mut blurb[0];
+    let ref2: &mut libc::c_char = &mut blurb[0];
 
     unsafe {
-    width = default_columns();
-  }
-  width /= 2;
-  if width > (std::mem::size_of::<libc::c_char>()*128) {
-    width = std::mem::size_of::<libc::c_char>()*128;
-  }
-  if width <= 3{
-    width = 40;
-  }
-  for i in 0..height{
-      unsafe {
-        QUIT();
-      }
-      if MB_CUR_MAX!() > 1 {
-       let ptr2: *mut libc::c_char = ref2 as *mut libc::c_char;
-       wdispcolumn (i,  ptr2,128, width as i32, height);
-  }
-}
+        width = default_columns();
+    }
+    width = width/2;
+    if width > (std::mem::size_of::<libc::c_char>() * 128) {
+        width = std::mem::size_of::<libc::c_char>() * 128;
+    }
+    if width <= 3 {
+        width = 40;
+    }
+    for i in 0..height {
+        unsafe {
+            QUIT();
+        }
+        if MB_CUR_MAX!() > 1 {
+            let ptr2: *mut libc::c_char = ref2 as *mut libc::c_char;
+            wdispcolumn(i, ptr2, 128, width as i32, height);
+        }
+    }
 }
 //#endif /* HELP_BUILTIN */
-fn strmatch (pattern : *mut libc::c_char, string : *mut libc::c_char, flags : libc::c_char) -> libc::c_char
-{
-  if ((string as usize)as * mut c_char != std::ptr::null_mut()) || ((pattern as usize)as * mut c_char != std::ptr::null_mut()){
-     return FNM_NOMATCH!();
-  }
-  return unsafe {xstrmatch (pattern, string, flags)};
+fn strmatch(
+    pattern: *mut libc::c_char,
+    string: *mut libc::c_char,
+    flags: libc::c_char,
+) -> libc::c_char {
+    if ((string as usize) as *mut c_char != std::ptr::null_mut())
+        || ((pattern as usize) as *mut c_char != std::ptr::null_mut())
+    {
+        return FNM_NOMATCH!();
+    }
+    return unsafe { xstrmatch(pattern, string, flags) };
 }
 
 struct Thing {
-  pointer_to_self: *mut Thing,
+    pointer_to_self: *mut Thing,
 }
 
-fn xmalloc (size:usize) ->*mut c_void  {
-	let ret: *mut c_void;
-unsafe {
-	ret = libc::malloc(size);
+fn xmalloc(size: usize) -> *mut c_void {
+    let ret: *mut c_void;
+    unsafe {
+        ret = libc::malloc(size);
+    }
+    ret
 }
-// 	if (ret == 0) {
-//     println!("man2html: out of memory");
-// //		fprintf(stderr, "man2html: out of memory");
-// 		（1）
-// 	}
-	ret
-} 
 
 // fn wcswidth(pwcs : *mut libc::wchar_t , n : i32) -> i32{
 //   let mut wc : libc::wchar_t;
