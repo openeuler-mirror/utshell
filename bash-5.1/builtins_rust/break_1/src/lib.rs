@@ -6,7 +6,6 @@
 extern crate libc;
 extern crate nix;
 
-use std::ffi::CString;
 use libc::c_long;
 use std::ffi::CString;
 
@@ -48,47 +47,45 @@ fn checkhelp(l: *mut WordList) -> i32 {
 }
 
 extern "C" {
-    fn get_numeric_arg(list :*mut WordList, i: i32 , intmax :*mut intmax_t) -> i32;
-   // fn get_loop_level() -> i32;
+    fn get_numeric_arg(list: *mut WordList, i: i32, intmax: *mut intmax_t) -> i32;
+    // fn get_loop_level() -> i32;
     //fn set_continuing(cont : i32);
     //fn set_breaking(breaking : i32);
-    fn sh_erange (s:* mut libc::c_char, desc:* mut libc::c_char);
+    fn sh_erange(s: *mut libc::c_char, desc: *mut libc::c_char);
     //pub static  fn  check_loop_level () -> i64;
     /* Non-zero when a "break" instruction is encountered. */
-    pub static  posixly_correct :i32;
-    static mut breaking : i32;
-    static mut continuing : i32;
-    static mut loop_level : i32;
-    fn builtin_error(err:*const libc::c_char,...);
+    pub static posixly_correct: i32;
+    static mut breaking: i32;
+    static mut continuing: i32;
+    static mut loop_level: i32;
+    fn builtin_error(err: *const libc::c_char, ...);
 }
 
 #[no_mangle]
-pub extern "C" fn r_break_builtin(list :*mut WordList) -> i32 {
-    //println!("enter r_break_builtin");
-    let  mut  newbreak : intmax_t = 1 as intmax_t;
+pub extern "C" fn r_break_builtin(list: *mut WordList) -> i32 {
+    let mut newbreak: intmax_t = 1 as intmax_t;
     unsafe {
         checkhelp(list);
         //CHECK_HELPOPT! (list);
-    if check_loop_level() == 0 {
-        return EXECUTION_SUCCESS!();
-    }
+        if check_loop_level() == 0 {
+            return EXECUTION_SUCCESS!();
+        }
         get_numeric_arg(list, 1, &mut newbreak as *mut intmax_t);
 
-    if newbreak <= 0{
-        let tmp = CString::new("loop count ").unwrap();
-        sh_erange ((*(*list).word).word, tmp.as_ptr() as * mut libc::c_char);
+        if newbreak <= 0 {
+            let tmp = CString::new("loop count ").unwrap();
+            sh_erange((*(*list).word).word, tmp.as_ptr() as *mut libc::c_char);
             //set_breaking (get_loop_level());
-            breaking =  loop_level;
-      return EXECUTION_FAILURE!();
-    }
+            breaking = loop_level;
+            return EXECUTION_FAILURE!();
+        }
 
-  if newbreak > loop_level as  libc::c_long{ 
-    newbreak = loop_level as i64;
-  }
-  breaking =  newbreak as i32;
- // set_breaking(newbreak as i32);
-  }
-  return EXECUTION_SUCCESS!();
+        if newbreak > loop_level as libc::c_long {
+            newbreak = loop_level as i64;
+        }
+        breaking = newbreak as i32;
+    }
+    return EXECUTION_SUCCESS!();
 }
 
 #[no_mangle]
