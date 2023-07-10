@@ -1239,128 +1239,125 @@ unsafe fn print_all_shell_variables (){
     }
 }
 
-pub unsafe fn r_set_shellopts () {
-  //println!("set shellopts  by huanhuan");
-  let mut value : *mut  libc::c_char;
-  let mut tflag : [libc::c_char;N_O_OPTIONS!()] = [0 as libc::c_char ;N_O_OPTIONS!()];
-  let mut vsize : i32 = 0;
-  let mut i:  i32 = 0;
-  let mut vptr : i32 ;
-  let mut ip :*mut   i32 ;
-  let mut exported : i32;
+pub unsafe fn r_set_shellopts() {
+    //println!("set shellopts  by huanhuan");
+    let mut value: *mut libc::c_char;
+    let mut tflag: [libc::c_char; N_O_OPTIONS!()] = [0 as libc::c_char; N_O_OPTIONS!()];
+    let mut vsize: i32 = 0;
+    let mut i: i32 = 0;
+    let mut vptr: i32;
+    let mut ip: *mut i32;
+    let mut exported: i32;
 
-  let mut v : *mut SHELL_VAR;
-  for j in 0..N_O_OPTIONS!() {
-    i = j  as i32;
-    if o_options[i as usize].name != std::ptr::null_mut(){
-      tflag[i as usize] = 0;
-      if o_options[i as usize].letter != 0 {
-        ip = find_flag (o_options[i as usize].letter);
-        if ip != std::ptr::null_mut() && unsafe {*ip} != 0{
-            vsize  = vsize + unsafe {strlen (o_options[i as usize].name) as u64 as u32 as i32 } + 1;
-            tflag[i as usize] = 1;
-          }
-      }
-      else if unsafe {GET_BINARY_O_OPTION_VALUE!(i,o_options[i as usize].name)} != 0{
-        vsize = vsize + unsafe {strlen (o_options[i as usize].name) as i32} + 1;
-        tflag[i as usize] = 1;
-      }
-    }
-  }
-  value = unsafe {xmalloc((vsize + 1) as u32 as u64) as *mut libc::c_char};
-  vptr = 0;
-
-  for j in 0..N_O_OPTIONS!(){
-    i = j as i32;
-    if o_options[i as usize].name != std::ptr::null_mut(){
-      if tflag[i as usize] != 0 as libc::c_char {
-        unsafe {
-          libc::strcpy (value.offset(vptr as isize), o_options[i as usize].name);
-          vptr = vptr + strlen (o_options[i as usize].name) as u64 as i64 as i32;
+    let mut v: *mut SHELL_VAR;
+    for j in 0..N_O_OPTIONS!() {
+        i = j as i32;
+        if o_options[i as usize].name != std::ptr::null_mut() {
+            tflag[i as usize] = 0;
+            if o_options[i as usize].letter != 0 {
+                ip = find_flag(o_options[i as usize].letter);
+                if ip != std::ptr::null_mut() && unsafe { *ip } != 0 {
+                    vsize = vsize
+                        + unsafe { strlen(o_options[i as usize].name) as u64 as u32 as i32 }
+                        + 1;
+                    tflag[i as usize] = 1;
+                }
+            } else if unsafe { GET_BINARY_O_OPTION_VALUE!(i, o_options[i as usize].name) } != 0 {
+                vsize = vsize + unsafe { strlen(o_options[i as usize].name) as i32 } + 1;
+                tflag[i as usize] = 1;
+            }
         }
-       *value.offset(vptr as isize)  = b':' as libc::c_char;
-        vptr =  vptr+1;
-      } 
     }
-  }
+    value = unsafe { xmalloc((vsize + 1) as u32 as u64) as *mut libc::c_char };
+    vptr = 0;
 
-  if vptr > 0 {
-    vptr = vptr-1;	
-  }
-  *value.offset(vptr as isize)  = b'\0' as libc::c_char;
-
-  v = find_variable (b"SHELLOPTS\0" as *const u8  as *mut libc::c_char);
-
-  /* Turn off the read-only attribute so we can bind the new value, and
-     note whether or not the variable was exported. */
-  if v != std::ptr::null_mut(){
-      VUNSETATTR!(v, att_readonly!());
-      exported = exported_p!(v);
+    for j in 0..N_O_OPTIONS!() {
+        i = j as i32;
+        if o_options[i as usize].name != std::ptr::null_mut() {
+            if tflag[i as usize] != 0 as libc::c_char {
+                unsafe {
+                    libc::strcpy(value.offset(vptr as isize), o_options[i as usize].name);
+                    vptr = vptr + strlen(o_options[i as usize].name) as u64 as i64 as i32;
+                }
+                *value.offset(vptr as isize) = b':' as libc::c_char;
+                vptr = vptr + 1;
+            }
+        }
     }
-  else {
-    exported = 0;
-  } 
-  v = bind_variable (b"SHELLOPTS\0" as *const u8  as *mut libc::c_char, value, 0);
-  /* Turn the read-only attribute back on, and turn off the export attribute
-     if it was set implicitly by mark_modified_vars and SHELLOPTS was not
-     exported before we bound the new value. */
-    
-  VSETATTR!(v, att_readonly!());
- 
-  if mark_modified_vars!= 0 && exported != 0 && exported_p!(v) != 0 {
-  
-    VUNSETATTR!(v, att_exported!());
-  }   
-  libc::free (value as *mut libc::c_void );
 
+    if vptr > 0 {
+        vptr = vptr - 1;
+    }
+    *value.offset(vptr as isize) = b'\0' as libc::c_char;
+
+    v = find_variable(b"SHELLOPTS\0" as *const u8 as *mut libc::c_char);
+
+    /* Turn off the read-only attribute so we can bind the new value, and
+    note whether or not the variable was exported. */
+    if v != std::ptr::null_mut() {
+        VUNSETATTR!(v, att_readonly!());
+        exported = exported_p!(v);
+    } else {
+        exported = 0;
+    }
+    v = bind_variable(b"SHELLOPTS\0" as *const u8 as *mut libc::c_char, value, 0);
+    /* Turn the read-only attribute back on, and turn off the export attribute
+    if it was set implicitly by mark_modified_vars and SHELLOPTS was not
+    exported before we bound the new value. */
+
+    VSETATTR!(v, att_readonly!());
+
+    if mark_modified_vars != 0 && exported != 0 && exported_p!(v) != 0 {
+        VUNSETATTR!(v, att_exported!());
+    }
+    libc::free(value as *mut libc::c_void);
 }
 
-unsafe fn parse_shellopts (value : *mut  libc::c_char) {
-  let mut vname : *mut libc::c_char;
-  let mut vptr : i32 = 0; 
-  loop {
-      vname = extract_colon_unit(value, &mut vptr);
-      if vname != std::ptr::null_mut() {
-          break;
-      }
-      set_minus_o_option(FLAG_ON!(), vname);
-      libc::free(vname as *mut libc::c_void);
-  };
+unsafe fn parse_shellopts(value: *mut libc::c_char) {
+    let mut vname: *mut libc::c_char;
+    let mut vptr: i32 = 0;
+    loop {
+        vname = extract_colon_unit(value, &mut vptr);
+        if vname != std::ptr::null_mut() {
+            break;
+        }
+        set_minus_o_option(FLAG_ON!(), vname);
+        libc::free(vname as *mut libc::c_void);
+    }
 }
 
-unsafe fn initialize_shell_options (no_shellopts : i32) {
-  let mut temp: *mut libc::c_char;
-  let mut var : *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-  
-  if no_shellopts == 0 {
-      var = find_variable (b"SHELLOPTS\0" as *const u8 as *const libc::c_char);
-      /* set up any shell options we may have inherited. */
-      if !var.is_null() && imported_p!(var) != 0  {
-        if assoc_p! (var) != 0 || array_p !(var) != 0{
-          temp = std::ptr::null_mut();
-        }
-        else {
-          temp = r_savestring(value_cell!(var));
-        }
+unsafe fn initialize_shell_options(no_shellopts: i32) {
+    let mut temp: *mut libc::c_char;
+    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
 
-	      if temp != std::ptr::null_mut() {
-	        parse_shellopts (temp);
-	        libc::free (temp as *mut libc::c_void );
-	      }
-    	}
+    if no_shellopts == 0 {
+        var = find_variable(b"SHELLOPTS\0" as *const u8 as *const libc::c_char);
+        /* set up any shell options we may have inherited. */
+        if !var.is_null() && imported_p!(var) != 0 {
+            if assoc_p!(var) != 0 || array_p!(var) != 0 {
+                temp = std::ptr::null_mut();
+            } else {
+                temp = r_savestring(value_cell!(var));
+            }
+
+            if temp != std::ptr::null_mut() {
+                parse_shellopts(temp);
+                libc::free(temp as *mut libc::c_void);
+            }
+        }
     }
 
-  /* Set up the $SHELLOPTS variable. */
-  r_set_shellopts ();
+    /* Set up the $SHELLOPTS variable. */
+    r_set_shellopts();
 }
 
-unsafe fn reset_shell_options () {
-  pipefail_opt  = 0;
-  ignoreeof  = 0 ;
-  posixly_correct = 0 ;
-  dont_save_function_defs = 0;
-  enable_history_list = 1 ;
-  remember_on_history = enable_history_list ;
+unsafe fn reset_shell_options() {
+    pipefail_opt = 0;
+    ignoreeof = 0;
+    posixly_correct = 0;
+    dont_save_function_defs = 0;
+    enable_history_list = 1;
+    remember_on_history = enable_history_list;
 }
 
 #[no_mangle]
