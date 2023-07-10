@@ -680,3 +680,13 @@ unsafe extern "C" fn check_history_control(mut line: *mut c_char) -> c_int {
     }
     return 1;
 }
+unsafe extern "C" fn hc_erasedups(mut line: *mut c_char) {
+    let mut temp: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+    let mut r: c_int = 0;
+    using_history();
+    temp = remove_history(r);
+    if !temp.is_null() {
+        free_history_entry(temp);
+    }
+    using_history();
+}
