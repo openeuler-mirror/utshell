@@ -90,3 +90,11 @@ unsafe fn DIGIT(c:c_char) -> bool{
 
 //pub type Function = unsafe extern "C" fn() -> c_int;
 pub type Function = ::std::option::Option<unsafe extern "C" fn() -> ::std::os::raw::c_int>;
+
+extern "C" {
+    static indirection_level:c_int;
+    static posixly_correct:c_int;
+    static mut the_printed_command:*mut c_char;
+    static mut the_printed_command_size:c_int;
+    static mut command_string_index:c_int ;
+}
