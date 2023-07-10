@@ -112,4 +112,12 @@ extern "C" {
     fn ansic_shouldquote(string:*const c_char)->c_int;
     fn ansic_quote(str:*mut c_char, flags:c_int, rlen:*mut c_int)->*mut c_char;
     fn dispose_redirects(list:*mut REDIRECT);
-    fn add_unwind_protect(cleanup:*mut Function, arg:*mut c_char);}
+    fn add_unwind_protect(cleanup:*mut Function, arg:*mut c_char);
+
+    fn remove_unwind_protect();
+    fn dispose_command(command:*mut COMMAND);
+    fn find_reserved_word(tokstr:*mut c_char)->c_int;
+    fn remove_quoted_escapes(string:*mut c_char)->*mut c_char;
+    fn mblen(s:*const c_char, n:size_t)->c_int;
+    fn cprintf(control:*const c_char,...);
+}

@@ -89,44 +89,43 @@ pub extern "C" fn r_break_builtin(list: *mut WordList) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn r_continue_builtin (list :*mut WordList) -> i32 {
-    let mut newcont : intmax_t = 0 as intmax_t;
+pub extern "C" fn r_continue_builtin(list: *mut WordList) -> i32 {
+    let mut newcont: intmax_t = 0 as intmax_t;
     unsafe {
-        //CHECK_HELPOPT! (list);
         checkhelp(list);
     }
     if check_loop_level() == 0 {
         return EXECUTION_SUCCESS!();
     }
     unsafe {
-        get_numeric_arg(list, 1, &mut newcont  as *mut intmax_t);
+        get_numeric_arg(list, 1, &mut newcont as *mut intmax_t);
     }
     unsafe {
-    if newcont <= 0{
-        let tmp = CString::new("loop count ").unwrap();
-        sh_erange ((*(*list).word).word, tmp.as_ptr() as * mut libc::c_char);
-        //set_breaking(get_loop_level());
-        breaking =  loop_level;
-      return EXECUTION_FAILURE!();
-    }
-   if newcont > loop_level.into(){
-      newcont = loop_level as i64;
-    }
-    continuing = newcont as i32;
-    //set_continuing(newcont as i32);
-
+        if newcont <= 0 {
+            let tmp = CString::new("loop count ").unwrap();
+            sh_erange((*(*list).word).word, tmp.as_ptr() as *mut libc::c_char);
+            //set_breaking(get_loop_level());
+            breaking = loop_level;
+            return EXECUTION_FAILURE!();
+        }
+        if newcont > loop_level.into() {
+            newcont = loop_level as i64;
+        }
+        continuing = newcont as i32;
     }
     return EXECUTION_SUCCESS!();
 }
 
 #[no_mangle]
-pub extern "C" fn check_loop_level () -> i32 {
-unsafe { 
-  if loop_level == 0 &&  posixly_correct == 0 {
-      builtin_error (b"only meaningful in a `for`, `while`, or until `loop` \0" as *const u8 as *const libc::c_char);
-      return 0;
-  }
-   loop_level
+pub extern "C" fn check_loop_level() -> i32 {
+    unsafe {
+        if loop_level == 0 && posixly_correct == 0 {
+            builtin_error(
+                b"only meaningful in a `for`, `while`, or until `loop` \0" as *const u8
+                    as *const libc::c_char,
+            );
+            return 0;
+        }
+        loop_level
+    }
 }
-}
-
