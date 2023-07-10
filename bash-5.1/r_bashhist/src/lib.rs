@@ -726,3 +726,15 @@ pub unsafe extern "C" fn check_add_history(mut line: *mut c_char, mut force: c_i
     }
     return 0 ;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
+    let mut add_it: c_int = 0;
+    let mut offset: c_int = 0;
+    let mut curlen: c_int = 0;
+    let mut is_comment: c_int = 0;
+    let mut current: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+    let mut old: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+    let mut chars_to_add: *mut c_char = 0 as *mut c_char;
+    let mut new_line: *mut c_char = 0 as *mut c_char;
+}
