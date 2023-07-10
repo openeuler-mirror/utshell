@@ -24,74 +24,108 @@ type rl_command_func_t = extern "C" fn(c_int, c_int) -> c_int;
 
 #[macro_export]
 macro_rules! LFLAG {
-    () => { 0x0001 }
+    () => {
+        0x0001
+    };
 }
 #[macro_export]
 macro_rules! PFLAG {
-    () => { 0x0002 }
+    () => {
+        0x0002
+    };
 }
 #[macro_export]
 macro_rules! FFLAG {
-    () => { 0x0004 }
+    () => {
+        0x0004
+    };
 }
 #[macro_export]
 macro_rules! VFLAG {
-    () => { 0x0008 }
+    () => {
+        0x0008
+    };
 }
 #[macro_export]
 macro_rules! QFLAG {
-    () => { 0x0010 }
+    () => {
+        0x0010
+    };
 }
 #[macro_export]
 macro_rules! MFLAG {
-    () => { 0x0020 }
+    () => {
+        0x0020
+    };
 }
 #[macro_export]
 macro_rules! RFLAG {
-    () => { 0x0040 }
+    () => {
+        0x0040
+    };
 }
 #[macro_export]
 macro_rules! PPFLAG {
-    () => { 0x0080 }
+    () => {
+        0x0080
+    };
 }
 #[macro_export]
 macro_rules! VVFLAG {
-    () => { 0x0100 }
+    () => {
+        0x0100
+    };
 }
 #[macro_export]
 macro_rules! SFLAG {
-    () => { 0x0200 }
+    () => {
+        0x0200
+    };
 }
 #[macro_export]
 macro_rules! SSFLAG {
-    () => { 0x0400 }
+    () => {
+        0x0400
+    };
 }
 #[macro_export]
 macro_rules! UFLAG {
-    () => { 0x0800 }
+    () => {
+        0x0800
+    };
 }
 #[macro_export]
 macro_rules! XFLAG {
-    () => { 0x1000 }
+    () => {
+        0x1000
+    };
 }
 #[macro_export]
 macro_rules! XXFLAG {
-    () => { 0x2000 }
+    () => {
+        0x2000
+    };
 }
 
 #[macro_export]
 macro_rules! ISKMAP {
-    () => { 1 }   
+    () => {
+        1
+    };
 }
 
 #[macro_export]
-macro_rules! KEYMAP_SIZE{
-    () => { 257 }
+macro_rules! KEYMAP_SIZE {
+    () => {
+        257
+    };
 }
 
 #[macro_export]
-macro_rules! ANYOTHERKEY{
-    () => { KEYMAP_SIZE!() - 1}
+macro_rules! ANYOTHERKEY {
+    () => {
+        KEYMAP_SIZE!() - 1
+    };
 }
 
 
