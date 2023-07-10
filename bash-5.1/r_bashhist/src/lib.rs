@@ -754,7 +754,14 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
 	    && *line.offset(((strlen(line)) -1) as isize) as c_int == '\n' as i32
 	{
 	    chars_to_add = b"\0" as *const u8 as *mut c_char;
-	}
+	} else if current_command_line_count == current_command_line_comment + 1
+        {
+            chars_to_add = b"\n\0" as *const u8 as *mut c_char;
+        } else if literal_history != 0 {
+            chars_to_add = b"\n\0" as *const u8 as *mut c_char;
+        } else {
+            chars_to_add = history_delimiting_chars(line);
+        }
         using_history();
         current = previous_history();
         current_command_line_comment = if is_comment != 0 {
