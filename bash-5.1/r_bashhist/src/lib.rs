@@ -678,6 +678,18 @@ unsafe extern "C" fn check_history_control(mut line: *mut c_char) -> c_int {
     if history_control == 0  {
         return 1  ;
     }
+    if history_control & HC_IGNSPACE as c_int != 0 && *line as c_int == ' ' as i32 {
+        return 0 ;
+    }
+    if history_control & HC_IGNDUPS as c_int != 0 {
+        using_history();
+        temp = previous_history();
+        r = (temp.is_null() || STREQ!((*temp).line, line) == false) as c_int;
+        using_history();
+        if r == 0  {
+            return r;
+        }
+    }
     return 1;
 }
 unsafe extern "C" fn hc_erasedups(mut line: *mut c_char) {
