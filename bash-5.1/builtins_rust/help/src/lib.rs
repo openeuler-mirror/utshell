@@ -522,14 +522,14 @@ fn show_builtin_command_help() {
     let mut errors = vec![];
     let msg1 = bundle.format_pattern(&pattern, None, &mut errors);
     println!("{}\n", msg1);
-    println!("{}",("These shell commands are defined internally.  Type `help' to see this list.\n Type `help name' to find out more about the function `name'.\n Use `info bash' to find out more about the shell in general.\n Use `man -k' or `info' to find out more about commands not in this list.\n A star (*) next to a name means that the command is disabled.\n"));
+    //println!("{}",("These shell commands are defined internally.  Type `help' to see this list.\n Type `help name' to find out more about the function `name'.\n Use `info bash' to find out more about the shell in general.\n Use `man -k' or `info' to find out more about commands not in this list.\n A star (*) next to a name means that the command is disabled.\n"));
 
     let ref2: &mut libc::c_char = &mut blurb[0];
 
     unsafe {
         width = default_columns();
     }
-    width = width/2;
+    width /= 2;
     if width > (std::mem::size_of::<libc::c_char>() * 128) {
         width = std::mem::size_of::<libc::c_char>() * 128;
     }
@@ -569,6 +569,11 @@ fn xmalloc(size: usize) -> *mut c_void {
     unsafe {
         ret = libc::malloc(size);
     }
+    // 	if (ret == 0) {
+    //     println!("man2html: out of memory");
+    // //		fprintf(stderr, "man2html: out of memory");
+    // 		（1）
+    // 	}
     ret
 }
 
