@@ -575,3 +575,22 @@ pub unsafe extern "C"  fn  restore_pipeline(discard:c_int) -> *mut PROCESS
     }
     return old_pipeline;   
 }
+
+#[no_mangle]
+pub unsafe extern "C"  fn  start_pipeline ()
+{
+    if !the_pipeline.is_null() {
+        cleanup_the_pipeline ();
+        if pipeline_pgrp != shell_pgrp {
+            pipeline_pgrp = 0 as pid_t;
+        }
+        sh_closepipe (pgrp_pipe.as_mut_ptr());
+    }
+
+    if job_control != 0
+    {
+        if libc::pipe(pgrp_pipe.as_mut_ptr()) == -1 {
+            sys_error (b"start_pipeline: pgrp pipe\0" as *const u8 as *const i8);
+        }
+    }
+}
