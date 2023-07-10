@@ -626,8 +626,31 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
         js.j_firstj = js.j_lastj;
     }
 
-
-
+    if interactive != 0
+    {
+        // println!("258963147");
+        i = js.j_jobslots;
+        while i != 0 {
+            let temp = i -1 ;
+            if !(*jobs.offset(temp as isize)).is_null() {
+                // println!("258963147 i={}",i);
+                break;
+            }
+            i -= 1;
+        }
+    } else {
+        if js.j_lastj != 0 {
+            i = js.j_lastj + 1;
+        } else {
+            i = js.j_lastj;
+        }
+        while i < js.j_jobslots {
+            if (*jobs.offset(i as isize)).is_null() {
+                break;
+            }
+            i += 1;
+        }
+    }
 
     stop_making_children ();
     UNBLOCK_CHILD (&mut oset);
