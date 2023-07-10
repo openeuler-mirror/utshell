@@ -130,3 +130,14 @@ pub unsafe extern "C" fn r_print_command(command:*mut COMMAND)
     print!("{}",CStr::from_ptr(r_make_command_string(command)).to_str().unwrap());
 
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn r_make_command_string(command:*mut COMMAND) -> *mut c_char
+{
+    command_string_index = 0;
+    was_heredoc = 0;
+    deferred_heredocs = 0 as *mut REDIRECT;
+    make_command_string_internal(command);
+    return the_printed_command;
+}
+
