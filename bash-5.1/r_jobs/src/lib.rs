@@ -594,3 +594,24 @@ pub unsafe extern "C"  fn  start_pipeline ()
         }
     }
 }
+
+
+#[no_mangle]
+pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut COMMAND) -> c_int
+{ 
+    // println!("stop_pipeline");
+    let mut i:c_int;
+    let mut j:c_int;
+    let mut newjob:*mut JOB;
+    let mut set:sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset:sigset_t = __sigset_t { __val: [0; 16] };
+
+    BLOCK_CHILD (&mut set, &mut oset);
+    sh_closepipe (pgrp_pipe.as_mut_ptr());
+    cleanup_dead_jobs ();
+
+
+    stop_making_children ();
+    UNBLOCK_CHILD (&mut oset);
+    return if !newjob.is_null() { i } else { js.j_current };
+}
