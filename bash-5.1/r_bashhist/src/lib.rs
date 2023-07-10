@@ -534,8 +534,13 @@ pub unsafe extern "C" fn maybe_save_shell_history() -> c_int {
             {
                 result = append_history(history_lines_this_session, hf);
                 history_lines_in_file += history_lines_this_session;
+            } else {
+                result = write_history(hf);
+                history_lines_in_file = history_lines_written_to_file;
             }
-         }
+            history_lines_this_session = 0;
+            sv_histsize(b"HISTFILESIZE\0" as *const u8 as *mut c_char);
+        }
     }
     return result;
 }
