@@ -610,6 +610,24 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
     sh_closepipe (pgrp_pipe.as_mut_ptr());
     cleanup_dead_jobs ();
 
+    if js.j_jobslots == 0 {
+        js.j_jobslots = JOB_SLOTS as c_int;
+        jobs = xmalloc ((js.j_jobslots * (std::mem::size_of::<*mut JOB>() as c_int)) as usize) as *mut *mut JOB;
+
+        i = 0 as  c_int;
+        while i < js.j_jobslots {
+        //    (*jobs.offset(i as isize)) = 0 as *mut JOB;
+           (*jobs.offset(i as isize)) = std::ptr::null_mut();
+            
+            i += 1;
+        }
+        js.j_njobs = 0 as  c_int;
+        js.j_lastj = js.j_njobs;
+        js.j_firstj = js.j_lastj;
+    }
+
+
+
 
     stop_making_children ();
     UNBLOCK_CHILD (&mut oset);
