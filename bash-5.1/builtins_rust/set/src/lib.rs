@@ -14,28 +14,27 @@ use rhelp::r_builtin_help;
 
 #[macro_export]
 macro_rules! FLAG_UNKNOWN {
-    () => {
-        0 as *mut i32
-    };
+    () => {0 as *mut i32}
 }
 
 #[macro_export]
-macro_rules! MINUS_O_FORMAT {
-    () => {
-        CString::new("%-15s\t%s\n")
-    };
+macro_rules! MINUS_O_FORMAT{
+    () => {CString::new("%-15s\t%s\n")}
 }
 
 #[macro_export]
-macro_rules! GET_BINARY_O_OPTION_VALUE {
-    ($a:expr,$b:expr) => {
+ macro_rules! GET_BINARY_O_OPTION_VALUE {
+    ($a:expr,$b:expr) =>{
         if (o_options[$a as usize].get_func).is_some() {
-            (Some((o_options[$a as usize].get_func).expect("non-null function pointer")))
-                .expect("non-null function pointer")($b)
-        } else {
-            *o_options[$a as usize].variable
-        }
-    };
+          (Some(
+            (o_options[$a as usize].get_func)
+                .expect("non-null function pointer"),
+        ))
+            .expect("non-null function pointer")($b)
+    } else {
+        *o_options[$a as usize].variable
+    }
+  }
 }
 
 #[macro_export]
@@ -232,14 +231,6 @@ pub struct opp {
     set_func: Option<setopt_set_func_t>,
     get_func: Option<setopt_get_func_t>,
 }
-
-// #[deny(missing_fragment_specifier)]
-// #[macro_export]
-// macro_rules! STREQ{
-//    ($a:expr,$b:expr) =>{
-//        (*$a==*$b) && (libc::strcmp($a,$b)==0)
-//     }
-// }
 
 #[macro_export]
 macro_rules! FLAG_ERROR{
