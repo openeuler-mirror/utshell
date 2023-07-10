@@ -428,40 +428,6 @@ pub unsafe extern "C" fn bash_delete_item(i : i32) -> c_int
     return r;
 }
 
-pub unsafe extern "C" fn read_history_cache()
-{
-    let mut hf:*mut c_char;
-    set_if_not(b"HISTSIZE\0" as *const u8 as *mut c_char, HISTSIZE_DEFAULT!() );
-    sv_histsize(b"HISTSIZE\0" as *const u8 as *mut c_char);
-
-    set_if_not(b"HISTFILESIZE\0" as *const u8 as *mut c_char,
-                get_string_value(b"HISTSIZE\0" as *const u8 as *mut c_char));
-    sv_histsize(b"HISTFILESIZE\0" as *const u8 as *mut c_char);
-
-    hf = get_string_value(b"HISTFILE\0" as *const u8 as *mut c_char);
-
-    if !hf.is_null() && *hf as c_int != 0 && file_exits(hf) != 0{
-        read_history(hf);
-    }
-
-}
-
-pub unsafe extern "C" fn bash_really_add_history(mut line: *mut c_char) {
-    hist_last_line_added = 1 ;
-    hist_last_line_pushed = 0 ;
-        let mut add_it: c_int = 0;
-        let mut curlen: c_int = 0;
-        let mut current: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-        current=previous_history();
-        if !current.is_null() {
-            add_it =1;
-        }
-        if add_it != 0 {
-        add_history(line);
-    }
-    using_history();
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn maybe_append_history(mut filename: *mut c_char) -> c_int 
 {
@@ -724,6 +690,7 @@ pub unsafe extern "C" fn maybe_add_history(mut line: *mut c_char) {
     } else {
         shell_comment(line)
     };
+    if current_command_line_count > 1 {
         if current_command_first_line_saved != 0
             && (parser_state & PST_HEREDOC as c_int != 0 || literal_history != 0
                 || dstack.delimiter_depth != 0  
@@ -737,5 +704,11 @@ pub unsafe extern "C" fn maybe_add_history(mut line: *mut c_char) {
             -(2 as c_int)
         };
         return;
+    }
+    current_command_line_comment = if is_comment != 0 {
+        current_command_line_count
+    } else {
+        -(2 as c_int)
+    };
     current_command_first_line_saved = check_add_history(line, 0);
 }
