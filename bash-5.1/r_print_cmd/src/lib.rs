@@ -101,9 +101,15 @@ extern "C" {
     fn command_error(func:*const c_char, code:c_int, e:c_int, flags:c_int);
     fn sh_validfd(fd:c_int)->c_int;
 
- //fn internal_error(format:*mut c_char, arg1:*mut c_char, arg2:*mut c_char)->c_int;
+    //fn internal_error(format:*mut c_char, arg1:*mut c_char, arg2:*mut c_char)->c_int;
     fn internal_error(format:*const c_char, _:...);
     fn internal_warning(_:*const c_char, _:...);
     fn get_string_value(_:*const c_char)->*mut c_char;
     //fn change_flag(flag:c_int, on_or_off:c_int)->c_int;
-}
+    fn decode_prompt_string(string:*mut c_char)->*mut c_char;
+    fn sh_contains_shell_metas(string:*const c_char)->c_int;
+    fn sh_single_quote(string:*mut c_char)->*mut c_char;
+    fn ansic_shouldquote(string:*const c_char)->c_int;
+    fn ansic_quote(str:*mut c_char, flags:c_int, rlen:*mut c_int)->*mut c_char;
+    fn dispose_redirects(list:*mut REDIRECT);
+    fn add_unwind_protect(cleanup:*mut Function, arg:*mut c_char);}
