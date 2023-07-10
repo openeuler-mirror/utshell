@@ -545,6 +545,9 @@ pub unsafe extern "C"  fn  save_pipeline(clear:c_int)
     (*saver).next = saved_pipeline;
     saved_pipeline = saver;
 
+    if clear != 0 {
+        the_pipeline = 0 as *mut PROCESS;
+    }
     saved_already_making_children = already_making_children;
     UNBLOCK_CHILD(&mut oset);
 }
