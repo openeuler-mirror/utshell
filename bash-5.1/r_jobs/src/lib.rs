@@ -669,7 +669,26 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
     }
 
 
+    if async_0 != 0
+    {
+        if !newjob.is_null()
+        {
+            (*newjob).flags &= !J_FOREGROUND as c_int;
+            (*newjob).flags |= J_ASYNC as c_int;
+            js.j_lastasync = newjob;
+        }
+        reset_current ();
+    } else {
+        if !newjob.is_null() {
+            (*newjob).flags |= J_FOREGROUND as c_int;
 
+            if job_control != 0 && (*newjob).pgrp != 0 && 
+                (subshell_environment&SUBSHELL_ASYNC as c_int) == 0 && 
+                running_in_background == 0 {
+                    maybe_give_terminal_to (shell_pgrp, (*newjob).pgrp, 0);
+                }   
+        }
+    }
     stop_making_children ();
     UNBLOCK_CHILD (&mut oset);
     return if !newjob.is_null() { i } else { js.j_current };
