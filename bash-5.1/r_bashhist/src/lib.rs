@@ -712,3 +712,17 @@ pub unsafe extern "C" fn maybe_add_history(mut line: *mut c_char) {
     };
     current_command_first_line_saved = check_add_history(line, 0);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn check_add_history(mut line: *mut c_char, mut force: c_int) -> c_int 
+{
+    if check_history_control(line) != 0 && history_should_ignore(line) == 0 
+    {
+        if history_control & HC_ERASEDUPS as c_int != 0 {
+            hc_erasedups(line);
+        }
+
+        return 1  ;
+    }
+    return 0 ;
+}
