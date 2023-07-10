@@ -519,3 +519,15 @@ pub unsafe extern "C"  fn  cleanup_the_pipeline()
         discard_pipeline(disposer);
     }
 }
+
+unsafe extern "C"  fn  alloc_pipeline_saver() -> *mut pipeline_saver
+{
+    let mut ret:*mut pipeline_saver;
+
+    ret = xmalloc(::std::mem::size_of::<pipeline_saver>() as usize) as *mut pipeline_saver; 
+
+    (*ret).pipeline = 0 as *mut process;
+    (*ret).next = 0 as *mut pipeline_saver;
+    
+    return ret;
+}
