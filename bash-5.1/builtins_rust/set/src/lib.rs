@@ -249,525 +249,379 @@ macro_rules! VA_ONEWORD {
 }
 
 #[no_mangle]
-pub static mut o_options : [opp ; 28] = unsafe {[  
-    {
-    opp{
-        name : b"allexport\0" as *const u8 as *const libc::c_char as *mut libc::c_char, 
-        letter : b'a' as  i32,
-        variable : 0 as *const libc::c_void 
-           as *mut libc::c_void
-           as  *mut i32,
-        set_func : 
-          ::std::mem::transmute::< 
-          *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > 
-          (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-        std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<setopt_get_func_t>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
-      }
-    },
-
-    {
-      opp{
-        name : b"braceexpand\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-        letter : b'B' as i32,
-        variable : 0 as  *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32,
-        set_func:
-        ::std::mem::transmute::< *mut libc::c_void,
-        Option::<setopt_set_func_t>,
-        > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func :
-        ::std::mem::transmute::<
-        *mut libc::c_void,
-        Option::<setopt_get_func_t>,>
-        (0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-
-    {
-      opp{
-        name : b"emacs\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-        letter :  b'\0' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func :  Some(set_edit_mode),
-        get_func :  Some(get_edit_mode)
-       }
-    },
- 
-    {
-      opp{
-        name : b"errexit\0" as *const u8 as *const libc::c_char as *mut libc::c_char ,
-        letter :  b'e' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32,
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-       }
-    },
-  
-    {
-      opp {
-        name : b"errtrace\0" as *const u8 as *const libc::c_char as *mut libc::c_char,   
-        letter :  b'E' as i32,
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32,
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func :
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-    
-    {
-      opp {
-        name : b"functrace\0" as *const u8 as *const libc::c_char as *mut libc::c_char,  
-        letter : b'T' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void), 
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-    
-    {
-      opp {
-        name : b"hashall\0" as *const u8 as *const libc::c_char as *mut libc::c_char,   
-        letter : b'h' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-  
-    {
-      opp{ 
-        name : b"histexpand\0" as *const u8 as *const libc::c_char as *mut libc::c_char, 
-        letter : b'H' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32,
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-  
-    {
-      opp{ 
-        name : b"history\0" as *const u8 as *const libc::c_char as *mut libc::c_char,   
-        letter : b'\0' as i32, 
-        // variable : 0 as *const libc::c_void 
-        // as *mut libc::c_void
-        // as *mut i32, 
-        variable : &enable_history_list as *const i32 as *mut i32, 
-        set_func : Some (bash_set_history),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-  
-    {
-      opp{
-        name : b"ignoreeof\0" as *const u8 as *const libc::c_char as *mut libc::c_char, 
-        letter : b'\0' as i32,
-        /*variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, */
-        variable : &ignoreeof as *const i32 as *mut i32,
-        set_func : Some (set_ignoreeof), 
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-           >(0 as *const libc::c_void as *mut libc::c_void)
-       }
-    },
-
-    {
-      opp{  
-        name : b"interactive-comments\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-        letter : b'\0' as i32,
-        /*variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, */
-        variable :  &interactive_comments  as *const i32 as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-
-    {
-      opp{ 
-        name : b"keyword\0" as *const u8 as *const libc::c_char as *mut libc::c_char,    
-        letter : b'k' as i32,
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-  
-    {
-      opp{ 
-        name : b"monitor\0" as *const u8 as *const libc::c_char as *mut libc::c_char,    
-        letter : b'm' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func :
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-
-    {
-      opp{ 
-        name : b"noclobber\0" as *const u8 as *const libc::c_char as *mut libc::c_char,  
-        letter : b'C' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-  
-    {
-      opp{ 
-        name : b"noexec\0" as *const u8 as *const libc::c_char as *mut libc::c_char,     
-        letter : b'n' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-
-    { 
-      opp{ 
-        name : b"noglob\0" as *const u8 as *const libc::c_char as *mut libc::c_char,     
-        letter : b'f' as i32, 
-        variable : 0 as *const libc::c_void 
-          as *mut libc::c_void
-          as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-
-    {
-      opp{ 
-        name : b"nolog\0" as *const u8 as *const libc::c_char as *mut libc::c_char,     
-        letter : b'\0' as i32, 
-        /*variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, */
-        variable : &dont_save_function_defs as *const i32 as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-
-    {
-      opp{ 
-        name : b"notify\0" as *const u8 as *const libc::c_char as *mut libc::c_char,     
-        letter : b'b' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func :
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func :
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-
-    {
-      opp{ 
-        name : b"nounset\0" as *const u8 as *const libc::c_char as *mut libc::c_char,    
-        letter : b'u' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func :
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-    }
-    },
-
-    {
-      opp{ 
-        name : b"onecmd\0" as *const u8 as *const libc::c_char as *mut libc::c_char,     
-        letter : b't' as i32,
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func :
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-
-    {
-      opp{ 
-        name : b"physical\0" as *const u8 as *const libc::c_char as *mut libc::c_char,   
-        letter : b'P' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-
-    {
-      opp{ 
-        name : b"pipefail\0" as *const u8 as *const libc::c_char as *mut libc::c_char,  
-        letter : b'\0' as i32, 
-        /*variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, */
-        variable : &pipefail_opt as *const i32 as *mut i32, 
-        set_func :
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-    >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-
-    {
-      opp{ 
-        name : b"posix\0" as *const u8 as *const libc::c_char as *mut libc::c_char,     
-        letter : b'\0' as i32, 
-        /*variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, */
-        variable : &posixly_correct as *const libc::c_int as *mut libc::c_int,
-        set_func : Some(set_posix_mode), 
-        get_func :  
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-
-    {
-      opp{ 
-        name : b"privileged\0" as *const u8 as *const libc::c_char as *mut libc::c_char, 
-        letter : b'p' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-  
-    {
-      opp{ 
-        name : b"verbose\0" as *const u8 as *const libc::c_char as *mut libc::c_char,    
-        letter : b'v' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-
-    {
-      opp{ 
-        name : b"vi\0" as *const u8 as *const libc::c_char as *mut libc::c_char,        
-        letter : b'\0' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : Some(set_edit_mode), //set_edit_mode as *mut setopt_set_func_t ,// unsafe {&mut set_edit_mode}, 
-        get_func : Some(get_edit_mode) 
-      }
-    },
-  
-    {
-      opp{ 
-        name : b"xtrace\0" as *const u8 as *const libc::c_char as *mut libc::c_char,     
-        letter : b'x' as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func :
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    },
-  
-    {
-      opp{
-        name : std::ptr::null_mut() , 
-        letter : 0 as i32, 
-        variable : 0 as *const libc::c_void 
-        as *mut libc::c_void
-        as *mut i32, 
-        set_func : 
-          ::std::mem::transmute::< *mut libc::c_void,
-          Option::<setopt_set_func_t>,
-          > (0 as *const libc::c_void as *mut libc::c_void),
-        get_func : 
-          ::std::mem::transmute::<
-          *mut libc::c_void,
-          Option::<setopt_get_func_t>,
-          >(0 as *const libc::c_void as *mut libc::c_void)
-      }
-    }
-
-]};
+pub static mut o_options: [opp; 28] = unsafe {
+    [
+        {
+            opp {
+                name: b"allexport\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'a' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"braceexpand\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'B' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"emacs\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'\0' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: Some(set_edit_mode),
+                get_func: Some(get_edit_mode),
+            }
+        },
+        {
+            opp {
+                name: b"errexit\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'e' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"errtrace\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'E' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"functrace\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'T' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"hashall\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'h' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"histexpand\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'H' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"history\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'\0' as i32,
+                // variable : 0 as *const libc::c_void
+                // as *mut libc::c_void
+                // as *mut i32,
+                variable: &enable_history_list as *const i32 as *mut i32,
+                set_func: Some(bash_set_history),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"ignoreeof\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'\0' as i32,
+                /*variable : 0 as *const libc::c_void
+                as *mut libc::c_void
+                as *mut i32, */
+                variable: &ignoreeof as *const i32 as *mut i32,
+                set_func: Some(set_ignoreeof),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"interactive-comments\0" as *const u8 as *const libc::c_char
+                    as *mut libc::c_char,
+                letter: b'\0' as i32,
+                /*variable : 0 as *const libc::c_void
+                as *mut libc::c_void
+                as *mut i32, */
+                variable: &interactive_comments as *const i32 as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"keyword\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'k' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"monitor\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'm' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"noclobber\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'C' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"noexec\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'n' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"noglob\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'f' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"nolog\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'\0' as i32,
+                /*variable : 0 as *const libc::c_void
+                as *mut libc::c_void
+                as *mut i32, */
+                variable: &dont_save_function_defs as *const i32 as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"notify\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'b' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"nounset\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'u' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"onecmd\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b't' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"physical\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'P' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"pipefail\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'\0' as i32,
+                /*variable : 0 as *const libc::c_void
+                as *mut libc::c_void
+                as *mut i32, */
+                variable: &pipefail_opt as *const i32 as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"posix\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'\0' as i32,
+                /*variable : 0 as *const libc::c_void
+                as *mut libc::c_void
+                as *mut i32, */
+                variable: &posixly_correct as *const libc::c_int as *mut libc::c_int,
+                set_func: Some(set_posix_mode),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"privileged\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'p' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"verbose\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'v' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: b"vi\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'\0' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: Some(set_edit_mode), //set_edit_mode as *mut setopt_set_func_t ,// unsafe {&mut set_edit_mode},
+                get_func: Some(get_edit_mode),
+            }
+        },
+        {
+            opp {
+                name: b"xtrace\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                letter: b'x' as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+        {
+            opp {
+                name: std::ptr::null_mut(),
+                letter: 0 as i32,
+                variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+                get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            }
+        },
+    ]
+};
 
 extern "C" {
      fn setopt_set_func_t (i :i32 , name : *mut libc::c_char) -> i32;
@@ -857,18 +711,11 @@ extern "C" {
      static mut stdin : libc::FILE;
 }
 
-type setopt_set_func_t = unsafe extern "C" fn (
-  i :i32 ,
-  name : *mut libc::c_char
-) -> i32;
+type setopt_set_func_t = unsafe extern "C" fn(i: i32, name: *mut libc::c_char) -> i32;
 
-type setopt_get_func_t =  unsafe extern "C" fn (
-  name : *mut libc::c_char
-) -> i32;
+type setopt_get_func_t = unsafe extern "C" fn(name: *mut libc::c_char) -> i32;
 
-type sh_var_value_func_t =  unsafe extern "C" fn (
-  _ : *mut SHELL_VAR 
-) -> *mut SHELL_VAR;
+type sh_var_value_func_t = unsafe extern "C" fn(_: *mut SHELL_VAR) -> *mut SHELL_VAR;
 
 type sh_var_assign_func_t = unsafe extern "C" fn(
     _: *mut SHELL_VAR,
@@ -884,45 +731,47 @@ static mut previous_option_value: i32 = 0;
 pub type SHELL_VAR = variable;
 pub type arrayind_t = i64;
 
-unsafe fn STREQ( a:* const libc::c_char, b:* const libc::c_char)->bool {  
-  //println!("hahhahahhahahah");
-  //println!("a  is  {:?}, b is  {:?}",CStr::from_ptr(a),CStr::from_ptr(b));
-  return (*a ==*b) && (libc::strcmp(a, b) == 0); 
+unsafe fn STREQ(a: *const libc::c_char, b: *const libc::c_char) -> bool {
+    //println!("hahhahahhahahah");
+    //println!("a  is  {:?}, b is  {:?}",CStr::from_ptr(a),CStr::from_ptr(b));
+    return (*a == *b) && (libc::strcmp(a, b) == 0);
 }
 
-unsafe fn find_minus_o_option (mut name : *mut libc::c_char) -> i32 {
-  //println! ("enter find_minus_o_option");
-  let mut  i : i32 = 0;
-  for j in 0..N_O_OPTIONS!()-1 {
-    i = j as i32;
-    if STREQ(name, o_options[j as usize].name) {
-      return i;
+unsafe fn find_minus_o_option(mut name: *mut libc::c_char) -> i32 {
+    //println! ("enter find_minus_o_option");
+    let mut i: i32 = 0;
+    for j in 0..N_O_OPTIONS!() - 1 {
+        i = j as i32;
+        //println! ("i  is  {}, j is  {}",i,j);
+        let ooo = o_options[j];
+        //println! ("i  is  {}, j is  {}",i,j);
+        if STREQ(name, o_options[j as usize].name) {
+            return i;
+        }
     }
-  }
-  -1
+    -1
 }
 
-unsafe fn minus_o_option_value (name : *mut libc::c_char) -> i32{
-    let mut  i : i32 = 0;
-    let mut on_or_off : *mut i32 = 0 as *mut i32;
+unsafe fn minus_o_option_value(name: *mut libc::c_char) -> i32 {
+    let mut i: i32 = 0;
+    let mut on_or_off: *mut i32 = 0 as *mut i32;
 
-  i = find_minus_o_option (name);
-  if i < 0 {
-     return  -1;
-  }
-  let  options  =  o_options [i as  usize ];
-  if unsafe {options.letter != 0}{
-      if on_or_off == FLAG_UNKNOWN!() {
+    i = find_minus_o_option(name);
+    if i < 0 {
         return -1;
     }
-      return unsafe {*on_or_off};
+    let options = o_options[i as usize];
+    if unsafe { options.letter != 0 } {
+        if on_or_off == FLAG_UNKNOWN!() {
+            return -1;
+        }
+        return unsafe { *on_or_off };
+    } else {
+        unsafe { GET_BINARY_O_OPTION_VALUE!(i, name) }
     }
-  else{
-     unsafe {GET_BINARY_O_OPTION_VALUE!(i, name)}
-  }
 }
 
-unsafe fn print_minus_o_option (name : *mut libc::c_char, value : i32, pflag : i32){ 
+unsafe fn print_minus_o_option(name: *mut libc::c_char, value: i32, pflag: i32) {
     if pflag == 0 {
       if value > 0 {
         println!("{:?} {:?}", CStr::from_ptr(name), CStr::from_ptr(on));
