@@ -198,17 +198,17 @@ macro_rules! name_cell {
 }
 
 #[macro_export]
-macro_rules!  att_array{
-  () => {
-    0x0000004
-  }
+macro_rules! att_array {
+    () => {
+        0x0000004
+    };
 }
 
 #[macro_export]
 macro_rules! value_cell {
-  ($var:expr) => {
-    (*$var).value
-  }
+    ($var:expr) => {
+        (*$var).value
+    };
 }
 
 #[derive(Copy, Clone)]
@@ -225,12 +225,12 @@ pub struct variable {
 
 #[derive(Copy, Clone)]
 #[repr(C)]
- pub struct opp{
-  name : *mut libc::c_char,
-  letter : i32,
-  variable : *mut i32,
-  set_func : Option::<setopt_set_func_t>,
-  get_func : Option::<setopt_get_func_t>,
+pub struct opp {
+    name: *mut libc::c_char,
+    letter: i32,
+    variable: *mut i32,
+    set_func: Option<setopt_set_func_t>,
+    get_func: Option<setopt_get_func_t>,
 }
 
 // #[deny(missing_fragment_specifier)]
@@ -1101,24 +1101,26 @@ unsafe extern "C" fn set_ignoreeof (on_or_off : i32 , option_name : *mut libc::c
   return 0;
 }
 
-unsafe extern "C" fn set_posix_mode (on_or_off : i32 , option_name : *mut libc::c_char) -> i32 {
-  if (on_or_off == FLAG_ON!() && posixly_correct != 0 ) ||
-  (on_or_off == FLAG_OFF!() && posixly_correct == 0){      
+unsafe extern "C" fn set_posix_mode(on_or_off: i32, option_name: *mut libc::c_char) -> i32 {
+    if (on_or_off == FLAG_ON!() && posixly_correct != 0)
+        || (on_or_off == FLAG_OFF!() && posixly_correct == 0)
+    {
+        return 0;
+    }
+    on_or_off == FLAG_ON!();
+    posixly_correct = on_or_off;
+
+    if posixly_correct != 0 {
+        unbind_variable_noref(b"POSIXLY_CORRECT\0" as *const u8 as *const libc::c_char);
+    } else {
+        bind_variable(
+            b"POSIXLY_CORRECT\0" as *const u8 as *const libc::c_char,
+            b"y\0" as *const u8 as *mut libc::c_char,
+            0,
+        );
+    }
+    sv_strict_posix(b"POSIXLY_CORRECT\0" as *const u8 as *mut libc::c_char);
     return 0;
-  }
-  on_or_off == FLAG_ON!();
-  posixly_correct = on_or_off ;
-  
-  if posixly_correct != 0 {
-    unbind_variable_noref(b"POSIXLY_CORRECT\0" as *const u8 as *const libc::c_char);
-  }
-    
-  else  {
-    bind_variable (b"POSIXLY_CORRECT\0" as *const u8 as *const libc::c_char,
-                   b"y\0" as *const u8 as *mut libc::c_char, 0);
-  }
-  sv_strict_posix (b"POSIXLY_CORRECT\0" as *const u8 as *mut libc::c_char);
-  return 0;
 }
 
 unsafe extern "C" fn set_edit_mode (on_or_off : i32 , option_name : *mut libc::c_char) -> i32{
