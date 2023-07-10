@@ -1312,6 +1312,20 @@ pub unsafe fn r_set_shellopts() {
     libc::free(value as *mut libc::c_void);
 }
 
+
+unsafe fn parse_shellopts (value : *mut  libc::c_char) {
+  let mut vname : *mut libc::c_char;
+  let mut vptr : i32 = 0; 
+  loop {
+      vname = extract_colon_unit(value, &mut vptr);
+      if vname != std::ptr::null_mut() {
+          break;
+      }
+      set_minus_o_option(FLAG_ON!(), vname);
+      libc::free(vname as *mut libc::c_void);
+  };
+}
+
 unsafe fn initialize_shell_options (no_shellopts : i32) {
   let mut temp: *mut libc::c_char;
   let mut var : *mut SHELL_VAR = 0 as *mut SHELL_VAR;
