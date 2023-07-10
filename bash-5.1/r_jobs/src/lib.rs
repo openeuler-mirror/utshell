@@ -551,3 +551,27 @@ pub unsafe extern "C"  fn  save_pipeline(clear:c_int)
     saved_already_making_children = already_making_children;
     UNBLOCK_CHILD(&mut oset);
 }
+
+#[no_mangle]
+pub unsafe extern "C"  fn  restore_pipeline(discard:c_int) -> *mut PROCESS
+{
+    let mut old_pipeline:*mut PROCESS;
+    let mut set:sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset:sigset_t = __sigset_t { __val: [0; 16] };
+    let mut saver:*mut pipeline_saver; 
+
+    BLOCK_CHILD (&mut set, &mut oset);
+    old_pipeline = the_pipeline;
+    the_pipeline = (*saved_pipeline).pipeline;
+    saver = saved_pipeline;
+    saved_pipeline = (*saved_pipeline).next;
+    free (saver as *mut c_void);
+    already_making_children = saved_already_making_children;
+    UNBLOCK_CHILD (&mut oset);
+
+    if discard!= 0 && !old_pipeline.is_null() {
+        discard_pipeline (old_pipeline);
+        return 0 as *mut PROCESS ;
+    }
+    return old_pipeline;   
+}
