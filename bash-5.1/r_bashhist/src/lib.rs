@@ -692,6 +692,7 @@ unsafe extern "C" fn check_history_control(mut line: *mut c_char) -> c_int {
     }
     return 1;
 }
+
 unsafe extern "C" fn hc_erasedups(mut line: *mut c_char) {
     let mut temp: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
     let mut r: c_int = 0;
@@ -711,4 +712,30 @@ unsafe extern "C" fn hc_erasedups(mut line: *mut c_char) {
         }
     }
     using_history();
+}
+
+
+#[no_mangle]
+pub unsafe extern "C" fn maybe_add_history(mut line: *mut c_char) {
+    let mut is_comment: c_int = 0;
+    hist_last_line_added = 0 ;
+    is_comment = if parser_state & PST_HEREDOC as c_int != 0 {
+        0  
+    } else {
+        shell_comment(line)
+    };
+        if current_command_first_line_saved != 0
+            && (parser_state & PST_HEREDOC as c_int != 0 || literal_history != 0
+                || dstack.delimiter_depth != 0  
+                || is_comment != 1 )
+        {
+            bash_add_history(line);
+        }
+        current_command_line_comment = if is_comment != 0 {
+            current_command_line_count
+        } else {
+            -(2 as c_int)
+        };
+        return;
+    current_command_first_line_saved = check_add_history(line, 0);
 }
