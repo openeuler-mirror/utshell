@@ -81,18 +81,18 @@ macro_rules! FLAG_OFF{
 }
 
 #[macro_export]
-macro_rules! VUNSETATTR {
-    ($var:expr,$attr:expr) => {
-        (*$var).attributes = (*$var).attributes & !(&$attr);
-        (*$var).attributes
-    };
+macro_rules!  VUNSETATTR{
+  ($var:expr,$attr:expr) => {
+    (*$var).attributes = (*$var).attributes & !(&$attr);
+    (*$var).attributes
+  }
 }
 
 #[macro_export]
 macro_rules! att_exported {
-    () => {
-        0x0000001
-    };
+  () => {
+    0x0000001
+  }
 }
 
 #[macro_export]
