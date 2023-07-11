@@ -172,7 +172,8 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
         match (*command).type_ as libc::c_uint {
             command_type_cm_for => print_for_command((*command).value.For),
             command_type_cm_arith_for => print_arith_for_command((*command).value.ArithFor),
-            _ => {
+            command_type_cm_select => print_select_command((*command).value.Select),
+            command_type_cm_case => print_case_command((*command).value.Case),            _ => {
                         // cprintf_2( CString::new("print_command:bad connector").as_mut() as *const c_char, (*(*command).value.Connection).connector);
                         let mut str = format!("print_command:bas connector {}\0", (*(*command).value.Connection).connector);
                         cprintf_1(str.as_mut_ptr() as *mut c_char);
