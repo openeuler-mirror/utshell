@@ -822,6 +822,11 @@ unsafe extern "C" fn expand_histignore_pattern(mut pat: *mut c_char,) -> *mut c_
 {
     let mut phe: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
     let mut ret: *mut c_char = 0 as *mut c_char;
+
+    phe = last_history_entry();
+    if phe.is_null() {
+        return savestring!(pat);
+    }
     ret = strcreplace(pat, '&' as i32, (*phe).line, 1);
     return ret;
 }
