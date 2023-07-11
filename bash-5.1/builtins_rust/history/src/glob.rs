@@ -37,7 +37,12 @@ pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
     let mut range: *mut c_char;
 
     let mut delete_offset: c_long = 0;
-while  opt != -1 {
+
+unsafe {
+    reset_internal_getopt();
+    let opt_str = CString::new("acd:npsrw").unwrap();
+    opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
+    while  opt != -1 {
         let opt_char:char=char::from(opt as u8);
         match opt_char {
             'a' => flags |= AFLAG,
@@ -62,7 +67,7 @@ while  opt != -1 {
         }
         opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
     }
-   list = loptend;
+    list = loptend;
 
     opt = flags & (AFLAG | RFLAG | WFLAG | NFLAG);
     if opt != 0 && opt != AFLAG && opt != RFLAG && opt != WFLAG && opt != NFLAG {
@@ -70,5 +75,13 @@ while  opt != -1 {
         builtin_error( c_err.as_ptr());
         return EXECUTION_FAILURE;
     }
+
+    if (flags & CFLAG) != 0 {
+        bash_clear_history();
+        if list.is_null() {
+            return EXECUTION_SUCCESS;
+        }
+    }
+
     return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
 }
