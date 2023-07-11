@@ -668,6 +668,16 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
         }
     }
 
+    if !the_pipeline.is_null() {
+        let mut p: *mut PROCESS = 0 as *mut PROCESS;
+        let mut any_running:  c_int = 0;
+        let mut any_stopped:  c_int = 0;
+        let mut n:  c_int = 0;
+
+    } else {
+        newjob = 0 as *mut JOB ;
+    }
+
 
     if async_0 != 0
     {
