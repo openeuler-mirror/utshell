@@ -187,30 +187,27 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{
-    let mut return_code:i32;
-    let mut kmap:Keymap;
-    let mut saved_keymap:Keymap;
-    let mut flags:i32;
-    let mut opt:i32;
-    let mut initfile:*mut c_char;
-    let mut map_name:*mut c_char;
-    let mut fun_name:*mut c_char;
-    let mut unbind_name:*mut c_char;
-    let mut remove_seq:*mut c_char;
-    let mut cmd_seq:*mut c_char;
-    let t:*mut c_char;
+pub extern "C" fn r_bind_builtin(mut list: *mut WordList) -> i32 {
+    let mut return_code: i32;
+    let mut kmap: Keymap;
+    let mut saved_keymap: Keymap;
+    let mut flags: i32;
+    let mut opt: i32;
+    let mut initfile: *mut c_char;
+    let mut map_name: *mut c_char;
+    let mut fun_name: *mut c_char;
+    let mut unbind_name: *mut c_char;
+    let mut remove_seq: *mut c_char;
+    let mut cmd_seq: *mut c_char;
+    let t: *mut c_char;
 
-    unsafe{
-        if no_line_editing != 0{
-        builtin_warning(
-            dcgettext(
+    unsafe {
+        if no_line_editing != 0 {
+            builtin_warning(dcgettext(
                 0 as *const libc::c_char,
                 CString::new("line editing not enabled").unwrap().as_ptr() as *const libc::c_char,
                 5 as libc::c_int,
-            ),
-        );
-
+            ));
         }
 
         kmap = std::ptr::null_mut();
