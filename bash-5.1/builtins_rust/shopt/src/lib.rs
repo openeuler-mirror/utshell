@@ -2,11 +2,11 @@
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 extern crate rcommon;
-use std::ffi::*;
-use rset::r_set_shellopts;
 use libc::*;
+use rset::r_set_shellopts;
+use std::ffi::*;
 
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{WordDesc, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
 /*
 /* First, the user-visible attributes */
@@ -45,39 +45,47 @@ use rhelp::r_builtin_help;
 #define attmask_scope	0x0f00000
 */
 
-pub static att_exported:i32= 0x0000001;	/* export to environment */
-pub static att_readonly:i32= 0x0000002;	/* cannot change */
-pub static att_array:i32= 0x0000004;	/* value is an array */
-pub static att_function:i32= 0x0000008;	/* value is a function */
-pub static att_integer:i32= 0x0000010;	/* internal representation is int */
-pub static att_local:i32= 0x0000020;	/* variable is local to a function */
-pub static att_assoc:i32= 0x0000040;	/* variable is an associative array */
-pub static att_trace:i32= 0x0000080;	/* function is traced with DEBUG trap */
-pub static att_uppercase:i32= 0x0000100;	/* word converted to uppercase on assignment */
-pub static att_lowercase:i32= 0x0000200;	/* word converted to lowercase on assignment */
-pub static att_capcase:i32= 0x0000400;	/* word capitalized on assignment */
-pub static att_nameref:i32= 0x0000800;	/* word is a name reference */
+pub static att_exported: i32 = 0x0000001; /* export to environment */
+pub static att_readonly: i32 = 0x0000002; /* cannot change */
+pub static att_array: i32 = 0x0000004; /* value is an array */
+pub static att_function: i32 = 0x0000008; /* value is a function */
+pub static att_integer: i32 = 0x0000010; /* internal representation is int */
+pub static att_local: i32 = 0x0000020; /* variable is local to a function */
+pub static att_assoc: i32 = 0x0000040; /* variable is an associative array */
+pub static att_trace: i32 = 0x0000080; /* function is traced with DEBUG trap */
+pub static att_uppercase: i32 = 0x0000100; /* word converted to uppercase on assignment */
+pub static att_lowercase: i32 = 0x0000200; /* word converted to lowercase on assignment */
+pub static att_capcase: i32 = 0x0000400; /* word capitalized on assignment */
+pub static att_nameref: i32 = 0x0000800; /* word is a name reference */
 
-pub static user_attrs:i32=att_exported|att_readonly|att_integer|att_local|att_trace|att_uppercase|att_lowercase|att_capcase|att_nameref;
+pub static user_attrs: i32 = att_exported
+    | att_readonly
+    | att_integer
+    | att_local
+    | att_trace
+    | att_uppercase
+    | att_lowercase
+    | att_capcase
+    | att_nameref;
 
-pub static attmask_user:i32= 0x0000fff;
+pub static attmask_user: i32 = 0x0000fff;
 
 /* Internal attributes used for bookkeeping */
-pub static att_invisible:i32= 0x0001000;	/* cannot see */
-pub static att_nounset:i32= 0x0002000;	/* cannot unset */
-pub static att_noassign:i32= 0x0004000;	/* assignment not allowed */
-pub static att_imported:i32= 0x0008000;	/* came from environment */
-pub static att_special:i32= 0x0010000;	/* requires special handling */
-pub static att_nofree:i32= 0x0020000;	/* do not free value on unset */
-pub static att_regenerate:i32= 0x0040000;	/* regenerate when exported */
+pub static att_invisible: i32 = 0x0001000; /* cannot see */
+pub static att_nounset: i32 = 0x0002000; /* cannot unset */
+pub static att_noassign: i32 = 0x0004000; /* assignment not allowed */
+pub static att_imported: i32 = 0x0008000; /* came from environment */
+pub static att_special: i32 = 0x0010000; /* requires special handling */
+pub static att_nofree: i32 = 0x0020000; /* do not free value on unset */
+pub static att_regenerate: i32 = 0x0040000; /* regenerate when exported */
 
-pub static	attmask_int:i32= 0x00ff000;
+pub static attmask_int: i32 = 0x00ff000;
 
 /* Internal attributes used for variable scoping. */
-pub static att_tempvar:i32=0x0100000;	/* variable came from the temp environment */
-pub static att_propagate:i32= 0x0200000;	/* propagate to previous scope */
+pub static att_tempvar: i32 = 0x0100000; /* variable came from the temp environment */
+pub static att_propagate: i32 = 0x0200000; /* propagate to previous scope */
 
-pub static attmask_scope:i32= 0x0f00000;
+pub static attmask_scope: i32 = 0x0f00000;
 extern "C" {
     fn printf(_: *const libc::c_char, _: ...) -> i32;
     fn dcgettext(
@@ -1594,4 +1602,3 @@ pub unsafe extern "C" fn r_initialize_bashopts(no_bashopts: i32) {
     }
     r_set_bashopts();
 }
-
