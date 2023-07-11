@@ -98,17 +98,10 @@ extern "C" {
     fn strlen(_: *const libc::c_char) -> libc::c_ulong;
     fn free(__ptr: *mut libc::c_void);
     fn xmalloc(_: SizeT) -> *mut libc::c_void;
-    fn extract_colon_unit(
-        _: *mut libc::c_char,
-        _: *mut i32,
-    ) -> *mut libc::c_char;
+    fn extract_colon_unit(_: *mut libc::c_char, _: *mut i32) -> *mut libc::c_char;
     static mut localvar_inherit: i32;
     fn find_variable(_: *const libc::c_char) -> *mut ShellVar;
-    fn bind_variable(
-        _: *const libc::c_char,
-        _: *mut libc::c_char,
-        _: i32,
-    ) -> *mut ShellVar;
+    fn bind_variable(_: *const libc::c_char, _: *mut libc::c_char, _: i32) -> *mut ShellVar;
     fn init_bash_argv();
     static mut assoc_expand_once: i32;
     fn dispose_words(_: *mut WordList);
@@ -223,13 +216,11 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
     [
         {
             let init = RShoptVars {
-                name: b"autocd\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"autocd\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &autocd as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
@@ -238,34 +229,29 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
                 name: b"assoc_expand_once\0" as *const u8 as *const libc::c_char
                     as *mut libc::c_char,
                 value: &assoc_expand_once as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"cdable_vars\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"cdable_vars\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &cdable_vars as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"cdspell\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"cdspell\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &cdspelling as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
@@ -1545,7 +1531,7 @@ pub unsafe extern "C" fn r_set_bashopts() {
     libc::free(value as *mut libc::c_void);
 }
 #[no_mangle]
-pub unsafe extern "C" fn r_parse_bashopts( value: *mut libc::c_char) {
+pub unsafe extern "C" fn r_parse_bashopts(value: *mut libc::c_char) {
     let mut vname: *mut libc::c_char = 0 as *mut libc::c_char;
     let mut vptr: i32 = 0;
     let mut ind: i32 = 0;
@@ -1563,31 +1549,27 @@ pub unsafe extern "C" fn r_parse_bashopts( value: *mut libc::c_char) {
                     ((*SHOPT_VARS.as_mut_ptr().offset(ind as isize)).set_func)
                         .expect("non-null function pointer"),
                 ))
-                    .expect(
-                        "non-null function pointer",
-                    )(SHOPT_VARS[ind as usize].name, 1 as i32);
+                .expect("non-null function pointer")(
+                    SHOPT_VARS[ind as usize].name, 1 as i32
+                );
             }
         }
         free(vname as *mut libc::c_void);
-    };
+    }
 }
 #[no_mangle]
 pub unsafe extern "C" fn r_initialize_bashopts(no_bashopts: i32) {
-    let  temp: *mut libc::c_char;
-    let  var: *mut ShellVar;
+    let temp: *mut libc::c_char;
+    let var: *mut ShellVar;
     if no_bashopts == 0 {
         var = find_variable(b"BASHOPTS\0" as *const u8 as *const libc::c_char);
         if !var.is_null() && (*var).attributes & att_imported != 0 {
-            temp = if (*var).attributes & att_array != 0
-                || (*var).attributes & att_assoc != 0
-            {
+            temp = if (*var).attributes & att_array != 0 || (*var).attributes & att_assoc != 0 {
                 std::ptr::null_mut()
             } else {
                 strcpy(
-                    xmalloc(
-                        (1 as libc::c_ulong)
-                            .wrapping_add(strlen((*var).value)),
-                    ) as *mut libc::c_char,
+                    xmalloc((1 as libc::c_ulong).wrapping_add(strlen((*var).value)))
+                        as *mut libc::c_char,
                     (*var).value,
                 )
             };
