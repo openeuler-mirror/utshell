@@ -25,3 +25,18 @@ pub const EXTGLOB_DEFAULT: u32 = 0;
 pub const COND_COMMAND: u32 = 1;
 pub const COND_REGEXP: u32 = 1;
 pub const COPROCESS_SUPPORT: u32 = 1;
+#[no_mangle]
+pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
+
+    let mut flags: c_int = 0;
+    let mut opt: c_int;
+    let mut result: c_int;
+
+    let filename: *mut c_char;
+    let mut delete_arg: *mut c_char = PT_NULL as *mut c_char;
+    let mut range: *mut c_char;
+
+    let mut delete_offset: c_long = 0;
+
+    return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
+}
