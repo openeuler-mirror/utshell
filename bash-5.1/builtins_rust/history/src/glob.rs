@@ -37,6 +37,30 @@ pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
     let mut range: *mut c_char;
 
     let mut delete_offset: c_long = 0;
-
+while  opt != -1 {
+        let opt_char:char=char::from(opt as u8);
+        match opt_char {
+            'a' => flags |= AFLAG,
+            'c' => flags |= CFLAG,
+            'n' => flags |= NFLAG,
+            'r' => flags |= RFLAG,
+            'w' => flags |= WFLAG,
+            's' => flags |= SFLAG,
+            'd' => {
+                flags |= DFLAG;
+                delete_arg = list_optarg;
+            }
+            'p' => flags |= PFLAG,
+            _ => {
+                if opt == -99 {
+                    r_builtin_help();
+                    return EX_USAGE;
+                }
+            r_builtin_usage ();
+            return EX_USAGE;
+            }
+        }
+        opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
+    }
     return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
 }
