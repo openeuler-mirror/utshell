@@ -205,22 +205,25 @@ pub fn r_exit_or_logout(list: *mut WordList) -> i32 {
     let exit_immediate_okay: i32;
     let mut stopmsg: i32;
 
-    unsafe{
-        exit_immediate_okay =   (interactive == 0 || 
-                                last_shell_builtin == r_exit_builtin ||
-                                last_shell_builtin == r_logout_builtin || 
-                                last_shell_builtin == r_jobs_builtin ) as i32;
+    unsafe {
+        exit_immediate_okay = (interactive == 0
+            || last_shell_builtin == r_exit_builtin
+            || last_shell_builtin == r_logout_builtin
+            || last_shell_builtin == r_jobs_builtin) as i32;
 
         /* Check for stopped jobs if thw user wants to.*/
         if exit_immediate_okay == 0 {
             stopmsg = 0;
             for i in 0..js.j_jobslots {
                 // println!("jobs: {}", i);
-                if get_job_by_jid!(i) != std::ptr::null_mut()  && STOPPED!(i){
+                if get_job_by_jid!(i) != std::ptr::null_mut() && STOPPED!(i) {
                     stopmsg = JOB_STATE::JSTOPPED as i32;
                     break;
-                }
-                else if (check_jobs_at_exit != 0)  && (stopmsg ==0) && get_job_by_jid!(i) != std::ptr::null_mut() && RUNNING!(i) {
+                } else if (check_jobs_at_exit != 1)
+                    && (stopmsg == 0)
+                    && get_job_by_jid!(i) != std::ptr::null_mut()
+                    && RUNNING!(i)
+                {
                     stopmsg = JOB_STATE::JRUNNING as i32;
                     break;
                 }
@@ -228,10 +231,9 @@ pub fn r_exit_or_logout(list: *mut WordList) -> i32 {
 
             if stopmsg == JOB_STATE::JSTOPPED as i32 {
                 let names = String::from("stoppedjobs");
-                err_translate_fn(&names,std::ptr::null_mut());
+                err_translate_fn(&names, std::ptr::null_mut());
                 eprintln!();
-            }
-            else if stopmsg == JOB_STATE::JRUNNING as i32{
+            } else if stopmsg == JOB_STATE::JRUNNING as i32 {
                 // libc::fprintf(stream,CString::new("There are runing jobs.\n").unwrap().as_ptr());
                 //eprintln!("There are runing jobs.");
                 let names = String::from("runjobs");
