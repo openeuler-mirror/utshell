@@ -140,8 +140,8 @@ unsafe fn STREQ(a: *const c_char, b: *const c_char) -> bool {
 static mut sourced_logout: i32 = 0;
 
 #[no_mangle]
-pub extern "C" fn r_exit_builtin(list:*mut WordList) -> i32{
-    unsafe{
+pub extern "C" fn r_exit_builtin(list: *mut WordList) -> i32 {
+    unsafe {
         let c_str = CString::new("--help").unwrap();
         let c_ptr = c_str.as_ptr();
         if list != std::ptr::null_mut()
@@ -158,15 +158,14 @@ pub extern "C" fn r_exit_builtin(list:*mut WordList) -> i32{
                 // printToStderr(str);
                 //eprintln!("logout");
                 let names = String::from("logout");
-                err_translate_fn(&names,std::ptr::null_mut());
-			    println!();
-            }else{
+                err_translate_fn(&names, std::ptr::null_mut());
+                println!();
+            } else {
                 // let str:*mut c_char = CString::new("exit\n").unwrap().into_raw();
                 // printToStderr(str);
                 eprintln!("exit");
                 // libc::fprintf(stderr,CString::new("exit\n").unwrap().as_ptr());
             }
-            
         }
         // libc::fflush(stderr);
         return r_exit_or_logout(list);
@@ -174,35 +173,37 @@ pub extern "C" fn r_exit_builtin(list:*mut WordList) -> i32{
 }
 
 #[no_mangle]
-pub extern "C" fn  r_logout_builtin(list:*mut WordList)->i32{
+pub extern "C" fn r_logout_builtin(list: *mut WordList) -> i32 {
     unsafe {
         let c_str = CString::new("--help").unwrap();
         let c_ptr = c_str.as_ptr();
-        if list != std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && 
-           STREQ((*(*list).word).word, c_ptr){
-               r_builtin_help();
-               return EX_USAGE;
+        if list != std::ptr::null_mut()
+            && (*list).word != std::ptr::null_mut()
+            && STREQ((*(*list).word).word, c_ptr)
+        {
+            r_builtin_help();
+            return EX_USAGE;
         }
 
-        if login_shell == 0{
+        if login_shell == 0 {
             let names = String::from("logout");
-            err_translate_fn(&names,std::ptr::null_mut());
-			println!();
+            err_translate_fn(&names, std::ptr::null_mut());
+            println!();
             let c_str = CString::new("not login shell: use `exit'").unwrap();
             let c_ptr = c_str.as_ptr();
             builtin_error(c_ptr);
 
             return EXECUTION_FAILURE!();
-        }else{
-            return r_exit_or_logout(list)
+        } else {
+            return r_exit_or_logout(list);
         }
     }
 }
 
-pub fn r_exit_or_logout(list:*mut WordList)->i32{
-    let  exit_value:i32;
-    let  exit_immediate_okay:i32;
-    let mut stopmsg:i32;
+pub fn r_exit_or_logout(list: *mut WordList) -> i32 {
+    let exit_value: i32;
+    let exit_immediate_okay: i32;
+    let mut stopmsg: i32;
 
     unsafe{
         exit_immediate_okay =   (interactive == 0 || 

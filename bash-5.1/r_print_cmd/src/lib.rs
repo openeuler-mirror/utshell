@@ -173,7 +173,10 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
             command_type_cm_for => print_for_command((*command).value.For),
             command_type_cm_arith_for => print_arith_for_command((*command).value.ArithFor),
             command_type_cm_select => print_select_command((*command).value.Select),
-            command_type_cm_case => print_case_command((*command).value.Case),            _ => {
+            command_type_cm_case => print_case_command((*command).value.Case),
+            command_type_cm_while => print_while_command((*command).value.While),
+            command_type_cm_until => print_until_command((*command).value.While),
+            command_type_cm_if => print_if_command((*command).value.If),            _ => {
                         // cprintf_2( CString::new("print_command:bad connector").as_mut() as *const c_char, (*(*command).value.Connection).connector);
                         let mut str = format!("print_command:bas connector {}\0", (*(*command).value.Connection).connector);
                         cprintf_1(str.as_mut_ptr() as *mut c_char);
