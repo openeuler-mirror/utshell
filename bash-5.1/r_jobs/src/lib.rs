@@ -758,6 +758,9 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
         newjob = 0 as *mut JOB ;
     }
 
+    if !newjob.is_null() {
+        js.j_lastmade = newjob;
+    } 
 
     if async_0 != 0
     {
