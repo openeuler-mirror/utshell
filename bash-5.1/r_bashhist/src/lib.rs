@@ -831,3 +831,12 @@ unsafe extern "C" fn expand_histignore_pattern(mut pat: *mut c_char,) -> *mut c_
     return ret;
 }
 
+
+unsafe extern "C" fn history_should_ignore(mut line: *mut c_char) -> c_int {
+    let mut i: c_int = 0;
+    let mut match_0: c_int = 0;
+    let mut npat: *mut c_char = 0 as *mut c_char;
+    return match_0;
+}
+
+
