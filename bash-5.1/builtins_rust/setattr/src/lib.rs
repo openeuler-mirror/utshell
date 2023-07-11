@@ -252,35 +252,42 @@ pub extern "C" fn show_all_var_attributes(v: c_int, nodefs: c_int) -> c_int {
     let mut any_failed = 0;
     let mut var: *mut SHELL_VAR;
     let variable_list: *mut *mut SHELL_VAR;
-unsafe {
-    variable_list =  if  v != 0 {all_shell_variables() } else {all_shell_functions()};
-    if variable_list.is_null() {
-        return EXECUTION_SUCCESS;
-    }
+    unsafe {
+        variable_list = if v != 0 {
+            all_shell_variables()
+        } else {
+            all_shell_functions()
+        };
+        if variable_list.is_null() {
+            return EXECUTION_SUCCESS;
+        }
 
-    loop {
-        var = *(variable_list.offset(i));
-        if var.is_null() {
-            break;
+        loop {
+            var = *(variable_list.offset(i));
+            if var.is_null() {
+                break;
+            }
+            let pattr = (this_shell_builtin as usize == r_readonly_builtin as usize)
+                || (this_shell_builtin as usize == r_export_builtin as usize);
+            if pattr {
+                show_var_attributes(var, 1, nodefs);
+            } else {
+                show_var_attributes(var, 0, nodefs);
+            }
+            any_failed = sh_chkwrite(any_failed);
+            if any_failed != 0 {
+                break;
+            }
+            i += 1;
         }
-        let pattr = (this_shell_builtin as usize == r_readonly_builtin as usize) ||
-            (this_shell_builtin as usize == r_export_builtin as usize);
-        if pattr {
-            show_var_attributes(var, 1, nodefs);
-        }
-        else {
-            show_var_attributes(var, 0, nodefs);
-        }
-        any_failed = sh_chkwrite(any_failed);
-        if any_failed != 0 {
-            break;
-        }
-        i += 1;
-    }
 
-    libc::free(variable_list as *mut c_void);
-}
-    return if any_failed == 0 {EXECUTION_SUCCESS} else {EXECUTION_FAILURE};
+        libc::free(variable_list as *mut c_void);
+    }
+    return if any_failed == 0 {
+        EXECUTION_SUCCESS
+    } else {
+        EXECUTION_FAILURE
+    };
 }
 
 #[no_mangle]
