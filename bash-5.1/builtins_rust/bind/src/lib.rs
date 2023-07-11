@@ -21,6 +21,7 @@ pub struct _keymap_entry {
 type KEYMAP_ENTRY = _keymap_entry;
 type Keymap = *mut KEYMAP_ENTRY;
 type rl_command_func_t = extern "C" fn(c_int, c_int) -> c_int;
+//emun
 
 #[macro_export]
 macro_rules! LFLAG {
@@ -128,59 +129,62 @@ macro_rules! ANYOTHERKEY {
     };
 }
 
-
-extern "C"{
+extern "C" {
     fn dcgettext(
         __domainname: *const libc::c_char,
         __msgid: *const libc::c_char,
         __category: libc::c_int,
     ) -> *mut libc::c_char;
-    static no_line_editing:i32;
-    static bash_readline_initialized:i32;
-    static mut rl_outstream:*mut File;
-    static stdout:*mut File;
-    static list_optarg:*mut c_char;
-    static loptend:*mut WordList;
+    static no_line_editing: i32;
+    static bash_readline_initialized: i32;
+    static mut rl_outstream: *mut File;
+    static stdout: *mut File;
+    static list_optarg: *mut c_char;
+    static loptend: *mut WordList;
 
-    fn builtin_warning(format:*const c_char,...);
+    fn builtin_warning(format: *const c_char, ...);
     fn initialize_readline();
-    fn begin_unwind_frame(tar:*mut c_char);
-    fn run_unwind_frame(tag:*mut c_char);
-    fn unwind_protect_mem(var:*mut c_char,size:i32);
+    fn begin_unwind_frame(tar: *mut c_char);
+    fn run_unwind_frame(tag: *mut c_char);
+    fn unwind_protect_mem(var: *mut c_char, size: i32);
     fn reset_internal_getopt();
-    fn internal_getopt(list:*mut WordList,opts:*mut c_char)->i32;
+    fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> i32;
     // fn builtin_usage();
-    fn rl_set_keymap(map:Keymap);
+    fn rl_set_keymap(map: Keymap);
     // fn sh_chkwrite(s:i32)->i32;
-    fn builtin_error(format:*const c_char,...);
-    fn rl_named_function(string:*const c_char)->*mut rl_command_func_t;
-    fn rl_invoking_keyseqs(function:*mut rl_command_func_t)->*mut *mut c_char;
-    fn strvec_dispose(array:*mut *mut c_char);
-    fn rl_unbind_function_in_map(func:*mut rl_command_func_t,map:Keymap)->i32;
-    fn rl_get_keymap()->Keymap;
-    fn unbind_unix_command(kseq:*mut c_char)->i32;
-    fn bash_execute_unix_command(count:i32,key:i32)->i32;
-    fn rl_bind_keyseq(keyseq:*const c_char,function:*mut rl_command_func_t)->i32;
-    fn rl_function_of_keyseq_len(keyseq:*const c_char,len:size_t,map:Keymap,Type:*mut i32)->*mut rl_command_func_t;
-    fn rl_translate_keyseq(seq:*const c_char,array:*mut c_char,len:*mut i32)->i32;
-    fn xmalloc(n:size_t)->*mut c_void;
-    fn rl_get_keymap_by_name(name:*const c_char)->Keymap;
+    fn builtin_error(format: *const c_char, ...);
+    fn rl_named_function(string: *const c_char) -> *mut rl_command_func_t;
+    fn rl_invoking_keyseqs(function: *mut rl_command_func_t) -> *mut *mut c_char;
+    fn strvec_dispose(array: *mut *mut c_char);
+    fn rl_unbind_function_in_map(func: *mut rl_command_func_t, map: Keymap) -> i32;
+    fn rl_get_keymap() -> Keymap;
+    fn unbind_unix_command(kseq: *mut c_char) -> i32;
+    fn bash_execute_unix_command(count: i32, key: i32) -> i32;
+    fn rl_bind_keyseq(keyseq: *const c_char, function: *mut rl_command_func_t) -> i32;
+    fn rl_function_of_keyseq_len(
+        keyseq: *const c_char,
+        len: size_t,
+        map: Keymap,
+        Type: *mut i32,
+    ) -> *mut rl_command_func_t;
+    fn rl_translate_keyseq(seq: *const c_char, array: *mut c_char, len: *mut i32) -> i32;
+    fn xmalloc(n: size_t) -> *mut c_void;
+    fn rl_get_keymap_by_name(name: *const c_char) -> Keymap;
     fn rl_list_funmap_names();
-    fn rl_function_dumper(print_readably:i32);
-    fn rl_macro_dumper(print_readably:i32);
-    fn rl_variable_dumper(print_readably:i32);
-    fn rl_read_init_file(filename:*const c_char)->i32;
-    fn printable_filename(Fn:*mut c_char,flags:i32)->*mut c_char;
+    fn rl_function_dumper(print_readably: i32);
+    fn rl_macro_dumper(print_readably: i32);
+    fn rl_variable_dumper(print_readably: i32);
+    fn rl_read_init_file(filename: *const c_char) -> i32;
+    fn printable_filename(Fn: *mut c_char, flags: i32) -> *mut c_char;
     // fn query_bindings(name:*mut c_char)->i32;
     // fn unbind_command(name:*mut c_char)->i32;
     // fn unbind_keyseq(seq:*mut c_char)->i32;
-    fn bind_keyseq_to_unix_command(line:*mut c_char)->i32;
-    fn print_unix_command_map()->i32;
-    fn strvec_len(array:*mut *mut  c_char)->i32;
-    fn rl_parse_and_bind(string:*mut c_char)->i32;
-    fn strvec_search(array:*mut *mut c_char,name:*mut c_char)->i32;
+    fn bind_keyseq_to_unix_command(line: *mut c_char) -> i32;
+    fn print_unix_command_map() -> i32;
+    fn strvec_len(array: *mut *mut c_char) -> i32;
+    fn rl_parse_and_bind(string: *mut c_char) -> i32;
+    fn strvec_search(array: *mut *mut c_char, name: *mut c_char) -> i32;
 }
-
 
 #[no_mangle]
 pub extern "C" fn r_bind_builtin(mut list:*mut WordList)->i32{

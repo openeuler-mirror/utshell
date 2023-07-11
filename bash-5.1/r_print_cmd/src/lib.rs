@@ -150,13 +150,23 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
     if command.is_null(){
         cprintf_1 (b"\0" as *const u8 as *const i8);
     }
-    else{
+    else
+    {
         if skip_this_indent != 0 {
             skip_this_indent = skip_this_indent - 1;
         }
         else{
             indent(indentation);
-        } 
+        }
+        if (*command).flags != 0 && CMD_TIME_PIPELINE != 0{
+            cprintf_1(b"time " as *const u8 as *const i8);
+            if (*command).flags != 0 && CMD_TIME_POSIX != 0{
+                cprintf_1(b"-p " as *const u8 as *const i8);
+            }
+        }
+        if (*command).flags != 0 && CMD_INVERT_RETURN != 0{
+            cprintf_1(b"! " as *const u8 as *const i8);
+        }    
     }
         
 }
