@@ -729,11 +729,13 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
                 chars_to_add = chars_to_add.offset(1);
             }
 
-	new_line = malloc((1 + curlen + strlen(line) as i32 + strlen(chars_to_add )as i32) as usize) as *mut c_char;
-	sprintf(new_line,b"%s%s%s\0" as *const u8 as *const c_char,
-	(*current).line, chars_to_add, line);
-	offset = where_history();
-	old = replace_history_entry(offset, new_line, (*current).data);
+            new_line = malloc((1 + curlen + strlen(line) as i32 + strlen(chars_to_add )as i32) as usize) as *mut c_char;
+            sprintf(new_line,b"%s%s%s\0" as *const u8 as *const c_char,
+                (*current).line, chars_to_add, line);
+            offset = where_history();
+            old = replace_history_entry(offset, new_line, (*current).data);
+            
+            free(new_line as *mut c_void);
             if !old.is_null() {
                 free_history_entry(old);
             }
