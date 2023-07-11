@@ -166,7 +166,15 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
         }
         if (*command).flags != 0 && CMD_INVERT_RETURN != 0{
             cprintf_1(b"! " as *const u8 as *const i8);
-        }    
-    }
+        }   
+
+        // (*command).type_ = 11;
+        match (*command).type_ as libc::c_uint {
+            _ => {
+                        // cprintf_2( CString::new("print_command:bad connector").as_mut() as *const c_char, (*(*command).value.Connection).connector);
+                        let mut str = format!("print_command:bas connector {}\0", (*(*command).value.Connection).connector);
+                        cprintf_1(str.as_mut_ptr() as *mut c_char);
+                    }       
+        }
         
 }
