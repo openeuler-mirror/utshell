@@ -491,27 +491,6 @@ unsafe extern "C" fn history_expansion_p(mut line: *mut c_char) -> c_int {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn maybe_save_shell_history() -> c_int {
-    let mut result: c_int = 0;
-    let mut hf: *mut c_char = 0 as *mut c_char;
-    result = 0 ;
-    if history_lines_this_session > 0  {
-        hf = get_string_value(b"HISTFILE\0" as *const u8 as *const c_char);
-        if !hf.is_null() && *hf as c_int != 0 {
-            if file_exists(hf) == 0  {
-                let mut file: c_int = 0;
-                file = open(hf,O_CREAT as c_int | O_TRUNC as c_int | O_WRONLY as c_int,0o600 as c_int);
-                if file != -1 {
-                    close(file);
-                }
-            }
-        }
-    }
-    return result;
-}
-
-
-#[no_mangle]
 pub unsafe extern "C" fn pre_process_line(mut line: *mut c_char, mut print_changes: c_int, mut addit: c_int) -> *mut c_char 
 {
     let mut history_value: *mut c_char = 0 as *mut c_char;
@@ -734,11 +713,21 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
         } else {
             -(2 as c_int)
         };
-	if dstack.delimiter_depth == 0 && *((*current).line).offset((curlen - 1) as isize) as c_int == '\n' as i32
-	&& *chars_to_add as c_int == ';' as i32
-	{
-	chars_to_add = chars_to_add.offset(1);
-	}
+        if !current.is_null() {
+            curlen = strlen((*current).line) as c_int;
+            if dstack.delimiter_depth == 0  
+                && *((*current).line).offset((curlen - 1) as isize) as c_int == '\\' as i32
+                && *((*current).line).offset((curlen - 2) as isize) as c_int != '\\' as i32
+            {
+                *((*current).line).offset((curlen - 1) as isize) = '\u{0}' as i32 as c_char;
+                curlen -= 1;
+                chars_to_add = b"\0" as *const u8 as *mut c_char;
+            }
+            if dstack.delimiter_depth == 0 && *((*current).line).offset((curlen - 1) as isize) as c_int == '\n' as i32
+                && *chars_to_add as c_int == ';' as i32
+            {
+                chars_to_add = chars_to_add.offset(1);
+            }
 
 	new_line = malloc((1 + curlen + strlen(line) as i32 + strlen(chars_to_add )as i32) as usize) as *mut c_char;
 	sprintf(new_line,b"%s%s%s\0" as *const u8 as *const c_char,

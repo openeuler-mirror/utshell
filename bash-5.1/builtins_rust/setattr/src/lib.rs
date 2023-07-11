@@ -1,8 +1,8 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 
-use libc::{c_int, c_uint, c_char, c_long, PT_NULL, c_void};
+use libc::{c_char, c_int, c_long, c_uint, c_void, PT_NULL};
 use rhelp::r_builtin_help;
 include!(concat!("intercdep.rs"));
 use std::ffi::CStr;
@@ -36,205 +36,214 @@ pub extern "C" fn set_or_show_attributes(
     let mut tlist: *mut WordList;
     let mut nlist: *mut WordList;
     let mut w: *mut WordDesc;
-unsafe {
-    reset_internal_getopt();
-    let opt_str = std::ffi::CString::new("aAfnp").unwrap();
-    let mut opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
-    while  opt != -1 {
-        let opt_char:char=char::from(opt as u8);
-        match opt_char {
-            'n' => undo = 1,
-            'f' => functions_only = true,
-            'a' => arrays_only = 1,
-            'A' => assoc_only = 1,
-            'p' => break,
-            _ => {
-                if opt == -99 {
-                    r_builtin_help();
+    unsafe {
+        reset_internal_getopt();
+        let opt_str = std::ffi::CString::new("aAfnp").unwrap();
+        let mut opt = internal_getopt(list, opt_str.as_ptr() as *mut c_char);
+        while opt != -1 {
+            let opt_char: char = char::from(opt as u8);
+            match opt_char {
+                'n' => undo = 1,
+                'f' => functions_only = true,
+                'a' => arrays_only = 1,
+                'A' => assoc_only = 1,
+                'p' => break,
+                _ => {
+                    if opt == -99 {
+                        r_builtin_help();
+                        return EX_USAGE;
+                    }
+                    builtin_usage();
                     return EX_USAGE;
                 }
-            builtin_usage ();
-            return EX_USAGE;
             }
+            opt = internal_getopt(list, opt_str.as_ptr() as *mut c_char);
         }
-        opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
-    }
-    list = loptend;
+        list = loptend;
 
-    if !list.is_null() {
-        if attribute & att_exported != 0 {
-            array_needs_making = 1;
-        }
-        if undo != 0 && (attribute & att_readonly) != 0 {
-            attribute &= !att_readonly;
-        }
-        while !list.is_null() {
-            name = (*(*list).word).word;
-
-            if functions_only {
-                var = find_function(name);
-                if var.is_null() {
-                    builtin_error("%s: not a function\0".as_ptr() as *const c_char, name);
-                    any_failed += 1;
-                } else if (attribute & att_exported) != 0 && undo == 0 &&
-                    exportable_function_name(name) == 0 {
-                    builtin_error("%s: cannot export\0".as_ptr() as *const c_char, name);
-                    any_failed += 1;
-                } else {
-                    if undo == 0 {
-                        (*var).attributes |= attribute;
-                     } else {
-                        (*var).attributes &= !attribute;
-                    }
-                }
-                list = (*list).next;
-                continue;
+        if !list.is_null() {
+            if attribute & att_exported != 0 {
+                array_needs_making = 1;
             }
-            assign = assignment(name, 0);
-            aflags = 0;
-            if assign != 0 {
-                *(name.offset(assign  as isize ) ) = b'\0' as c_char;
-                if *((name.offset((assign-1)  as isize))) == b'+' as c_char {
-                    aflags |= ASS_APPEND;
-                    *(name.offset((assign-1)  as isize))  = b'\0' as c_char;
-                }
+            if undo != 0 && (attribute & att_readonly) != 0 {
+                attribute &= !att_readonly;
             }
+            while !list.is_null() {
+                name = (*(*list).word).word;
 
-            if legal_identifier(name) == 0 {
-                sh_invalidid(name);
-                if assign != 0 {
-                    assign_error += 1;
-                } else {
-                    any_failed += 1;
-                }
-                list = (*list).next;
-                continue;
-            }
-
-            if assign != 0 {
-                *(name.offset(assign  as isize)) = b'=' as c_char;
-                if (aflags & ASS_APPEND) != 0 {
-                    *(name.offset((assign-1) as isize)) = b'+' as c_char;
-                }
-
-                if arrays_only != 0 || assoc_only != 0 {
-                    tlist = (*list).next;
-                    (*list).next = PT_NULL as *mut WordList;
-
-                    let mut optw: [u8;8] = [0;8];
-                    optw[0] = b'-';
-                    optw[1] = b'g';
-                    let mut opti = 2;
-                    if (attribute & att_readonly) != 0 {
-                        optw[opti] = b'r';
-                        opti += 1;
-                    }
-                    if (attribute & att_exported) != 0 {
-                        optw[opti] = b'x';
-                        opti += 1;
-                    }
-                    if (attribute & arrays_only) != 0 {
-                        optw[opti] = b'a';
-                        opti += 1;
+                if functions_only {
+                    var = find_function(name);
+                    if var.is_null() {
+                        builtin_error("%s: not a function\0".as_ptr() as *const c_char, name);
+                        any_failed += 1;
+                    } else if (attribute & att_exported) != 0
+                        && undo == 0
+                        && exportable_function_name(name) == 0
+                    {
+                        builtin_error("%s: cannot export\0".as_ptr() as *const c_char, name);
+                        any_failed += 1;
                     } else {
-                        optw[opti] = b'A';
-                        opti += 1;
+                        if undo == 0 {
+                            (*var).attributes |= attribute;
+                        } else {
+                            (*var).attributes &= !attribute;
+                        }
+                    }
+                    list = (*list).next;
+                    continue;
+                }
+                assign = assignment(name, 0);
+                aflags = 0;
+                if assign != 0 {
+                    *(name.offset(assign as isize)) = b'\0' as c_char;
+                    if *(name.offset((assign - 1) as isize)) == b'+' as c_char {
+                        aflags |= ASS_APPEND;
+                        *(name.offset((assign - 1) as isize)) = b'\0' as c_char;
+                    }
+                }
+
+                if legal_identifier(name) == 0 {
+                    sh_invalidid(name);
+                    if assign != 0 {
+                        assign_error += 1;
+                    } else {
+                        any_failed += 1;
+                    }
+                    list = (*list).next;
+                    continue;
+                }
+
+                if assign != 0 {
+                    *(name.offset(assign as isize)) = b'=' as c_char;
+                    if (aflags & ASS_APPEND) != 0 {
+                        *(name.offset((assign - 1) as isize)) = b'+' as c_char;
                     }
 
-                    w = make_word(optw.as_ptr() as *const c_char);
-                    nlist = make_word_list(w, list);
+                    if arrays_only != 0 || assoc_only != 0 {
+                        tlist = (*list).next;
+                        (*list).next = PT_NULL as *mut WordList;
 
-                    opt = declare_builtin(nlist);
-                    if opt != EXECUTION_SUCCESS {
+                        let mut optw: [u8; 8] = [0; 8];
+                        optw[0] = b'-';
+                        optw[1] = b'g';
+                        let mut opti = 2;
+                        if (attribute & att_readonly) != 0 {
+                            optw[opti] = b'r';
+                            opti += 1;
+                        }
+                        if (attribute & att_exported) != 0 {
+                            optw[opti] = b'x';
+                            opti += 1;
+                        }
+                        if (attribute & arrays_only) != 0 {
+                            optw[opti] = b'a';
+                            opti += 1;
+                        } else {
+                            optw[opti] = b'A';
+                            opti += 1;
+                        }
+
+                        w = make_word(optw.as_ptr() as *const c_char);
+                        nlist = make_word_list(w, list);
+
+                        opt = declare_builtin(nlist);
+                        if opt != EXECUTION_SUCCESS {
+                            assign_error += 1;
+                        }
+                        (*list).next = tlist;
+                        dispose_word(w);
+                        libc::free(nlist as *mut c_void);
+                    } else if do_assignment_no_expand(name) == 0 {
                         assign_error += 1;
                     }
-                    (*list).next = tlist;
-                    dispose_word(w);
-                    libc::free(nlist as *mut c_void);
-                } else if do_assignment_no_expand(name) == 0 {
-                    assign_error += 1;
+                    *(name.offset(assign as isize)) = b'\0' as c_char;
+                    if (aflags & ASS_APPEND) != 0 {
+                        *(name.offset((assign - 1) as isize)) = b'\0' as c_char;
+                    }
                 }
-                *(name.offset(assign  as isize))  = b'\0' as c_char;
-                if (aflags & ASS_APPEND) != 0 {
-                    *(name.offset((assign-1)  as isize))  = b'\0' as c_char;
-                }
-            }
 
-            set_var_attribute(name, attribute, undo);
-            if assign != 0 {
-                *(name.offset(assign  as isize))  = b'=' as c_char;
-                // *((name as usize + assign as usize) as *mut c_char) = b'=' as c_char;
-                if (aflags & ASS_APPEND) != 0 {
-                    *(name.offset((assign-1)  as isize))  = b'+' as c_char;
+                set_var_attribute(name, attribute, undo);
+                if assign != 0 {
+                    *(name.offset(assign as isize)) = b'=' as c_char;
+                    // *((name as usize + assign as usize) as *mut c_char) = b'=' as c_char;
+                    if (aflags & ASS_APPEND) != 0 {
+                        *(name.offset((assign - 1) as isize)) = b'+' as c_char;
+                    }
                 }
-            }
-            list = (*list).next;
-        }
-    } else {
-        let variable_list: *mut *mut SHELL_VAR;
-        if (attribute & att_function) != 0 || functions_only {
-            variable_list = all_shell_functions();
-            if attribute != att_function {
-                attribute &= !att_function;
+                list = (*list).next;
             }
         } else {
-            variable_list = all_shell_variables();
-        }
-
-        if (attribute & att_array) != 0 {
-            arrays_only += 1;
-            if attribute != att_array {
-                attribute &= !att_array;
+            let variable_list: *mut *mut SHELL_VAR;
+            if (attribute & att_function) != 0 || functions_only {
+                variable_list = all_shell_functions();
+                if attribute != att_function {
+                    attribute &= !att_function;
+                }
+            } else {
+                variable_list = all_shell_variables();
             }
-        } else if (attribute & att_assoc) != 0 {
-            assoc_only += 1;
-            if attribute != att_assoc {
-                attribute &= !att_assoc;
+
+            if (attribute & att_array) != 0 {
+                arrays_only += 1;
+                if attribute != att_array {
+                    attribute &= !att_array;
+                }
+            } else if (attribute & att_assoc) != 0 {
+                assoc_only += 1;
+                if attribute != att_assoc {
+                    attribute &= !att_assoc;
+                }
             }
-        }
 
-        if !variable_list.is_null() {
-            let mut i = 0;
-            loop {
-                var = *(variable_list.offset(i))  as  *mut SHELL_VAR;
-                if var.is_null() {
-                    break;
-                }
-
-                if arrays_only != 0 && (((*var).attributes & att_array) == 0) {
-                    i += 1;
-                    continue;
-                } else if assoc_only != 0 && (((*var).attributes & att_assoc) == 0) {
-                    i += 1;
-                    continue;
-                }
-
-                if ((*var).attributes & (att_invisible | att_exported)) == (att_invisible | att_exported) {
-                    i += 1;
-                    continue;
-                }
-
-                if ((*var).attributes & attribute) != 0 {
-                    let pattr = (this_shell_builtin as usize == r_readonly_builtin as usize) ||
-                        (this_shell_builtin as usize == r_export_builtin as usize);
-                    if pattr {
-                        show_var_attributes(var, 1, nodefs);
-                    }
-                    else {
-                        show_var_attributes(var, 0, nodefs);
-                    }
-                    any_failed = sh_chkwrite(any_failed);
-                    if any_failed != 0 {
+            if !variable_list.is_null() {
+                let mut i = 0;
+                loop {
+                    var = *(variable_list.offset(i)) as *mut SHELL_VAR;
+                    if var.is_null() {
                         break;
                     }
+
+                    if arrays_only != 0 && (((*var).attributes & att_array) == 0) {
+                        i += 1;
+                        continue;
+                    } else if assoc_only != 0 && (((*var).attributes & att_assoc) == 0) {
+                        i += 1;
+                        continue;
+                    }
+
+                    if ((*var).attributes & (att_invisible | att_exported))
+                        == (att_invisible | att_exported)
+                    {
+                        i += 1;
+                        continue;
+                    }
+
+                    if ((*var).attributes & attribute) != 0 {
+                        let pattr = (this_shell_builtin as usize == r_readonly_builtin as usize)
+                            || (this_shell_builtin as usize == r_export_builtin as usize);
+                        if pattr {
+                            show_var_attributes(var, 1, nodefs);
+                        } else {
+                            show_var_attributes(var, 0, nodefs);
+                        }
+                        any_failed = sh_chkwrite(any_failed);
+                        if any_failed != 0 {
+                            break;
+                        }
+                    }
+                    i += 1;
                 }
-                i += 1;
+                libc::free(variable_list as *mut c_void);
             }
-            libc::free(variable_list as *mut c_void);
         }
     }
-}
-    return if assign_error != 0 {EX_BADASSIGN} else if any_failed == 0 {EXECUTION_SUCCESS} else {EXECUTION_FAILURE};
+    return if assign_error != 0 {
+        EX_BADASSIGN
+    } else if any_failed == 0 {
+        EXECUTION_SUCCESS
+    } else {
+        EXECUTION_FAILURE
+    };
 }
 
 #[no_mangle]
