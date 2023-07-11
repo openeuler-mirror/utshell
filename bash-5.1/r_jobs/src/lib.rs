@@ -673,6 +673,22 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
         let mut any_running:  c_int = 0;
         let mut any_stopped:  c_int = 0;
         let mut n:  c_int = 0;
+        newjob = xmalloc (std::mem::size_of::<JOB>() as c_int as usize) as *mut JOB;
+   
+        n = 1 as  c_int;
+        p = the_pipeline;
+        while (*p).next != the_pipeline {
+            n += 1;
+            p = (*p).next;
+        }
+
+        (*p).next = 0 as *mut PROCESS;
+        if !the_pipeline.is_null() && !((*the_pipeline).next).is_null() {
+            (*newjob).pipe =  list_reverse(the_pipeline as *mut GENERIC_LIST) as *mut PROCESS
+        } else {
+            (*newjob).pipe = the_pipeline;
+        };
+
 
     } else {
         newjob = 0 as *mut JOB ;
