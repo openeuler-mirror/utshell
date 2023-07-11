@@ -180,7 +180,16 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
             command_type_cm_arith => r_print_arith_command((*(*command).value.Arith).exp),
             command_type_cm_cond => r_print_cond_command((*command).value.Cond),
             command_type_cm_simple => r_print_simple_command((*command).value.Simple),
-            _ => {
+            command_type_cm_connection => {
+                skip_this_indent = skip_this_indent + 1;
+                printing_connection = printing_connection + 1;
+                make_command_string_internal((*(*command).value.Connection).first);
+                let _str_1 = b'&' as i32;
+                let _str_1 = b'|' as i32;
+                let _str_3 = b';' as i32;
+                match (*(*command).value.Connection).connector{           
+                }
+                _ => {
                         // cprintf_2( CString::new("print_command:bad connector").as_mut() as *const c_char, (*(*command).value.Connection).connector);
                         let mut str = format!("print_command:bas connector {}\0", (*(*command).value.Connection).connector);
                         cprintf_1(str.as_mut_ptr() as *mut c_char);
