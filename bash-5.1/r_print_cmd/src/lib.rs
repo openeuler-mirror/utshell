@@ -176,7 +176,11 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
             command_type_cm_case => print_case_command((*command).value.Case),
             command_type_cm_while => print_while_command((*command).value.While),
             command_type_cm_until => print_until_command((*command).value.While),
-            command_type_cm_if => print_if_command((*command).value.If),            _ => {
+            command_type_cm_if => print_if_command((*command).value.If), 
+            command_type_cm_arith => r_print_arith_command((*(*command).value.Arith).exp),
+            command_type_cm_cond => r_print_cond_command((*command).value.Cond),
+            command_type_cm_simple => r_print_simple_command((*command).value.Simple),
+            _ => {
                         // cprintf_2( CString::new("print_command:bad connector").as_mut() as *const c_char, (*(*command).value.Connection).connector);
                         let mut str = format!("print_command:bas connector {}\0", (*(*command).value.Connection).connector);
                         cprintf_1(str.as_mut_ptr() as *mut c_char);
