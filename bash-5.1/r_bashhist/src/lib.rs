@@ -786,6 +786,13 @@ unsafe extern "C" fn should_expand(mut s: *mut c_char) -> c_int {
     return 0  ;
 }
 
+unsafe extern "C" fn histignore_item_func(mut ign: *mut ign) -> c_int {
+    if should_expand((*ign).val) != 0 {
+        (*ign).flags |= HIGN_EXPAND!();
+    }
+    return 0  ;
+}
+
 
 #[no_mangle]
 pub unsafe extern "C" fn setup_history_ignore(mut varname: *mut c_char) {
