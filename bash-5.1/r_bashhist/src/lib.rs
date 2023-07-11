@@ -785,3 +785,9 @@ unsafe extern "C" fn should_expand(mut s: *mut c_char) -> c_int {
     }
     return 0  ;
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn setup_history_ignore(mut varname: *mut c_char) {
+    setup_ignore_patterns(&mut histignore);
+}
