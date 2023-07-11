@@ -736,3 +736,15 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
 	old = replace_history_entry(offset, new_line, (*current).data);
     }
 }
+
+
+
+#[no_mangle]
+pub unsafe extern "C" fn history_number() -> c_int {
+    using_history();
+    return if remember_on_history != 0 || enable_history_list != 0 {
+        history_base + where_history()
+    } else {
+        1  
+    };
+}
