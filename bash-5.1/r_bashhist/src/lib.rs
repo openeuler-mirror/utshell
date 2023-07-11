@@ -754,6 +754,12 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
 }
 
 
+unsafe extern "C" fn really_add_history(mut line: *mut c_char) {
+    hist_last_line_added = 1 ;
+    hist_last_line_pushed = 0 ;
+    add_history(line);
+    history_lines_this_session += 1;
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn history_number() -> c_int {
