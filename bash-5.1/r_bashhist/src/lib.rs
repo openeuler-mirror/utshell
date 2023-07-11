@@ -734,6 +734,16 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
 	(*current).line, chars_to_add, line);
 	offset = where_history();
 	old = replace_history_entry(offset, new_line, (*current).data);
+            if !old.is_null() {
+                free_history_entry(old);
+            }
+            add_it = 0 as c_int;
+        }
+    }
+    if add_it != 0 && history_is_stifled() != 0 && history_length == 0 as c_int
+        && history_length == history_max_entries
+    {
+        add_it = 0 as c_int;
     }
     if add_it != 0 {
         really_add_history(line);
