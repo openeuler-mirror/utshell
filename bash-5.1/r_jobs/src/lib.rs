@@ -724,6 +724,23 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
                 break;
             }
         }
+        
+        (*newjob).state = (if any_running != 0 {
+            JRUNNING as  c_int
+        } else if any_stopped != 0 {
+            JSTOPPED as  c_int
+        } else {
+            JDEAD as  c_int
+        }) as JOB_STATE;
+
+        (*newjob).wd = job_working_directory();
+        (*newjob).deferred = deferred;
+
+        (*newjob).j_cleanup = ::std::mem::transmute::<*mut libc::c_void, sh_vptrfunc_t>(0 as *mut libc::c_void);
+        (*newjob).cleanarg = 0 as *mut c_void;
+
+        *jobs.offset(i as isize) = newjob;
+
 
 
     } else {
