@@ -1,22 +1,34 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-extern crate  libc;
+extern crate libc;
 extern crate nix;
 
 use libc::{c_char, c_void};
-use std::{ffi::CString};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_FAILURE, r_savestring};
-
+use rcommon::{r_savestring, WordDesc, WordList, EXECUTION_FAILURE, EX_USAGE};
+use std::ffi::CString;
 
 #[repr(u8)]
-enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
-    cm_connection, cm_function_def, cm_until, cm_group,
-    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc
+enum command_type {
+    cm_for,
+    cm_case,
+    cm_while,
+    cm_if,
+    cm_simple,
+    cm_select,
+    cm_connection,
+    cm_function_def,
+    cm_until,
+    cm_group,
+    cm_arith,
+    cm_cond,
+    cm_arith_for,
+    cm_subshell,
+    cm_coproc,
 }
 
 #[repr(u8)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 enum r_instruction {
     r_output_direction, r_input_direction, r_inputa_direction,
     r_appending_to, r_reading_until, r_reading_string,
