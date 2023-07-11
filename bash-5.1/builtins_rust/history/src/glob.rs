@@ -95,6 +95,24 @@ unsafe {
         }
         return r_sh_chkwrite(EXECUTION_SUCCESS);
     } 
+
+    if (flags & DFLAG) != 0 {
+        let c_tmp = if *delete_arg == b'-' as c_char {delete_arg.offset(1 as isize ) as *mut c_char} else {delete_arg};
+        range = libc::strchr(c_tmp, b'-' as c_int);
+        if  !range.is_null() {
+            let mut delete_start: c_long = 0;
+            let mut delete_end: c_long = 0;
+
+        *range = b'\0' as c_char;
+        range = (range as usize + 1) as *mut c_char;
+        if legal_number(delete_arg, std::mem::transmute(&delete_start)) == 0 ||
+        legal_number(range, std::mem::transmute(&delete_end)) == 0 {
+            *((range as usize - 1) as *mut c_char) = b'-' as c_char;
+            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
+            return EXECUTION_FAILURE;
+        }
+    }
+
     return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
 }
 
