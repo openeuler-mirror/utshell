@@ -791,3 +791,11 @@ unsafe extern "C" fn should_expand(mut s: *mut c_char) -> c_int {
 pub unsafe extern "C" fn setup_history_ignore(mut varname: *mut c_char) {
     setup_ignore_patterns(&mut histignore);
 }
+
+unsafe extern "C" fn last_history_entry() -> *mut HIST_ENTRY {
+    let mut he: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+    using_history();
+    he = previous_history();
+    using_history();
+    return he;
+}
