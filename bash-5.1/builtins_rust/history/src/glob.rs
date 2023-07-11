@@ -83,6 +83,18 @@ unsafe {
         }
     }
 
+    if (flags & SFLAG) != 0 {
+        if !list.is_null() {
+            push_history(list);
+        }
+        return EXECUTION_SUCCESS;
+    }
+    else if (flags & PFLAG) != 0 {
+        if !list.is_null() {
+            return expand_and_print_history(list);
+        }
+        return r_sh_chkwrite(EXECUTION_SUCCESS);
+    } 
     return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
 }
 
