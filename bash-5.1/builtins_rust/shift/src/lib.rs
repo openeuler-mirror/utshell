@@ -1,8 +1,8 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-use libc::{c_char, c_int, c_long, PT_NULL};
-use rcommon::r_sh_erange;
+use libc::{c_int, c_char, c_long, PT_NULL};
+use rcommon::{r_sh_erange,};
 use rhelp::r_builtin_help;
 
 include!(concat!("intercdep.rs"));
@@ -11,19 +11,18 @@ pub static print_shift_error: c_int = 0;
 
 #[no_mangle]
 pub extern "C" fn r_shift_builtin(list: *mut WordList) -> i32 {
-    unsafe {
-        if !list.is_null()
-            && !(*list).word.is_null()
-            && libc::strcmp((*((*list).word)).word, "--help\0".as_ptr() as *const c_char) == 0
-        {
-            r_builtin_help();
-            return EX_USAGE;
-        }
 
-        let times: c_int = 0;
-        if get_numeric_arg(list, 0, std::mem::transmute(&times)) == 0 {
-            return EXECUTION_FAILURE;
-        }
+unsafe {
+    if !list.is_null() && !(*list).word.is_null() &&
+        libc::strcmp((*((*list).word)).word, "--help\0".as_ptr() as *const c_char) == 0 {
+        r_builtin_help ();
+        return EX_USAGE;
+    }
+
+    let mut times: c_int = 0;
+    if get_numeric_arg(list, 0, std::mem::transmute(&times)) == 0 {
+        return EXECUTION_FAILURE;
+    }
 
         if times == 0 {
             return EXECUTION_SUCCESS;
@@ -54,7 +53,7 @@ pub extern "C" fn r_shift_builtin(list: *mut WordList) -> i32 {
             shift_args(times);
         }
 
-        invalidate_cached_quoted_dollar_at();
-    }
+    invalidate_cached_quoted_dollar_at();
+}
     return EXECUTION_SUCCESS;
 }

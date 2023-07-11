@@ -806,3 +806,14 @@ unsafe extern "C" fn last_history_entry() -> *mut HIST_ENTRY {
     using_history();
     return he;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn last_history_line() -> *mut c_char {
+    let mut he: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+
+    he = last_history_entry();
+    if he.is_null() {
+        return 0 as *mut libc::c_void as *mut c_char;
+    }
+    return (*he).line;
+}
