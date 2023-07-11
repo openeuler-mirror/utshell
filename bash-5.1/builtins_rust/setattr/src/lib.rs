@@ -2,7 +2,6 @@
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 
-
 use libc::{c_int, c_uint, c_char, c_long, PT_NULL, c_void};
 use rhelp::r_builtin_help;
 include!(concat!("intercdep.rs"));
@@ -19,7 +18,11 @@ pub extern "C" fn r_readonly_builtin(list: *mut WordList) -> c_int {
 }
 
 #[no_mangle]
-pub extern "C" fn set_or_show_attributes(mut list: *mut WordList, mut attribute: c_int, nodefs: c_int) -> c_int {
+pub extern "C" fn set_or_show_attributes(
+    mut list: *mut WordList,
+    mut attribute: c_int,
+    nodefs: c_int,
+) -> c_int {
     let mut assign_error: c_int = 0;
     let mut any_failed: c_int = 0;
     let mut undo: c_int = 0;
@@ -365,19 +368,16 @@ pub unsafe extern "C"   fn show_var_attributes(var: *mut SHELL_VAR, pattr: c_int
     return 0;
 }
 
-unsafe fn  value_cell(var:*mut SHELL_VAR)->* mut c_char
-{
-  return (*var).value;
+unsafe fn value_cell(var: *mut SHELL_VAR) -> *mut c_char {
+    return (*var).value;
 }
 
-unsafe fn  array_cell(var:*mut SHELL_VAR)->* mut ARRAY
-{
-  return (*var).value as *mut ARRAY;
+unsafe fn array_cell(var: *mut SHELL_VAR) -> *mut ARRAY {
+    return (*var).value as *mut ARRAY;
 }
 
-unsafe fn  assoc_cell(var:*mut SHELL_VAR)->* mut HASH_TABLE
-{
-  return (*var).value as *mut HASH_TABLE;
+unsafe fn assoc_cell(var: *mut SHELL_VAR) -> *mut HASH_TABLE {
+    return (*var).value as *mut HASH_TABLE;
 }
 
 #[no_mangle]
@@ -609,18 +609,20 @@ pub unsafe extern "C" fn r_print_array_assignment(var: *mut SHELL_VAR, quote: c_
 
 #[no_mangle]
 pub unsafe extern "C" fn r_print_assoc_assignment(var: *mut SHELL_VAR, quote: c_int) {
-    let vstr  = assoc_to_assign(assoc_cell(var) as *mut HASH_TABLE ,quote); 
+    let vstr = assoc_to_assign(assoc_cell(var) as *mut HASH_TABLE, quote);
 
-    if  vstr == std::ptr::null_mut() {
+    if vstr == std::ptr::null_mut() {
         if quote != 0 {
-            println!("{}=\'()\'",CStr::from_ptr((*var).name).to_str().unwrap());
+            println!("{}=\'()\'", CStr::from_ptr((*var).name).to_str().unwrap());
+        } else {
+            println!("{}=()", CStr::from_ptr((*var).name).to_str().unwrap());
         }
-        else {
-            println!("{}=()",CStr::from_ptr((*var).name).to_str().unwrap());
-        }
-    }
-    else {
-        println!("{}={}",CStr::from_ptr((*var).name).to_str().unwrap(),CStr::from_ptr(vstr).to_str().unwrap());
+    } else {
+        println!(
+            "{}={}",
+            CStr::from_ptr((*var).name).to_str().unwrap(),
+            CStr::from_ptr(vstr).to_str().unwrap()
+        );
         libc::free(vstr as *mut c_void);
     }
 }
