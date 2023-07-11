@@ -813,5 +813,13 @@ macro_rules! TYPE_MAXIMUM {
 }
 
 
-
-
+#[no_mangle]
+unsafe extern "C"  fn  bgp_getindex()-> ps_index_t
+{ 
+    if bgpids.nalloc < js.c_childmax as ps_index_t || bgpids.head >= bgpids.nalloc {
+        bgp_resize();
+    }
+    pshash_delindex(bgpids.head);
+    bgpids.head += 1;
+    return bgpids.head;
+}
