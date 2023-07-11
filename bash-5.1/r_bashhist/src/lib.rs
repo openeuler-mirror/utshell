@@ -841,6 +841,11 @@ unsafe extern "C" fn history_should_ignore(mut line: *mut c_char) -> c_int {
     }
     match_0 = 0 ;
     i = match_0;
+	if (*(histignore.ignores).offset(i as isize)).flags & HIGN_EXPAND!() != 0 {
+	    npat = expand_histignore_pattern((*(histignore.ignores).offset(i as isize)).val);
+	} else {
+	    npat = (*(histignore.ignores).offset(i as isize)).val;
+	}
     return match_0;
 }
 
