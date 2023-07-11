@@ -689,6 +689,19 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
             (*newjob).pipe = the_pipeline;
         };
 
+        p = (*newjob).pipe;
+        while !((*p).next).is_null() {
+            p = (*p).next;
+        }
+
+        (*p).next = (*newjob).pipe;
+
+        the_pipeline = 0 as *mut PROCESS ;
+        (*newjob).pgrp = pipeline_pgrp;
+
+        if pipeline_pgrp != shell_pgrp {
+            pipeline_pgrp = 0;
+        }
 
     } else {
         newjob = 0 as *mut JOB ;
