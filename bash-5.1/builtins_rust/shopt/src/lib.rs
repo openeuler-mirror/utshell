@@ -257,79 +257,60 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
         },
         {
             let init = RShoptVars {
-                name: b"checkhash\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"checkhash\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &check_hashed_filenames as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
-            };
-            init
-        },
-        {
-            let init = RShoptVars {
-                name: b"checkjobs\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &check_jobs_at_exit as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
-            };
-            init
-        },
-        {
-            let init = RShoptVars {
-                name: b"checkwinsize\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &check_window_size as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
-            };
-            init
-        },
-        {
-            let init = RShoptVars {
-                name: b"cmdhist\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &command_oriented_history as *const i32
-                    as *mut i32,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
-            };
-            init
-        },
-        {
-            let init = RShoptVars {
-                name: b"compat31\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &SHOPT_COMPAT31 as *const i32 as *mut libc::c_int,
-                set_func: Some(
-                    set_compatibility_level
-                        as unsafe extern "C" fn(
-                            *mut libc::c_char,
-                            i32,
-                        ) -> i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
                 ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"compat32\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"checkjobs\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &check_jobs_at_exit as *const i32 as *mut libc::c_int,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            };
+            init
+        },
+        {
+            let init = RShoptVars {
+                name: b"checkwinsize\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &check_window_size as *const i32 as *mut libc::c_int,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            };
+            init
+        },
+        {
+            let init = RShoptVars {
+                name: b"cmdhist\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &command_oriented_history as *const i32 as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            };
+            init
+        },
+        {
+            let init = RShoptVars {
+                name: b"compat31\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &SHOPT_COMPAT31 as *const i32 as *mut libc::c_int,
+                set_func: Some(
+                    set_compatibility_level as unsafe extern "C" fn(*mut libc::c_char, i32) -> i32,
+                ),
+            };
+            init
+        },
+        {
+            let init = RShoptVars {
+                name: b"compat32\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &SHOPT_COMPAT32 as *const i32 as *mut libc::c_int,
                 set_func: Some(
-                    set_compatibility_level
-                        as unsafe extern "C" fn(
-                            *mut libc::c_char,
-                            i32,
-                        ) -> i32,
+                    set_compatibility_level as unsafe extern "C" fn(*mut libc::c_char, i32) -> i32,
                 ),
             };
             init
