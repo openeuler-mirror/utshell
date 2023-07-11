@@ -685,13 +685,11 @@ pub unsafe extern "C" fn check_add_history(mut line: *mut c_char, mut force: c_i
         if history_control & HC_ERASEDUPS as c_int != 0 {
             hc_erasedups(line);
         }
-
         if force != 0 {
             really_add_history(line);
             using_history();
         } else {
             bash_add_history(line);
-
         }
         return 1  ;
     }
@@ -708,19 +706,20 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
     let mut old: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
     let mut chars_to_add: *mut c_char = 0 as *mut c_char;
     let mut new_line: *mut c_char = 0 as *mut c_char;
+
     add_it = 1  ;
     if command_oriented_history != 0 && current_command_line_count > 1  {
-	is_comment = if parser_state & PST_HEREDOC as c_int != 0 {
-	    0  
-	} else {
-	    shell_comment(line)
-	};
-	if parser_state & PST_HEREDOC as c_int != 0
-	    && current_command_line_count > 2  
-	    && *line.offset(((strlen(line)) -1) as isize) as c_int == '\n' as i32
-	{
-	    chars_to_add = b"\0" as *const u8 as *mut c_char;
-	} else if current_command_line_count == current_command_line_comment + 1
+        is_comment = if parser_state & PST_HEREDOC as c_int != 0 {
+            0  
+        } else {
+            shell_comment(line)
+        };
+        if parser_state & PST_HEREDOC as c_int != 0
+            && current_command_line_count > 2  
+            && *line.offset(((strlen(line)) -1) as isize) as c_int == '\n' as i32
+        {
+            chars_to_add = b"\0" as *const u8 as *mut c_char;
+        } else if current_command_line_count == current_command_line_comment + 1
         {
             chars_to_add = b"\n\0" as *const u8 as *mut c_char;
         } else if literal_history != 0 {
@@ -728,7 +727,6 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
         } else {
             chars_to_add = history_delimiting_chars(line);
         }
-    }
         using_history();
         current = previous_history();
         current_command_line_comment = if is_comment != 0 {
@@ -736,4 +734,16 @@ pub unsafe extern "C" fn bash_add_history(mut line: *mut c_char) {
         } else {
             -(2 as c_int)
         };
+	if dstack.delimiter_depth == 0 && *((*current).line).offset((curlen - 1) as isize) as c_int == '\n' as i32
+	&& *chars_to_add as c_int == ';' as i32
+	{
+	chars_to_add = chars_to_add.offset(1);
+	}
+
+	new_line = malloc((1 + curlen + strlen(line) as i32 + strlen(chars_to_add )as i32) as usize) as *mut c_char;
+	sprintf(new_line,b"%s%s%s\0" as *const u8 as *const c_char,
+	(*current).line, chars_to_add, line);
+	offset = where_history();
+	old = replace_history_entry(offset, new_line, (*current).data);
+    }
 }
