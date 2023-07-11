@@ -370,73 +370,60 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
                 name: b"complete_fullquote\0" as *const u8 as *const libc::c_char
                     as *mut libc::c_char,
                 value: &complete_fullquote as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
-            };
-            init
-        },
-        {
-            let init = RShoptVars {
-                name: b"direxpand\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &dircomplete_expand as *const i32 as *mut libc::c_int,
-                set_func: Some(
-                    shopt_set_complete_direxpand
-                        as unsafe extern "C" fn(
-                            *mut libc::c_char,
-                            i32,
-                        ) -> i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
                 ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"dirspell\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"direxpand\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &dircomplete_expand as *const i32 as *mut libc::c_int,
+                set_func: Some(
+                    shopt_set_complete_direxpand
+                        as unsafe extern "C" fn(*mut libc::c_char, i32) -> i32,
+                ),
+            };
+            init
+        },
+        {
+            let init = RShoptVars {
+                name: b"dirspell\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &dircomplete_spelling as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"dotglob\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"dotglob\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &glob_dot_filenames as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"execfail\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"execfail\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &no_exit_on_failed_exec as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"expand_aliases\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"expand_aliases\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &expand_aliases as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },

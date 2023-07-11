@@ -836,21 +836,28 @@ unsafe extern "C" fn history_should_ignore(mut line: *mut c_char) -> c_int {
     let mut i: c_int = 0;
     let mut match_0: c_int = 0;
     let mut npat: *mut c_char = 0 as *mut c_char;
+
     if histignore.num_ignores == 0 {
         return 0;
     }
     match_0 = 0 ;
     i = match_0;
-	if (*(histignore.ignores).offset(i as isize)).flags & HIGN_EXPAND!() != 0 {
-	    npat = expand_histignore_pattern((*(histignore.ignores).offset(i as isize)).val);
-	} else {
-	    npat = (*(histignore.ignores).offset(i as isize)).val;
-	}
+    while i < histignore.num_ignores {
+        if (*(histignore.ignores).offset(i as isize)).flags & HIGN_EXPAND!() != 0 {
+            npat = expand_histignore_pattern((*(histignore.ignores).offset(i as isize)).val);
+        } else {
+            npat = (*(histignore.ignores).offset(i as isize)).val;
+        }
         match_0 = (strmatch(npat, line, FNMATCH_EXTFLAG!()) != FNM_NOMATCH!() as c_int) as c_int;
+
         if (*(histignore.ignores).offset(i as isize)).flags & HIGN_EXPAND!() != 0 {
             free(npat as *mut c_void);
         }
+        if match_0 != 0 {
+            break;
+        }
         i += 1;
+    }
     return match_0;
 }
 
