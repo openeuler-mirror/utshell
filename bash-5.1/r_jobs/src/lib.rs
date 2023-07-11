@@ -741,7 +741,18 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
 
         *jobs.offset(i as isize) = newjob;
 
-
+        if (*newjob).state == JDEAD as  c_int
+        && (*newjob).flags & 0x1 as  c_int != 0
+        {
+            setjstatus(i);
+        }
+        if (*newjob).state == JDEAD as  c_int {
+            js.c_reaped += n;
+            js.j_ndead += 1;
+        }
+        js.c_injobs += n;
+        js.j_lastj = i;
+        js.j_njobs += 1;
 
     } else {
         newjob = 0 as *mut JOB ;
