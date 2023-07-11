@@ -846,6 +846,10 @@ unsafe extern "C" fn history_should_ignore(mut line: *mut c_char) -> c_int {
 	} else {
 	    npat = (*(histignore.ignores).offset(i as isize)).val;
 	}
+        match_0 = (strmatch(npat, line, FNMATCH_EXTFLAG!()) != FNM_NOMATCH!() as c_int) as c_int;
+        if (*(histignore.ignores).offset(i as isize)).flags & HIGN_EXPAND!() != 0 {
+            free(npat as *mut c_void);
+        }
         i += 1;
     return match_0;
 }

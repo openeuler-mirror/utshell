@@ -317,75 +317,50 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
         },
         {
             let init = RShoptVars {
-                name: b"compat40\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"compat40\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &SHOPT_COMPAT40 as *const i32 as *mut libc::c_int,
                 set_func: Some(
-                    set_compatibility_level
-                        as unsafe extern "C" fn(
-                            *mut libc::c_char,
-                            i32,
-                        ) -> i32,
+                    set_compatibility_level as unsafe extern "C" fn(*mut libc::c_char, i32) -> i32,
                 ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"compat41\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"compat41\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &SHOPT_COMPAT41 as *const i32 as *mut libc::c_int,
                 set_func: Some(
-                    set_compatibility_level
-                        as unsafe extern "C" fn(
-                            *mut libc::c_char,
-                            i32,
-                        ) -> i32,
+                    set_compatibility_level as unsafe extern "C" fn(*mut libc::c_char, i32) -> i32,
                 ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"compat42\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"compat42\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &SHOPT_COMPAT42 as *const i32 as *mut libc::c_int,
                 set_func: Some(
-                    set_compatibility_level
-                        as unsafe extern "C" fn(
-                            *mut libc::c_char,
-                            i32,
-                        ) -> i32,
+                    set_compatibility_level as unsafe extern "C" fn(*mut libc::c_char, i32) -> i32,
                 ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"compat43\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"compat43\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &SHOPT_COMPAT43 as *const i32 as *mut libc::c_int,
                 set_func: Some(
-                    set_compatibility_level
-                        as unsafe extern "C" fn(
-                            *mut libc::c_char,
-                            i32,
-                        ) -> i32,
+                    set_compatibility_level as unsafe extern "C" fn(*mut libc::c_char, i32) -> i32,
                 ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"compat44\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"compat44\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &SHOPT_COMPAT44 as *const i32 as *mut libc::c_int,
                 set_func: Some(
-                    set_compatibility_level
-                        as unsafe extern "C" fn(
-                            *mut libc::c_char,
-                            i32,
-                        ) -> i32,
+                    set_compatibility_level as unsafe extern "C" fn(*mut libc::c_char, i32) -> i32,
                 ),
             };
             init
