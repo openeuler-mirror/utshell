@@ -702,6 +702,20 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
         if pipeline_pgrp != shell_pgrp {
             pipeline_pgrp = 0;
         }
+        (*newjob).flags = 0;
+
+        if pipefail_opt != 0 {
+            (*newjob).flags |= J_PIPEFAIL as i32;
+        }
+
+        if job_control != 0 {
+            (*newjob).flags |= J_JOBCONTROL as i32;
+        }
+	
+        p = (*newjob).pipe;
+        any_running = 0;
+        any_stopped = 0;
+
 
     } else {
         newjob = 0 as *mut JOB ;
