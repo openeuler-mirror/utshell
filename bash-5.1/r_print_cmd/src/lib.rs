@@ -138,6 +138,25 @@ pub unsafe extern "C" fn r_make_command_string(command:*mut COMMAND) -> *mut c_c
     was_heredoc = 0;
     deferred_heredocs = 0 as *mut REDIRECT;
     make_command_string_internal(command);
-    return the_printed_command;
+    the_printed_command
+        
 }
 
+#[no_mangle]
+unsafe fn make_command_string_internal(command:*mut COMMAND)
+{
+    let mut s:[c_char;3] = [0;3];
+
+    if command.is_null(){
+        cprintf_1 (b"\0" as *const u8 as *const i8);
+    }
+    else{
+        if skip_this_indent != 0 {
+            skip_this_indent = skip_this_indent - 1;
+        }
+        else{
+            indent(indentation);
+        } 
+    }
+        
+}
