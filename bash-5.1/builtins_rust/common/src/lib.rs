@@ -3,19 +3,22 @@
 //# SPDX-License-Identifier: GPL-3.0-or-later
 extern crate libc;
 
-use libc::{c_char,c_int, c_void, FILE, size_t, intmax_t,c_long, strcmp};
-use libc::{isdigit,strerror, __errno_location, fflush, ferror,clearerr, free,strlen,strncmp,atoi,qsort};
+use libc::{
+    __errno_location, atoi, clearerr, ferror, fflush, free, isdigit, qsort, strerror, strlen,
+    strncmp,
+};
+use libc::{c_char, c_int, c_long, c_void, intmax_t, size_t, strcmp, FILE};
+use nix::errno::errno;
+use std::env::var;
 use std::ffi::{CStr, CString};
 use std::mem::size_of;
 use std::ptr::read_volatile;
-use nix::errno::errno;
-use std::env::var;
 use unic_langid::LanguageIdentifier;
 include!(concat!("lib_readline_keymaps.rs"));
 
 include!(concat!("command.rs"));
 
-use fluent_bundle::{FluentArgs};
+use fluent_bundle::FluentArgs;
 use fluent_resmgr::resource_manager::ResourceManager;
 
 //struct
@@ -35,29 +38,29 @@ pub struct word_list {
 }
 pub type WordList = word_list;
 
-#[repr (C)]
-pub struct builtin{
-    pub name:*mut c_char,
-    pub function:*mut sh_builtin_func_t,
-    pub flags:i32,
-    pub long_doc: *const *mut c_char ,
-    pub short_doc:*const c_char,
-    pub handle:*mut c_char,
+#[repr(C)]
+pub struct builtin {
+    pub name: *mut c_char,
+    pub function: *mut sh_builtin_func_t,
+    pub flags: i32,
+    pub long_doc: *const *mut c_char,
+    pub short_doc: *const c_char,
+    pub handle: *mut c_char,
 }
 
-#[repr (C)]
-pub struct g_list{
-    pub next:*mut g_list,
+#[repr(C)]
+pub struct g_list {
+    pub next: *mut g_list,
 }
 type GENERIC_LIST = g_list;
 
-#[repr (C)]
-pub struct process{
-    pub next:*mut process,
-    pub pid:pid_t,
-    pub status:WAIT,
-    pub running:i32,
-    pub command:*mut c_char,
+#[repr(C)]
+pub struct process {
+    pub next: *mut process,
+    pub pid: pid_t,
+    pub status: WAIT,
+    pub running: i32,
+    pub command: *mut c_char,
 }
 type WAIT = i32;
 type pid_t = c_int;
@@ -241,7 +244,6 @@ pub union VALUE_COMMAND {
     Subshell:*mut subshell_com,
     Coproc:*mut coproc_com
 }
-
 
 #[repr(u8)]
 enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
@@ -517,11 +519,9 @@ macro_rules! non_unsettable_p {
 #[macro_export]
 macro_rules! VUNSETATTR {
     ($var:expr,$attr:expr) => {
-        (*$var).attributes &=  !($attr)
+        (*$var).attributes &= ($attr)
     };
 }
-
-
 
 #[macro_export]
 macro_rules! ISOCTAL {
@@ -564,11 +564,10 @@ macro_rules! STREQN {
     ($a:expr,$b:expr,$n:expr) => {
         if $n == 0 {
             1
+        } else {
+            (*$a == *$b && strncmp($a, $b, $n) == 0) as i32
         }
-        else{
-            (*$a == *$b && strncmp($a,$b,$n) == 0) as i32
-        }
-    }
+    };
 }
 
 #[macro_export]
