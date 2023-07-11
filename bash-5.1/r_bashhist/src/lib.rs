@@ -770,3 +770,18 @@ pub unsafe extern "C" fn history_number() -> c_int {
         1  
     };
 }
+
+
+unsafe extern "C" fn should_expand(mut s: *mut c_char) -> c_int {
+    let mut p: *mut c_char = 0 as *mut c_char;
+    p = s;
+    while !p.is_null() && *p as c_int != 0 {
+        if *p as c_int == '\\' as i32 {
+            p = p.offset(1);
+        } else if *p as c_int == '&' as i32 {
+            return 1 as c_int
+        }
+        p = p.offset(1);
+    }
+    return 0  ;
+}
