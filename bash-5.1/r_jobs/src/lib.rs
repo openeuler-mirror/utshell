@@ -715,6 +715,15 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
         p = (*newjob).pipe;
         any_running = 0;
         any_stopped = 0;
+        
+        loop{
+            any_running |= PRUNNING! (p) as c_int;
+            any_stopped |= PSTOPPED (p);
+            p = (*p).next;
+            if !(p != (*newjob).pipe) {
+                break;
+            }
+        }
 
 
     } else {
