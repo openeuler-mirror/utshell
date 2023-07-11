@@ -574,7 +574,7 @@ unsafe extern "C" fn shell_comment(mut line: *mut c_char) -> c_int {
         SD_NOJMP as c_int | SD_GLOB as c_int | SD_EXTGLOB as c_int
             | SD_COMPLETE as c_int);
     return if *line.offset(n as isize) as c_int == '#' as i32 {
-        return 2  
+        return 2;
     } else {
         return 0;
     };
@@ -817,3 +817,12 @@ pub unsafe extern "C" fn last_history_line() -> *mut c_char {
     }
     return (*he).line;
 }
+
+unsafe extern "C" fn expand_histignore_pattern(mut pat: *mut c_char,) -> *mut c_char 
+{
+    let mut phe: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+    let mut ret: *mut c_char = 0 as *mut c_char;
+    ret = strcreplace(pat, '&' as i32, (*phe).line, 1);
+    return ret;
+}
+
