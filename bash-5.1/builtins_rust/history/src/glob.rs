@@ -111,6 +111,19 @@ unsafe {
             r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;
         }
+        if *delete_arg == b'-' as c_char && delete_start < 0 {
+            delete_start += history_length as c_long;
+            if delete_start < history_base as c_long {
+                r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
+                return EXECUTION_FAILURE;
+            }
+        } else if delete_start > 0 {
+            delete_start -= history_base as c_long;
+        }
+        if delete_start < 0 || delete_start >= history_length as c_long {
+            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
+            return EXECUTION_FAILURE;
+        }
     }
 
     return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
