@@ -492,75 +492,82 @@ pub extern "C" fn show_func_attributes(name: *mut c_char, nodefs: c_int) -> c_in
 pub extern "C" fn set_var_attribute(name: *mut c_char, attribute: c_int, undo: c_int) {
     let mut var: *mut SHELL_VAR;
     let tvalue: *mut c_char;
-unsafe {
-    if undo != 0 {
-        var = find_variable(name);
-    } else {
-        let tv = find_tempenv_variable(name);
-        if !tv.is_null() && ((*tv).attributes & att_tempvar) != 0 {
-            tvalue = if !(*tv).value.is_null() {
-                libc::strdup((*tv).value)
-            } else {"\0".as_ptr() as *mut c_char};
+    unsafe {
+        if undo != 0 {
+            var = find_variable(name);
+        } else {
+            let tv = find_tempenv_variable(name);
+            if !tv.is_null() && ((*tv).attributes & att_tempvar) != 0 {
+                tvalue = if !(*tv).value.is_null() {
+                    libc::strdup((*tv).value)
+                } else {
+                    "\0".as_ptr() as *mut c_char
+                };
 
-            var = bind_variable((*tv).name, tvalue, 0);
-            if var.is_null() {
-                libc::free(tvalue as *mut c_void);
-                return;
-            }
-            (*var).attributes |= (*tv).attributes & (!att_tempvar);
-            if posixly_correct != 0 || shell_compatibility_level <= 44 {
-                if (*var).context == 0 && (attribute & att_readonly) != 0 {
-                    let v = find_global_variable((*tv).name);
-                    if v as usize != var as usize {
+                var = bind_variable((*tv).name, tvalue, 0);
+                if var.is_null() {
+                    libc::free(tvalue as *mut c_void);
+                    return;
+                }
+                (*var).attributes |= (*tv).attributes & (!att_tempvar);
+                if posixly_correct != 0 || shell_compatibility_level <= 44 {
+                    if (*var).context == 0 && (attribute & att_readonly) != 0 {
+                        let v = find_global_variable((*tv).name);
+                        if v as usize != var as usize {
+                            (*tv).attributes |= att_propagate;
+                        }
+                    } else {
                         (*tv).attributes |= att_propagate;
                     }
+
+                    if (*var).context != 0 {
+                        (*var).attributes |= att_propagate;
+                    }
+                }
+                if undo == 0 {
+                    (*tv).attributes |= attribute;
                 } else {
-                    (*tv).attributes |= att_propagate;
+                    (*tv).attributes &= !attribute;
                 }
 
-                if (*var).context != 0 {
+                stupidly_hack_special_variables((*tv).name);
+                libc::free(tvalue as *mut c_void);
+            } else {
+                var = find_variable_notempenv(name);
+                if var.is_null() {
+                    let refvar = find_variable_nameref_for_create(name, 0);
+                    if cmp_two(
+                        std::mem::transmute(refvar),
+                        std::mem::transmute(&nameref_invalid_value),
+                    ) {
+                        return;
+                    }
+                }
+                if var.is_null() {
+                    var = bind_variable(name, PT_NULL as *mut c_char, 0);
+                    if !var.is_null() {
+                        (*var).attributes |= att_invisible;
+                    }
+                } else if (*var).context != 0 {
                     (*var).attributes |= att_propagate;
                 }
             }
+        }
+
+        if !var.is_null() {
             if undo == 0 {
-                (*tv).attributes |= attribute;
+                (*var).attributes |= attribute;
             } else {
-                (*tv).attributes &= !attribute;
-            }
-
-            stupidly_hack_special_variables((*tv).name);
-            libc::free(tvalue as *mut c_void);
-        } else {
-            var = find_variable_notempenv(name);
-            if var.is_null() {
-                let refvar = find_variable_nameref_for_create(name, 0);
-                if cmp_two(std::mem::transmute(refvar),std::mem::transmute(&nameref_invalid_value)) {
-                    return;
-                }
-            }
-            if var.is_null() {
-                var = bind_variable(name, PT_NULL as *mut c_char, 0);
-                if !var.is_null() {
-                    (*var).attributes |= att_invisible;
-                }
-            } else if (*var).context != 0 {
-                (*var).attributes |= att_propagate;
+                (*var).attributes &= !attribute;
             }
         }
-    }
 
-    if !var.is_null() {
-        if undo == 0 {
-            (*var).attributes |= attribute;
-        } else {
-            (*var).attributes &= !attribute;
+        if !var.is_null()
+            && (((*var).attributes & att_exported) != 0 || (attribute & att_exported) != 0)
+        {
+            array_needs_making += 1;
         }
     }
-
-    if !var.is_null() && (((*var).attributes & att_exported) != 0 || (attribute & att_exported) != 0) {
-        array_needs_making += 1;
-    }
-}
 }
 
 #[no_mangle]
