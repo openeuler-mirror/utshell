@@ -190,8 +190,8 @@ pub struct variable {
     pub name: *mut libc::c_char,
     pub value: *mut libc::c_char,
     pub exportstr: *mut libc::c_char,
-    pub dynamic_value: Option::<ShVarValueFuncT>,
-    pub assign_func: Option::<ShVarAssignFuncT>,
+    pub dynamic_value: Option<ShVarValueFuncT>,
+    pub assign_func: Option<ShVarAssignFuncT>,
     pub attributes: i32,
     pub context: i32,
 }
@@ -208,12 +208,9 @@ pub type ShellVar = variable;
 pub struct RShoptVars {
     pub name: *mut libc::c_char,
     pub value: *mut i32,
-    pub set_func: Option::<ShoptSetFuncT>,
+    pub set_func: Option<ShoptSetFuncT>,
 }
-pub type ShoptSetFuncT = unsafe extern "C" fn(
-    *mut libc::c_char,
-    i32,
-) -> i32;
+pub type ShoptSetFuncT = unsafe extern "C" fn(*mut libc::c_char, i32) -> i32;
 static mut SHOPT_LOGIN_SHELL: i32 = 0;
 static mut SHOPT_COMPAT31: i32 = 0;
 static mut SHOPT_COMPAT32: i32 = 0;
