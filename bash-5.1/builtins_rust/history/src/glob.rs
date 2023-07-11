@@ -62,5 +62,13 @@ while  opt != -1 {
         }
         opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
     }
+   list = loptend;
+
+    opt = flags & (AFLAG | RFLAG | WFLAG | NFLAG);
+    if opt != 0 && opt != AFLAG && opt != RFLAG && opt != WFLAG && opt != NFLAG {
+        let c_err = CString::new("cannot use more than one of -anrw").unwrap();
+        builtin_error( c_err.as_ptr());
+        return EXECUTION_FAILURE;
+    }
     return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
 }
