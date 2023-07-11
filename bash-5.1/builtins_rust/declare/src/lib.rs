@@ -1,19 +1,32 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-extern crate  libc;
+extern crate libc;
 extern crate nix;
 
 use libc::{c_char, c_long, c_void};
-use std::{ffi::CString};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, r_savestring};
+use rcommon::{r_savestring, WordDesc, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
-use rsetattr::{show_name_attributes,set_or_show_attributes,show_all_var_attributes};
+use rsetattr::{set_or_show_attributes, show_all_var_attributes, show_name_attributes};
 use std::ffi::CStr;
+use std::ffi::CString;
 #[repr(u8)]
-enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
-    cm_connection, cm_function_def, cm_until, cm_group,
-    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc
+enum command_type {
+    cm_for,
+    cm_case,
+    cm_while,
+    cm_if,
+    cm_simple,
+    cm_select,
+    cm_connection,
+    cm_function_def,
+    cm_until,
+    cm_group,
+    cm_arith,
+    cm_cond,
+    cm_arith_for,
+    cm_subshell,
+    cm_coproc,
 }
 
 #[repr(u8)]
@@ -227,14 +240,13 @@ pub struct HASH_TABLE {
 
 #[repr(C)]
 pub struct VAR_CONTEXT {
-	name:* mut c_char,/* empty or NULL means global context */
-	scope:i32,	/* 0 means global context */
-	flags:i32,
-	up:* mut VAR_CONTEXT,	/* previous function calls */
-	down:* mut VAR_CONTEXT,	/* down towards global context */
-	table:* mut HASH_TABLE		/* variables at this scope */
+    name: *mut c_char, /* empty or NULL means global context */
+    scope: i32,        /* 0 means global context */
+    flags: i32,
+    up: *mut VAR_CONTEXT,   /* previous function calls */
+    down: *mut VAR_CONTEXT, /* down towards global context */
+    table: *mut HASH_TABLE, /* variables at this scope */
 }
-
 
 #[macro_export]
 macro_rules! ARGS_SETBLTIN {
@@ -447,9 +459,9 @@ macro_rules! att_noassign {
 }
 
 pub union Functions {
-  f_xfree:unsafe extern "C" fn(str1:* mut c_void),
-  f_maybe_pop_dollar_vars: unsafe extern "C" fn(),
-  f_maybe_set_debug_trap:unsafe extern "C" fn(* mut c_char)
+    f_xfree: unsafe extern "C" fn(str1: *mut c_void),
+    f_maybe_pop_dollar_vars: unsafe extern "C" fn(),
+    f_maybe_set_debug_trap: unsafe extern "C" fn(*mut c_char),
 }
 
 extern "C" {
