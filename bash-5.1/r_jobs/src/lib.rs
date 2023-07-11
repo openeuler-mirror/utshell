@@ -789,8 +789,28 @@ pub unsafe extern "C"  fn  stop_pipeline(mut async_0:c_int, mut deferred:*mut CO
 
 
 
+macro_rules! TYPE_WIDTH {
+    ($t:ty) => {
+        std::mem::size_of::<$t>() * 8
+    };
+}
 
+macro_rules! TYPE_SIGNED {
+    ($t:ty) => {
+        !(0 as $t < -1 as $t)
+    };
+}
 
+macro_rules! TYPE_MAXIMUM {
+    ($t:ty) => {
+        if !TYPE_SIGNED!($t){
+            -1 as $t
+        } else {
+            (1 << ((TYPE_WIDTH!($t) -2) -1) * 2 + 1) as $t
+        }
+         
+    }
+}
 
 
 
