@@ -85,3 +85,28 @@ unsafe {
 
     return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
 }
+
+fn histtime(hlist: *mut HIST_ENTRY, histtimefmt: *const c_char) -> *mut c_char
+{
+unsafe {
+    static mut timestr: [c_char;128] = [0;128];
+
+    let t = history_get_time(hlist);
+    let tm = if t != 0 {libc::localtime(&t)} else {PT_NULL as *mut libc::tm};
+    if t != 0 && !tm.is_null() {
+        strftime(std::mem::transmute(&timestr),
+        std::mem::size_of_val(&timestr),
+        histtimefmt,
+        tm);
+    } else if !(*hlist).timestamp.is_null() && (*(*hlist).timestamp) != 0 {
+        let c_str = CString::new("%s: invalid timestamp").unwrap();
+        libc::snprintf(std::mem::transmute(&timestr),
+        std::mem::size_of_val(&timestr), c_str.as_ptr(),
+        if *((*hlist).timestamp) == b'#' as c_char {((*hlist).timestamp as usize + 1) as *mut c_char} else {(*hlist).timestamp});
+    } else {
+        libc::strcpy(std::mem::transmute(&timestr), b"??\0".as_ptr() as *const c_char);
+    }
+
+    return timestr.as_mut_ptr();
+}
+}
