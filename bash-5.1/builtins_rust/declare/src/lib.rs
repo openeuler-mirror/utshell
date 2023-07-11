@@ -238,213 +238,212 @@ pub struct VAR_CONTEXT {
 
 #[macro_export]
 macro_rules! ARGS_SETBLTIN {
-  () => {
-    0x04
-  }
+    () => {
+        0x04
+    };
 }
 
 #[macro_export]
 macro_rules! EXITPROG {
-  () => {
-    3
-  }
+    () => {
+        3
+    };
 }
 
 #[macro_export]
 macro_rules! att_local {
-  () => {
-    0x0000020
-  }
+    () => {
+        0x0000020
+    };
 }
 
 #[macro_export]
 macro_rules! att_array {
-  () => {
-    0x0000004 /* value is an array */
-  }
+    () => {
+        0x0000004 /* value is an array */
+    };
 }
 
 #[macro_export]
 macro_rules! att_assoc {
-  () => {
-    0x0000040	/* variable is an associative array */
-  }
+    () => {
+        0x0000040 /* variable is an associative array */
+    };
 }
 
 #[macro_export]
 macro_rules! att_function {
-  () => {
-    0x0000008	/* value is a function */
-  }
+    () => {
+        0x0000008 /* value is a function */
+    };
 }
 
 #[macro_export]
 macro_rules! att_integer {
-  () => {
-    0x0000010	/* internal representation is int */
-  }
+    () => {
+        0x0000010 /* internal representation is int */
+    };
 }
 
 #[macro_export]
 macro_rules! att_nameref {
-  () => {
-    0x0000800	/* word is a name reference */
-  }
+    () => {
+        0x0000800 /* word is a name reference */
+    };
 }
 
 #[macro_export]
 macro_rules! att_readonly {
-  () => {
-    0x0000002	/* cannot change */
-  }
+    () => {
+        0x0000002 /* cannot change */
+    };
 }
 
 #[macro_export]
 macro_rules! att_trace {
-  () => {
-    0x0000080	/* function is traced with DEBUG trap */
-  }
+    () => {
+        0x0000080 /* function is traced with DEBUG trap */
+    };
 }
 
 #[macro_export]
 macro_rules! att_exported {
-  () => {
-    0x0000001	/* export to environment */
-  }
+    () => {
+        0x0000001 /* export to environment */
+    };
 }
 
 #[macro_export]
 macro_rules! att_capcase {
-  () => {
-    0x0000400	/* word capitalized on assignment */
-  }
+    () => {
+        0x0000400 /* word capitalized on assignment */
+    };
 }
 
 #[macro_export]
 macro_rules! att_uppercase {
-  () => {
-    0x0000100	/* word converted to uppercase on assignment */
-  }
+    () => {
+        0x0000100 /* word converted to uppercase on assignment */
+    };
 }
 
 #[macro_export]
 macro_rules! att_lowercase {
-  () => {
-    0x0000200	/* word converted to lowercase on assignment */
-  }
+    () => {
+        0x0000200 /* word converted to lowercase on assignment */
+    };
 }
 
 #[macro_export]
 macro_rules! MKLOC_INHERIT {
-  () => {
-    0x04
-  }
+    () => {
+        0x04
+    };
 }
-
 
 #[macro_export]
 macro_rules! ASS_APPEND {
-  () => {
-    0x0001
-  }
+    () => {
+        0x0001
+    };
 }
 
 #[macro_export]
 macro_rules! ASS_MKLOCAL {
-  () => {
-    0x0002
-  }
+    () => {
+        0x0002
+    };
 }
 
 #[macro_export]
 macro_rules! MKLOC_ARRAYOK {
-  () => {
-    0x02
-  }
+    () => {
+        0x02
+    };
 }
 
 #[macro_export]
 macro_rules! MKLOC_ASSOCOK {
-  () => {
-    0x01
-  }
+    () => {
+        0x01
+    };
 }
 
 #[macro_export]
 macro_rules! FUNC_MULTILINE {
-  () => {
-    0x01
-  }
+    () => {
+        0x01
+    };
 }
 
 #[macro_export]
 macro_rules! FUNC_EXTERNAL {
-  () => {
-    0x02
-  }
+    () => {
+        0x02
+    };
 }
 
 #[macro_export]
 macro_rules! ASS_FORCE {
-  () => {
-    0x0020	/* force assignment even to readonly variable */
-  }
+    () => {
+        0x0020 /* force assignment even to readonly variable */
+    };
 }
 
 #[macro_export]
 macro_rules! W_COMPASSIGN {
-  () => {
-    1 << 15	/* Compound assignment */
-  }
+    () => {
+        1 << 15 /* Compound assignment */
+    };
 }
 
 #[macro_export]
 macro_rules! ASS_NOEXPAND {
-  () => {
-    0x0080	/* don't expand associative array subscripts */
-  }
+    () => {
+        0x0080 /* don't expand associative array subscripts */
+    };
 }
 
 #[macro_export]
 macro_rules! EX_BADASSIGN {
-  () => {
-    260	/* variable assignment error */
-  }
+    () => {
+        260 /* variable assignment error */
+    };
 }
 
 #[macro_export]
 macro_rules! att_tempvar {
-  () => {
-    0x0100000	/* variable came from the temp environment */
-  }
+    () => {
+        0x0100000 /* variable came from the temp environment */
+    };
 }
 
 #[macro_export]
 macro_rules! att_propagate {
-  () => {
-    0x0200000	/* propagate to previous scope */
-  }
+    () => {
+        0x0200000 /* propagate to previous scope */
+    };
 }
 
 #[macro_export]
 macro_rules! ASS_NAMEREF {
-  () => {
-    0x0010	/* assigning to nameref variable */
-  }
+    () => {
+        0x0010 /* assigning to nameref variable */
+    };
 }
 
 #[macro_export]
 macro_rules! att_invisible {
-  () => {
-    0x0001000	/* cannot see */
-  }
+    () => {
+        0x0001000 /* cannot see */
+    };
 }
 
 #[macro_export]
 macro_rules! att_noassign {
-  () => {
-    0x0004000	/* assignment not allowed */
-  }
+    () => {
+        0x0004000 /* assignment not allowed */
+    };
 }
 
 pub union Functions {
