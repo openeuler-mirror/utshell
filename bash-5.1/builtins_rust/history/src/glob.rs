@@ -157,6 +157,14 @@ unsafe {
         libc::strcpy(std::mem::transmute(&timestr), b"??\0".as_ptr() as *const c_char);
     }
 
+        if delete_end < 0 || delete_end >= history_length as c_long {
+            r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
+            return EXECUTION_FAILURE;
+        }
+        result = bash_delete_history_range(delete_start as c_int, delete_end as c_int);
+        if where_history() > history_length {
+            history_set_pos(history_length);
+        }
     return timestr.as_mut_ptr();
 }
 }
