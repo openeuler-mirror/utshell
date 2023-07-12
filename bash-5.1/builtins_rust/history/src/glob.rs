@@ -458,6 +458,7 @@ unsafe fn display_history(list: *mut WordList) -> c_int
     }
     return EXECUTION_SUCCESS;
 }
+
 fn push_history(list: *mut WordList) {
 unsafe {
     if remember_on_history != 0 && hist_last_line_pushed == 0 &&
@@ -465,6 +466,12 @@ unsafe {
         bash_delete_last_history() == 0 {
         return;
     }
+
+    let s = string_list(list);
+    check_add_history(s, 1);
+
+    hist_last_line_pushed = 1;
+    libc::free(s as *mut c_void);
 }
 }
 pub type __locale_t = *mut __locale_struct;
@@ -509,5 +516,19 @@ extern "C" {
         __s2: *const wchar_t,
         __loc: locale_t,
     ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wcsncasecmp_l(
+        __s1: *const wchar_t,
+        __s2: *const wchar_t,
+        __n: usize,
+        __loc: locale_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wcscoll(__s1: *const wchar_t, __s2: *const wchar_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wcsxfrm(__s1: *mut wchar_t, __s2: *const wchar_t, __n: usize) -> usize;
 }
 }
