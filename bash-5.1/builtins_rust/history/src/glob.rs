@@ -532,3 +532,14 @@ extern "C" {
     pub fn wcsxfrm(__s1: *mut wchar_t, __s2: *const wchar_t, __n: usize) -> usize;
 }
 }
+
+fn expand_and_print_history(mut list: *mut WordList) -> c_int
+{
+unsafe {
+
+    let s: *mut c_char = PT_NULL as *mut c_char;
+    let mut result: c_int;
+    std::io::stdout().lock().flush().unwrap();
+    return result;
+}
+}
