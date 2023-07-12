@@ -136,100 +136,100 @@ pub struct if_com {
 
 #[repr(C)]
 pub struct connection {
-    ignore:libc::c_int,
-    first:*mut COMMAND,
-    second:*mut COMMAND,
-    connector:libc::c_int
+    ignore: libc::c_int,
+    first: *mut COMMAND,
+    second: *mut COMMAND,
+    connector: libc::c_int,
 }
 
 #[repr(C)]
 pub struct simple_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    words:*mut WordList,
-    redirects:*mut REDIRECT
+    flags: libc::c_int,
+    line: libc::c_int,
+    words: *mut WordList,
+    redirects: *mut REDIRECT,
 }
 
 #[repr(C)]
 pub struct function_def {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
 pub struct group_com {
-    ignore:libc::c_int,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    ignore: libc::c_int,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
 pub struct select_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct arith_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    exp:*mut WordList
+    flags: libc::c_int,
+    line: libc::c_int,
+    exp: *mut WordList,
 }
 
 #[repr(C)]
 pub struct cond_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    type_c:libc::c_int,
-    exp:*mut WordList
+    flags: libc::c_int,
+    line: libc::c_int,
+    type_c: libc::c_int,
+    exp: *mut WordList,
 }
 
 #[repr(C)]
 pub struct arith_for_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    init:*mut WordList,
-    test:*mut WordList,
-    step:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    init: *mut WordList,
+    test: *mut WordList,
+    step: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct subshell_com {
-    flags:i32,
-    line:i32,
-    command:*mut COMMAND
+    flags: i32,
+    line: i32,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct coproc_com {
-    flags:i32,
-    name:*mut c_char,
-    command:*mut COMMAND
+    flags: i32,
+    name: *mut c_char,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
 pub union VALUE_COMMAND {
-    For:*mut for_com,
-    Case:*mut case_com,
-    While:*mut while_com,
-    If:*mut if_com,
-    Connection:*mut connection,
-    Simple:*mut simple_com,
-    Function_def:*mut function_def,
-    Group:*mut group_com,
-    Select:*mut select_com,
-    Arith:*mut arith_com,
-    Cond:*mut cond_com,
-    ArithFor:*mut arith_for_com,
-    Subshell:*mut subshell_com,
-    Coproc:*mut coproc_com
+    For: *mut for_com,
+    Case: *mut case_com,
+    While: *mut while_com,
+    If: *mut if_com,
+    Connection: *mut connection,
+    Simple: *mut simple_com,
+    Function_def: *mut function_def,
+    Group: *mut group_com,
+    Select: *mut select_com,
+    Arith: *mut arith_com,
+    Cond: *mut cond_com,
+    ArithFor: *mut arith_for_com,
+    Subshell: *mut subshell_com,
+    Coproc: *mut coproc_com,
 }
 
 #[repr(C)]
@@ -336,7 +336,7 @@ macro_rules! HIST_ERANGE {
 #[macro_export]
 macro_rules! HIST_NOTFOUND {
   () => {
-    std::i32::MIN +2
+    std::i32::MIN +4
   }
 }
 
