@@ -164,6 +164,14 @@ unsafe {
             r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;
         }
+
+        if *delete_arg == b'-' as c_char && delete_offset < 0 {
+            let ind = history_length + delete_offset as c_int;
+            if ind < history_base {
+                r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
+                return EXECUTION_FAILURE;
+            }
+            opt = ind + history_base;
     }
 
     return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};

@@ -735,48 +735,38 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
                     as *mut libc::c_char,
                 value: &restricted_shell as *const i32 as *mut libc::c_int,
                 set_func: Some(
-                    set_restricted_shell
-                        as unsafe extern "C" fn(
-                            *mut libc::c_char,
-                            i32,
-                        ) -> i32,
+                    set_restricted_shell as unsafe extern "C" fn(*mut libc::c_char, i32) -> i32,
                 ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"shift_verbose\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"shift_verbose\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &print_shift_error as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"sourcepath\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"sourcepath\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &source_uses_path as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"xpg_echo\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"xpg_echo\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &xpg_echo as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
@@ -784,10 +774,9 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
             let init = RShoptVars {
                 name: 0 as *const libc::c_char as *mut libc::c_char,
                 value: 0 as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
