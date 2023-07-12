@@ -259,5 +259,6 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
                 }
                 make_command_string_internal((*(*command).value.Connection).second);
                 PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
-        
+                printing_connection = printing_connection - 1;    
+            }
 }
