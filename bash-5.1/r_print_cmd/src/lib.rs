@@ -207,7 +207,16 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
                         {
                             skip_this_indent = skip_this_indent + 1;
                         }
-                    }                _ => {
+                    }
+
+                    OR_OR => {
+                        print_deferred_heredocs(b" || \0" as *const u8 as *const c_char);
+                        if !(*(*command).value.Connection).second.is_null() {
+                            skip_this_indent = skip_this_indent + 1;
+                        }
+                    }                    
+                    
+                    _ => {
                         // cprintf_2( CString::new("print_command:bad connector").as_mut() as *const c_char, (*(*command).value.Connection).connector);
                         let mut str = format!("print_command:bas connector {}\0", (*(*command).value.Connection).connector);
                         cprintf_1(str.as_mut_ptr() as *mut c_char);

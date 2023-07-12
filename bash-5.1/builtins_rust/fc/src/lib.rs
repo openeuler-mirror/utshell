@@ -479,7 +479,7 @@ unsafe fn printToStdoutflush() -> std::io::Result<()> {
 
 unsafe fn QUIT ()
 {
-  if terminating_signal !=0 {
+  if terminating_signal == 0 {
     termsig_handler (terminating_signal);
   }
 
