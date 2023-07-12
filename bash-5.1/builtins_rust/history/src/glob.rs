@@ -546,6 +546,15 @@ extern "C" {
         __loc: locale_t,
     ) -> usize;
 }
+extern "C" {
+    pub fn wcschr(__wcs: *const wchar_t, __wc: wchar_t) -> *mut ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wcsrchr(__wcs: *const wchar_t, __wc: wchar_t) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn wcschrnul(__s: *const wchar_t, __wc: wchar_t) -> *mut wchar_t;
+}
 
 
 fn expand_and_print_history(mut list: *mut WordList) -> c_int
