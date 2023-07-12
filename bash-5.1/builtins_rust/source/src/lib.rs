@@ -54,13 +54,13 @@ enum r_instruction {
 
 #[repr(C)]
 pub union REDIRECT {
-  next:*mut REDIRECT,
-  redirector:libc::c_int,
-  rflags:libc::c_int,
-  flags:libc::c_int,
-  instruction:r_instruction,
-  redirectee:libc::c_int,
-  here_doc_eof:*mut c_char
+    next: *mut REDIRECT,
+    redirector: libc::c_int,
+    rflags: libc::c_int,
+    flags: libc::c_int,
+    instruction: r_instruction,
+    redirectee: libc::c_int,
+    here_doc_eof: *mut c_char,
 }
 
 /* FOR command. */
@@ -394,11 +394,8 @@ pub extern "C" fn r_source_builtin (list:* mut WordList)->i32
       restore_default_signal (DEBUG_TRAP());
     }
 
-  result = source_file (filename, (list !=std::ptr::null_mut() && (*list).next !=std::ptr::null_mut()) as i32);
+        run_unwind_frame(b"source\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
 
-  run_unwind_frame (b"source\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
-
-  return result;
-  }
+        return result;
+    }
 }
-
