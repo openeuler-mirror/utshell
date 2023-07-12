@@ -765,4 +765,22 @@ extern "C" {
 extern "C" {
     pub fn wcstold_l(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t, __loc: locale_t) -> f64;
 }
+extern "C" {
+    pub fn wcpcpy(__dest: *mut wchar_t, __src: *const wchar_t) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn wcpncpy(__dest: *mut wchar_t, __src: *const wchar_t, __n: usize) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn open_wmemstream(__bufloc: *mut *mut wchar_t, __sizeloc: *mut usize) -> *mut __FILE;
+}
+extern "C" {
+    pub fn fwide(__fp: *mut __FILE, __mode: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn fwprintf(__stream: *mut __FILE, __format: *const wchar_t, ...) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wprintf(__format: *const wchar_t, ...) -> ::std::os::raw::c_int;
+}
 }
