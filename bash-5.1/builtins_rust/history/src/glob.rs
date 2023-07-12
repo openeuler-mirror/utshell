@@ -438,6 +438,21 @@ unsafe fn display_history(list: *mut WordList) -> c_int
             } else {
                 0 as *mut libc::c_void as *mut libc::c_char
             };
+            printf(
+                b"%5d%c %s%s\n\0" as *const u8 as *const libc::c_char,
+                i + history_base as c_long,
+                if !((**hlist.offset(i as isize)).data).is_null() {
+                    '*' as i32
+                } else {
+                    ' ' as i32
+                },
+                if !timestr.is_null() && *timestr as libc::c_int != 0 {
+                    timestr
+                } else {
+                    b"\0" as *const u8 as *const libc::c_char
+                },
+                (**hlist.offset(i as isize)).line,
+            );
             i += 1;
         }
     }
