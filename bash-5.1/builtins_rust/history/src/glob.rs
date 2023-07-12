@@ -458,3 +458,28 @@ unsafe fn display_history(list: *mut WordList) -> c_int
     }
     return EXECUTION_SUCCESS;
 }
+fn push_history(list: *mut WordList) {
+unsafe {
+    if remember_on_history != 0 && hist_last_line_pushed == 0 &&
+        (hist_last_line_added != 0 || (current_command_line_count > 0 && current_command_first_line_saved != 0 && command_oriented_history != 0)) &&
+        bash_delete_last_history() == 0 {
+        return;
+    }
+}
+}
+pub type __locale_t = *mut __locale_struct;
+pub type locale_t = __locale_t;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct tm {
+    _unused: [u8; 0],
+}
+extern "C" {
+    pub fn wcscpy(__dest: *mut wchar_t, __src: *const wchar_t) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn wcsncpy(__dest: *mut wchar_t, __src: *const wchar_t, __n: usize) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn wcscat(__dest: *mut wchar_t, __src: *const wchar_t) -> *mut wchar_t;
+}
