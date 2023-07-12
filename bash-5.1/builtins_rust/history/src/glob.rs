@@ -547,6 +547,9 @@ extern "C" {
     ) -> usize;
 }
 extern "C" {
+    pub fn wcsdup(__s: *const wchar_t) -> *mut wchar_t;
+}
+extern "C" {
     pub fn wcschr(__wcs: *const wchar_t, __wc: wchar_t) -> *mut ::std::os::raw::c_int;
 }
 extern "C" {
@@ -568,7 +571,21 @@ unsafe {
         return EXECUTION_FAILURE;
     }
     result = EXECUTION_SUCCESS;
+    while !list.is_null() {
+        let r = history_expand((*((*list).word)).word, std::mem::transmute(&s));
+        if r < 0 {
+            let c_err = CString::new("%s: history expansion failed").unwrap();
+            builtin_error( c_err.as_ptr(), (*((*list).word)).word);
+            result = EXECUTION_FAILURE;
+    }
     std::io::stdout().lock().flush().unwrap();
     return result;
+}
+}
+extern "C" {
+    pub fn wcsspn(__wcs: *const wchar_t, __accept: *const wchar_t) -> usize;
+}
+extern "C" {
+    pub fn wcspbrk(__wcs: *const wchar_t, __accept: *const wchar_t) -> *mut wchar_t;
 }
 }
