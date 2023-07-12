@@ -153,7 +153,13 @@ pub const SFLAG: c_int = 0x10;
 pub const PFLAG: c_int = 0x20;
 pub const CFLAG: c_int = 0x40;
 pub const DFLAG: c_int = 0x80;
-
+pub const HAVE_FCNTL: u32 = 1;
+pub const HAVE_FNMATCH: u32 = 1;
+pub const FNMATCH_EQUIV_FALLBACK: u32 = 1;
+pub const HAVE___FPURGE: u32 = 1;
+pub const HAVE_DECL_FPURGE: u32 = 0;
+pub const HAVE_GETADDRINFO: u32 = 1;
+pub const HAVE_GETCWD: u32 = 1;
 #[no_mangle]
 pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
 
@@ -403,6 +409,14 @@ unsafe fn display_history(list: *mut WordList) -> c_int
         }
 
         i = if 0 <= limit && limit < i {i - limit} else {0};
+
+        histtimefmt = get_string_value(b"HISTTIMEFORMAT\0" as *const u8 as *const c_char);
+
+        while !(*hlist.offset(i as isize)).is_null() {
+            if terminating_signal != 0 {
+                termsig_handler(terminating_signal);
+            }
+        }
     }
     return EXECUTION_SUCCESS;
 }
