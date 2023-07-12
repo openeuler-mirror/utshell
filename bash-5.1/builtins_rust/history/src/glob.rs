@@ -368,5 +368,16 @@ unsafe fn display_history(list: *mut WordList) -> c_int
     let mut limit:c_long = 0;
     let histtimefmt: *mut c_char;
     let mut timestr: *mut c_char;
+
+    if !list.is_null() {
+        if  r_get_numeric_arg(list, 0,&mut limit)== 0 {
+            return EXECUTION_FAILURE;
+        }
+        if limit < 0 {
+            limit = -limit;
+        }
+    } else {
+        limit = -1;
+    }
     return EXECUTION_SUCCESS;
 }
