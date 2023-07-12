@@ -74,6 +74,28 @@ pub const HAVE_QUAD_T: u32 = 1;
 pub const HAVE_WCHAR_T: u32 = 1;
 pub const HAVE_WCTYPE_T: u32 = 1;
 pub const HAVE_WINT_T: u32 = 1;
+pub const HAVE_DECL_SYS_SIGLIST: u32 = 1;
+pub const UNDER_SYS_SIGLIST_DECLARED: u32 = 1;
+pub const HAVE_SYS_SIGLIST: u32 = 1;
+pub const HAVE_UNDER_SYS_SIGLIST: u32 = 1;
+pub const HAVE_SYS_ERRLIST: u32 = 1;
+pub const HAVE_STRUCT_DIRENT_D_INO: u32 = 1;
+pub const HAVE_STRUCT_DIRENT_D_FILENO: u32 = 1;
+pub const FIONREAD_IN_SYS_IOCTL: u32 = 1;
+pub const GWINSZ_IN_SYS_IOCTL: u32 = 1;
+pub const STRUCT_WINSIZE_IN_SYS_IOCTL: u32 = 1;
+pub const TERMIOS_LDISC: u32 = 1;
+pub const TERMIO_LDISC: u32 = 1;
+pub const HAVE_STRUCT_STAT_ST_BLOCKS: u32 = 1;
+pub const HAVE_STRUCT_TM_TM_ZONE: u32 = 1;
+pub const HAVE_TM_ZONE: u32 = 1;
+pub const HAVE_TIMEVAL: u32 = 1;
+pub const HAVE_STRUCT_TIMEZONE: u32 = 1;
+pub const WEXITSTATUS_OFFSET: u32 = 8;
+pub const HAVE_STRUCT_TIMESPEC: u32 = 1;
+pub const TIME_H_DEFINES_STRUCT_TIMESPEC: u32 = 1;
+pub const HAVE_STRUCT_STAT_ST_ATIM_TV_NSEC: u32 = 1;
+pub const TYPEOF_STRUCT_STAT_ST_ATIM_IS_STRUCT_TIMESPEC: u32 = 1;
 pub const AFLAG: c_int = 0x01;
 pub const RFLAG: c_int = 0x02;
 pub const WFLAG: c_int = 0x04;
@@ -245,8 +267,23 @@ unsafe {
         result = maybe_append_history(filename);
     } else if (flags & WFLAG) != 0 {
         result = write_history(filename);
+    } else if (flags & NFLAG) != 0{
+        let old_history_lines = history_lines_in_file;
+        let obase = history_base;
+
+        using_history();
+        result = read_history_range(filename, history_lines_in_file, -1);
+        using_history();
+
+        history_lines_in_file = history_lines_read_from_file;
+        if force_append_history == 0 {
+            history_lines_this_session +=
+            history_lines_in_file - old_history_lines + history_base - obase;
+        }
     }
-    return if result != 0 {EXECUTION_FAILURE} else {result};
+}
+
+    return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
 }
 
 fn histtime(hlist: *mut HIST_ENTRY, histtimefmt: *const c_char) -> *mut c_char
