@@ -158,6 +158,12 @@ unsafe {
         }
 
         return if result != 0 {EXECUTION_SUCCESS} else {EXECUTION_FAILURE};
+        }
+     else if (flags & DFLAG) != 0 {
+        if legal_number(delete_arg, &mut delete_offset) == 0 {
+            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
+            return EXECUTION_FAILURE;
+        }
     }
 
     return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};

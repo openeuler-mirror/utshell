@@ -671,75 +671,61 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
         },
         {
             let init = RShoptVars {
-                name: b"nocaseglob\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"nocaseglob\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &glob_ignore_case as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"nocasematch\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"nocasematch\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &match_ignore_case as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"nullglob\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &allow_null_glob_expansion as *const i32
-                    as *mut i32,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                name: b"nullglob\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &allow_null_glob_expansion as *const i32 as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"progcomp\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &prog_completion_enabled as *const i32
-                    as *mut i32,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                name: b"progcomp\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &prog_completion_enabled as *const i32 as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"progcomp_alias\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"progcomp_alias\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &progcomp_alias as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"promptvars\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"promptvars\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &promptvars as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
