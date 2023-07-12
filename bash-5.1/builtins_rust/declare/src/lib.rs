@@ -55,160 +55,160 @@ enum r_instruction {
 }
 
 #[repr(C)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub union REDIRECTEE {
-    dest:libc::c_int,
-    filename:* mut WordDesc
+    dest: libc::c_int,
+    filename: *mut WordDesc,
 }
 
 #[repr(C)]
 pub union REDIRECT {
-  next:*mut REDIRECT,
-  redirector:REDIRECTEE,
-  rflags:libc::c_int,
-  flags:libc::c_int,
-  instruction:r_instruction,
-  redirectee:REDIRECTEE,
-  here_doc_eof:*mut c_char
+    next: *mut REDIRECT,
+    redirector: REDIRECTEE,
+    rflags: libc::c_int,
+    flags: libc::c_int,
+    instruction: r_instruction,
+    redirectee: REDIRECTEE,
+    here_doc_eof: *mut c_char,
 }
 
 /* FOR command. */
 #[repr(C)]
 pub struct for_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
-    next:* mut PATTERN_LIST,
-    patterns:* mut WordList,
-    action:*mut COMMAND,
-    flags:libc::c_int
+    next: *mut PATTERN_LIST,
+    patterns: *mut WordList,
+    action: *mut COMMAND,
+    flags: libc::c_int,
 }
 
 #[repr(C)]
 pub struct case_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    word:*mut WordDesc,
-    clauses:*mut PATTERN_LIST
+    flags: libc::c_int,
+    line: libc::c_int,
+    word: *mut WordDesc,
+    clauses: *mut PATTERN_LIST,
 }
 
 #[repr(C)]
 pub struct while_com {
-    flags:libc::c_int,
-    test:*mut COMMAND,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    test: *mut COMMAND,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct if_com {
-    flags:libc::c_int,
-    test:*mut COMMAND,
-    true_case:*mut COMMAND,
-    false_case:*mut COMMAND
+    flags: libc::c_int,
+    test: *mut COMMAND,
+    true_case: *mut COMMAND,
+    false_case: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct connection {
-    ignore:libc::c_int,
-    first:*mut COMMAND,
-    second:*mut COMMAND,
-    connector:libc::c_int
+    ignore: libc::c_int,
+    first: *mut COMMAND,
+    second: *mut COMMAND,
+    connector: libc::c_int,
 }
 
 #[repr(C)]
 pub struct simple_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    words:*mut WordList,
-    redirects:*mut REDIRECT
+    flags: libc::c_int,
+    line: libc::c_int,
+    words: *mut WordList,
+    redirects: *mut REDIRECT,
 }
 
 #[repr(C)]
 pub struct function_def {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
 pub struct group_com {
-    ignore:libc::c_int,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    ignore: libc::c_int,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
 pub struct select_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct arith_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    exp:*mut WordList
+    flags: libc::c_int,
+    line: libc::c_int,
+    exp: *mut WordList,
 }
 
 #[repr(C)]
 pub struct cond_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    type_c:libc::c_int,
-    exp:*mut WordList
+    flags: libc::c_int,
+    line: libc::c_int,
+    type_c: libc::c_int,
+    exp: *mut WordList,
 }
 
 #[repr(C)]
 pub struct arith_for_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    init:*mut WordList,
-    test:*mut WordList,
-    step:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    init: *mut WordList,
+    test: *mut WordList,
+    step: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct subshell_com {
-    flags:i32,
-    line:i32,
-    command:*mut COMMAND
+    flags: i32,
+    line: i32,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct coproc_com {
-    flags:i32,
-    name:*mut c_char,
-    command:*mut COMMAND
+    flags: i32,
+    name: *mut c_char,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
 pub union VALUE_COMMAND {
-    For:*mut for_com,
-    Case:*mut case_com,
-    While:*mut while_com,
-    If:*mut if_com,
-    Connection:*mut connection,
-    Simple:*mut simple_com,
-    Function_def:*mut function_def,
-    Group:*mut group_com,
-    Select:*mut select_com,
-    Arith:*mut arith_com,
-    Cond:*mut cond_com,
-    ArithFor:*mut arith_for_com,
-    Subshell:*mut subshell_com,
-    Coproc:*mut coproc_com
+    For: *mut for_com,
+    Case: *mut case_com,
+    While: *mut while_com,
+    If: *mut if_com,
+    Connection: *mut connection,
+    Simple: *mut simple_com,
+    Function_def: *mut function_def,
+    Group: *mut group_com,
+    Select: *mut select_com,
+    Arith: *mut arith_com,
+    Cond: *mut cond_com,
+    ArithFor: *mut arith_for_com,
+    Subshell: *mut subshell_com,
+    Coproc: *mut coproc_com,
 }
 
 #[repr(C)]
@@ -271,7 +271,7 @@ macro_rules! ARGS_SETBLTIN {
 #[macro_export]
 macro_rules! EXITPROG {
     () => {
-        3
+        0x03
     };
 }
 
