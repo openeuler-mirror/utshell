@@ -96,6 +96,31 @@ pub const HAVE_STRUCT_TIMESPEC: u32 = 1;
 pub const TIME_H_DEFINES_STRUCT_TIMESPEC: u32 = 1;
 pub const HAVE_STRUCT_STAT_ST_ATIM_TV_NSEC: u32 = 1;
 pub const TYPEOF_STRUCT_STAT_ST_ATIM_IS_STRUCT_TIMESPEC: u32 = 1;
+pub const HAVE_GETPW_DECLS: u32 = 1;
+pub const HAVE_DECL_AUDIT_USER_TTY: u32 = 1;
+pub const HAVE_DECL_CONFSTR: u32 = 1;
+pub const HAVE_DECL_PRINTF: u32 = 1;
+pub const HAVE_DECL_SBRK: u32 = 1;
+pub const HAVE_DECL_STRCPY: u32 = 1;
+pub const HAVE_DECL_STRSIGNAL: u32 = 1;
+pub const HAVE_DECL_STRTOLD: u32 = 1;
+pub const HAVE_DECL_STRTOIMAX: u32 = 1;
+pub const HAVE_DECL_STRTOL: u32 = 1;
+pub const HAVE_DECL_STRTOLL: u32 = 1;
+pub const HAVE_DECL_STRTOUL: u32 = 1;
+pub const HAVE_DECL_STRTOULL: u32 = 1;
+pub const HAVE_DECL_STRTOUMAX: u32 = 1;
+pub const GETPGRP_VOID: u32 = 1;
+pub const PGRP_PIPE: u32 = 1;
+pub const ULIMIT_MAXFDS: u32 = 1;
+pub const CAN_REDEFINE_GETENV: u32 = 1;
+pub const HAVE_STD_PUTENV: u32 = 1;
+pub const HAVE_STD_UNSETENV: u32 = 1;
+pub const HAVE_PRINTF_A_FORMAT: u32 = 1;
+pub const HAVE_LANGINFO_CODESET: u32 = 1;
+pub const HAVE_HASH_BANG_EXEC: u32 = 1;
+pub const HAVE_DEV_FD: u32 = 1;
+pub const DEV_FD_PREFIX: &'static [u8; 9usize] = b"/dev/fd/\0";
 pub const AFLAG: c_int = 0x01;
 pub const RFLAG: c_int = 0x02;
 pub const WFLAG: c_int = 0x04;
@@ -317,4 +342,14 @@ unsafe {
         }
     return timestr.as_mut_ptr();
 }
+}
+
+unsafe fn quit()
+{
+    if terminating_signal != 0 {
+        termsig_handler(terminating_signal);
+    }
+    if interrupt_state != 0 {
+        throw_to_top_level();
+    }
 }
