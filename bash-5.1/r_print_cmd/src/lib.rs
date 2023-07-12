@@ -262,4 +262,11 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
             }
             command_type_cm_function_def => print_function_def((*command).value.Function_def),
             command_type_cm_group => print_group_command((*command).value.Group),
+            command_type_cm_subshell =>{
+                cprintf_1(b"( \0" as *const u8 as *const c_char);
+                skip_this_indent = skip_this_indent + 1;
+                make_command_string_internal((*(*command).value.Subshell).command);
+                PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
+                cprintf_1(b" )\0" as *const u8 as *const c_char);
+            }
 }

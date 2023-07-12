@@ -478,11 +478,11 @@ pub union Functions {
 }
 
 extern "C" {
-    static variable_context:i32;
-    fn builtin_error(err:*const c_char,...);
-	fn builtin_warning(err:*const c_char,...);
-    fn find_variable (str:*const c_char)->* mut SHELL_VAR;
-    fn find_global_variable (str:*const c_char)->* mut SHELL_VAR;
+    static variable_context: i32;
+    fn builtin_error(err: *const c_char, ...);
+    fn builtin_warning(err: *const c_char, ...);
+    fn find_variable(str: *const c_char) -> *mut SHELL_VAR;
+    fn find_global_variable(str: *const c_char) -> *mut SHELL_VAR;
     fn reset_internal_getopt();
     fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
     static mut list_opttype:i32;
@@ -540,9 +540,8 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern "C" fn r_declare_builtin (list:* mut WordList)->i32
-{
-  return r_declare_internal (list, 0);
+pub extern "C" fn r_declare_builtin(list: *mut WordList) -> i32 {
+    return r_declare_internal(list, 1);
 }
 
 unsafe fn STREQ( a:* const c_char, b:* const c_char)->bool {  
@@ -550,23 +549,31 @@ unsafe fn STREQ( a:* const c_char, b:* const c_char)->bool {
 }
 
 #[no_mangle]
-pub extern "C" fn r_local_builtin (list:* mut WordList)->i32
-{
-  unsafe {
-      /* Catch a straight `local --help' before checking function context */
-      if list !=std::ptr::null_mut() && (*list).word != std::ptr::null_mut() && STREQ ((*(*list).word).word, CString::new("--help").unwrap().as_ptr()) {
-        r_builtin_help ();
-        return EX_USAGE;
-      }
+pub extern "C" fn r_local_builtin(list: *mut WordList) -> i32 {
+    unsafe {
+        /* Catch a straight `local --help' before checking function context */
+        if list != std::ptr::null_mut()
+            && (*list).word != std::ptr::null_mut()
+            && STREQ(
+                (*(*list).word).word,
+                CString::new("--help").unwrap().as_ptr(),
+            )
+        {
+            r_builtin_help();
+            return EX_USAGE;
+        }
 
-      if variable_context !=0 {
-        return r_declare_internal (list, 1);
-      } else {
-        builtin_error (CString::new("can only be used in a function").unwrap().as_ptr());
-        return EXECUTION_FAILURE!();
-      }
-  }
-
+        if variable_context != 0 {
+            return r_declare_internal(list, 1);
+        } else {
+            builtin_error(
+                CString::new("can only be used in a function")
+                    .unwrap()
+                    .as_ptr()
+            );
+            return EXECUTION_FAILURE!();
+        }
+    }
 }
 
 unsafe fn local_p( varr:* mut SHELL_VAR)->i32 {
