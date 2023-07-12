@@ -493,4 +493,21 @@ extern "C" {
     pub fn wcsncmp(__s1: *const wchar_t, __s2: *const wchar_t, __n: usize)
         -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn wcscasecmp(__s1: *const wchar_t, __s2: *const wchar_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wcsncasecmp(
+        __s1: *const wchar_t,
+        __s2: *const wchar_t,
+        __n: usize,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wcscasecmp_l(
+        __s1: *const wchar_t,
+        __s2: *const wchar_t,
+        __loc: locale_t,
+    ) -> ::std::os::raw::c_int;
+}
 }
