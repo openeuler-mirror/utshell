@@ -379,5 +379,15 @@ unsafe fn display_history(list: *mut WordList) -> c_int
     } else {
         limit = -1;
     }
+    let hlist = history_list();
+
+    if !hlist.is_null() {
+        let mut i: c_long = 0;
+        while !(*hlist.offset(i as isize)).is_null() {
+            i += 1;
+        }
+
+        i = if 0 <= limit && limit < i {i - limit} else {0};
+    }
     return EXECUTION_SUCCESS;
 }
