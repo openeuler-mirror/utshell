@@ -215,7 +215,40 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
                             skip_this_indent = skip_this_indent + 1;
                         }
                     }                    
-                    
+                   
+                    59 => {
+                        if (deferred_heredocs == 0)
+                        {           
+		                    if (was_heredoc == 0)
+                            {
+		                        cprintf (";");
+                            }
+		                    else
+                            {
+		                        was_heredoc = 0;
+                            }
+                        }
+
+	                    else
+                        {
+		                    print_deferred_heredocs (inside_function_def ? "" : ";");
+                        }
+	                    
+                        if (inside_function_def)
+		                {
+                            cprintf ("\n");
+                        }
+	      
+                        else
+                        {
+                            cprintf (" ");
+                            if (command->value.Connection->second)
+                            {
+                                skip_this_indent++;
+                            }
+                        }
+                    }
+         
                     _ => {
                         // cprintf_2( CString::new("print_command:bad connector").as_mut() as *const c_char, (*(*command).value.Connection).connector);
                         let mut str = format!("print_command:bas connector {}\0", (*(*command).value.Connection).connector);
