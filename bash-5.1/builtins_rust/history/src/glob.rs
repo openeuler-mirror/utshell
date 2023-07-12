@@ -57,7 +57,23 @@ pub const PROTOTYPES: u32 = 1;
 pub const __PROTOTYPES: u32 = 1;
 pub const HAVE_LONG_LONG: u32 = 1;
 pub const HAVE_UNSIGNED_LONG_LONG: u32 = 1;
-
+pub const SIZEOF_INT: u32 = 4;
+pub const SIZEOF_LONG: u32 = 8;
+pub const SIZEOF_CHAR_P: u32 = 8;
+pub const SIZEOF_DOUBLE: u32 = 8;
+pub const SIZEOF_INTMAX_T: u32 = 8;
+pub const SIZEOF_LONG_LONG: u32 = 8;
+pub const SIZEOF_WCHAR_T: u32 = 4;
+pub const DEFAULT_MAIL_DIRECTORY: &'static [u8; 10usize] = b"/var/mail\0";
+pub const STDC_HEADERS: u32 = 1;
+pub const HAVE_ALLOCA: u32 = 1;
+pub const HAVE_ALLOCA_H: u32 = 1;
+pub const MAJOR_IN_SYSMACROS: u32 = 1;
+pub const HAVE_MBSTATE_T: u32 = 1;
+pub const HAVE_QUAD_T: u32 = 1;
+pub const HAVE_WCHAR_T: u32 = 1;
+pub const HAVE_WCTYPE_T: u32 = 1;
+pub const HAVE_WINT_T: u32 = 1;
 pub const AFLAG: c_int = 0x01;
 pub const RFLAG: c_int = 0x02;
 pub const WFLAG: c_int = 0x04;
@@ -221,6 +237,15 @@ unsafe {
     filename = if !list.is_null() {(*((*list).word)).word} else {get_string_value("HISTFILE\0".as_ptr() as *mut c_char)};
     result = EXECUTION_SUCCESS;
 
+    if restricted != 0 && !(libc::strchr(filename, b'/' as c_int).is_null()) {
+        r_sh_restricted(filename);
+        return EXECUTION_FAILURE;
+    }
+    if (flags & AFLAG) != 0 {
+        result = maybe_append_history(filename);
+    } else if (flags & WFLAG) != 0 {
+        result = write_history(filename);
+    }
     return if result != 0 {EXECUTION_FAILURE} else {result};
 }
 
