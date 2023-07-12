@@ -516,77 +516,62 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
         },
         {
             let init = RShoptVars {
-                name: b"gnu_errfmt\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"gnu_errfmt\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &gnu_error_format as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
-            };
-            init
-        },
-        {
-            let init = RShoptVars {
-                name: b"histappend\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &force_append_history as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
-            };
-            init
-        },
-        {
-            let init = RShoptVars {
-                name: b"histreedit\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &history_reediting as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
-            };
-            init
-        },
-        {
-            let init = RShoptVars {
-                name: b"histverify\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &hist_verify as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
-            };
-            init
-        },
-        {
-            let init = RShoptVars {
-                name: b"hostcomplete\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &perform_hostname_completion as *const i32
-                    as *mut i32,
-                set_func: Some(
-                    shopt_enable_hostname_completion
-                        as unsafe extern "C" fn(
-                            *mut libc::c_char,
-                            i32,
-                        ) -> i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
                 ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"huponexit\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"histappend\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &force_append_history as *const i32 as *mut libc::c_int,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            };
+            init
+        },
+        {
+            let init = RShoptVars {
+                name: b"histreedit\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &history_reediting as *const i32 as *mut libc::c_int,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            };
+            init
+        },
+        {
+            let init = RShoptVars {
+                name: b"histverify\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &hist_verify as *const i32 as *mut libc::c_int,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            };
+            init
+        },
+        {
+            let init = RShoptVars {
+                name: b"hostcomplete\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &perform_hostname_completion as *const i32 as *mut i32,
+                set_func: Some(
+                    shopt_enable_hostname_completion
+                        as unsafe extern "C" fn(*mut libc::c_char, i32) -> i32,
+                ),
+            };
+            init
+        },
+        {
+            let init = RShoptVars {
+                name: b"huponexit\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &hup_on_exit as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },

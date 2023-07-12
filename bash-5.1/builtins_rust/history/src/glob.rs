@@ -25,6 +25,20 @@ pub const EXTGLOB_DEFAULT: u32 = 0;
 pub const COND_COMMAND: u32 = 1;
 pub const COND_REGEXP: u32 = 1;
 pub const COPROCESS_SUPPORT: u32 = 1;
+pub const ARITH_FOR_COMMAND: u32 = 1;
+pub const NETWORK_REDIRECTIONS: u32 = 1;
+pub const PROGRAMMABLE_COMPLETION: u32 = 1;
+pub const DEBUGGER: u32 = 1;
+pub const MEMSCRAMBLE: u32 = 1;
+pub const CASEMOD_ATTRS: u32 = 1;
+pub const CASEMOD_EXPANSIONS: u32 = 1;
+pub const GLOBASCII_DEFAULT: u32 = 1;
+pub const FUNCTION_IMPORT: u32 = 1;
+pub const ENABLE_NLS: u32 = 1;
+pub const DEFAULT_PATH_VALUE: &'static [u8; 63usize] =
+    b"/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:.\0";
+pub const STANDARD_UTILS_PATH: &'static [u8; 30usize] = b"/bin:/usr/bin:/usr/sbin:/sbin\0";
+pub const PPROMPT: &'static [u8; 11usize] = b"\\s-\\\\v\\\\$ \0";
 #[no_mangle]
 pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
 
