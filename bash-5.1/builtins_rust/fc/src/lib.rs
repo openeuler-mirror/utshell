@@ -23,89 +23,115 @@ pub enum JOB_STATE {
 }
 
 #[repr(u8)]
-enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
-    cm_connection, cm_function_def, cm_until, cm_group,
-    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc
+enum command_type {
+    cm_for,
+    cm_case,
+    cm_while,
+    cm_if,
+    cm_simple,
+    cm_select,
+    cm_connection,
+    cm_function_def,
+    cm_until,
+    cm_group,
+    cm_arith,
+    cm_cond,
+    cm_arith_for,
+    cm_subshell,
+    cm_coproc,
 }
 
 #[repr(u8)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 enum r_instruction {
-    r_output_direction, r_input_direction, r_inputa_direction,
-    r_appending_to, r_reading_until, r_reading_string,
-    r_duplicating_input, r_duplicating_output, r_deblank_reading_until,
-    r_close_this, r_err_and_out, r_input_output, r_output_force,
-    r_duplicating_input_word, r_duplicating_output_word,
-    r_move_input, r_move_output, r_move_input_word, r_move_output_word,
-    r_append_err_and_out
+    r_output_direction,
+    r_input_direction,
+    r_inputa_direction,
+    r_appending_to,
+    r_reading_until,
+    r_reading_string,
+    r_duplicating_input,
+    r_duplicating_output,
+    r_deblank_reading_until,
+    r_close_this,
+    r_err_and_out,
+    r_input_output,
+    r_output_force,
+    r_duplicating_input_word,
+    r_duplicating_output_word,
+    r_move_input,
+    r_move_output,
+    r_move_input_word,
+    r_move_output_word,
+    r_append_err_and_out,
 }
 
 #[repr(C)]
 pub struct PROCESS {
     next: *mut PROCESS,
-    pid:libc::c_int,
-    status:libc::c_int,
-    running:libc::c_int,
-    command:*mut c_char
+    pid: libc::c_int,
+    status: libc::c_int,
+    running: libc::c_int,
+    command: *mut c_char,
 }
 
 #[repr(C)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub union REDIRECTEE {
-    dest:libc::c_int,
-    filename:* mut WordDesc
+    dest: libc::c_int,
+    filename: *mut WordDesc,
 }
 
 #[repr(C)]
 pub union REDIRECT {
-  next:*mut REDIRECT,
-  redirector:REDIRECTEE,
-  rflags:libc::c_int,
-  flags:libc::c_int,
-  instruction:r_instruction,
-  redirectee:REDIRECTEE,
-  here_doc_eof:*mut c_char
+    next: *mut REDIRECT,
+    redirector: REDIRECTEE,
+    rflags: libc::c_int,
+    flags: libc::c_int,
+    instruction: r_instruction,
+    redirectee: REDIRECTEE,
+    here_doc_eof: *mut c_char,
 }
 
 /* FOR command. */
 #[repr(C)]
 pub struct for_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
-    next:* mut PATTERN_LIST,
-    patterns:* mut WordList,
-    action:*mut COMMAND,
-    flags:libc::c_int
+    next: *mut PATTERN_LIST,
+    patterns: *mut WordList,
+    action: *mut COMMAND,
+    flags: libc::c_int,
 }
 
 #[repr(C)]
 pub struct case_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    word:*mut WordDesc,
-    clauses:*mut PATTERN_LIST
+    flags: libc::c_int,
+    line: libc::c_int,
+    word: *mut WordDesc,
+    clauses: *mut PATTERN_LIST,
 }
 
 #[repr(C)]
 pub struct while_com {
-    flags:libc::c_int,
-    test:*mut COMMAND,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    test: *mut COMMAND,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct if_com {
-    flags:libc::c_int,
-    test:*mut COMMAND,
-    true_case:*mut COMMAND,
-    false_case:*mut COMMAND
+    flags: libc::c_int,
+    test: *mut COMMAND,
+    true_case: *mut COMMAND,
+    false_case: *mut COMMAND,
 }
 
 #[repr(C)]

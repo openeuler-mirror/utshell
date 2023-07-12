@@ -187,8 +187,20 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
                 let _str_1 = b'&' as i32;
                 let _str_1 = b'|' as i32;
                 let _str_3 = b';' as i32;
-                match (*(*command).value.Connection).connector{           
-                }
+                match (*(*command).value.Connection).connector{          
+                    38 | 124 => {
+                        let c:c_char = (*(*command).value.Connection).connector as c_char;
+                        s[0] = ' ' as i32 as c_char;
+                        s[1] = c;
+                        s[2] = '\u{0}' as i32 as c_char;
+                        print_deferred_heredocs(s.as_mut_ptr());
+                        if c as c_int != '&' as i32 || !((*(*command).value.Connection).second.is_null())
+                        {
+                            cprintf_1(b" \0" as *const u8 as *const i8);
+                            skip_this_indent = skip_this_indent + 1;
+                        }
+                    }
+                
                 _ => {
                         // cprintf_2( CString::new("print_command:bad connector").as_mut() as *const c_char, (*(*command).value.Connection).connector);
                         let mut str = format!("print_command:bas connector {}\0", (*(*command).value.Connection).connector);
