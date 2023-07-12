@@ -255,10 +255,11 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
                         let mut str = format!("print_command:bas connector {}\0", (*(*command).value.Connection).connector);
                         cprintf_1(str.as_mut_ptr() as *mut c_char);
                     }      
-                  
                 }
                 make_command_string_internal((*(*command).value.Connection).second);
                 PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
                 printing_connection = printing_connection - 1;    
             }
+            command_type_cm_function_def => print_function_def((*command).value.Function_def),
+            command_type_cm_group => print_group_command((*command).value.Group),
 }
