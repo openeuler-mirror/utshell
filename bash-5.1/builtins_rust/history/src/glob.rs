@@ -531,7 +531,22 @@ extern "C" {
 extern "C" {
     pub fn wcsxfrm(__s1: *mut wchar_t, __s2: *const wchar_t, __n: usize) -> usize;
 }
+extern "C" {
+    pub fn wcscoll_l(
+        __s1: *const wchar_t,
+        __s2: *const wchar_t,
+        __loc: locale_t,
+    ) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn wcsxfrm_l(
+        __s1: *mut wchar_t,
+        __s2: *const wchar_t,
+        __n: usize,
+        __loc: locale_t,
+    ) -> usize;
+}
+
 
 fn expand_and_print_history(mut list: *mut WordList) -> c_int
 {
@@ -539,6 +554,11 @@ unsafe {
 
     let s: *mut c_char = PT_NULL as *mut c_char;
     let mut result: c_int;
+
+    if hist_last_line_pushed == 0 && hist_last_line_added != 0 && bash_delete_last_history() == 0 {
+        return EXECUTION_FAILURE;
+    }
+    result = EXECUTION_SUCCESS;
     std::io::stdout().lock().flush().unwrap();
     return result;
 }
