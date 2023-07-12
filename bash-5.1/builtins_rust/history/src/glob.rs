@@ -577,6 +577,12 @@ unsafe {
             let c_err = CString::new("%s: history expansion failed").unwrap();
             builtin_error( c_err.as_ptr(), (*((*list).word)).word);
             result = EXECUTION_FAILURE;
+        } else {
+            println!("{}",CStr::from_ptr(s).to_str().unwrap());
+            //println!("{}",String::from(CStr::from_ptr(s).to_str().unwrap()));
+            //std::io::stdout().lock().write_all(CStr::from_ptr(s).to_bytes()).unwrap();
+            //libc::putchar(b'\n' as c_int);
+        }
     }
     std::io::stdout().lock().flush().unwrap();
     return result;
@@ -587,5 +593,8 @@ extern "C" {
 }
 extern "C" {
     pub fn wcspbrk(__wcs: *const wchar_t, __accept: *const wchar_t) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn wcsstr(__haystack: *const wchar_t, __needle: *const wchar_t) -> *mut wchar_t;
 }
 }
