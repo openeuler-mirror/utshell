@@ -147,6 +147,17 @@ unsafe {
         } else if delete_end > 0 {
             delete_end -= history_base as c_long;
         }
+
+        if delete_end < 0 || delete_end >= history_length as c_long {
+            r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
+            return EXECUTION_FAILURE;
+        }
+        result = bash_delete_history_range(delete_start as c_int, delete_end as c_int);
+        if where_history() > history_length {
+            history_set_pos(history_length);
+        }
+
+        return if result != 0 {EXECUTION_SUCCESS} else {EXECUTION_FAILURE};
     }
 
     return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
