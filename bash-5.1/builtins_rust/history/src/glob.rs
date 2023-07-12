@@ -57,6 +57,16 @@ pub const PROTOTYPES: u32 = 1;
 pub const __PROTOTYPES: u32 = 1;
 pub const HAVE_LONG_LONG: u32 = 1;
 pub const HAVE_UNSIGNED_LONG_LONG: u32 = 1;
+
+pub const AFLAG: c_int = 0x01;
+pub const RFLAG: c_int = 0x02;
+pub const WFLAG: c_int = 0x04;
+pub const NFLAG: c_int = 0x08;
+pub const SFLAG: c_int = 0x10;
+pub const PFLAG: c_int = 0x20;
+pub const CFLAG: c_int = 0x40;
+pub const DFLAG: c_int = 0x80;
+
 #[no_mangle]
 pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
 
@@ -127,8 +137,7 @@ unsafe {
         }
         return r_sh_chkwrite(EXECUTION_SUCCESS);
     } 
-
-    if (flags & DFLAG) != 0 {
+    else if (flags & DFLAG) != 0 {
         let c_tmp = if *delete_arg == b'-' as c_char {delete_arg.offset(1 as isize ) as *mut c_char} else {delete_arg};
         range = libc::strchr(c_tmp, b'-' as c_int);
         if  !range.is_null() {
@@ -203,8 +212,16 @@ unsafe {
         }
         return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
     }
+}
+    else if (flags & (AFLAG | RFLAG | NFLAG | WFLAG | CFLAG)) == 0 {
+        result = display_history(list);
+        return r_sh_chkwrite(result);
+    }
 
-    return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
+    filename = if !list.is_null() {(*((*list).word)).word} else {get_string_value("HISTFILE\0".as_ptr() as *mut c_char)};
+    result = EXECUTION_SUCCESS;
+
+    return if result != 0 {EXECUTION_FAILURE} else {result};
 }
 
 fn histtime(hlist: *mut HIST_ENTRY, histtimefmt: *const c_char) -> *mut c_char
