@@ -217,36 +217,37 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
                     }                    
                    
                     59 => {
-                        if (deferred_heredocs == 0)
-                        {           
-		                    if (was_heredoc == 0)
+                        if deferred_heredocs.is_null() {
+                            if was_heredoc == 0 
                             {
-		                        cprintf (";");
+                                cprintf_1(b";\0" as *const u8 as *const c_char);
                             }
-		                    else
-                            {
-		                        was_heredoc = 0;
+                            else{
+                                was_heredoc = 0;
                             }
                         }
-
-	                    else
-                        {
-		                    print_deferred_heredocs (inside_function_def ? "" : ";");
+                        
+                        else{
+                            print_deferred_heredocs(
+                                if inside_function_def != 0{
+                                    b"\0" as *const u8 as *const c_char
+                                }
+                                else{
+                                    b";\0" as *const u8 as *const c_char
+                                },
+                            )
                         }
-	                    
-                        if (inside_function_def)
-		                {
-                            cprintf ("\n");
+                        
+                        if inside_function_def != 0 {
+                            cprintf_1(b"\n\0" as *const u8 as *const c_char);
                         }
-	      
-                        else
-                        {
-                            cprintf (" ");
-                            if (command->value.Connection->second)
-                            {
-                                skip_this_indent++;
+                        
+                        else{
+                            cprintf_1(b" \0" as *const u8 as *const c_char);
+                            if !(*(*command).value.Connection).second.is_null() {
+                                skip_this_indent = skip_this_indent + 1;
                             }
-                        }
+                        }                    
                     }
          
                     _ => {
