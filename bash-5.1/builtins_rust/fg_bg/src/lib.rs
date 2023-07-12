@@ -1,13 +1,13 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-extern crate  libc;
+extern crate libc;
 extern crate nix;
 
-use libc::{c_char};
-use std::{ffi::CString, ops::Add};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use libc::c_char;
+use rcommon::{WordDesc, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
+use std::{ffi::CString, ops::Add};
 
 #[repr(i8)]
 pub enum JOB_STATE {
@@ -15,7 +15,7 @@ pub enum JOB_STATE {
     JRUNNING = 1,
     JSTOPPED = 2,
     JDEAD = 4,
-    JMIXED = 8
+    JMIXED = 8,
 }
 
 #[repr(u8)]
