@@ -698,6 +698,33 @@ extern "C" {
     pub fn wcstof64x(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t) -> _Float64x;
 }
 extern "C" {
+    pub fn wcstol(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __base: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_long;
+}
+extern "C" {
+    pub fn wcstoul(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __base: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_ulong;
+}
+extern "C" {
+    pub fn wcstoll(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __base: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_longlong;
+}
+extern "C" {
+    pub fn wcstoull(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __base: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_ulonglong;
+}
     pub fn wcstol_l(
         __nptr: *const wchar_t,
         __endptr: *mut *mut wchar_t,
@@ -728,5 +755,14 @@ extern "C" {
         __base: ::std::os::raw::c_int,
         __loc: locale_t,
     ) -> ::std::os::raw::c_ulonglong;
+}
+extern "C" {
+    pub fn wcstod_l(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t, __loc: locale_t) -> f64;
+}
+extern "C" {
+    pub fn wcstof_l(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t, __loc: locale_t) -> f32;
+}
+extern "C" {
+    pub fn wcstold_l(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t, __loc: locale_t) -> f64;
 }
 }

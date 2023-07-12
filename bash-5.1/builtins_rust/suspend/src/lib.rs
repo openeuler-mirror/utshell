@@ -55,7 +55,6 @@ pub extern "C" fn r_suspend_builtin(mut list: *mut WordList) -> i32 {
     return EXECUTION_SUCCESS;
 }
 
-unsafe fn suspend_continue(sig: c_int)
-{
+unsafe fn suspend_continue(sig: c_int) {
     set_signal_handler(libc::SIGCONT, old_cont);
 }
