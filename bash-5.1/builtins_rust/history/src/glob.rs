@@ -39,6 +39,24 @@ pub const DEFAULT_PATH_VALUE: &'static [u8; 63usize] =
     b"/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:.\0";
 pub const STANDARD_UTILS_PATH: &'static [u8; 30usize] = b"/bin:/usr/bin:/usr/sbin:/sbin\0";
 pub const PPROMPT: &'static [u8; 11usize] = b"\\s-\\\\v\\\\$ \0";
+pub const SPROMPT: &'static [u8; 3usize] = b"> \0";
+pub const DEFAULT_BASHRC: &'static [u8; 10usize] = b"~/.bashrc\0";
+pub const SYS_BASH_LOGOUT: &'static [u8; 22usize] = b"/etc/bash.bash_logout\0";
+pub const MULTIPLE_COPROCS: u32 = 0;
+pub const CHECKWINSIZE_DEFAULT: u32 = 1;
+pub const OPTIMIZE_SEQUENTIAL_ARRAY_ASSIGNMENT: u32 = 1;
+pub const CHECKHASH_DEFAULT: u32 = 0;
+pub const EVALNEST_MAX: u32 = 0;
+pub const SOURCENEST_MAX: u32 = 0;
+pub const OLDPWD_CHECK_DIRECTORY: u32 = 1;
+pub const HISTEXPAND_DEFAULT: u32 = 1;
+pub const ASSOC_KVPAIR_ASSIGNMENT: u32 = 1;
+pub const HAVE_STRINGIZE: u32 = 1;
+pub const HAVE_LONG_DOUBLE: u32 = 1;
+pub const PROTOTYPES: u32 = 1;
+pub const __PROTOTYPES: u32 = 1;
+pub const HAVE_LONG_LONG: u32 = 1;
+pub const HAVE_UNSIGNED_LONG_LONG: u32 = 1;
 #[no_mangle]
 pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
 
@@ -172,6 +190,18 @@ unsafe {
                 return EXECUTION_FAILURE;
             }
             opt = ind + history_base;
+        } else if delete_offset < history_base as c_long ||
+            (delete_offset >= (history_base + history_length) as c_long) {
+            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
+            return EXECUTION_FAILURE;
+        } else {
+            opt = delete_offset as c_int;
+        }
+        result = bash_delete_histent(opt - history_base);
+        if where_history() > history_length {
+            history_set_pos(history_length);
+        }
+        return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
     }
 
     return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
