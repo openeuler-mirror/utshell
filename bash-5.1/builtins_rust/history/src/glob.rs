@@ -160,6 +160,21 @@ pub const HAVE___FPURGE: u32 = 1;
 pub const HAVE_DECL_FPURGE: u32 = 0;
 pub const HAVE_GETADDRINFO: u32 = 1;
 pub const HAVE_GETCWD: u32 = 1;
+pub const HAVE_GETENTROPY: u32 = 1;
+pub const HAVE_GETDTABLESIZE: u32 = 1;
+pub const HAVE_GETGROUPS: u32 = 1;
+pub const HAVE_GETHOSTBYNAME: u32 = 1;
+pub const HAVE_GETHOSTNAME: u32 = 1;
+pub const HAVE_GETPAGESIZE: u32 = 1;
+pub const HAVE_GETPEERNAME: u32 = 1;
+pub const HAVE_GETPWENT: u32 = 1;
+pub const HAVE_GETPWNAM: u32 = 1;
+pub const HAVE_GETPWUID: u32 = 1;
+pub const HAVE_GETRANDOM: u32 = 1;
+pub const HAVE_GETRLIMIT: u32 = 1;
+pub const HAVE_GETRUSAGE: u32 = 1;
+pub const HAVE_GETSERVBYNAME: u32 = 1;
+
 #[no_mangle]
 pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
 
@@ -322,6 +337,9 @@ unsafe {
         result = maybe_append_history(filename);
     } else if (flags & WFLAG) != 0 {
         result = write_history(filename);
+    } else if (flags & RFLAG) != 0{
+        result = read_history(filename);
+        history_lines_in_file = history_lines_read_from_file;
     } else if (flags & NFLAG) != 0{
         let old_history_lines = history_lines_in_file;
         let obase = history_base;
@@ -362,14 +380,6 @@ unsafe {
         libc::strcpy(std::mem::transmute(&timestr), b"??\0".as_ptr() as *const c_char);
     }
 
-        if delete_end < 0 || delete_end >= history_length as c_long {
-            r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
-            return EXECUTION_FAILURE;
-        }
-        result = bash_delete_history_range(delete_start as c_int, delete_end as c_int);
-        if where_history() > history_length {
-            history_set_pos(history_length);
-        }
     return timestr.as_mut_ptr();
 }
 }
@@ -416,6 +426,10 @@ unsafe fn display_history(list: *mut WordList) -> c_int
             if terminating_signal != 0 {
                 termsig_handler(terminating_signal);
             }
+            if interrupt_state != 0 {
+                throw_to_top_level();
+            }
+            i += 1;
         }
     }
     return EXECUTION_SUCCESS;
