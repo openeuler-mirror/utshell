@@ -174,7 +174,11 @@ pub const HAVE_GETRANDOM: u32 = 1;
 pub const HAVE_GETRLIMIT: u32 = 1;
 pub const HAVE_GETRUSAGE: u32 = 1;
 pub const HAVE_GETSERVBYNAME: u32 = 1;
-
+pub const HAVE_GETSERVENT: u32 = 1;
+pub const HAVE_GETTIMEOFDAY: u32 = 1;
+pub const HAVE_ICONV: u32 = 1;
+pub const HAVE_IMAXDIV: u32 = 1;
+pub const HAVE_INET_ATON: u32 = 1;
 #[no_mangle]
 pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
 
@@ -429,6 +433,11 @@ unsafe fn display_history(list: *mut WordList) -> c_int
             if interrupt_state != 0 {
                 throw_to_top_level();
             }
+            timestr = if !histtimefmt.is_null() && *histtimefmt as libc::c_int != 0 {
+                histtime(*hlist.offset(i as isize), histtimefmt)
+            } else {
+                0 as *mut libc::c_void as *mut libc::c_char
+            };
             i += 1;
         }
     }
