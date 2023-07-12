@@ -577,13 +577,11 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
         },
         {
             let init = RShoptVars {
-                name: b"inherit_errexit\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"inherit_errexit\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &inherit_errexit as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
@@ -594,35 +592,28 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
                 value: &interactive_comments as *const i32 as *mut libc::c_int,
                 set_func: Some(
                     set_shellopts_after_change
-                        as unsafe extern "C" fn(
-                            *mut libc::c_char,
-                            i32,
-                        ) -> i32,
+                        as unsafe extern "C" fn(*mut libc::c_char, i32) -> i32,
                 ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"lastpipe\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"lastpipe\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &lastpipe_opt as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"lithist\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"lithist\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &literal_history as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
@@ -631,49 +622,39 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
                 name: b"localvar_inherit\0" as *const u8 as *const libc::c_char
                     as *mut libc::c_char,
                 value: &localvar_inherit as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
-            };
-            init
-        },
-        {
-            let init = RShoptVars {
-                name: b"localvar_unset\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &localvar_unset as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
-            };
-            init
-        },
-        {
-            let init = RShoptVars {
-                name: b"login_shell\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
-                value: &SHOPT_LOGIN_SHELL as *const i32 as *mut i32,
-                set_func: Some(
-                    r_set_login_shell
-                        as unsafe extern "C" fn(
-                            *mut libc::c_char,
-                            i32,
-                        ) -> i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
                 ),
             };
             init
         },
         {
             let init = RShoptVars {
-                name: b"mailwarn\0" as *const u8 as *const libc::c_char
-                    as *mut libc::c_char,
+                name: b"localvar_unset\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &localvar_unset as *const i32 as *mut libc::c_int,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
+            };
+            init
+        },
+        {
+            let init = RShoptVars {
+                name: b"login_shell\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                value: &SHOPT_LOGIN_SHELL as *const i32 as *mut i32,
+                set_func: Some(
+                    r_set_login_shell as unsafe extern "C" fn(*mut libc::c_char, i32) -> i32,
+                ),
+            };
+            init
+        },
+        {
+            let init = RShoptVars {
+                name: b"mailwarn\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &mail_warning as *const i32 as *mut libc::c_int,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
@@ -681,12 +662,10 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
             let init = RShoptVars {
                 name: b"no_empty_cmd_completion\0" as *const u8 as *const libc::c_char
                     as *mut libc::c_char,
-                value: &no_empty_command_completion as *const i32
-                    as *mut i32,
-                set_func: ::std::mem::transmute::<
-                    *mut libc::c_void,
-                    Option::<ShoptSetFuncT>,
-                >(0 as *const libc::c_void as *mut libc::c_void),
+                value: &no_empty_command_completion as *const i32 as *mut i32,
+                set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
+                    0 as *const libc::c_void as *mut libc::c_void,
+                ),
             };
             init
         },
