@@ -783,4 +783,30 @@ extern "C" {
 extern "C" {
     pub fn wprintf(__format: *const wchar_t, ...) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn fwscanf(__stream: *mut __FILE, __format: *const wchar_t, ...) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wscanf(__format: *const wchar_t, ...) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn swscanf(__s: *const wchar_t, __format: *const wchar_t, ...) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn vfwscanf(
+        __s: *mut __FILE,
+        __format: *const wchar_t,
+        __arg: *mut __va_list_tag,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn vwscanf(__format: *const wchar_t, __arg: *mut __va_list_tag) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn vswscanf(
+        __s: *const wchar_t,
+        __format: *const wchar_t,
+        __arg: *mut __va_list_tag,
+    ) -> ::std::os::raw::c_int;
+}
 }

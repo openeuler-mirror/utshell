@@ -1,9 +1,9 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-use libc::{c_int, c_char, c_void};
+use libc::{c_char, c_int, c_void};
 
-use rcommon::{r_make_builtin_argv,WordList};
+use rcommon::{r_make_builtin_argv, WordList};
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
@@ -20,21 +20,19 @@ pub extern "C" fn r_test_builtin(list: *mut WordList) -> i32 {
             }
             return EXECUTION_FAILURE;
         }
-        return EXECUTION_FAILURE;
+        let argv = r_make_builtin_argv(list, std::mem::transmute(&argc));
+        /*
+        let mut i = 0;
+        let argv = r_make_builtin_argv(list, &argc as *const i32 as*mut i32);
+        while  i<(argc)  {
+            let tmp = CStr::from_ptr(argv as *mut c_char);
+            //println!("test argv={}", tmp.to_str().unwrap());
+            libc::printf(CString::new("test:i=%d, argv=%s=\n").unwrap().as_ptr(), i , *argv.offset(i as isize) as *mut c_char);
+            i=i+1;
+        }
+        */
+        result = test_command(argc, argv);
+        libc::free(argv as *mut c_void);
     }
-    let argv = r_make_builtin_argv(list, std::mem::transmute(&argc));
-    /*
-    let mut i = 0;
-    let argv = r_make_builtin_argv(list, &argc as *const i32 as*mut i32);
-    while  i<(argc)  {
-        let tmp = CStr::from_ptr(argv as *mut c_char);
-        //println!("test argv={}", tmp.to_str().unwrap());
-        libc::printf(CString::new("test:i=%d, argv=%s=\n").unwrap().as_ptr(), i , *argv.offset(i as isize) as *mut c_char);
-        i=i+1;
-    }
-    */
-    result = test_command(argc, argv);
-    libc::free(argv as *mut c_void);
-}
     return result;
 }
