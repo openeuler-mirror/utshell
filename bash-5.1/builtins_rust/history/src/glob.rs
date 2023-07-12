@@ -483,3 +483,14 @@ extern "C" {
 extern "C" {
     pub fn wcscat(__dest: *mut wchar_t, __src: *const wchar_t) -> *mut wchar_t;
 }
+extern "C" {
+    pub fn wcsncat(__dest: *mut wchar_t, __src: *const wchar_t, __n: usize) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn wcscmp(__s1: *const wchar_t, __s2: *const wchar_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wcsncmp(__s1: *const wchar_t, __s2: *const wchar_t, __n: usize)
+        -> ::std::os::raw::c_int;
+}
+}
