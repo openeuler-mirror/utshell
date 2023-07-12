@@ -637,4 +637,21 @@ extern "C" {
 extern "C" {
     pub fn wmempcpy(__s1: *mut wchar_t, __s2: *const wchar_t, __n: usize) -> *mut wchar_t;
 }
+extern "C" {
+    pub fn btowc(__c: ::std::os::raw::c_int) -> wint_t;
+}
+extern "C" {
+    pub fn wctob(__c: wint_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn mbsinit(__ps: *const mbstate_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn mbrtowc(
+        __pwc: *mut wchar_t,
+        __s: *const ::std::os::raw::c_char,
+        __n: usize,
+        __p: *mut mbstate_t,
+    ) -> usize;
+}
 }
