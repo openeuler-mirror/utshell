@@ -891,3 +891,16 @@ unsafe extern "C"  fn  pshash_getbucket (pid:pid_t) -> *mut ps_index_t
 }
 
 
+#[no_mangle]
+unsafe extern "C"  fn  bgp_add(mut pid: pid_t, mut status: c_int) -> *mut pidstat {
+    let mut bucket: *mut ps_index_t = 0 as *mut ps_index_t;
+    let mut psi: ps_index_t = 0;
+    let mut ps: *mut pidstat = 0 as *mut pidstat;
+    bucket = pshash_getbucket(pid);
+    psi = bgp_getindex();
+    if psi == *bucket {
+        (*(bgpids.storage).offset(psi as isize)).pid = -1;
+        psi = bgp_getindex();
+    }
+
+}
