@@ -820,6 +820,21 @@ unsafe extern "C"  fn  bgp_resize ()
     let mut nsize_max: ps_index_t = 0;
     let mut psi: ps_index_t = 0;
 
+    if bgpids.nalloc == 0 {
+        psi = 0 as  c_int;
+        while psi < r_pidstat_table_SZ as c_int {
+            r_pidstat_table[psi as usize] = NO_PIDSTAT ;
+            psi += 1;
+        }
+        nsize = BGPIDS_TABLE_SZ as ps_index_t;
+        bgpids.head = 0 ;
+    } else {
+        nsize = bgpids.nalloc;
+    }
+
+
+
+
 }
 
 
