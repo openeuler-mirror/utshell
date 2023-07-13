@@ -306,6 +306,24 @@ pub unsafe extern "C" fn r_print_word_list(list:*mut WORD_LIST, separator:*mut c
         else {      
             print!("{}",CStr::from_ptr((*(*w).word).word).to_str().unwrap());
         }
-        
+
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_set(fd:c_int, fp:*mut FILE)
+{
+
+    if fd >= 0 && sh_validfd(fd) == 0 {
+        internal_error(b"xtrace_set: %d: invalid file descriptor\0" as *const u8 as *const c_char as *mut c_char, fd );
+        return;
+    }
+    if fp.is_null() {
+        internal_error(b"xtrace_set: NULL file pointer\0" as *const u8 as *const c_char);
+        return;
+    }
+    if fd >= 0 && fileno(fp) != fd {
+        internal_warning(b"xtrace fd (%d) != fileno xtrace fp (%d)\0" as *const u8 as *const c_char as *mut c_char, fd, fileno(fp));
+    }
+
 }

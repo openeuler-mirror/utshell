@@ -276,7 +276,7 @@ macro_rules! ARGS_SETBLTIN {
 #[macro_export]
 macro_rules! EXITPROG {
     () => {
-        0x03
+        3
     };
 }
 
@@ -581,8 +581,8 @@ pub extern "C" fn r_local_builtin(list: *mut WordList) -> i32 {
     }
 }
 
-unsafe fn local_p( varr:* mut SHELL_VAR)->i32 {
-  return (*varr).attributes & att_local!();
+unsafe fn local_p(varr: *mut SHELL_VAR) -> i32 {
+    (*varr).attributes & att_local!()
 }
 
 #[no_mangle]
@@ -687,7 +687,7 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
   let mut refvar:*mut SHELL_VAR;
   let mut v:*mut SHELL_VAR;
 
-  let mut shell_fn:*mut function_def;
+    let mut shell_fn: *mut function_def;
 
   refvar = std::ptr::null_mut();
   unsafe {
@@ -704,80 +704,109 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
       let optu8:u8= opt as u8;
       let optChar:char=char::from(optu8);
 
-      /* If you add options here, see whether or not they need to be added to
-	 the loop in subst.c:shell_expand_word_list() */
-      match optChar {
-        'a'=>{ *flags |= att_array!();}
-		'A'=>{ *flags |= att_assoc!();}
-        'p'=>{ pflag+=1;}
-        'F'=>{ nodefs+=1;
-              *flags |= att_function!();
-             }
-        'f'=>{ *flags |= att_function!();}
-        'G'=>{ 
-              if flags == &mut flags_on {
-                chklocal = 1;
-              }
-             }
-        'g'=>{
-          if flags == &mut flags_on {
-            mkglobal = 1;
-          }
-        }
-        'i'=>{ *flags |= att_integer!();}
-        'n'=>{ *flags |= att_nameref!();}
-        'r'=>{ *flags |= att_readonly!();}
-        't'=>{ *flags |= att_trace!();}
-        'x'=>{ *flags |= att_exported!();
-               array_needs_making = 1;
-             }
-        'c'=>{ *flags |= att_capcase!();
-              if flags == &mut flags_on {
-                flags_off |= att_uppercase!() | att_lowercase!();
-              }
-             }
-        'l'=>{ *flags |= att_lowercase!();
-              if flags == &mut flags_on {
-                flags_off |= att_capcase!()| att_uppercase!();
-              }
-             }
-        'u'=>{ *flags |= att_uppercase!();
-              if flags == &mut flags_on {
-                flags_off |= att_capcase!()| att_lowercase!();
-              }
-             }
-        'I'=>{ inherit_flag = MKLOC_INHERIT!();}
-        _=>{
-			if opt == -99 {
-				r_builtin_help();
-				return EX_USAGE;
-			}
-			 builtin_usage ();
-             return EX_USAGE;
+            let optu8: u8 = opt as u8;
+            let optChar: char = char::from(optu8);
+
+            /* If you add options here, see whether or not they need to be added to
+            the loop in subst.c:shell_expand_word_list() */
+            match optChar {
+                'a' => {
+                    *flags |= att_array!();
+                }
+                'A' => {
+                    *flags |= att_assoc!();
+                }
+                'p' => {
+                    pflag += 1;
+                }
+                'F' => {
+                    nodefs += 1;
+                    *flags |= att_function!();
+                }
+                'f' => {
+                    *flags |= att_function!();
+                }
+                'G' => {
+                    if flags == &mut flags_on {
+                        chklocal = 1;
+                    }
+                }
+                'g' => {
+                    if flags == &mut flags_on {
+                        mkglobal = 1;
+                    }
+                }
+                'i' => {
+                    *flags |= att_integer!();
+                }
+                'n' => {
+                    *flags |= att_nameref!();
+                }
+                'r' => {
+                    *flags |= att_readonly!();
+                }
+                't' => {
+                    *flags |= att_trace!();
+                }
+                'x' => {
+                    *flags |= att_exported!();
+                    array_needs_making = 1;
+                }
+                'c' => {
+                    *flags |= att_capcase!();
+                    if flags == &mut flags_on {
+                        flags_off |= att_uppercase!() | att_lowercase!();
+                    }
+                }
+                'l' => {
+                    *flags |= att_lowercase!();
+                    if flags == &mut flags_on {
+                        flags_off |= att_capcase!() | att_uppercase!();
+                    }
+                }
+                'u' => {
+                    *flags |= att_uppercase!();
+                    if flags == &mut flags_on {
+                        flags_off |= att_capcase!() | att_lowercase!();
+                    }
+                }
+                'I' => {
+                    inherit_flag = MKLOC_INHERIT!();
+                }
+                _ => {
+                    if opt == -99 {
+                        r_builtin_help();
+                        return EX_USAGE;
+                    }
+                    builtin_usage();
+                    return EX_USAGE;
+                }
             }
-	    }
-		opt = internal_getopt (list, tmp.as_ptr() as * mut c_char);
-  }
-    list = loptend;
-  /* If there are no more arguments left, then we just want to show
-     some variables. */
-  if list == std::ptr::null_mut() {	/* declare -[aAfFirtx] */
-      /* Show local variables defined at this context level if this is
-	 the `local' builtin. */
-      if local_var != 0 {
-        show_local_var_attributes (0, nodefs);	/* XXX - fix up args later */
-      } else if pflag != 0 && (flags_on == 0 || flags_on == att_function!()) {
-        let mut ret=0;
-        if flags_on == 0 {
-          ret=1;
+            opt = internal_getopt(list, tmp.as_ptr() as *mut c_char);
         }
-        show_all_var_attributes (ret, nodefs);
-      } else if flags_on == 0 {
-        return set_builtin (std::ptr::null_mut());
-      } else {
-        set_or_show_attributes (std::ptr::null_mut(), flags_on, nodefs);
-      }
-      return sh_chkwrite (EXECUTION_SUCCESS!());
+        list = loptend;
+        /* If there are no more arguments left, then we just want to show
+        some variables. */
+        if list == std::ptr::null_mut() {
+            /* declare -[aAfFirtx] */
+            /* Show local variables defined at this context level if this is
+            the `local' builtin. */
+            if local_var != 0 {
+                show_local_var_attributes(0, nodefs); /* XXX - fix up args later */
+            } else if pflag != 0 && (flags_on == 0 || flags_on == att_function!()) {
+                let mut ret = 0;
+                if flags_on == 0 {
+                    ret = 1;
+                }
+                show_all_var_attributes(ret, nodefs);
+            } else if flags_on == 0 {
+                return set_builtin(std::ptr::null_mut());
+            } else {
+                set_or_show_attributes(std::ptr::null_mut(), flags_on, nodefs);
+            }
+            return sh_chkwrite(EXECUTION_SUCCESS!());
+        }
+
   }
 
   if pflag !=0 {	/* declare -p [-aAfFirtx] name [name...] */
