@@ -957,4 +957,40 @@ extern "C" {
 extern "C" {
     pub fn iswdigit_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn iswgraph_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswlower_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswprint_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswpunct_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswspace_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswupper_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswxdigit_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswblank_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
+}
+    pub fn wctrans_l(__property: *const ::std::os::raw::c_char, __locale: locale_t) -> wctrans_t;
+}
+extern "C" {
+    pub fn towctrans_l(__wc: wint_t, __desc: wctrans_t, __locale: locale_t) -> wint_t;
+}
+pub type gid_t = __gid_t;
+pub type uid_t = __uid_t;
+pub type off_t = __off_t;
+pub type off64_t = __off64_t;
+pub type useconds_t = __useconds_t;
+pub type pid_t = __pid_t;
+pub type socklen_t = __socklen_t;
 }
