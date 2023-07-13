@@ -931,4 +931,30 @@ pub type __int_least32_t = __int32_t;
 pub type __uint_least32_t = __uint32_t;
 pub type __int_least64_t = __int64_t;
 pub type __uint_least64_t = __uint64_t;
+pub type __quad_t = ::std::os::raw::c_long;
+pub type __u_quad_t = ::std::os::raw::c_ulong;
+pub type __intmax_t = ::std::os::raw::c_long;
+pub type __uintmax_t = ::std::os::raw::c_ulong;
+pub type __dev_t = ::std::os::raw::c_ulong;
+pub type __uid_t = ::std::os::raw::c_uint;
+pub type __gid_t = ::std::os::raw::c_uint;
+pub type __ino_t = ::std::os::raw::c_ulong;
+pub type __ino64_t = ::std::os::raw::c_ulong;
+pub type __mode_t = ::std::os::raw::c_uint;
+pub type __nlink_t = ::std::os::raw::c_ulong;
+pub type __off_t = ::std::os::raw::c_long;
+pub type __off64_t = ::std::os::raw::c_long;
+pub type __pid_t = ::std::os::raw::c_int;
+extern "C" {
+    pub fn iswalnum_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswalpha_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswcntrl_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswdigit_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
+}
 }
