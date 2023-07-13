@@ -33,22 +33,25 @@ pub extern "C" fn r_suspend_builtin(mut list: *mut WordList) -> i32 {
 
             opt = internal_getopt(list, opt_str);
         }
-    list = loptend;
-    if job_control == 0 {
-        sh_nojobs("cannot suspend\0".as_ptr() as *mut c_char);
-        return EXECUTION_FAILURE;
-    }
-    if force == 0 {
-        r_no_args(list);
-        if login_shell != 0 {
-            builtin_error("cannot suspend a login shell\0".as_ptr() as *mut c_char);
+        list = loptend;
+        if job_control == 0 {
+            sh_nojobs("cannot suspend\0".as_ptr() as *mut c_char);
             return EXECUTION_FAILURE;
         }
-    }
+        if force == 0 {
+            r_no_args(list);
+            if login_shell != 0 {
+                builtin_error("cannot suspend a login shell\0".as_ptr() as *mut c_char);
+                return EXECUTION_FAILURE;
+            }
+        }
 
-    old_cont = set_signal_handler(libc::SIGCONT, std::mem::transmute(suspend_continue as usize));
-    killpg(shell_pgrp, libc::SIGSTOP);
-}
+        old_cont = set_signal_handler(
+            libc::SIGCONT,
+            std::mem::transmute(suspend_continue as usize),
+        );
+        killpg(shell_pgrp, libc::SIGSTOP);
+    }
     return EXECUTION_SUCCESS;
 }
 

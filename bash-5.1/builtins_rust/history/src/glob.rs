@@ -655,6 +655,22 @@ extern "C" {
     ) -> usize;
 }
 extern "C" {
+    pub fn wcrtomb(__s: *mut ::std::os::raw::c_char, __wc: wchar_t, __ps: *mut mbstate_t) -> usize;
+}
+extern "C" {
+    pub fn __mbrlen(__s: *const ::std::os::raw::c_char, __n: usize, __ps: *mut mbstate_t) -> usize;
+}
+extern "C" {
+    pub fn mbrlen(__s: *const ::std::os::raw::c_char, __n: usize, __ps: *mut mbstate_t) -> usize;
+}
+extern "C" {
+    pub fn mbsrtowcs(
+        __dst: *mut wchar_t,
+        __src: *mut *const ::std::os::raw::c_char,
+        __len: usize,
+        __ps: *mut mbstate_t,
+    ) -> usize;
+}
     pub fn wcwidth(__c: wchar_t) -> ::std::os::raw::c_int;
 }
 extern "C" {
