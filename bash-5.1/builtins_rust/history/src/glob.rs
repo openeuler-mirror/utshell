@@ -872,4 +872,26 @@ extern "C" {
 extern "C" {
     pub fn getwchar_unlocked() -> wint_t;
 }
+extern "C" {
+    pub fn fgetwc_unlocked(__stream: *mut __FILE) -> wint_t;
+}
+extern "C" {
+    pub fn fputwc_unlocked(__wc: wchar_t, __stream: *mut __FILE) -> wint_t;
+}
+extern "C" {
+    pub fn putwc_unlocked(__wc: wchar_t, __stream: *mut __FILE) -> wint_t;
+}
+extern "C" {
+    pub fn putwchar_unlocked(__wc: wchar_t) -> wint_t;
+}
+extern "C" {
+    pub fn fgetws_unlocked(
+        __ws: *mut wchar_t,
+        __n: ::std::os::raw::c_int,
+        __stream: *mut __FILE,
+    ) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn fputws_unlocked(__ws: *const wchar_t, __stream: *mut __FILE) -> ::std::os::raw::c_int;
+}
 }
