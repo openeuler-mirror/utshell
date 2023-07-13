@@ -571,74 +571,42 @@ pub unsafe extern "C" fn r_type_builtin(mut list: *mut WordList) -> i32 {
     return unsafe{sh_chkwrite(opt)};
 }
 
+fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
+    let mut found: i32 = 0;
+    let mut _i: i32;
+    let mut found_file: i32 = 0;
+    let mut f: i32;
+    let all: i32;
+    let mut full_path: *mut libc::c_char;
+    let mut x: *mut libc::c_char;
+    let mut pathlist: *mut libc::c_char;
+    let _func: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    // let mut alias : *mut alias_t;
 
-fn describe_command (command : *mut libc::c_char, dflags : i32) -> i32 {
-    let mut found : i32 = 0;
-    let mut _i : i32;
-    let mut found_file : i32 = 0;
-    let mut f : i32;
-    let all : i32;
-    let mut full_path : *mut libc::c_char;
-    let mut x : *mut libc::c_char;
-    let mut pathlist : *mut libc::c_char;
-    let _func : *mut SHELL_VAR = 0 as  *mut SHELL_VAR; 
-   // let mut alias : *mut alias_t;
-
-    if (dflags & CDESC_ALL!()) != 0{
-        all =1 ;     
-    }
-    else {
+    if (dflags & CDESC_ALL!()) != 0 {
+        all = 1;
+    } else {
         all = 0;
     }
     unsafe {
-        full_path = std::ptr::null_mut() ;
+        full_path = std::ptr::null_mut();
     }
-/* 
-    // #if defined (ALIAS)
-    alias = find_alias(command);
-    if (((dflags & CDESC_FORCE_PATH!()) == 0) && expand_aliases!=0 && alias != std::ptr::null_mut())
-    {
-      if (dflags & CDESC_TYPE!()) != 0{
-          unsafe {
-            libc::puts("alias" as *const libc::c_char );
-          }
-      }
-      else if (dflags & CDESC_SHORTDESC!()) != 0 {
-          unsafe{
-            println!("{:?} is aliased to {:?}\n",CStr::from_ptr(command), CStr::from_ptr(alias.value));
-          } 
-      }
-      else if dflags & CDESC_REUSABLE!(){
-          unsafe {
-            x = sh_single_quote((*alias).value);
-            println!("alias {:?} = {:?}",CStr::from_ptr(command),CStr::from_ptr(x));
-            libc::free(x);
-          }  
-	}
-      found = 1;
 
-      if all == 0 {
-        return 1;
-      }
-    }
-*/
     /* Command is a shell reserved word? */
-    if ((dflags & CDESC_FORCE_PATH!()) == 0) && unsafe {find_reserved_word(command)} >=0 {
+    if ((dflags & CDESC_FORCE_PATH!()) == 0) && unsafe { find_reserved_word(command) } >= 0 {
         if dflags & CDESC_TYPE!() != 0 {
-            unsafe{ 
+            unsafe {
                 let c_str_keyword = CString::new("keyword").unwrap();
                 libc::puts(c_str_keyword.as_ptr());
             }
-        }
-        else if dflags & CDESC_SHORTDESC!()  != 0 {
-            unsafe{
-                let name = String::from("iskeyword");
-                translation_fn(&name,command,std::ptr::null_mut());
-            }
-        }
-        else if dflags & CDESC_REUSABLE!()  != 0 {
+        } else if dflags & CDESC_SHORTDESC!() != 0 {
             unsafe {
-                println! ("{:?}",CStr::from_ptr(command));
+                let name = String::from("iskeyword");
+                translation_fn(&name, command, std::ptr::null_mut());
+            }
+        } else if dflags & CDESC_REUSABLE!() != 0 {
+            unsafe {
+                println!("{:?}", CStr::from_ptr(command));
             }
         }
 
