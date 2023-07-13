@@ -1103,4 +1103,23 @@ extern "C" {
         __group: __gid_t,
     ) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn fchownat(
+        __fd: ::std::os::raw::c_int,
+        __file: *const ::std::os::raw::c_char,
+        __owner: __uid_t,
+        __group: __gid_t,
+        __flag: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn chdir(__path: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn fchdir(__fd: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn getcwd(__buf: *mut ::std::os::raw::c_char, __size: usize)
+        -> *mut ::std::os::raw::c_char;
+}
 }
