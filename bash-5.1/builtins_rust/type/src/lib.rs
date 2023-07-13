@@ -1,65 +1,81 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-extern crate  libc;
+extern crate libc;
 extern crate nix;
 
 use libc::c_void;
 use std::ffi::CStr;
 use std::ffi::CString;
 
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,get_local_str};
+use rcommon::{get_local_str, WordDesc, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
 
-use fluent_bundle::{FluentArgs};
+use fluent_bundle::FluentArgs;
 use fluent_resmgr::resource_manager::ResourceManager;
 
 #[macro_export]
-macro_rules! CDESC_ALL{
+macro_rules! CDESC_ALL {
     //print all descriptions of a command
-   () => {0x001}
+    () => {
+        0x001
+    };
 }
 
 #[macro_export]
 macro_rules! CDESC_SHORTDESC {
     //print the description for type and command -V
-   () => {0x002}
+    () => {
+        0x002
+    };
 }
 
 #[macro_export]
-macro_rules! CDESC_REUSABLE{
+macro_rules! CDESC_REUSABLE {
     //print in a format that may be reused as input
-   () => {0x004}
+    () => {
+        0x004
+    };
 }
 
 #[macro_export]
 macro_rules! CDESC_TYPE {
     //print the type for type -t
-   () => {0x008}
+    () => {
+        0x008
+    };
 }
 
 #[macro_export]
 macro_rules! CDESC_PATH_ONLY {
     //print the path for type -p
-   () => {0x010}
+    () => {
+        0x010
+    };
 }
 
 #[macro_export]
 macro_rules! CDESC_FORCE_PATH {
     //force a path search for type -P
-   () => {0x020}
+    () => {
+        0x020
+    };
 }
 
 #[macro_export]
 macro_rules! CDESC_NOFUNCS {
     //skip function lookup for type -f
-   () => {0x040}
+    () => {
+        0x040
+    };
 }
 
 #[macro_export]
-macro_rules!  CDESC_ABSPATH{
+macro_rules! CDESC_ABSPATH {
     //CDESC_ABSPATH
-   () => {0x080}
+    () => {
+        0x080
+    };
 }
 
 #[macro_export]

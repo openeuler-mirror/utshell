@@ -1,42 +1,40 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-use std::{ffi::CString};
+use std::ffi::CString;
 
-use libc::{c_int, c_char, c_void, PT_NULL};
-use rcommon::{r_builtin_usage,r_display_signal_list,WordList,r_sh_invalidsig,r_sh_chkwrite};
+use libc::{c_char, c_int, c_void, PT_NULL};
+use rcommon::{r_builtin_usage, r_display_signal_list, r_sh_chkwrite, r_sh_invalidsig, WordList};
 use rhelp::r_builtin_help;
 include!(concat!("intercdep.rs"));
 
-
 #[no_mangle]
 pub extern "C" fn r_trap_builtin(mut list: *mut WordList) -> i32 {
-
     let mut list_signal_names: c_int = 0;
     let mut display: c_int = 0;
     let mut result: c_int = EXECUTION_SUCCESS;
 
-unsafe {
-    reset_internal_getopt();
-    let opt_str = CString::new("lp").unwrap();
-    let mut opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
-    while  opt != -1 {
-        let opt_char:char=char::from(opt as u8);
-        match opt_char {
-            'l' => list_signal_names += 1,
-            'p' => display += 1,
-            _ => {
-                if opt == -99 {
-                    r_builtin_help();
+    unsafe {
+        reset_internal_getopt();
+        let opt_str = CString::new("lp").unwrap();
+        let mut opt = internal_getopt(list, opt_str.as_ptr() as *mut c_char);
+        while opt != -1 {
+            let opt_char: char = char::from(opt as u8);
+            match opt_char {
+                'l' => list_signal_names += 1,
+                'p' => display += 1,
+                _ => {
+                    if opt == -99 {
+                        r_builtin_help();
+                        return EX_USAGE;
+                    }
+                    r_builtin_usage();
                     return EX_USAGE;
                 }
-                r_builtin_usage ();
-                return EX_USAGE;
             }
+            opt = internal_getopt(list, opt_str.as_ptr() as *mut c_char);
         }
-        opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
-    }
-    list = loptend;
+        list = loptend;
 
     opt = DSIG_NOCASE | DSIG_SIGPREFIX;
 
