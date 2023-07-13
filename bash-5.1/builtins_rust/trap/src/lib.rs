@@ -181,10 +181,26 @@ unsafe fn showtrap(i: c_int, show_default: c_int) {
                 (sn as usize + 3) as *mut c_char,
             );
         } else {
-            libc::printf("trap -- %s %s\n\0".as_ptr() as *const c_char, if t.is_null() {"''\0".as_ptr() as *mut c_char} else {t}, sn);
+            libc::printf(
+                "trap -- %s %s\n\0".as_ptr() as *const c_char,
+                if t.is_null() {
+                    "''\0".as_ptr() as *mut c_char
+                } else {
+                    t
+                },
+                sn,
+            );
         }
     } else {
-        libc::printf("trap -- %s %s\n\0".as_ptr() as *const c_char, if t.is_null() {"''\0".as_ptr() as *mut c_char} else {t}, sn);
+        libc::printf(
+            "trap -- %s %s\n\0".as_ptr() as *const c_char,
+            if t.is_null() {
+                "''\0".as_ptr() as *mut c_char
+            } else {
+                t
+            },
+            sn,
+        );
     }
 
     if show_default == 0 {
