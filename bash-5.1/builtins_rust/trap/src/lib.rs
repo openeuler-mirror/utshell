@@ -56,8 +56,27 @@ pub extern "C" fn r_trap_builtin(mut list: *mut WordList) -> i32 {
                 && decode_signal(first_arg, opt) != NO_SIG;
             if first_signal {
                 operation = REVERT;
+            } else if posixly_correct == 0
+                && !first_arg.is_null()
+                && *first_arg != 0
+                && (*first_arg != b'-' as c_char || *((first_arg as usize + 1) as *mut c_char) != 0)
+                && decode_signal(first_arg, opt) != NO_SIG
+                && (*list).next.is_null()
+            {
+                operation = REVERT;
+            } else {
+                list = (*list).next;
+                if list.is_null() {
+                    r_builtin_usage();
+                    return EX_USAGE;
+                } else if *first_arg == b'\0' as c_char {
+                    operation = IGNORE;
+                } else if *first_arg == b'-' as c_char
+                    && *((first_arg as usize + 1) as *mut c_char) == 0
+                {
+                    operation = REVERT;
+                }
             }
-        }
 
         if subshell_environment & SUBSHELL_RESETTRAP != 0 {
             free_trap_strings();
