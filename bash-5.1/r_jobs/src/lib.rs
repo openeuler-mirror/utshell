@@ -832,6 +832,18 @@ unsafe extern "C"  fn  bgp_resize ()
         nsize = bgpids.nalloc;
     }
 
+    nsize_max = TYPE_MAXIMUM!(ps_index_t);
+    nsize_cur = js.c_childmax as ps_index_t;
+
+    if nsize_cur < 0 {
+        nsize_cur = MAX_CHILD_MAX as c_int;
+    }				
+    
+    while nsize > 0  && nsize < nsize_cur {
+        nsize <<= 1 ;
+    }
+
+
 
 
 
