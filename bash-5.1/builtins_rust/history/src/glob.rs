@@ -1252,4 +1252,25 @@ extern "C" {
 extern "C" {
     pub fn getegid() -> __gid_t;
 }
+extern "C" {
+    pub fn rmdir(__path: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn tcgetpgrp(__fd: ::std::os::raw::c_int) -> __pid_t;
+}
+extern "C" {
+    pub fn tcsetpgrp(__fd: ::std::os::raw::c_int, __pgrp_id: __pid_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn getlogin() -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn getlogin_r(
+        __name: *mut ::std::os::raw::c_char,
+        __name_len: usize,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn setlogin(__name: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
 }
