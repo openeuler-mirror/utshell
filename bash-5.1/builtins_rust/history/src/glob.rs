@@ -597,4 +597,17 @@ extern "C" {
 extern "C" {
     pub fn wcsstr(__haystack: *const wchar_t, __needle: *const wchar_t) -> *mut wchar_t;
 }
+extern "C" {
+    pub fn wcstok(
+        __s: *mut wchar_t,
+        __delim: *const wchar_t,
+        __ptr: *mut *mut wchar_t,
+    ) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn wcslen(__s: *const wchar_t) -> ::std::os::raw::c_ulong;
+}
+extern "C" {
+    pub fn wcswcs(__haystack: *const wchar_t, __needle: *const wchar_t) -> *mut wchar_t;
+}
 }
