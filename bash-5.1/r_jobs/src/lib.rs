@@ -878,3 +878,16 @@ unsafe extern "C"  fn  bgp_getindex()-> ps_index_t
     bgpids.head += 1;
     return bgpids.head;
 }
+
+
+#[no_mangle]
+unsafe extern "C"  fn  pshash_getbucket (pid:pid_t) -> *mut ps_index_t
+{
+    let mut hash: c_ulong = 0;
+    hash = (pid as libc::c_ulong).wrapping_mul(0x9e370001 as libc::c_ulong);
+
+
+    return &mut *r_pidstat_table.as_mut_ptr().offset((hash % r_pidstat_table_SZ as u64) as isize)as *mut ps_index_t;
+}
+
+
