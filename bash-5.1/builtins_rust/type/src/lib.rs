@@ -433,14 +433,22 @@ extern "C" {
     ) -> *mut libc::c_char;
     fn find_shell_builtin(builtin: *mut libc::c_char) -> *mut libc::c_char;
     fn find_special_builtin(builtins: *mut libc::c_char) -> *mut sh_builtin_func_t;
-    fn absolute_program(program:*const libc::c_char) -> i32;
-    fn file_status(status :*const libc::c_char) -> i32 ;
-    fn phash_search(search:*const libc::c_char) -> *mut libc::c_char;
+    fn absolute_program(program: *const libc::c_char) -> i32;
+    fn file_status(status: *const libc::c_char) -> i32;
+    fn phash_search(search: *const libc::c_char) -> *mut libc::c_char;
     fn conf_standard_path() -> *mut libc::c_char;
-    fn find_in_path(path1:*const libc::c_char, path2:*mut libc::c_char, num: i32) -> *mut libc::c_char;
-    fn find_user_command(cmd:*mut libc::c_char) -> *mut libc::c_char;
-    fn user_command_matches(cmd:*const libc::c_char, num1:i32, num2:i32) -> *mut libc::c_char;
-    fn sh_makepath(path:*const libc::c_char, path1:*const libc::c_char, i: i32) -> *mut libc::c_char;
+    fn find_in_path(
+        path1: *const libc::c_char,
+        path2: *mut libc::c_char,
+        num: i32,
+    ) -> *mut libc::c_char;
+    fn find_user_command(cmd: *mut libc::c_char) -> *mut libc::c_char;
+    fn user_command_matches(cmd: *const libc::c_char, num1: i32, num2: i32) -> *mut libc::c_char;
+    fn sh_makepath(
+        path: *const libc::c_char,
+        path1: *const libc::c_char,
+        i: i32,
+    ) -> *mut libc::c_char;
     //fn find_alias(alia : *mut libc::c_char) -> *mut alias_t;
     static  expand_aliases : i32;
     static mut loptend:*mut WordList;
