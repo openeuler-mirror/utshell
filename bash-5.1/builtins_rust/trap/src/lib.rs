@@ -83,14 +83,14 @@ pub extern "C" fn r_trap_builtin(mut list: *mut WordList) -> i32 {
                 subshell_environment &= !SUBSHELL_RESETTRAP;
             }
 
-        let mut sig: c_int;
-        while !list.is_null() {
-            sig = decode_signal((*(*list).word).word, opt);
-            if sig == NO_SIG {
-                r_sh_invalidsig((*(*list).word).word);
-                result = EXECUTION_FAILURE;
-            } else {
-                match operation {
+            let mut sig: c_int;
+            while !list.is_null() {
+                sig = decode_signal((*(*list).word).word, opt);
+                if sig == NO_SIG {
+                    r_sh_invalidsig((*(*list).word).word);
+                    result = EXECUTION_FAILURE;
+                } else {
+                    match operation {
                                 libc::SIGINT => {
                                     if interactive != 0 {
                                         set_signal_handler(
@@ -158,9 +158,18 @@ unsafe fn showtrap(i: c_int, show_default: c_int)
     }
 
     let sn = signal_name(i);
-    if libc::strncmp(sn, "SIGJUNK\0".as_ptr() as *const c_char, 7) == 0 ||
-    libc::strncmp(sn, "unknown\0".as_ptr() as *const c_char, 7) == 0 {
-        libc::printf("trap -- %s %d\n\0".as_ptr() as *const c_char, if t.is_null() {"''\0".as_ptr() as *mut c_char} else {t}, i);
+    if libc::strncmp(sn, "SIGJUNK\0".as_ptr() as *const c_char, 7) == 0
+        || libc::strncmp(sn, "unknown\0".as_ptr() as *const c_char, 7) == 0
+    {
+        libc::printf(
+            "trap -- %s %d\n\0".as_ptr() as *const c_char,
+            if t.is_null() {
+                "''\0".as_ptr() as *mut c_char
+            } else {
+                t
+            },
+            i,
+        );
     } else if posixly_correct != 0 {
         if libc::strncmp(sn, "SIG\0".as_ptr() as *const c_char, 3) == 0 {
             libc::printf("trap -- %s %s\n\0".as_ptr() as *const c_char, if t.is_null() {"''\0".as_ptr() as *mut c_char} else {t}, (sn as usize + 3) as *mut c_char);
