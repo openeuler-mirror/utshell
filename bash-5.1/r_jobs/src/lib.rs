@@ -843,6 +843,15 @@ unsafe extern "C"  fn  bgp_resize ()
         nsize <<= 1 ;
     }
 
+    if nsize > nsize_max || nsize <= 0 {
+        nsize = nsize_max;
+    }
+
+    if nsize > MAX_CHILD_MAX as c_int {
+        nsize_max = MAX_CHILD_MAX as c_int;
+        nsize = nsize_max;
+    }
+
 
 
 
