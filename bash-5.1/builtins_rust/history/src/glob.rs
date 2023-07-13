@@ -681,4 +681,36 @@ extern "C" {
 extern "C" {
     pub fn wcstof64x(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t) -> _Float64x;
 }
+extern "C" {
+    pub fn wcstol_l(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __base: ::std::os::raw::c_int,
+        __loc: locale_t,
+    ) -> ::std::os::raw::c_long;
+}
+extern "C" {
+    pub fn wcstoul_l(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __base: ::std::os::raw::c_int,
+        __loc: locale_t,
+    ) -> ::std::os::raw::c_ulong;
+}
+extern "C" {
+    pub fn wcstoll_l(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __base: ::std::os::raw::c_int,
+        __loc: locale_t,
+    ) -> ::std::os::raw::c_longlong;
+}
+extern "C" {
+    pub fn wcstoull_l(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __base: ::std::os::raw::c_int,
+        __loc: locale_t,
+    ) -> ::std::os::raw::c_ulonglong;
+}
 }
