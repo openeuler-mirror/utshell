@@ -852,10 +852,17 @@ unsafe extern "C"  fn  bgp_resize ()
         nsize = nsize_max;
     }
 
-
-
-
-
+    if bgpids.nalloc < nsize_cur && bgpids.nalloc < nsize_max {
+        bgpids.storage = xrealloc(bgpids.storage as *mut c_void, (nsize * std::mem::size_of::<pidstat>()as c_int) as usize) as *mut pidstat;
+        psi = bgpids.nalloc;
+        while psi < nsize {
+            (*(bgpids.storage).offset(psi as isize)).pid = -(1 as  c_int);
+            psi += 1;
+        }
+        bgpids.nalloc = nsize;
+    } else if bgpids.head >= bgpids.nalloc {
+        bgpids.head = 0 as  c_int;
+    }
 }
 
 
