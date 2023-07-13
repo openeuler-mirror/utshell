@@ -917,3 +917,27 @@ unsafe extern "C"  fn  bgp_add(mut pid: pid_t, mut status: c_int) -> *mut pidsta
     return ps;
 }
 
+
+#[no_mangle]
+unsafe extern "C"  fn  pshash_delindex(mut psi: ps_index_t) {
+    let mut ps: *mut pidstat = 0 as *mut pidstat;
+    let mut bucket: *mut ps_index_t = 0 as *mut ps_index_t;
+
+    ps = &mut *(bgpids.storage).offset(psi as isize) as *mut pidstat;
+    if (*ps).pid == NO_PID {
+        return;
+    }
+    if (*ps).bucket_next != NO_PIDSTAT {
+        (*(bgpids.storage).offset((*ps).bucket_next as isize))
+            .bucket_prev = (*ps).bucket_prev;
+    }
+
+}
+
+
+
+
+
+
+
+
