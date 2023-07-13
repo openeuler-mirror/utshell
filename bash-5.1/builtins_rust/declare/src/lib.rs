@@ -213,42 +213,47 @@ pub union VALUE_COMMAND {
 
 #[repr(C)]
 pub struct COMMAND {
-    type_c:command_type,
-    flags:i32,
-    line:i32,
-    redirects:*mut REDIRECT,
-    value:VALUE_COMMAND
+    type_c: command_type,
+    flags: i32,
+    line: i32,
+    redirects: *mut REDIRECT,
+    value: VALUE_COMMAND,
 }
 
 #[repr(C)]
 pub struct SHELL_VAR {
-  name:*mut c_char,			/* Symbol that the user types. */
-  value:*mut c_char,			/* Value that is returned. */
-  exportstr:*mut c_char,	/* String for the environment. */
-  dynamic_value:*mut fn(v:* mut SHELL_VAR)->*mut SHELL_VAR,	/* Function called to return a `dynamic'
-				   value for a variable, like $SECONDS
-				   or $RANDOM. */
-  assign_func:* mut fn(v:* mut SHELL_VAR,str1:* mut c_char,t:c_long,str2:* mut c_char)->*mut SHELL_VAR, /* Function called when this `special
-				   variable' is assigned a value in
-				   bind_variable. */
-  attributes:i32,		/* export, readonly, array, invisible... */
-  context:i32			/* Which context this variable belongs to. */
+    name: *mut c_char,      /* Symbol that the user types. */
+    value: *mut c_char,     /* Value that is returned. */
+    exportstr: *mut c_char, /* String for the environment. */
+    dynamic_value: *mut fn(v: *mut SHELL_VAR) -> *mut SHELL_VAR, /* Function called to return a `dynamic'
+                                                                 value for a variable, like $SECONDS
+                                                                 or $RANDOM. */
+    assign_func: *mut fn(
+        v: *mut SHELL_VAR,
+        str1: *mut c_char,
+        t: c_long,
+        str2: *mut c_char,
+    ) -> *mut SHELL_VAR, /* Function called when this `special
+                         variable' is assigned a value in
+                         bind_variable. */
+    attributes: i32, /* export, readonly, array, invisible... */
+    context: i32,    /* Which context this variable belongs to. */
 }
 
 #[repr(C)]
 pub struct BUCKET_CONTENTS {
-	next:* mut BUCKET_CONTENTS,	/* Link to next hashed key in this bucket. */
-	key:* mut c_char,		/* What we look up. */
-	data:* mut c_void,			/* What we really want. */
-	khash:u32,		/* What key hashes to */
-	times_found:i32		/* Number of times this item has been found. */
+    next: *mut BUCKET_CONTENTS, /* Link to next hashed key in this bucket. */
+    key: *mut c_char,           /* What we look up. */
+    data: *mut c_void,          /* What we really want. */
+    khash: u32,                 /* What key hashes to */
+    times_found: i32,           /* Number of times this item has been found. */
 }
 
 #[repr(C)]
 pub struct HASH_TABLE {
-	bucket_array:*mut * mut BUCKET_CONTENTS,	/* Where the data is kept. */
-	nbuckets:i32,			/* How many buckets does this table have. */
-	nentries:i32			/* How many entries does this table have. */
+    bucket_array: *mut *mut BUCKET_CONTENTS, /* Where the data is kept. */
+    nbuckets: i32,                           /* How many buckets does this table have. */
+    nentries: i32,                           /* How many entries does this table have. */
 }
 
 #[repr(C)]
@@ -432,7 +437,7 @@ macro_rules! ASS_NOEXPAND {
 #[macro_export]
 macro_rules! EX_BADASSIGN {
     () => {
-        260 /* variable assignment error */
+        26 /* variable assignment error */
     };
 }
 
@@ -484,12 +489,12 @@ extern "C" {
     fn find_variable(str: *const c_char) -> *mut SHELL_VAR;
     fn find_global_variable(str: *const c_char) -> *mut SHELL_VAR;
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
-    static mut list_opttype:i32;
-    static mut array_needs_making:i32;
+    fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> i32;
+    static mut list_opttype: i32;
+    static mut array_needs_making: i32;
     fn builtin_usage();
-    static mut loptend:*mut WordList;
-    fn show_local_var_attributes (v:i32, nodefs:i32)->i32;
+    static mut loptend: *mut WordList;
+    fn show_local_var_attributes(v: i32, nodefs: i32) -> i32;
     // fn show_all_var_attributes (v:i32, nodefs:i32)->i32;
     fn set_builtin (list:*mut WordList)->i32;
     fn sh_chkwrite (ret:i32)->i32;

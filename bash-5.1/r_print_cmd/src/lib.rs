@@ -268,5 +268,21 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
                 make_command_string_internal((*(*command).value.Subshell).command);
                 PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
                 cprintf_1(b" )\0" as *const u8 as *const c_char);
+            
             }
+            
+            command_type_cm_coproc => {
+                let mut str = format!("coproc {}\0", CStr::from_ptr((*(*command).value.Coproc).name).to_str().unwrap());
+                cprintf_1(str.as_mut_ptr() as *mut c_char);
+                skip_this_indent += 1;
+                make_command_string_internal((*(*command).value.Coproc).command);
+            }
+
+            _ => {
+                // let c_str = CString::new("print_command").unwrap();
+                // let c_str_ptr = c_str.as_ptr();
+                command_error(b"print_command\0" as *const u8 as *const c_char, CMDERR_BADTYPE as i32, (*command).type_ as i32, 0 as i32);
+            }
+        }
+
 }
