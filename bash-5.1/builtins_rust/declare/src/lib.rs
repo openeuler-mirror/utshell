@@ -1188,68 +1188,69 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		  	  oldname = name;	/* need to free this */
 		      namelen = libc::strlen (nameref_cell (refvar)) as i32;
 
-		      if subscript_start != std::ptr::null_mut() {
-		      	*subscript_start = '[' as c_char;		/*]*/
-		        namelen += libc::strlen (subscript_start) as i32;
-		      }
+                            name =
+                                libc::malloc(namelen as libc::size_t + 2 + libc::strlen(value) + 1)
+                                    as *mut c_char;
+                            libc::strcpy(name, nameref_cell(refvar));
 
-		  name = libc::malloc (namelen as libc::size_t + 2 + libc::strlen (value) + 1 ) as * mut c_char ;
-		  libc::strcpy (name, nameref_cell (refvar));
+                            if subscript_start != std::ptr::null_mut() {
+                                libc::strcpy(
+                                    name.offset(libc::strlen(nameref_cell(refvar)) as isize),
+                                    subscript_start,
+                                );
+                            }
 
-		  if subscript_start != std::ptr::null_mut() {
-			libc::strcpy (name.offset(libc::strlen (nameref_cell (refvar)) as isize), subscript_start);
-		  }
+                            /* We are committed to using the new name, so reset */
+                            if offset != 0 {
+                                /* Rebuild assignment and restore offset and value */
+                                if (aflags & ASS_APPEND!()) != 0 {
+                                    *(name.offset(namelen as isize) as *mut c_char) = '+' as c_char;
 
-		  /* We are committed to using the new name, so reset */
-		  if offset !=0 {
-		      /* Rebuild assignment and restore offset and value */
-		      if (aflags & ASS_APPEND!()) !=0 {
-				*(name.offset( namelen as isize)  as * mut c_char) = '+' as c_char;
+                                    namelen += 1;
+                                }
+                                *(name.offset(namelen as isize) as *mut c_char) = '=' as c_char;
+                                //   *((name as usize + namelen as usize) as * mut c_char) = '=' as c_char;
+                                namelen += 1;
 
-				namelen+=1;
-			  }
-              *(name.offset( namelen as isize)  as * mut c_char) = '=' as c_char;
-			//   *((name as usize + namelen as usize) as * mut c_char) = '=' as c_char;
-		      namelen+=1;
+                                if value != std::ptr::null_mut() && (*value) != 0 {
+                                    libc::strcpy(name.offset(namelen as isize), value);
+                                } else {
+                                    *(name.offset(namelen as isize) as *mut c_char) =
+                                        '\0' as c_char;
+                                }
 
-			  if value != std::ptr::null_mut() && (*value) !=0 {
-				libc::strcpy (name.offset(namelen as isize), value);
-			  } else {
-				*(name.offset( namelen as isize)  as * mut c_char) = '\0' as c_char;
-			  }
+                                offset = assignment(name, 1);
+                                /* if offset was valid previously, but the substituting
+                                of the nameref value results in an invalid assignment,
+                                throw an invalid identifier error */
+                                if offset == 0 {
+                                    libc::free(oldname as *mut c_void);
+                                    sh_invalidid(name);
+                                    assign_error += 1;
+                                    libc::free(name as *mut c_void);
+                                    list = (*list).next;
+                                    continue 'outter;
+                                }
+                                *(name.offset(offset as isize)) = '\0' as c_char;
 
-		      offset = assignment (name, 0);
-		      /* if offset was valid previously, but the substituting
-			 of the nameref value results in an invalid assignment,
-			 throw an invalid identifier error */
-		      if offset == 0 {
-				libc::free (oldname as * mut c_void);
-				sh_invalidid (name);
-				assign_error+=1;
-				libc::free (name as * mut c_void);
-				list = (*list).next;
-				continue 'outter; 
-			  }
-		        *(name.offset(offset as isize)) = '\0' as c_char;
-			      	      
-		      value = name.offset(namelen as isize) ;
-		    }
-		    libc::free (oldname as * mut c_void);
+                                value = name.offset(namelen as isize);
+                            }
+                            libc::free(oldname as *mut c_void);
 
-			/* OK, let's turn off the nameref attribute.
-				Now everything else applies to VAR. */
-		    if (flags_off & att_nameref!()) !=0 {
-				VUNSETATTR (refvar, att_nameref!());
-			}
+                            /* OK, let's turn off the nameref attribute.
+                            Now everything else applies to VAR. */
+                            if (flags_off & att_nameref!()) != 0 {
+                                VUNSETATTR(refvar, att_nameref!());
+                            }
 
-			//goto restart_new_var_name;
-			continue 'inner;
-			/* NOTREACHED */
-		  }
-	    }
-	    if var == std::ptr::null_mut() {
-			var = r_declare_find_variable (name, mkglobal, chklocal);
-		}
+                            //goto restart_new_var_name;
+                            continue 'inner;
+                            /* NOTREACHED */
+                        }
+                    }
+                    if var == std::ptr::null_mut() {
+                        var = r_declare_find_variable(name, mkglobal, chklocal);
+                    }
 
 		var_exists = (var != std::ptr::null_mut()) as i32;
 	    array_exists = (var != std::ptr::null_mut() && (array_p (var) !=0 || assoc_p (var) !=0 )) as i32;
