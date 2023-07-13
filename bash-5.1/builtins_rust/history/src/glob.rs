@@ -863,4 +863,13 @@ extern "C" {
 extern "C" {
     pub fn fputws(__ws: *const wchar_t, __stream: *mut __FILE) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn ungetwc(__wc: wint_t, __stream: *mut __FILE) -> wint_t;
+}
+extern "C" {
+    pub fn getwc_unlocked(__stream: *mut __FILE) -> wint_t;
+}
+extern "C" {
+    pub fn getwchar_unlocked() -> wint_t;
+}
 }
