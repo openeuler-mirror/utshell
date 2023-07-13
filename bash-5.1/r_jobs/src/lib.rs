@@ -932,6 +932,16 @@ unsafe extern "C"  fn  pshash_delindex(mut psi: ps_index_t) {
             .bucket_prev = (*ps).bucket_prev;
     }
 
+    if (*ps).bucket_prev != NO_PIDSTAT {
+        (*(bgpids.storage).offset((*ps).bucket_prev as isize))
+            .bucket_next = (*ps).bucket_next;
+    } else {
+        bucket = pshash_getbucket((*ps).pid);
+        *bucket = (*ps).bucket_next;
+    }
+    (*ps).pid = NO_PID;
+    (*ps).bucket_next = NO_PIDSTAT;
+    (*ps).bucket_prev = NO_PIDSTAT;
 }
 
 
