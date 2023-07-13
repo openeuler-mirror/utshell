@@ -671,6 +671,14 @@ extern "C" {
         __ps: *mut mbstate_t,
     ) -> usize;
 }
+extern "C" {
+    pub fn wcsrtombs(
+        __dst: *mut ::std::os::raw::c_char,
+        __src: *mut *const wchar_t,
+        __len: usize,
+        __ps: *mut mbstate_t,
+    ) -> usize;
+}
     pub fn wcwidth(__c: wchar_t) -> ::std::os::raw::c_int;
 }
 extern "C" {
