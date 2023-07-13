@@ -812,6 +812,18 @@ macro_rules! TYPE_MAXIMUM {
     }
 }
 
+#[no_mangle]
+unsafe extern "C"  fn  bgp_resize ()
+{
+    let mut nsize: ps_index_t = 0;
+    let mut nsize_cur: ps_index_t = 0;
+    let mut nsize_max: ps_index_t = 0;
+    let mut psi: ps_index_t = 0;
+
+}
+
+
+
 
 #[no_mangle]
 unsafe extern "C"  fn  bgp_getindex()-> ps_index_t
