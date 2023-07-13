@@ -1291,4 +1291,18 @@ extern "C" {
 extern "C" {
     pub fn syncfs(__fd: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn lockf(
+        __fd: ::std::os::raw::c_int,
+        __cmd: ::std::os::raw::c_int,
+        __len: __off_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn lockf64(
+        __fd: ::std::os::raw::c_int,
+        __cmd: ::std::os::raw::c_int,
+        __len: __off64_t,
+    ) -> ::std::os::raw::c_int;
+}
 }
