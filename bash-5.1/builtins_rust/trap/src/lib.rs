@@ -36,25 +36,17 @@ pub extern "C" fn r_trap_builtin(mut list: *mut WordList) -> i32 {
         }
         list = loptend;
 
-    opt = DSIG_NOCASE | DSIG_SIGPREFIX;
+        opt = DSIG_NOCASE | DSIG_SIGPREFIX;
 
-    if list_signal_names != 0 {
-        return r_sh_chkwrite(r_display_signal_list(PT_NULL as *mut WordList, 1));
-    } else if display != 0 || list.is_null() {
-        initialize_terminating_signals();
-        get_all_original_signals();
-        return r_sh_chkwrite(display_traps(list, (display != 0 && posixly_correct != 0) as c_int));
-    } else {
-        let mut operation = SET;
-        let first_arg = (*(*list).word).word;
-        let first_signal = !first_arg.is_null() && *first_arg != 0 &&
-            all_digits(first_arg) != 0 && decode_signal (first_arg,opt) != NO_SIG;
-        if first_signal {
-            operation = REVERT;
-        } else if posixly_correct == 0 && !first_arg.is_null() && *first_arg != 0 &&
-            (*first_arg != b'-' as c_char || *((first_arg as usize + 1) as *mut c_char) != 0 ) &&
-            decode_signal (first_arg,opt) != NO_SIG && (*list).next.is_null() {
-            operation = REVERT;
+        if list_signal_names != 0 {
+            return r_sh_chkwrite(r_display_signal_list(PT_NULL as *mut WordList, 1));
+        } else if display != 0 || list.is_null() {
+            initialize_terminating_signals();
+            get_all_original_signals();
+            return r_sh_chkwrite(display_traps(
+                list,
+                (display != 0 && posixly_correct != 0) as c_int,
+            ));
         } else {
             list = (*list).next;
             if list.is_null() {
