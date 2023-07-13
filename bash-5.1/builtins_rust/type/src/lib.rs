@@ -79,89 +79,105 @@ macro_rules! CDESC_ABSPATH {
 }
 
 #[macro_export]
-macro_rules!  CDESC_STDPATH{
-   () => {0x100}
+macro_rules! CDESC_STDPATH {
+    () => {
+        0x100
+    };
 }
 
 #[macro_export]
 macro_rules! CHECK_HELPOPT {
-  ($l:expr) => {
-    if $l  !=std::ptr::null_mut() && (*$l).word !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) == 0 {
-      r_builtin_help ();
-      return EX_USAGE;
-    }
-  }
-}
-
-
-
-#[macro_export]
-macro_rules!  FS_EXECABLE{
-   () => {0x2}
-}
-#[macro_export]
-macro_rules!  FS_EXEC_PREFERRED{
-   () => {0x4}
+    ($l:expr) => {
+        if $l != std::ptr::null_mut()
+            && (*$l).word != std::ptr::null_mut()
+            && ISHELP!((*(*$l).word).word) == 0
+        {
+            r_builtin_help();
+            return EX_USAGE;
+        }
+    };
 }
 
 #[macro_export]
-macro_rules!  FS_NODIRS{
-   () => {0x20}
+macro_rules! FS_EXECABLE {
+    () => {
+        0x2
+    };
+}
+#[macro_export]
+macro_rules! FS_EXEC_PREFERRED {
+    () => {
+        0x4
+    };
 }
 
 #[macro_export]
-macro_rules!  MP_DOCWD{
-   () => {0}
+macro_rules! FS_NODIRS {
+    () => {
+        0x20
+    };
 }
 
 #[macro_export]
-macro_rules!  MP_RMDOT{
-   () => {1}
+macro_rules! MP_DOCWD {
+    () => {
+        0
+    };
+}
+
+#[macro_export]
+macro_rules! MP_RMDOT {
+    () => {
+        1
+    };
 }
 
 #[deny(missing_fragment_specifier)]
 #[macro_export]
-macro_rules!  STREQ{
-   ($a:expr,$b:expr) =>{
-       *$a as libc::c_char == *$b as libc::c_char && libc::strcmp($a,$b)==0
-    }
+macro_rules! STREQ {
+    ($a:expr,$b:expr) => {
+        *$a as libc::c_char == *$b as libc::c_char && libc::strcmp($a, $b) == 0
+    };
 }
 
 #[macro_export]
-macro_rules!  SIZEOFWORD{
+macro_rules! SIZEOFWORD {
     () => {
-    std::mem::size_of::<WordDesc>()
-    }  
+        std::mem::size_of::<WordDesc>()
+    };
 }
-
 
 #[repr(C)]
 pub struct SHELL_VAR {
-  name:*mut libc::c_char,
-  value:*mut libc::c_char,
-  exportstr:*mut libc::c_char,
-  dynamic_value:*mut fn(v:* mut SHELL_VAR)->*mut SHELL_VAR,
-  assign_func:* mut fn(v:* mut SHELL_VAR,str1:* mut libc::c_char,t:i64,str2:* mut libc::c_char)->*mut SHELL_VAR,
-  attributes:i32,
-  context:i32
+    name: *mut libc::c_char,
+    value: *mut libc::c_char,
+    exportstr: *mut libc::c_char,
+    dynamic_value: *mut fn(v: *mut SHELL_VAR) -> *mut SHELL_VAR,
+    assign_func: *mut fn(
+        v: *mut SHELL_VAR,
+        str1: *mut libc::c_char,
+        t: i64,
+        str2: *mut libc::c_char,
+    ) -> *mut SHELL_VAR,
+    attributes: i32,
+    context: i32,
 }
 
-#[repr (C)]
-#[derive(Copy,Clone)]
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct alias {
-    name :*mut libc::c_char,
-    value :*mut libc::c_char ,
-    flags:libc::c_char 
+    name: *mut libc::c_char,
+    value: *mut libc::c_char,
+    flags: libc::c_char,
 }
 
 type sh_builtin_func_t = fn(WordList) -> i32;
 type alias_t = alias;
 
-pub fn math(op: fn(i32, i32) -> i32, a: i32, b: i32) -> i32{
+pub fn math(op: fn(i32, i32) -> i32, a: i32, b: i32) -> i32 {
     /// 通过函数指针调用函数
     op(a, b)
 }
-
 
 #[repr(C)]
 pub struct COMMAND {
