@@ -1234,4 +1234,22 @@ extern "C" {
 extern "C" {
     pub fn setpgrp() -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn setsid() -> __pid_t;
+}
+extern "C" {
+    pub fn getsid(__pid: __pid_t) -> __pid_t;
+}
+extern "C" {
+    pub fn getuid() -> __uid_t;
+}
+extern "C" {
+    pub fn geteuid() -> __uid_t;
+}
+extern "C" {
+    pub fn getgid() -> __gid_t;
+}
+extern "C" {
+    pub fn getegid() -> __gid_t;
+}
 }
