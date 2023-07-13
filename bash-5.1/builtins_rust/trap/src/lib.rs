@@ -48,13 +48,13 @@ pub extern "C" fn r_trap_builtin(mut list: *mut WordList) -> i32 {
                 (display != 0 && posixly_correct != 0) as c_int,
             ));
         } else {
-            list = (*list).next;
-            if list.is_null() {
-                r_builtin_usage();
-                return EX_USAGE;
-            } else if *first_arg == b'\0' as c_char {
-                operation = IGNORE;
-            } else if *first_arg == b'-' as c_char && *((first_arg as usize + 1) as *mut c_char) == 0 {
+            let mut operation = SET;
+            let first_arg = (*(*list).word).word;
+            let first_signal = !first_arg.is_null()
+                && *first_arg != 0
+                && all_digits(first_arg) != 0
+                && decode_signal(first_arg, opt) != NO_SIG;
+            if first_signal {
                 operation = REVERT;
             }
         }
