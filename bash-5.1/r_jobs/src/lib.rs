@@ -903,4 +903,17 @@ unsafe extern "C"  fn  bgp_add(mut pid: pid_t, mut status: c_int) -> *mut pidsta
         psi = bgp_getindex();
     }
 
+
+    ps = &mut *(bgpids.storage).offset(psi as isize) as *mut pidstat;
+    (*ps).pid = pid;
+    (*ps).status = status as libc::c_short;
+    (*ps).bucket_next = *bucket;
+    (*ps).bucket_prev = -1;
+    bgpids.npid += 1;
+    if (*ps).bucket_next != -1 {
+        (*(bgpids.storage).offset((*ps).bucket_next as isize)).bucket_prev = psi;
+    }
+    *bucket = psi;
+    return ps;
 }
+
