@@ -418,15 +418,19 @@ macro_rules! ABSPATH {
 
 extern "C" {
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WordList , opts:*mut libc::c_char)->i32;
+    fn internal_getopt(list: *mut WordList, opts: *mut libc::c_char) -> i32;
     fn builtin_usage();
-    fn sh_notfound (name:* mut libc::c_char);
-    fn sh_chkwrite (ret:i32)->i32;
-    fn find_alias(alia :*mut libc::c_char) ->alias_t;
+    fn sh_notfound(name: *mut libc::c_char);
+    fn sh_chkwrite(ret: i32) -> i32;
+    fn find_alias(alia: *mut libc::c_char) -> alias_t;
     fn sh_single_quote(quote: *const libc::c_char) -> *mut libc::c_char;
-    fn find_reserved_word(word: *mut libc::c_char)->i32;
-    fn find_function (name:* const libc::c_char)-> *mut SHELL_VAR;
-    fn named_function_string (name: *mut libc::c_char, cmd:* mut COMMAND, i:i32)->* mut libc::c_char;
+    fn find_reserved_word(word: *mut libc::c_char) -> i32;
+    fn find_function(name: *const libc::c_char) -> *mut SHELL_VAR;
+    fn named_function_string(
+        name: *mut libc::c_char,
+        cmd: *mut COMMAND,
+        i: i32,
+    ) -> *mut libc::c_char;
     fn find_shell_builtin(builtin: *mut libc::c_char) -> *mut libc::c_char;
     fn find_special_builtin(builtins: *mut libc::c_char) -> *mut sh_builtin_func_t;
     fn absolute_program(program:*const libc::c_char) -> i32;

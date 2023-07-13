@@ -1191,4 +1191,16 @@ extern "C" {
         __envp: *const *mut ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn pathconf(
+        __path: *const ::std::os::raw::c_char,
+        __name: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_long;
+}
+extern "C" {
+    pub fn fpathconf(
+        __fd: ::std::os::raw::c_int,
+        __name: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_long;
+}
 }
