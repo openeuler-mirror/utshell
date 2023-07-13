@@ -1082,4 +1082,25 @@ extern "C" {
 extern "C" {
     pub fn pause() -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn chown(
+        __file: *const ::std::os::raw::c_char,
+        __owner: __uid_t,
+        __group: __gid_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn fchown(
+        __fd: ::std::os::raw::c_int,
+        __owner: __uid_t,
+        __group: __gid_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn lchown(
+        __file: *const ::std::os::raw::c_char,
+        __owner: __uid_t,
+        __group: __gid_t,
+    ) -> ::std::os::raw::c_int;
+}
 }

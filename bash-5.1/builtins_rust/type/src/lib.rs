@@ -280,29 +280,29 @@ pub union REDIRECTEE {
 pub struct case_com {
     flags: i32,
     line: i32,
-    word:*mut WordDesc,
-    clauses:*mut PATTERN_LIST
+    word: *mut WordDesc,
+    clauses: *mut PATTERN_LIST,
 }
 #[repr(C)]
 pub struct PATTERN_LIST {
-    next:* mut PATTERN_LIST,
-    patterns:* mut WordList,
-    action:*mut COMMAND,
-    flags:i32
+    next: *mut PATTERN_LIST,
+    patterns: *mut WordList,
+    action: *mut COMMAND,
+    flags: i32,
 }
 #[repr(C)]
 pub struct while_com {
-    flags: i32 ,
-    test:*mut COMMAND,
-    action:*mut COMMAND
+    flags: i32,
+    test: *mut COMMAND,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct if_com {
     flags: i32,
-    test:*mut COMMAND,
-    true_case:*mut COMMAND,
-    false_case:*mut COMMAND
+    test: *mut COMMAND,
+    true_case: *mut COMMAND,
+    false_case: *mut COMMAND,
 }
 
 #[repr(C)]
