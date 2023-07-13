@@ -654,4 +654,31 @@ extern "C" {
         __p: *mut mbstate_t,
     ) -> usize;
 }
+extern "C" {
+    pub fn wcwidth(__c: wchar_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wcswidth(__s: *const wchar_t, __n: usize) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wcstod(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t) -> f64;
+}
+extern "C" {
+    pub fn wcstof(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t) -> f32;
+}
+extern "C" {
+    pub fn wcstold(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t) -> f64;
+}
+extern "C" {
+    pub fn wcstof32(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t) -> _Float32;
+}
+extern "C" {
+    pub fn wcstof64(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t) -> _Float64;
+}
+extern "C" {
+    pub fn wcstof32x(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t) -> _Float32x;
+}
+extern "C" {
+    pub fn wcstof64x(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t) -> _Float64x;
+}
 }
