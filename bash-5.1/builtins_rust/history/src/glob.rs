@@ -610,4 +610,14 @@ extern "C" {
 extern "C" {
     pub fn wcswcs(__haystack: *const wchar_t, __needle: *const wchar_t) -> *mut wchar_t;
 }
+extern "C" {
+    pub fn wcsnlen(__s: *const wchar_t, __maxlen: usize) -> usize;
+}
+extern "C" {
+    pub fn wmemchr(__s: *const wchar_t, __c: wchar_t, __n: usize) -> *mut ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wmemcmp(__s1: *const wchar_t, __s2: *const wchar_t, __n: usize)
+        -> ::std::os::raw::c_int;
+}
 }
