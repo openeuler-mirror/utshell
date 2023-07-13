@@ -262,18 +262,18 @@ pub union REDIRECT {
 
 #[repr(C)]
 pub struct for_com {
-    flags: i32 ,
-    line: i32 ,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: i32,
+    line: i32,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub union REDIRECTEE {
-    dest: i32 ,
-    filename:* mut WordDesc
+    dest: i32,
+    filename: *mut WordDesc,
 }
 
 #[repr(C)]

@@ -1067,4 +1067,19 @@ extern "C" {
         __offset: __off64_t,
     ) -> isize;
 }
+extern "C" {
+    pub fn alarm(__seconds: ::std::os::raw::c_uint) -> ::std::os::raw::c_uint;
+}
+extern "C" {
+    pub fn sleep(__seconds: ::std::os::raw::c_uint) -> ::std::os::raw::c_uint;
+}
+extern "C" {
+    pub fn ualarm(__value: __useconds_t, __interval: __useconds_t) -> __useconds_t;
+}
+extern "C" {
+    pub fn usleep(__useconds: __useconds_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn pause() -> ::std::os::raw::c_int;
+}
 }
