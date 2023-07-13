@@ -153,6 +153,7 @@ pub const SFLAG: c_int = 0x10;
 pub const PFLAG: c_int = 0x20;
 pub const CFLAG: c_int = 0x40;
 pub const DFLAG: c_int = 0x80;
+
 pub const HAVE_FCNTL: u32 = 1;
 pub const HAVE_FNMATCH: u32 = 1;
 pub const FNMATCH_EQUIV_FALLBACK: u32 = 1;
@@ -583,6 +584,10 @@ unsafe {
             //std::io::stdout().lock().write_all(CStr::from_ptr(s).to_bytes()).unwrap();
             //libc::putchar(b'\n' as c_int);
         }
+        if !s.is_null() {
+            libc::free(s as *mut c_void);
+        }
+        list = (*list).next;
     }
     std::io::stdout().lock().flush().unwrap();
     return result;
@@ -619,5 +624,17 @@ extern "C" {
 extern "C" {
     pub fn wmemcmp(__s1: *const wchar_t, __s2: *const wchar_t, __n: usize)
         -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wmemcpy(__s1: *mut wchar_t, __s2: *const wchar_t, __n: usize) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn wmemmove(__s1: *mut wchar_t, __s2: *const wchar_t, __n: usize) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn wmemset(__s: *mut wchar_t, __c: wchar_t, __n: usize) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn wmempcpy(__s1: *mut wchar_t, __s2: *const wchar_t, __n: usize) -> *mut wchar_t;
 }
 }
