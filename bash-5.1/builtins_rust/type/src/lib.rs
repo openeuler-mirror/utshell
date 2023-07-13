@@ -181,57 +181,83 @@ pub fn math(op: fn(i32, i32) -> i32, a: i32, b: i32) -> i32 {
 
 #[repr(C)]
 pub struct COMMAND {
-    type_c:command_type,
-    flags:i32,
-    line:i32,
-    redirects:*mut REDIRECT,
-    value:VALUE_COMMAND
+    type_c: command_type,
+    flags: i32,
+    line: i32,
+    redirects: *mut REDIRECT,
+    value: VALUE_COMMAND,
 }
 #[repr(u8)]
-enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
-    cm_connection, cm_function_def, cm_until, cm_group,
-    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc
+enum command_type {
+    cm_for,
+    cm_case,
+    cm_while,
+    cm_if,
+    cm_simple,
+    cm_select,
+    cm_connection,
+    cm_function_def,
+    cm_until,
+    cm_group,
+    cm_arith,
+    cm_cond,
+    cm_arith_for,
+    cm_subshell,
+    cm_coproc,
 }
 
 #[repr(C)]
 pub union VALUE_COMMAND {
-    For:*mut for_com,
-    Case:*mut case_com,
-    While:*mut while_com,
-    If:*mut if_com,
-    Connection:*mut connection,
-    Simple:*mut simple_com,
-    Function_def:*mut function_def,
-    Group:*mut group_com,
-    Select:*mut select_com,
-    Arith:*mut arith_com,
-    Cond:*mut cond_com,
-    ArithFor:*mut arith_for_com,
-    Subshell:*mut subshell_com,
-    Coproc:*mut coproc_com
+    For: *mut for_com,
+    Case: *mut case_com,
+    While: *mut while_com,
+    If: *mut if_com,
+    Connection: *mut connection,
+    Simple: *mut simple_com,
+    Function_def: *mut function_def,
+    Group: *mut group_com,
+    Select: *mut select_com,
+    Arith: *mut arith_com,
+    Cond: *mut cond_com,
+    ArithFor: *mut arith_for_com,
+    Subshell: *mut subshell_com,
+    Coproc: *mut coproc_com,
 }
 
 #[repr(u8)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 enum r_instruction {
-    r_output_direction, r_input_direction, r_inputa_direction,
-    r_appending_to, r_reading_until, r_reading_string,
-    r_duplicating_input, r_duplicating_output, r_deblank_reading_until,
-    r_close_this, r_err_and_out, r_input_output, r_output_force,
-    r_duplicating_input_word, r_duplicating_output_word,
-    r_move_input, r_move_output, r_move_input_word, r_move_output_word,
-    r_append_err_and_out
+    r_output_direction,
+    r_input_direction,
+    r_inputa_direction,
+    r_appending_to,
+    r_reading_until,
+    r_reading_string,
+    r_duplicating_input,
+    r_duplicating_output,
+    r_deblank_reading_until,
+    r_close_this,
+    r_err_and_out,
+    r_input_output,
+    r_output_force,
+    r_duplicating_input_word,
+    r_duplicating_output_word,
+    r_move_input,
+    r_move_output,
+    r_move_input_word,
+    r_move_output_word,
+    r_append_err_and_out,
 }
 
 #[repr(C)]
 pub union REDIRECT {
-  next:*mut REDIRECT,
-  redirector:REDIRECTEE,
-  rflags: i32 ,
-  flags: i32 ,
-  instruction:r_instruction,
-  redirectee:REDIRECTEE,
-  here_doc_eof:*mut libc::c_char
+    next: *mut REDIRECT,
+    redirector: REDIRECTEE,
+    rflags: i32,
+    flags: i32,
+    instruction: r_instruction,
+    redirectee: REDIRECTEE,
+    here_doc_eof: *mut libc::c_char,
 }
 
 #[repr(C)]
