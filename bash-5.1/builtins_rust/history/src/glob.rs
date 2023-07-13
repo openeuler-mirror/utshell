@@ -809,4 +809,23 @@ extern "C" {
         __arg: *mut __va_list_tag,
     ) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn fputwc(__wc: wchar_t, __stream: *mut __FILE) -> wint_t;
+}
+extern "C" {
+    pub fn putwc(__wc: wchar_t, __stream: *mut __FILE) -> wint_t;
+}
+extern "C" {
+    pub fn putwchar(__wc: wchar_t) -> wint_t;
+}
+extern "C" {
+    pub fn fgetws(
+        __ws: *mut wchar_t,
+        __n: ::std::os::raw::c_int,
+        __stream: *mut __FILE,
+    ) -> *mut wchar_t;
+}
+extern "C" {
+    pub fn fputws(__ws: *const wchar_t, __stream: *mut __FILE) -> ::std::os::raw::c_int;
+}
 }
