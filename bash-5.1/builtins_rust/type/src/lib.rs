@@ -556,19 +556,17 @@ pub unsafe extern "C" fn r_type_builtin(mut list: *mut WordList) -> i32 {
         }
         any_failed = found + any_failed;
         let _ = any_failed == 0;
-     // (any_failed += found) == 0;
-      unsafe {
-        list = (*list).next;
-      }
-      
+        // (any_failed += found) == 0;
+        unsafe {
+            list = (*list).next;
+        }
     }
-    if any_failed == 0{
+    if any_failed == 0 {
         EXECUTION_SUCCESS!();
-    }
-    else {
+    } else {
         EXECUTION_FAILURE!();
     }
-    return unsafe{sh_chkwrite(opt)};
+    return unsafe { sh_chkwrite(opt) };
 }
 
 fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
