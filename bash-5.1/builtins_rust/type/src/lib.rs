@@ -506,29 +506,38 @@ pub unsafe extern "C" fn r_type_builtin(mut list: *mut WordList) -> i32 {
     }
     reset_internal_getopt();
 
-   let c_str_afptP = CString::new("afptP").unwrap();
-   let mut opt = unsafe {internal_getopt(list,c_str_afptP.as_ptr() as *mut libc::c_char) } ;
-  while  opt != -1{
-       let optu8:u8= opt as u8;
-       let optChar:char=char::from(optu8);
-       match optChar{
-           'a'=> {dflags = dflags |CDESC_ALL!();}
-           'f'=> {dflags = dflags | CDESC_NOFUNCS!(); }
-           'p'=> {dflags = dflags | CDESC_PATH_ONLY!();
-                  dflags  = dflags& !(CDESC_TYPE!()|CDESC_SHORTDESC!()); }
-           't'=> {dflags = dflags | CDESC_TYPE!(); 
-                  dflags = dflags& !(CDESC_PATH_ONLY!()|CDESC_SHORTDESC!());}
-           'P'=> {dflags = dflags | CDESC_PATH_ONLY!()| CDESC_FORCE_PATH!(); 
-                  dflags = dflags& !(CDESC_TYPE!()|CDESC_SHORTDESC!());
+    let c_str_afptP = CString::new("afptP").unwrap();
+    let mut opt = unsafe { internal_getopt(list, c_str_afptP.as_ptr() as *mut libc::c_char) };
+    while opt != -1 {
+        let optu8: u8 = opt as u8;
+        let optChar: char = char::from(optu8);
+        match optChar {
+            'a' => {
+                dflags = dflags | CDESC_ALL!();
+            }
+            'f' => {
+                dflags = dflags | CDESC_NOFUNCS!();
+            }
+            'p' => {
+                dflags = dflags | CDESC_PATH_ONLY!();
+                dflags = dflags & !(CDESC_TYPE!() | CDESC_SHORTDESC!());
+            }
+            't' => {
+                dflags = dflags | CDESC_TYPE!();
+                dflags = dflags & !(CDESC_PATH_ONLY!() | CDESC_SHORTDESC!());
+            }
+            'P' => {
+                dflags = dflags | CDESC_PATH_ONLY!() | CDESC_FORCE_PATH!();
+                dflags = dflags & !(CDESC_TYPE!() | CDESC_SHORTDESC!());
+            }
+            _ => {
+                if opt == -99 {
+                    r_builtin_help();
+                    return EX_USAGE;
                 }
-            _ =>{
-                 if opt == -99 {
-                     r_builtin_help();
-                     return EX_USAGE;
-                 }
                 unsafe {
-                builtin_usage ();
-                return EX_USAGE;
+                    builtin_usage();
+                    return EX_USAGE;
                 }
             }
         } 

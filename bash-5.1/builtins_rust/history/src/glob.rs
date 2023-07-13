@@ -1273,4 +1273,22 @@ extern "C" {
 extern "C" {
     pub fn setlogin(__name: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn daemon(
+        __nochdir: ::std::os::raw::c_int,
+        __noclose: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn chroot(__path: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn getpass(__prompt: *const ::std::os::raw::c_char) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn fsync(__fd: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn syncfs(__fd: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
 }
