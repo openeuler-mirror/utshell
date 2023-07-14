@@ -65,23 +65,21 @@ enum r_instruction {
 #[repr(C)]
 pub struct PROCESS {
     next: *mut PROCESS,
-    pid:libc::c_int,
-    status:libc::c_int,
-    running:libc::c_int,
-    command:*mut c_char
+    pid: libc::c_int,
+    status: libc::c_int,
+    running: libc::c_int,
+    command: *mut c_char,
 }
-
-
 
 #[repr(C)]
 pub union REDIRECT {
-  next:*mut REDIRECT,	/* Next element, or NULL. */
-  redirector:libc::c_int, 	/* Descriptor or varname to be redirected. */
-  rflags:libc::c_int,			/* Private flags for this redirection */
-  flags:libc::c_int,			/* Flag value for `open'. */
-  instruction:r_instruction, /* What to do with the information. */
-  redirectee:libc::c_int,	/* File descriptor or filename */
-  here_doc_eof:*mut c_char		/* The word that appeared in <<foo. */
+    next: *mut REDIRECT,        /* Next element, or NULL. */
+    redirector: libc::c_int,    /* Descriptor or varname to be redirected. */
+    rflags: libc::c_int,        /* Private flags for this redirection */
+    flags: libc::c_int,         /* Flag value for `open'. */
+    instruction: r_instruction, /* What to do with the information. */
+    redirectee: libc::c_int,    /* File descriptor or filename */
+    here_doc_eof: *mut c_char,  /* The word that appeared in <<foo. */
 }
 
 /* FOR command. */
@@ -112,33 +110,33 @@ pub struct case_com {
 
 #[repr(C)]
 pub struct while_com {
-    flags:libc::c_int,
-    test:*mut COMMAND,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    test: *mut COMMAND,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct if_com {
-    flags:libc::c_int,
-    test:*mut COMMAND,
-    true_case:*mut COMMAND,
-    false_case:*mut COMMAND
+    flags: libc::c_int,
+    test: *mut COMMAND,
+    true_case: *mut COMMAND,
+    false_case: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct connection {
-    ignore:libc::c_int,
-    first:*mut COMMAND,
-    second:*mut COMMAND,
-    connector:libc::c_int
+    ignore: libc::c_int,
+    first: *mut COMMAND,
+    second: *mut COMMAND,
+    connector: libc::c_int,
 }
 
 #[repr(C)]
 pub struct simple_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    words:*mut WordList,
-    redirects:*mut REDIRECT
+    flags: libc::c_int,
+    line: libc::c_int,
+    words: *mut WordList,
+    redirects: *mut REDIRECT,
 }
 
 #[repr(C)]
@@ -236,86 +234,88 @@ pub struct COMMAND {
 pub struct JOB {
     wd: *mut c_char,
     pipe: *mut PROCESS,
-    pgrp:i32,
-    state:JOB_STATE,
-    flags:i32,
-    deferred:*mut COMMAND,
-    j_cleanup:*mut fn(),
-    cleanarg:* mut fn()
+    pgrp: i32,
+    state: JOB_STATE,
+    flags: i32,
+    deferred: *mut COMMAND,
+    j_cleanup: *mut fn(),
+    cleanarg: *mut fn(),
 }
 
 #[repr(C)]
 pub struct jobstats {
     /* limits */
-    c_childmax:libc::c_long,
+    c_childmax: libc::c_long,
     /* child process statistics */
-    c_living:libc::c_int,		/* running or stopped child processes */
-    c_reaped:libc::c_int,	/* exited child processes still in jobs list */
-    c_injobs:libc::c_int,	/* total number of child processes in jobs list */
+    c_living: libc::c_int, /* running or stopped child processes */
+    c_reaped: libc::c_int, /* exited child processes still in jobs list */
+    c_injobs: libc::c_int, /* total number of child processes in jobs list */
     /* child process totals */
-    c_totforked:libc::c_int,	/* total number of children this shell has forked */
-    c_totreaped:libc::c_int,	/* total number of children this shell has reaped */
+    c_totforked: libc::c_int, /* total number of children this shell has forked */
+    c_totreaped: libc::c_int, /* total number of children this shell has reaped */
     /* job counters and indices */
-    j_jobslots:libc::c_int,/* total size of jobs array */
-    j_lastj:libc::c_int,		/* last (newest) job allocated */
-    j_firstj:libc::c_int,	/* first (oldest) job allocated */
-    j_njobs:libc::c_int,		/* number of non-NULL jobs in jobs array */
-    j_ndead:libc::c_int,		/* number of JDEAD jobs in jobs array */
+    j_jobslots: libc::c_int, /* total size of jobs array */
+    j_lastj: libc::c_int,    /* last (newest) job allocated */
+    j_firstj: libc::c_int,   /* first (oldest) job allocated */
+    j_njobs: libc::c_int,    /* number of non-NULL jobs in jobs array */
+    j_ndead: libc::c_int,    /* number of JDEAD jobs in jobs array */
     /* */
-    j_current:libc::c_int,	/* current job */
-    j_previous:libc::c_int,	/* previous job */
+    j_current: libc::c_int,  /* current job */
+    j_previous: libc::c_int, /* previous job */
     /* */
-    j_lastmade:* mut JOB,	/* last job allocated by stop_pipeline */
-    j_lastasync:* mut JOB	/* last async job allocated by stop_pipeline */
+    j_lastmade: *mut JOB,  /* last job allocated by stop_pipeline */
+    j_lastasync: *mut JOB, /* last async job allocated by stop_pipeline */
 }
-
 
 #[macro_export]
 macro_rules! BLOCK_SIGNAL {
-   ($sig:expr, $nvar:expr, $ovar:expr) => {
+    ($sig:expr, $nvar:expr, $ovar:expr) => {
         $nvar.unwrap().clear();
         $nvar.unwrap().add($sig);
         $nvar.unwrap().clear();
-        nix::sys::signal::sigprocmask(nix::sys::signal::SigmaskHow::SIG_BLOCK,  $nvar, $ovar);   
-   }
+        nix::sys::signal::sigprocmask(nix::sys::signal::SigmaskHow::SIG_BLOCK, $nvar, $ovar);
+    };
 }
 
 #[macro_export]
 macro_rules! UNBLOCK_SIGNAL {
-   ($ovar:expr) => {
-        nix::sys::signal::sigprocmask(nix::sys::signal::SigmaskHow::SIG_SETMASK,  $ovar, None)
-   }
+    ($ovar:expr) => {
+        nix::sys::signal::sigprocmask(nix::sys::signal::SigmaskHow::SIG_SETMASK, $ovar, None)
+    };
 }
 
 #[macro_export]
 macro_rules! UNBLOCK_CHILD {
-   ($ovar:expr) => {
-    UNBLOCK_SIGNAL!($ovar);   
-   }
+    ($ovar:expr) => {
+        UNBLOCK_SIGNAL!($ovar);
+    };
 }
 
 #[macro_export]
 macro_rules! BLOCK_CHILD {
-   ($nvar:expr,$ovar:expr) => {
-    BLOCK_SIGNAL!(nix::sys::signal::SIGCHLD, $nvar, $ovar);  
-   }
+    ($nvar:expr,$ovar:expr) => {
+        BLOCK_SIGNAL!(nix::sys::signal::SIGCHLD, $nvar, $ovar);
+    };
 }
 
 #[macro_export]
 macro_rules! DUP_JOB {
-   () => {-2}
+    () => {
+        -2
+    };
 }
 
 #[macro_export]
 macro_rules! get_job_by_jid {
-   ($ind:expr) => {
-    (*(((jobs as usize) + ($ind*8) as usize ) as *mut*mut JOB) as *mut JOB)
-    }
+    ($ind:expr) => {
+        (*(((jobs as usize) + ($ind * 8) as usize) as *mut *mut JOB) as *mut JOB)
+    };
 }
 
 #[macro_export]
 macro_rules! J_JOBCONTROL {
-   () => {0x04}
+   () => 4
+   };
 }
 
 #[macro_export]

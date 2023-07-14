@@ -159,13 +159,13 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
             indent(indentation);
         }
         if (*command).flags != 0 && CMD_TIME_PIPELINE != 0{
-            cprintf_1(b"time " as *const u8 as *const i8);
+            cprintf_1(b"time \0" as *const u8 as *const i8);
             if (*command).flags != 0 && CMD_TIME_POSIX != 0{
-                cprintf_1(b"-p " as *const u8 as *const i8);
+                cprintf_1(b"-p \0" as *const u8 as *const i8);
             }
         }
         if (*command).flags != 0 && CMD_INVERT_RETURN != 0{
-            cprintf_1(b"! " as *const u8 as *const i8);
+            cprintf_1(b"! \0" as *const u8 as *const i8);
         }   
 
         // (*command).type_ = 11;
