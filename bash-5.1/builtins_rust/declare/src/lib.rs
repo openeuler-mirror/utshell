@@ -992,65 +992,30 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
      if variable_context !=0 && mkglobal == 0 && ((flags_on & att_function!()) == 0) {
 	  	 let newname: * mut c_char;
 
-		 /* check name for validity here? */
-		 var = find_variable (name);
-	     if var == std::ptr::null_mut() {
-			newname = nameref_transform_name (name, ASS_MKLOCAL!());
-		 }
-		 else if (flags_on & att_nameref!()) == 0 && (flags_off & att_nameref!()) == 0 {
-	      /* Ok, we're following namerefs here, so let's make sure that if
-		 we followed one, it was at the same context (see below for
-		 more details). */
-	      refvar = find_variable_last_nameref (name, 1);
-		  if refvar != std::ptr::null_mut() && (*refvar).context != variable_context {
-			newname =  name ;
-		  }
-		 else {
-			newname =  (*var).name;
-		}
-	      refvar = std::ptr::null_mut();
-	    } else {
-			newname = name;	/* dealing with nameref attribute */
-		}
-// 至此，find_variable 返回var 没有被更新
-	    /* Pass 1 as second argument to make_local_{assoc,array}_variable
-	     return an existing {array,assoc} variable to be flagged as an
-	     error below. */
-		if (flags_on & att_assoc!()) !=0 {
-			var = make_local_assoc_variable (newname, MKLOC_ARRAYOK!()|inherit_flag);
-		} else if (flags_on & att_array!()) !=0 || making_array_special !=0 {
-			var = make_local_array_variable (newname, MKLOC_ASSOCOK!()|inherit_flag);
-		} else if offset == 0 && (flags_on & att_nameref!()) !=0 {
-	      /* First look for refvar at current scope */
-	      refvar = find_variable_last_nameref (name, 1);
-	      /* VARIABLE_CONTEXT != 0, so we are attempting to create or modify
-		 the attributes for a local variable at the same scope.  If we've
-		 used a reference from a previous context to resolve VAR, we
-		 want to throw REFVAR and VAR away and create a new local var. */
-	      if refvar != std::ptr::null_mut() && (*refvar).context != variable_context {
-		  	refvar = std::ptr::null_mut();
-		  	var = make_local_variable (name, inherit_flag);
-		  } else if refvar != std::ptr::null_mut() && (*refvar).context == variable_context {
-			var = refvar;
-		  } else if var == std::ptr::null_mut() || (*refvar).context != variable_context {/* Maybe we just want to create a new local variable */
-			var = make_local_variable (name, inherit_flag);
-		  }
-	      /* otherwise we have a var at the right context */
-	    } else {
-			 /* XXX - check name for validity here with valid_nameref_value */
-			 if flags_on & att_nameref!() !=0 {
-				var = make_local_variable ( name , inherit_flag);
-			 } else {
-				var = make_local_variable ( newname, inherit_flag);	/* sets att_invisible for new vars */
-			 }
-		}
+                    if var == std::ptr::null_mut() {
+                        any_failed += 1;
+                        libc::free(name as *mut c_void);
+                        list = (*list).next;
+                        continue 'outter;
+                    }
 
-	    if var == std::ptr::null_mut() {
-	      any_failed+=1;
-	      libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter; 
-	    }
+                    if var != std::ptr::null_mut()
+                        && nameref_p(var) != 0
+                        && readonly_p(var) != 0
+                        && nameref_cell(var) != std::ptr::null_mut()
+                        && (flags_off & att_nameref!()) != 0
+                    {
+                        sh_readonly(name);
+                        any_failed += 1;
+                        libc::free(name as *mut c_void);
+                        list = (*list).next;
+                        continue 'outter;
+                    }
+                } else {
+                    var = std::ptr::null_mut();
+                }
+                /* If we are declaring a function, then complain about it in some way.
+                We don't let people make functions by saying `typeset -f foo=bar'. */
 
 	  	if var != std::ptr::null_mut() && nameref_p (var) !=0 && readonly_p (var) != 0 && nameref_cell (var) != std::ptr::null_mut() && (flags_off & att_nameref!()) !=0 {
 	      sh_readonly (name);
@@ -1226,18 +1191,14 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
 			refvar = std::ptr::null_mut();
 		  }
 
-	      if refvar !=std::ptr::null_mut() {
-			  /* XXX - use declare_find_variable here? */
-			  if mkglobal !=0 {
-				var = find_global_variable (nameref_cell (refvar)) ;
-			  } else {
-				var = find_variable (nameref_cell (refvar));
-			  }
-		  }
+                        if refvar != std::ptr::null_mut() && var == std::ptr::null_mut() {
+                            oldname = name; /* need to free this */
+                            namelen = libc::strlen(nameref_cell(refvar)) as i32;
 
-	      if refvar !=std::ptr::null_mut() && var == std::ptr::null_mut() {
-		  	  oldname = name;	/* need to free this */
-		      namelen = libc::strlen (nameref_cell (refvar)) as i32;
+                            if subscript_start != std::ptr::null_mut() {
+                                *subscript_start = '[' as c_char; /*]*/
+                                namelen += libc::strlen(subscript_start) as i32;
+                            }
 
                             name =
                                 libc::malloc(namelen as libc::size_t + 2 + libc::strlen(value) + 1)
@@ -1303,9 +1264,11 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
                         var = r_declare_find_variable(name, mkglobal, chklocal);
                     }
 
-		var_exists = (var != std::ptr::null_mut()) as i32;
-	    array_exists = (var != std::ptr::null_mut() && (array_p (var) !=0 || assoc_p (var) !=0 )) as i32;
-	    creating_array = flags_on & (att_array!()|att_assoc!());
+                    var_exists = (var != std::ptr::null_mut()) as i32;
+                    array_exists = (var != std::ptr::null_mut()
+                        && (array_p(var) != 0 || assoc_p(var) != 0))
+                        as i32;
+                    creating_array = flags_on & (att_array!() | att_assoc!());
 
 	    if var == std::ptr::null_mut() {
 	      if (flags_on & att_assoc!()) !=0 {
