@@ -1554,4 +1554,16 @@ pub union rusage__bindgen_ty_3 {
     pub __ru_idrss_word: __syscall_slong_t,
     _bindgen_union_align: u64,
 }
+pub const __priority_which_PRIO_PROCESS: __priority_which = 0;
+pub const __priority_which_PRIO_PGRP: __priority_which = 1;
+pub const __priority_which_PRIO_USER: __priority_which = 2;
+pub type __priority_which = u32;
+extern "C" {
+    pub fn prlimit(
+        __pid: __pid_t,
+        __resource: __rlimit_resource,
+        __new_limit: *const rlimit,
+        __old_limit: *mut rlimit,
+    ) -> ::std::os::raw::c_int;
+}
 }
