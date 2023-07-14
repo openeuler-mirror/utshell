@@ -1540,4 +1540,18 @@ pub const __rlimit_resource_RLIMIT_CORE: __rlimit_resource = 4;
 pub const __rlimit_resource___RLIMIT_RSS: __rlimit_resource = 5;
 pub const __rlimit_resource_RLIMIT_NOFILE: __rlimit_resource = 7;
 pub const __rlimit_resource___RLIMIT_OFILE: __rlimit_resource = 7;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union rusage__bindgen_ty_2 {
+    pub ru_ixrss: ::std::os::raw::c_long,
+    pub __ru_ixrss_word: __syscall_slong_t,
+    _bindgen_union_align: u64,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union rusage__bindgen_ty_3 {
+    pub ru_idrss: ::std::os::raw::c_long,
+    pub __ru_idrss_word: __syscall_slong_t,
+    _bindgen_union_align: u64,
+}
 }
