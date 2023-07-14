@@ -67,7 +67,7 @@ macro_rules! BASE_INDENT {
 #[macro_export]
 macro_rules! BUILTIN_ENABLED {
     () => {
-        1
+        0
     };
 }
 

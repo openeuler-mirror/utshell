@@ -386,5 +386,17 @@ pub unsafe extern "C" fn r_indirection_level_string()->*mut c_char
         return indirection_string;
     }
 
-
+    ps4_len = strnlen(ps4 as *const c_char , MB_CUR_MAX) as c_int;
+    ps4_firstc_len = MBLEN(ps4, ps4_len as size_t);
+    
+    if ps4_firstc_len == 1 || ps4_firstc_len == 0 || ps4_firstc_len < 0
+    {
+        ps4_firstc[0] = *ps4.offset(0 as isize);
+        ps4_firstc[1] = '\u{0}' as i32 as c_char;
+    }
+    
+    else
+    {
+        libc::memcpy(ps4_firstc.as_mut_ptr() as *mut c_void, ps4  as *const c_void , ps4_firstc_len as usize);
+    }
 }
