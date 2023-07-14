@@ -1032,5 +1032,14 @@ unsafe extern "C" fn procsub_free(mut p: *mut PROCESS)
     free (p as *mut c_void);
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  procsub_add(mut p: *mut PROCESS) -> *mut PROCESS {
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-
+    BLOCK_CHILD(&mut set, &mut oset);
+    
+    
+    UNBLOCK_CHILD(&mut oset);
+    return p;
+}
