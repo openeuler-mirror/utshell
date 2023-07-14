@@ -674,14 +674,13 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
             }
         } else if dflags & CDESC_REUSABLE!() != 0 {
             unsafe {
-                let name = String::from("isbuiltin");
-                translation_fn(&name,command,std::ptr::null_mut());
+                println!("{:?}", CStr::from_ptr(command));
             }
         }
-    }
-    else if dflags & CDESC_REUSABLE!()  != 0 {
-        unsafe {
-            println!("{:?}",CStr::from_ptr(command));
+
+        found = 1;
+        if all == 0 {
+            return 1;
         }
     }
 
