@@ -784,31 +784,26 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
                 libc::free (full_path as *mut c_void);
 	            full_path =  std::ptr::null_mut() ;
             }
-            if all == 0{
-                break;
-            }	
-	    }
-	  else if ABSPATH!(full_path){
-          ;
-      }
-	  /* placeholder; don't need to do anything yet */
-	  else if dflags & (CDESC_REUSABLE!()|CDESC_PATH_ONLY!()|CDESC_SHORTDESC!()) != 0{
-          if MP_DOCWD!()!=0 | (dflags & CDESC_ABSPATH!()) {
-              f=MP_RMDOT!();
-          }
-          else {
-              f=0;
-          }
-          unsafe {
-            x = sh_makepath ( std::ptr::null_mut() , full_path, f);
-            libc::free (full_path as *mut c_void);
-          }
-	     
-	      full_path = x;
-	    }
-	}
-      /* If we require a full path and don't have one, make one */
-    else if ((dflags & CDESC_ABSPATH!())!= 0) && ABSPATH!(full_path) == false {
+            full_path = x;
+        }
+        found_file += 1;
+        found = 1;
+        if dflags & CDESC_TYPE!() != 0 {
+            unsafe {
+                let c_str_file = CString::new("file").unwrap();
+                libc::puts(c_str_file.as_ptr());
+            }
+        } else if dflags & CDESC_SHORTDESC!() != 0 {
+            unsafe {
+                let name = String::from("is");
+                translation_fn(&name, command, full_path);
+            }
+        } else if dflags & (CDESC_REUSABLE!() | CDESC_PATH_ONLY!()) != 0 {
+            unsafe {
+                println!("{:?}", CStr::from_ptr(full_path));
+            }
+        }
+
         unsafe {
             x = sh_makepath ( std::ptr::null_mut() , full_path, MP_DOCWD!()|MP_RMDOT!());
             libc::free (full_path as *mut c_void);
@@ -828,7 +823,6 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
             let name = String::from("is");
             translation_fn(&name,command,full_path);
         }
-       
     }
 	else if dflags & (CDESC_REUSABLE!()|CDESC_PATH_ONLY!()) != 0{
         unsafe{

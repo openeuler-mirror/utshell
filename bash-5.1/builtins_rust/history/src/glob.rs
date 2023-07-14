@@ -1371,4 +1371,27 @@ pub const ILL_PRVOPC: _bindgen_ty_6 = 5;
 pub const ILL_PRVREG: _bindgen_ty_6 = 6;
 pub const ILL_COPROC: _bindgen_ty_6 = 7;
 pub const ILL_BADSTK: _bindgen_ty_6 = 8;
+extern "C" {
+    pub fn __sysv_signal(__sig: ::std::os::raw::c_int, __handler: __sighandler_t)
+        -> __sighandler_t;
+}
+extern "C" {
+    pub fn sysv_signal(__sig: ::std::os::raw::c_int, __handler: __sighandler_t) -> __sighandler_t;
+}
+extern "C" {
+    pub fn signal(__sig: ::std::os::raw::c_int, __handler: __sighandler_t) -> __sighandler_t;
+}
+extern "C" {
+    #[link_name = "\u{1}__xpg_sigpause"]
+    pub fn sigpause(__sig: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sigblock(__mask: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sigsetmask(__mask: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn siggetmask() -> ::std::os::raw::c_int;
+}
 }
