@@ -1493,4 +1493,17 @@ pub struct function_def {
     pub command: *mut COMMAND,
     pub source_file: *mut ::std::os::raw::c_char,
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct coproc {
+    pub c_name: *mut ::std::os::raw::c_char,
+    pub c_pid: pid_t,
+    pub c_rfd: ::std::os::raw::c_int,
+    pub c_wfd: ::std::os::raw::c_int,
+    pub c_rsave: ::std::os::raw::c_int,
+    pub c_wsave: ::std::os::raw::c_int,
+    pub c_flags: ::std::os::raw::c_int,
+    pub c_status: ::std::os::raw::c_int,
+    pub c_lock: ::std::os::raw::c_int,
+}
 }
