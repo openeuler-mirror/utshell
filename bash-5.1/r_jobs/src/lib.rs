@@ -1013,3 +1013,19 @@ unsafe extern "C" fn bgp_search(mut pid: pid_t) ->  c_int {
     return -1;
 }
 
+
+#[no_mangle]
+pub unsafe extern "C"  fn  save_proc_status(mut pid: pid_t, mut status:  c_int) {
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    
+    BLOCK_CHILD(&mut set, &mut oset);
+    bgp_add(pid, status);
+    UNBLOCK_CHILD(&mut oset);
+}
+
+
+
+
+
+
