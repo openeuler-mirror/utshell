@@ -862,15 +862,21 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
    found
 }
 
-unsafe fn translation_fn (command:&String,args1 : *mut libc::c_char,args2 : *mut libc::c_char) {
+unsafe fn translation_fn(command: &String, args1: *mut libc::c_char, args2: *mut libc::c_char) {
     let mgr = ResourceManager::new("/usr/share/utshell/resources/{locale}/{res_id}".into());
-    let resources = vec![ "message.ftl".into()];
+    let resources = vec!["message.ftl".into()];
     let mut args = FluentArgs::new();
-    if args1 !=  std::ptr::null_mut(){
-        args.set("str1",format!("{:?}",CStr::from_ptr(args1).to_str().unwrap()));
+    if args1 != std::ptr::null_mut() {
+        args.set(
+            "str1",
+            format!("{:?}", CStr::from_ptr(args1).to_str().unwrap()),
+        );
     }
-    if args2 !=  std::ptr::null_mut(){
-        args.set("str2",format!("{:?}",CStr::from_ptr(args2).to_str().unwrap()));
+    if args2 != std::ptr::null_mut() {
+        args.set(
+            "str2",
+            format!("{:?}", CStr::from_ptr(args2).to_str().unwrap()),
+        );
     }
     let bundle = mgr.get_bundle(get_local_str(), resources);
     let value = bundle.get_message(command).unwrap();

@@ -1483,4 +1483,14 @@ pub struct while_com {
     pub test: *mut COMMAND,
     pub action: *mut COMMAND,
 }
+pub type SIMPLE_COM = simple_com;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct function_def {
+    pub flags: ::std::os::raw::c_int,
+    pub line: ::std::os::raw::c_int,
+    pub name: *mut WORD_DESC,
+    pub command: *mut COMMAND,
+    pub source_file: *mut ::std::os::raw::c_char,
+}
 }
