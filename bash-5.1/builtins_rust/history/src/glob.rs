@@ -1504,4 +1504,12 @@ pub struct coproc {
     pub c_status: ::std::os::raw::c_int,
     pub c_lock: ::std::os::raw::c_int,
 }
+pub type ulong = ::std::os::raw::c_ulong;
+pub type ushort = ::std::os::raw::c_ushort;
+pub type uint = ::std::os::raw::c_uint;
+pub type u_int8_t = ::std::os::raw::c_uchar;
+pub type u_int16_t = ::std::os::raw::c_ushort;
+pub type u_int32_t = ::std::os::raw::c_uint;
+pub type u_int64_t = ::std::os::raw::c_ulong;
+pub type register_t = ::std::os::raw::c_long;
 }
