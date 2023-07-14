@@ -359,3 +359,25 @@ pub unsafe extern "C" fn r_xtrace_fdchk(fd:c_int)
         r_xtrace_reset();
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn r_indirection_level_string()->*mut c_char
+{
+
+    let mut i:c_int;
+    let mut j:c_int;
+    let mut ps4:*mut c_char;
+    let mut ps4_firstc:[c_char;MB_LEN_MAX+1] = [0;MB_LEN_MAX+1];
+    let ps4_firstc_len:c_int;
+    let ps4_len:c_int;
+    let ineed:c_int;
+    let old:c_int;
+
+    ps4 = get_string_value(b"PS4\0" as *const u8 as *const c_char);
+
+    if indirection_string.is_null(){
+        indirection_stringsiz = 100 ;
+        indirection_string = libc::malloc(100) as *mut c_char;
+    }
+
+}
