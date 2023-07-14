@@ -291,3 +291,21 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
         }
 
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn r_print_word_list(list:*mut WORD_LIST, separator:*mut c_char)
+{
+    let mut w:*mut WORD_LIST;
+    // let mut str:*mut c_char;
+    w = list;
+    
+    while !w.is_null()  {
+        if !(*w).word.is_null(){          
+            print!("{}{}",CStr::from_ptr((*(*w).word).word).to_str().unwrap(),CStr::from_ptr(separator).to_str().unwrap());
+        }
+        else {      
+            print!("{}",CStr::from_ptr((*(*w).word).word).to_str().unwrap());
+        }
+        
+    }
+}
