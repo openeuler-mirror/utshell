@@ -1400,4 +1400,12 @@ extern "C" {
 extern "C" {
     pub fn siggetmask() -> ::std::os::raw::c_int;
 }
+extern "C" {
+    #[link_name = "\u{1}_sys_siglist"]
+    pub static mut _sys_siglist: [*const ::std::os::raw::c_char; 65usize];
+}
+extern "C" {
+    #[link_name = "\u{1}sys_siglist"]
+    pub static mut sys_siglist: [*const ::std::os::raw::c_char; 65usize];
+}
 }
