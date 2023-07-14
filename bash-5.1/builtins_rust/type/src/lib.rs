@@ -307,50 +307,50 @@ pub struct if_com {
 
 #[repr(C)]
 pub struct connection {
-    ignore: i32 ,
-    first:*mut COMMAND,
-    second:*mut COMMAND,
-    connector: i32 
+    ignore: i32,
+    first: *mut COMMAND,
+    second: *mut COMMAND,
+    connector: i32,
 }
 
 #[repr(C)]
 pub struct simple_com {
-    flags: i32 ,
-    line: i32 ,
-    words:*mut WordList,
-    redirects:*mut REDIRECT
+    flags: i32,
+    line: i32,
+    words: *mut WordList,
+    redirects: *mut REDIRECT,
 }
 
 #[repr(C)]
 pub struct function_def {
-    flags: i32 ,
-    line: i32 ,
-    name:*mut WordDesc,
-    command:*mut COMMAND,
-    source_file:*mut libc::c_char
+    flags: i32,
+    line: i32,
+    name: *mut WordDesc,
+    command: *mut COMMAND,
+    source_file: *mut libc::c_char,
 }
 
 #[repr(C)]
 pub struct group_com {
-    ignore: i32 ,
-    command:*mut COMMAND,
-    source_file:*mut libc::c_char
+    ignore: i32,
+    command: *mut COMMAND,
+    source_file: *mut libc::c_char,
 }
 
 #[repr(C)]
 pub struct select_com {
-    flags: i32 ,
-    line: i32 ,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: i32,
+    line: i32,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct arith_com {
-    flags: i32 ,
-    line: i32 ,
-    exp:*mut WordList
+    flags: i32,
+    line: i32,
+    exp: *mut WordList,
 }
 
 #[repr(C)]
