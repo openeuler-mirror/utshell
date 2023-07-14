@@ -801,11 +801,13 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
                 }
             } else if ABSPATH!(full_path) {
             }
-    /* If we found the command as itself by looking through $PATH, it
-	 probably doesn't exist.  Check whether or not the command is an
-	 executable file.  If it's not, don't report a match.  This is
-	 the default posix mode behavior */
-    if (unsafe {STREQ!(full_path, command)} || unsafe {posixly_correct}!=0){
+            /* placeholder; don't need to do anything yet */
+            else if dflags & (CDESC_REUSABLE!() | CDESC_PATH_ONLY!() | CDESC_SHORTDESC!()) != 0 {
+                if MP_DOCWD!() != 0 | (dflags & CDESC_ABSPATH!()) {
+                    f = MP_RMDOT!();
+                } else {
+                    f = 0;
+                }
                 unsafe {
                     x = sh_makepath(std::ptr::null_mut(), full_path, f);
                     libc::free(full_path as *mut c_void);
