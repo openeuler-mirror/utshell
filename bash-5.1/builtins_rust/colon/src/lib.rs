@@ -15,10 +15,10 @@ mod tests {
 
 #[no_mangle]
 pub extern "C" fn r_colon_builtin(_ignore: *mut WordList) -> i32 {
-    1
+    0
 }
 
 #[no_mangle]
 pub extern "C" fn r_false_builtin(_ignore: *mut WordList) -> i32 {
-    0
+    1
 }
