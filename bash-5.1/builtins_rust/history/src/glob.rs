@@ -1053,4 +1053,20 @@ pub type off64_t = __off64_t;
 pub type useconds_t = __useconds_t;
 pub type pid_t = __pid_t;
 pub type socklen_t = __socklen_t;
+extern "C" {
+    pub fn pread64(
+        __fd: ::std::os::raw::c_int,
+        __buf: *mut ::std::os::raw::c_void,
+        __nbytes: usize,
+        __offset: __off64_t,
+    ) -> isize;
+}
+extern "C" {
+    pub fn pwrite64(
+        __fd: ::std::os::raw::c_int,
+        __buf: *const ::std::os::raw::c_void,
+        __n: usize,
+        __offset: __off64_t,
+    ) -> isize;
+}
 }
