@@ -141,27 +141,27 @@ pub struct simple_com {
 
 #[repr(C)]
 pub struct function_def {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
 pub struct group_com {
-    ignore:libc::c_int,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    ignore: libc::c_int,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
 pub struct select_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
@@ -223,11 +223,11 @@ pub union VALUE_COMMAND {
 
 #[repr(C)]
 pub struct COMMAND {
-    type_c:command_type,
-    flags:i32,
-    line:i32,
-    redirects:*mut REDIRECT,
-    value:VALUE_COMMAND
+    type_c: command_type,
+    flags: i8,
+    line: i8,
+    redirects: *mut REDIRECT,
+    value: VALUE_COMMAND,
 }
 
 #[repr(C)]

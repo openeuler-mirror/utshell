@@ -380,4 +380,11 @@ pub unsafe extern "C" fn r_indirection_level_string()->*mut c_char
         indirection_string = libc::malloc(100) as *mut c_char;
     }
 
+    *indirection_string.offset(0 as isize) = '\u{0}' as i32 as c_char;
+    
+    if ps4.is_null() || *ps4 as c_int == '\u{0}' as i32{
+        return indirection_string;
+    }
+
+
 }
