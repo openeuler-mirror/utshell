@@ -1514,4 +1514,18 @@ pub type u_int16_t = ::std::os::raw::c_ushort;
 pub type u_int32_t = ::std::os::raw::c_uint;
 pub type u_int64_t = ::std::os::raw::c_ulong;
 pub type register_t = ::std::os::raw::c_long;
+extern "C" {
+    pub fn strtoumax(
+        __nptr: *const ::std::os::raw::c_char,
+        __endptr: *mut *mut ::std::os::raw::c_char,
+        __base: ::std::os::raw::c_int,
+    ) -> uintmax_t;
+}
+extern "C" {
+    pub fn wcstoimax(
+        __nptr: *const __gwchar_t,
+        __endptr: *mut *mut __gwchar_t,
+        __base: ::std::os::raw::c_int,
+    ) -> intmax_t;
+}
 }
