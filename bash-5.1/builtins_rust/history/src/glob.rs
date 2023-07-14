@@ -1307,6 +1307,16 @@ extern "C" {
         __len: __off64_t,
     ) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn copy_file_range(
+        __infd: ::std::os::raw::c_int,
+        __pinoff: *mut __off64_t,
+        __outfd: ::std::os::raw::c_int,
+        __poutoff: *mut __off64_t,
+        __length: usize,
+        __flags: ::std::os::raw::c_uint,
+    ) -> isize;
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union siginfo_t__bindgen_ty_1 {
@@ -1319,5 +1329,38 @@ pub union siginfo_t__bindgen_ty_1 {
     pub _sigpoll: siginfo_t__bindgen_ty_1__bindgen_ty_6,
     pub _sigsys: siginfo_t__bindgen_ty_1__bindgen_ty_7,
     _bindgen_union_align: [u64; 14usize],
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct siginfo_t__bindgen_ty_1__bindgen_ty_5 {
+    pub si_addr: *mut ::std::os::raw::c_void,
+    pub si_addr_lsb: ::std::os::raw::c_short,
+    pub _bounds: siginfo_t__bindgen_ty_1__bindgen_ty_5__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union siginfo_t__bindgen_ty_1__bindgen_ty_5__bindgen_ty_1 {
+    pub _addr_bnd: siginfo_t__bindgen_ty_1__bindgen_ty_5__bindgen_ty_1__bindgen_ty_1,
+    pub _pkey: __uint32_t,
+    _bindgen_union_align: [u64; 2usize],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct siginfo_t__bindgen_ty_1__bindgen_ty_5__bindgen_ty_1__bindgen_ty_1 {
+    pub _lower: *mut ::std::os::raw::c_void,
+    pub _upper: *mut ::std::os::raw::c_void,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct siginfo_t__bindgen_ty_1__bindgen_ty_6 {
+    pub si_band: ::std::os::raw::c_long,
+    pub si_fd: ::std::os::raw::c_int,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct siginfo_t__bindgen_ty_1__bindgen_ty_7 {
+    pub _call_addr: *mut ::std::os::raw::c_void,
+    pub _syscall: ::std::os::raw::c_int,
+    pub _arch: ::std::os::raw::c_uint,
 }
 }
