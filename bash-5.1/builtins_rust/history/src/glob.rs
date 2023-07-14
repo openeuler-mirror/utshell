@@ -774,6 +774,33 @@ extern "C" {
     pub fn wcstold_l(__nptr: *const wchar_t, __endptr: *mut *mut wchar_t, __loc: locale_t) -> f64;
 }
 extern "C" {
+    pub fn wcstof32_l(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __loc: locale_t,
+    ) -> _Float32;
+}
+extern "C" {
+    pub fn wcstof64_l(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __loc: locale_t,
+    ) -> _Float64;
+}
+extern "C" {
+    pub fn wcstof32x_l(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __loc: locale_t,
+    ) -> _Float32x;
+}
+extern "C" {
+    pub fn wcstof64x_l(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __loc: locale_t,
+    ) -> _Float64x;
+}
     pub fn wcpcpy(__dest: *mut wchar_t, __src: *const wchar_t) -> *mut wchar_t;
 }
 extern "C" {
