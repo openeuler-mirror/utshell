@@ -1,37 +1,63 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-extern crate  libc;
+extern crate libc;
 extern crate nix;
 
 use libc::{c_char, c_int, c_ulong, c_void};
-use std::{ffi::CString, ffi::CStr};
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE, r_savestring} ;
+use rcommon::{r_savestring, WordDesc, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
+use std::{ffi::CStr, ffi::CString};
 
 #[repr(u8)]
-enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
-    cm_connection, cm_function_def, cm_until, cm_group,
-    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc
+enum command_type {
+    cm_for,
+    cm_case,
+    cm_while,
+    cm_if,
+    cm_simple,
+    cm_select,
+    cm_connection,
+    cm_function_def,
+    cm_until,
+    cm_group,
+    cm_arith,
+    cm_cond,
+    cm_arith_for,
+    cm_subshell,
+    cm_coproc,
 }
 
 #[repr(u8)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 enum r_instruction {
-    r_output_direction, r_input_direction, r_inputa_direction,
-    r_appending_to, r_reading_until, r_reading_string,
-    r_duplicating_input, r_duplicating_output, r_deblank_reading_until,
-    r_close_this, r_err_and_out, r_input_output, r_output_force,
-    r_duplicating_input_word, r_duplicating_output_word,
-    r_move_input, r_move_output, r_move_input_word, r_move_output_word,
-    r_append_err_and_out
+    r_output_direction,
+    r_input_direction,
+    r_inputa_direction,
+    r_appending_to,
+    r_reading_until,
+    r_reading_string,
+    r_duplicating_input,
+    r_duplicating_output,
+    r_deblank_reading_until,
+    r_close_this,
+    r_err_and_out,
+    r_input_output,
+    r_output_force,
+    r_duplicating_input_word,
+    r_duplicating_output_word,
+    r_move_input,
+    r_move_output,
+    r_move_input_word,
+    r_move_output_word,
+    r_append_err_and_out,
 }
 
 #[repr(C)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub union REDIRECTEE {
-    dest:c_int,
-    filename:* mut WordDesc
+    dest: c_int,
+    filename: *mut WordDesc,
 }
 
 #[repr(C)]
@@ -263,21 +289,48 @@ pub struct CompoptArray {
 }
 
 impl CompoptArray {
-  pub fn new()->CompoptArray{
-    CompoptArray{
-      compoptArr:[
-      _compopt{ optname:"bashdefault\0".as_ptr() as *const c_char, optflag:COPT_BASHDEFAULT!() },
-      _compopt{ optname:"default\0".as_ptr() as *const c_char,	optflag:COPT_DEFAULT!() },
-      _compopt{ optname:"dirnames\0".as_ptr() as *const c_char, optflag:COPT_DIRNAMES!() },
-      _compopt{ optname:"filenames\0".as_ptr() as *const c_char,optflag:COPT_FILENAMES!()},
-      _compopt{ optname:"noquote\0".as_ptr() as *const c_char, optflag:COPT_NOQUOTE!() },
-      _compopt{ optname:"nosort\0".as_ptr() as *const c_char, optflag:COPT_NOSORT!() },
-      _compopt{ optname:"nospace\0".as_ptr() as *const c_char,	optflag:COPT_NOSPACE!() },
-      _compopt{ optname:"plusdirs\0".as_ptr() as *const c_char, optflag:COPT_PLUSDIRS!() },
-      _compopt{ optname:std::ptr::null_mut(), optflag:0 },
-      ]
+    pub fn new() -> CompoptArray {
+        CompoptArray {
+            compoptArr: [
+                _compopt {
+                    optname: "bashdefault\0".as_ptr() as *const c_char,
+                    optflag: COPT_BASHDEFAULT!(),
+                },
+                _compopt {
+                    optname: "default\0".as_ptr() as *const c_char,
+                    optflag: COPT_DEFAULT!(),
+                },
+                _compopt {
+                    optname: "dirnames\0".as_ptr() as *const c_char,
+                    optflag: COPT_DIRNAMES!(),
+                },
+                _compopt {
+                    optname: "filenames\0".as_ptr() as *const c_char,
+                    optflag: COPT_FILENAMES!(),
+                },
+                _compopt {
+                    optname: "noquote\0".as_ptr() as *const c_char,
+                    optflag: COPT_NOQUOTE!(),
+                },
+                _compopt {
+                    optname: "nosort\0".as_ptr() as *const c_char,
+                    optflag: COPT_NOSORT!(),
+                },
+                _compopt {
+                    optname: "nospace\0".as_ptr() as *const c_char,
+                    optflag: COPT_NOSPACE!(),
+                },
+                _compopt {
+                    optname: "plusdirs\0".as_ptr() as *const c_char,
+                    optflag: COPT_PLUSDIRS!(),
+                },
+                _compopt {
+                    optname: std::ptr::null_mut(),
+                    optflag: 0,
+                },
+            ],
+        }
     }
-  }
 }
 
 #[repr(C)]
@@ -309,7 +362,6 @@ pub struct STRINGLIST {
   list_size:c_int,
   list_len:c_int,
 }
-
 
 #[macro_export]
 macro_rules! CA_ALIAS {
@@ -639,20 +691,19 @@ unsafe fn RL_ISSTATE(x:c_ulong)->c_ulong
 }
 
 #[no_mangle]
-pub extern "C" fn r_find_compact (name:* mut c_char)->i32
-{
-  let mut i:i32=0;
-  unsafe {
-    let compacts:CompactsArray=CompactsArray::new();
-    while compacts.compactsArr[i as usize].actname != std::ptr::null_mut() {
-      let _tmp = CStr::from_ptr(compacts.compactsArr[i as usize].actname);
-      if STREQ (name, compacts.compactsArr[i as usize].actname) {
-        return i;
-      }
-      i+=1;
+pub extern "C" fn r_find_compact(name: *mut c_char) -> i32 {
+    let mut i: i32 = 0;
+    unsafe {
+        let compacts: CompactsArray = CompactsArray::new();
+        while compacts.compactsArr[i as usize].actname != std::ptr::null_mut() {
+            let tmp = CStr::from_ptr(compacts.compactsArr[i as usize].actname);
+            if STREQ(name, compacts.compactsArr[i as usize].actname) {
+                return i;
+            }
+            i += 1;
+        }
+        return 1;
     }
-    return -1;
-  }
 }
 
 #[no_mangle]
