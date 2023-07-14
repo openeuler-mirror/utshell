@@ -894,4 +894,41 @@ extern "C" {
 extern "C" {
     pub fn fputws_unlocked(__ws: *const wchar_t, __stream: *mut __FILE) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn wcsftime(
+        __s: *mut wchar_t,
+        __maxsize: usize,
+        __format: *const wchar_t,
+        __tp: *const tm,
+    ) -> usize;
+}
+extern "C" {
+    pub fn wcsftime_l(
+        __s: *mut wchar_t,
+        __maxsize: usize,
+        __format: *const wchar_t,
+        __tp: *const tm,
+        __loc: locale_t,
+    ) -> usize;
+}
+pub type __u_char = ::std::os::raw::c_uchar;
+pub type __u_short = ::std::os::raw::c_ushort;
+pub type __u_int = ::std::os::raw::c_uint;
+pub type __u_long = ::std::os::raw::c_ulong;
+pub type __int8_t = ::std::os::raw::c_schar;
+pub type __uint8_t = ::std::os::raw::c_uchar;
+pub type __int16_t = ::std::os::raw::c_short;
+pub type __uint16_t = ::std::os::raw::c_ushort;
+pub type __int32_t = ::std::os::raw::c_int;
+pub type __uint32_t = ::std::os::raw::c_uint;
+pub type __int64_t = ::std::os::raw::c_long;
+pub type __uint64_t = ::std::os::raw::c_ulong;
+pub type __int_least8_t = __int8_t;
+pub type __uint_least8_t = __uint8_t;
+pub type __int_least16_t = __int16_t;
+pub type __uint_least16_t = __uint16_t;
+pub type __int_least32_t = __int32_t;
+pub type __uint_least32_t = __uint32_t;
+pub type __int_least64_t = __int64_t;
+pub type __uint_least64_t = __uint64_t;
 }

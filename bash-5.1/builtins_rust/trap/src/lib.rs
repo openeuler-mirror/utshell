@@ -172,7 +172,15 @@ unsafe fn showtrap(i: c_int, show_default: c_int)
         );
     } else if posixly_correct != 0 {
         if libc::strncmp(sn, "SIG\0".as_ptr() as *const c_char, 3) == 0 {
-            libc::printf("trap -- %s %s\n\0".as_ptr() as *const c_char, if t.is_null() {"''\0".as_ptr() as *mut c_char} else {t}, (sn as usize + 3) as *mut c_char);
+            libc::printf(
+                "trap -- %s %s\n\0".as_ptr() as *const c_char,
+                if t.is_null() {
+                    "''\0".as_ptr() as *mut c_char
+                } else {
+                    t
+                },
+                (sn as usize + 3) as *mut c_char,
+            );
         } else {
             libc::printf("trap -- %s %s\n\0".as_ptr() as *const c_char, if t.is_null() {"''\0".as_ptr() as *mut c_char} else {t}, sn);
         }
@@ -187,8 +195,7 @@ unsafe fn showtrap(i: c_int, show_default: c_int)
     }
 }
 
-unsafe fn display_traps(mut list: *mut WordList, show_all: c_int) -> c_int
-{
+unsafe fn display_traps(mut list: *mut WordList, show_all: c_int) -> c_int {
     if list.is_null() {
         for i in 0..BASH_NSIG {
             showtrap(i, show_all);
