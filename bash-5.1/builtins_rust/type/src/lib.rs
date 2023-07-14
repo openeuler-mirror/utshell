@@ -687,8 +687,8 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
        if f & FS_EXECABLE!()  != 0{
         if dflags & CDESC_TYPE!()  != 0{
             unsafe {
-                let c_str_file = CString::new("file").unwrap();
-                libc::puts(c_str_file.as_ptr());
+                let name = String::from("is");
+                translation_fn(&name, command, command);
             }
         } else if dflags & (CDESC_REUSABLE!() | CDESC_PATH_ONLY!()) != 0 {
             unsafe {

@@ -1467,4 +1467,20 @@ pub union command__bindgen_ty_1 {
     pub Coproc: *mut coproc_com,
     _bindgen_union_align: u64,
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct if_com {
+    pub flags: ::std::os::raw::c_int,
+    pub test: *mut COMMAND,
+    pub true_case: *mut COMMAND,
+    pub false_case: *mut COMMAND,
+}
+pub type IF_COM = if_com;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct while_com {
+    pub flags: ::std::os::raw::c_int,
+    pub test: *mut COMMAND,
+    pub action: *mut COMMAND,
+}
 }
