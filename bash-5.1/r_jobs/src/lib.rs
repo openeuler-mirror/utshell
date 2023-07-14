@@ -992,7 +992,13 @@ unsafe extern "C" fn bgp_search(mut pid: pid_t) ->  c_int {
     psi = *pshash_getbucket(pid);
     orig_psi = psi;
 
+    if (bgpids.storage).is_null() || bgpids.nalloc == 0 || bgpids.npid == 0 
+    {
+        return -1;
+    }
 
+    psi = *pshash_getbucket(pid);
+    orig_psi = psi;
     while psi != NO_PIDSTAT {
         if (*(bgpids.storage).offset(psi as isize)).pid == pid {
             return (*(bgpids.storage).offset(psi as isize)).status as c_int;
@@ -1004,6 +1010,6 @@ unsafe extern "C" fn bgp_search(mut pid: pid_t) ->  c_int {
         psi = (*(bgpids.storage).offset(psi as isize)).bucket_next;
     }
 
-
+    return -1;
 }
 
