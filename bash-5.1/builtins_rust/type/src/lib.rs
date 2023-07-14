@@ -753,13 +753,17 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
                 pathlist = conf_standard_path ();
                 full_path = find_in_path (command, pathlist, FS_EXEC_PREFERRED!()|FS_NODIRS!());
                 libc::free(pathlist as *mut c_void);
-              }   
-	  /* Will only go through this once, since all == 0 if STDPATH set */
-	
-    }
-    else if all == 0{
-        unsafe{
-            full_path = find_user_command(command);
+            }
+        /* Will only go through this once, since all == 0 if STDPATH set */
+        } else if all == 0 {
+            unsafe {
+                full_path = find_user_command(command);
+            }
+        } else {
+            unsafe {
+                full_path = user_command_matches(command, FS_EXEC_ONLY!(), found_file);
+                /* XXX - should that be FS_EXEC_PREFERRED? */
+            }
         }
         
     }

@@ -1428,4 +1428,15 @@ pub struct ucontext_t {
     pub __fpregs_mem: _libc_fpstate,
     pub __ssp: [::std::os::raw::c_ulonglong; 4usize],
 }
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct __pthread_cond_s {
+    pub __bindgen_anon_1: __pthread_cond_s__bindgen_ty_1,
+    pub __bindgen_anon_2: __pthread_cond_s__bindgen_ty_2,
+    pub __g_refs: [::std::os::raw::c_uint; 2usize],
+    pub __g_size: [::std::os::raw::c_uint; 2usize],
+    pub __g1_orig_size: ::std::os::raw::c_uint,
+    pub __wrefs: ::std::os::raw::c_uint,
+    pub __g_signals: [::std::os::raw::c_uint; 2usize],
+}
 }
