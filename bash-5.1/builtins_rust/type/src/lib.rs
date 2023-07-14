@@ -355,55 +355,55 @@ pub struct arith_com {
 
 #[repr(C)]
 pub struct cond_com {
-    flags: i32 ,
-    line: i32 ,
-    type_c: i32 ,
-    exp:*mut WordList
+    flags: i32,
+    line: i32,
+    type_c: i32,
+    exp: *mut WordList,
 }
 
 #[repr(C)]
 pub struct arith_for_com {
-    flags: i32 ,
-    line: i32 ,
-    init:*mut WordList,
-    test:*mut WordList,
-    step:*mut WordList,
-    action:*mut COMMAND
+    flags: i32,
+    line: i32,
+    init: *mut WordList,
+    test: *mut WordList,
+    step: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct subshell_com {
-    flags:i32,
-    line:i32,
-    command:*mut COMMAND
+    flags: i32,
+    line: i32,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct coproc_com {
-    flags:i32,
-    name:*mut libc::c_char,
-    command:*mut COMMAND
+    flags: i32,
+    name: *mut libc::c_char,
+    command: *mut COMMAND,
 }
 
 #[macro_export]
 macro_rules! FUNC_MULTILINE {
-  () => {
-    0x01
-  }
+    () => {
+        0x01
+    };
 }
 
 #[macro_export]
 macro_rules! FUNC_EXTERNAL {
-  () => {
-    0x02
-  }
+    () => {
+        0x02
+    };
 }
 
 #[macro_export]
 macro_rules! FS_EXEC_ONLY {
     () => {
-       0x8
-    }
+        0x8
+    };
 }
 
 #[macro_export]
@@ -411,7 +411,6 @@ macro_rules! ABSPATH {
     ($s :expr) => {
         unsafe {
             char::from(*($s as *mut libc::c_char) as u8) }== '/';
-        
     // $x  == '/';
    }
  }

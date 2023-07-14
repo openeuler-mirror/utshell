@@ -1124,4 +1124,73 @@ extern "C" {
     pub fn getcwd(__buf: *mut ::std::os::raw::c_char, __size: usize)
         -> *mut ::std::os::raw::c_char;
 }
+extern "C" {
+    pub fn dup3(
+        __fd: ::std::os::raw::c_int,
+        __fd2: ::std::os::raw::c_int,
+        __flags: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}__environ"]
+    pub static mut __environ: *mut *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    #[link_name = "\u{1}environ"]
+    pub static mut environ: *mut *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn execve(
+        __path: *const ::std::os::raw::c_char,
+        __argv: *const *mut ::std::os::raw::c_char,
+        __envp: *const *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn fexecve(
+        __fd: ::std::os::raw::c_int,
+        __argv: *const *mut ::std::os::raw::c_char,
+        __envp: *const *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn execv(
+        __path: *const ::std::os::raw::c_char,
+        __argv: *const *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn execle(
+        __path: *const ::std::os::raw::c_char,
+        __arg: *const ::std::os::raw::c_char,
+        ...
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn execl(
+        __path: *const ::std::os::raw::c_char,
+        __arg: *const ::std::os::raw::c_char,
+        ...
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn execvp(
+        __file: *const ::std::os::raw::c_char,
+        __argv: *const *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn execlp(
+        __file: *const ::std::os::raw::c_char,
+        __arg: *const ::std::os::raw::c_char,
+        ...
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn execvpe(
+        __file: *const ::std::os::raw::c_char,
+        __argv: *const *mut ::std::os::raw::c_char,
+        __envp: *const *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
 }
