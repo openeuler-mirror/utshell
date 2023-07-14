@@ -866,12 +866,11 @@ unsafe fn translation_fn (command:&String,args1 : *mut libc::c_char,args2 : *mut
     let value = bundle.get_message(command).unwrap();
     let pattern = value.value().expect("partern err");
     let mut errors = vec![];
-    if args1 !=  std::ptr::null_mut(){
+    if args1 != std::ptr::null_mut() {
         let msg1 = bundle.format_pattern(&pattern, Some(&args), &mut errors);
         println!("{msg1}");
-    }
-    else{
+    } else {
         let msg1 = bundle.format_pattern(&pattern, None, &mut errors);
         println!("{msg1}");
-    } 
+    }
 }
