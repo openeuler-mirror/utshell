@@ -409,5 +409,22 @@ pub unsafe extern "C" fn r_indirection_level_string()->*mut c_char
 
     i = 0;
     j = 0;
-    
+
+    while j < indirection_level && (i < indirection_stringsiz - 1)  {
+        if ps4_firstc_len == 1{
+            *indirection_string.offset(i as isize) = ps4_firstc[0];
+        }
+        else{
+            libc::memcpy(indirection_string.offset(i as isize) as *mut c_void, ps4_firstc.as_mut_ptr() as *const c_void, ps4_firstc_len as usize);
+        }
+        i += ps4_firstc_len;
+        j += 1;
+    }
+    j = ps4_firstc_len;
+    while *ps4 as c_int != 0 && *ps4.offset(j as isize) != 0 && (i < indirection_stringsiz -1 ) {
+        *indirection_string.offset(i as isize) = *ps4.offset(j as isize);
+        i += 1;
+        j += 1;
+    }
+
 }
