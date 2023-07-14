@@ -711,19 +711,29 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
     }
 
     /* If the user isn't doing "-a", then we might care about
-     whether the file is present in our hash table. */
-  if all == 0 || (dflags & CDESC_FORCE_PATH!() != 0){
-
-    full_path = unsafe{phash_search (command)};
-    if full_path != std::ptr::null_mut(){
-	unsafe {
-	    let name = String::from("hashed");
-	    translation_fn(&name, command, full_path);
-	}
-    if dflags & CDESC_TYPE!() != 0{
-        unsafe{
-            let c_str_file = CString::new("file").unwrap();
-            libc::puts(c_str_file.as_ptr());
+    whether the file is present in our hash table. */
+    if all == 0 || (dflags & CDESC_FORCE_PATH!() != 0) {
+        full_path = unsafe { phash_search(command) };
+        if full_path != std::ptr::null_mut() {
+            if dflags & CDESC_TYPE!() != 0 {
+                unsafe {
+                    let c_str_file = CString::new("file").unwrap();
+                    libc::puts(c_str_file.as_ptr());
+                }
+            } else if dflags & CDESC_SHORTDESC!() != 0 {
+                unsafe {
+                    let name = String::from("hashed");
+                    translation_fn(&name, command, full_path);
+                }
+            } else if (dflags & (CDESC_REUSABLE!() | CDESC_PATH_ONLY!())) != 0 {
+                unsafe {
+                    println!("{:?} ", CStr::from_ptr(full_path));
+                }
+            }
+            unsafe {
+                libc::free(full_path as *mut c_void);
+            }
+            return 1;
         }
     }
     else if dflags & CDESC_SHORTDESC!() != 0{

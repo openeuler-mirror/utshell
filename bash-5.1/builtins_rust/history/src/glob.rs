@@ -1437,4 +1437,13 @@ pub struct __pthread_cond_s {
     pub __wrefs: ::std::os::raw::c_uint,
     pub __g_signals: [::std::os::raw::c_uint; 2usize],
 }
+pub const r_instruction_r_output_direction: r_instruction = 0;
+pub const r_instruction_r_input_direction: r_instruction = 1;
+pub const r_instruction_r_inputa_direction: r_instruction = 2;
+pub const r_instruction_r_appending_to: r_instruction = 3;
+pub const r_instruction_r_reading_until: r_instruction = 4;
+pub const r_instruction_r_reading_string: r_instruction = 5;
+pub const r_instruction_r_duplicating_input: r_instruction = 6;
+pub const r_instruction_r_duplicating_output: r_instruction = 7;
+pub const r_instruction_r_deblank_reading_until: r_instruction = 8;
 }
