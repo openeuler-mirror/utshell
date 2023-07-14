@@ -378,14 +378,14 @@ impl CompactsArray {
 }
 
 #[repr(C)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct _compopt {
-  optname:* const c_char,
-  optflag:libc::c_ulong,
+    optname: *const c_char,
+    optflag: libc::c_ulong,
 }
 
 pub struct CompoptArray {
-  compoptArr:[_compopt;9usize]
+    compoptArr: [_compopt; 9usize],
 }
 
 impl CompoptArray {
@@ -785,9 +785,8 @@ unsafe fn INITIALWORD()->* const c_char
   return b"_InitialWorD_\0".as_ptr() as *const c_char;
 }
 
-unsafe fn RL_ISSTATE(x:c_ulong)->c_ulong
-{
-  return rl_readline_state & x;
+unsafe fn RL_ISSTATE(x: c_ulong) -> c_ulong {
+    return rl_readline_state & x;
 }
 
 #[no_mangle]
@@ -822,157 +821,181 @@ pub extern "C" fn r_find_compopt(name: *mut c_char) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn r_build_actions (mut list : *mut WordList, flagp:* mut _optflags, actp:* mut c_ulong, optp:* mut c_ulong)->i32
-{
-  let mut opt:i32;
-  let mut ind:i32;
-  let mut opt_given:i32=0;
-  let mut acts:c_ulong=0;
-  let mut copts:c_ulong=0;
-  let mut w:WordDesc=WordDesc{word:std::ptr::null_mut(),flags:0};
+pub extern "C" fn r_build_actions(
+    mut list: *mut WordList,
+    flagp: *mut _optflags,
+    actp: *mut c_ulong,
+    optp: *mut c_ulong,
+) -> i32 {
+    let mut opt: i32;
+    let mut ind: i32;
+    let mut opt_given: i32 = 0;
+    let mut acts: c_ulong = 0;
+    let mut copts: c_ulong = 0;
+    let mut w: WordDesc = WordDesc {
+        word: std::ptr::null_mut(),
+        flags: 0,
+    };
 
-  unsafe {
-    reset_internal_getopt ();
-    opt = internal_getopt(list, CString::new("abcdefgjko:prsuvA:G:W:P:S:X:F:C:DEI").unwrap().as_ptr() as * mut c_char);
-    while opt != -1 {
-        opt_given = 1;
-        let optu8:u8= opt as u8;
-        let optChar:char=char::from(optu8);
-        match optChar{
-            'r'=>{
-              if flagp !=std::ptr::null_mut() {
-                (*flagp).rflag = 1;
-              } else {
-                sh_invalidopt (CString::new("-r").unwrap().as_ptr() as * mut c_char);
-                builtin_usage ();
-                return EX_USAGE;
-              }
+    unsafe {
+        reset_internal_getopt();
+        opt = internal_getopt(
+            list,
+            CString::new("abcdefgjko:prsuvA:G:W:P:S:X:F:C:DEI")
+                .unwrap()
+                .as_ptr() as *mut c_char,
+        );
+        while opt != -1 {
+            opt_given = 1;
+            let optu8: u8 = opt as u8;
+            let optChar: char = char::from(optu8);
+            match optChar {
+                'r' => {
+                    if flagp != std::ptr::null_mut() {
+                        (*flagp).rflag = 1;
+                    } else {
+                        sh_invalidopt(CString::new("-r").unwrap().as_ptr() as *mut c_char);
+                        builtin_usage();
+                        return EX_USAGE;
+                    }
+                }
+                'p' => {
+                    if flagp != std::ptr::null_mut() {
+                        (*flagp).pflag = 0;
+                    } else {
+                        sh_invalidopt(CString::new("-p").unwrap().as_ptr() as *mut c_char);
+                        builtin_usage();
+                        return EX_USAGE;
+                    }
+                }
+                'a' => {
+                    acts |= CA_ALIAS!();
+                }
+                'b' => {
+                    acts |= CA_BUILTIN!();
+                }
+                'c' => {
+                    acts |= CA_COMMAND!();
+                }
+                'd' => {
+                    acts |= CA_DIRECTORY!();
+                }
+                'e' => {
+                    acts |= CA_EXPORT!();
+                }
+                'f' => {
+                    acts |= CA_FILE!();
+                }
+                'g' => {
+                    acts |= CA_GROUP!();
+                }
+                'j' => {
+                    acts |= CA_GROUP!();
+                }
+                'k' => {
+                    acts |= CA_KEYWORD!();
+                }
+                's' => {
+                    acts |= CA_SERVICE!();
+                }
+                'u' => {
+                    acts |= CA_USER!();
+                }
+                'v' => {
+                    acts |= CA_VARIABLE!();
+                }
+                'o' => {
+                    ind = r_find_compopt(list_optarg);
+                    if ind < 0 {
+                        sh_invalidoptname(list_optarg);
+                        return EX_USAGE;
+                    }
+                    let compopts: CompoptArray = CompoptArray::new();
+                    copts |= compopts.compoptArr[ind as usize].optflag;
+                }
+                'A' => {
+                    ind = r_find_compact(list_optarg);
+                    if ind < 0 {
+                        builtin_error(
+                            CString::new("%s: invalid action name").unwrap().as_ptr(),
+                            list_optarg,
+                        );
+                        return EX_USAGE;
+                    }
+                    let compacts: CompactsArray = CompactsArray::new();
+                    acts |= compacts.compactsArr[ind as usize].actflag;
+                }
+                'C' => {
+                    Carg = list_optarg;
+                }
+                'D' => {
+                    if flagp != std::ptr::null_mut() {
+                        (*flagp).Dflag = 1;
+                    } else {
+                        sh_invalidopt(CString::new("-D").unwrap().as_ptr() as *mut c_char);
+                        builtin_usage();
+                        return EX_USAGE;
+                    }
+                }
+                'E' => {
+                    if flagp != std::ptr::null_mut() {
+                        (*flagp).Eflag = 1;
+                    } else {
+                        sh_invalidopt(CString::new("-E").unwrap().as_ptr() as *mut c_char);
+                        builtin_usage();
+                        return EX_USAGE;
+                    }
+                }
+                'I' => {
+                    if flagp != std::ptr::null_mut() {
+                        (*flagp).Iflag = 1;
+                    } else {
+                        sh_invalidopt(CString::new("-I").unwrap().as_ptr() as *mut c_char);
+                        builtin_usage();
+                        return EX_USAGE;
+                    }
+                }
+                'F' => {
+                    w.word = list_optarg;
+                    Farg = list_optarg;
+                    w.flags = 0;
+                    if check_identifier(&mut w, posixly_correct) == 0
+                        || libc::strpbrk(Farg, shell_break_chars()) != std::ptr::null_mut()
+                    {
+                        sh_invalidid(Farg);
+                        return EX_USAGE;
+                    }
+                }
+                'G' => {
+                    Garg = list_optarg;
+                }
+                'P' => {
+                    Parg = list_optarg;
+                }
+                'S' => {
+                    Sarg = list_optarg;
+                }
+                'W' => {
+                    Warg = list_optarg;
+                }
+                'X' => {
+                    Xarg = list_optarg;
+                }
+                _ => {
+                    if opt == -99 {
+                        r_builtin_help();
+                        return EX_USAGE;
+                    }
+                    builtin_usage();
+                    return EX_USAGE;
+                }
             }
-            'p'=>{
-              if flagp !=std::ptr::null_mut() {
-                (*flagp).pflag = 1;
-              } else {
-                sh_invalidopt (CString::new("-p").unwrap().as_ptr() as * mut c_char);
-                builtin_usage ();
-                return EX_USAGE;
-              }
-            }
-            'a'=>{
-              acts |= CA_ALIAS!();
-            }
-            'b'=>{
-              acts |= CA_BUILTIN!();
-            }
-            'c'=>{
-              acts |= CA_COMMAND!();
-            }
-            'd'=>{
-              acts |= CA_DIRECTORY!();
-            }
-            'e'=>{
-              acts |= CA_EXPORT!();
-            }
-            'f'=>{
-              acts |= CA_FILE!();
-            }
-            'g'=>{
-              acts |= CA_GROUP!();
-            }
-            'j'=>{
-              acts |= CA_GROUP!();
-            }
-            'k'=>{
-              acts |= CA_KEYWORD!();
-            }
-            's'=>{
-              acts |= CA_SERVICE!();
-            }
-            'u'=>{
-              acts |= CA_USER!();
-            }
-            'v'=>{
-              acts |= CA_VARIABLE!();
-            }
-            'o'=>{
-              ind = r_find_compopt (list_optarg);
-              if ind < 0 {
-                  sh_invalidoptname (list_optarg);
-                  return EX_USAGE;
-              }
-              let compopts:CompoptArray=CompoptArray::new();
-              copts |= compopts.compoptArr[ind as usize].optflag;
-            }
-            'A'=>{
-              ind = r_find_compact (list_optarg);
-              if ind < 0 {
-                 builtin_error (CString::new("%s: invalid action name").unwrap().as_ptr(), list_optarg);
-                 return EX_USAGE;
-              }
-              let compacts:CompactsArray=CompactsArray::new();
-              acts |= compacts.compactsArr[ind as usize].actflag;
-            }
-           'C'=>{
-              Carg = list_optarg;
-           }
-           'D'=>{
-              if flagp !=std::ptr::null_mut() {
-                (*flagp).Dflag = 1;
-              } else {
-                sh_invalidopt (CString::new("-D").unwrap().as_ptr() as * mut c_char);
-                builtin_usage ();
-                return EX_USAGE;
-              }
-           }
-           'E'=>{
-            if flagp !=std::ptr::null_mut() {
-              (*flagp).Eflag = 1;
-            } else {
-              sh_invalidopt (CString::new("-E").unwrap().as_ptr() as * mut c_char);
-              builtin_usage ();
-              return EX_USAGE;
-            }
-           }
-           'I'=>{
-            if flagp !=std::ptr::null_mut() {
-              (*flagp).Iflag = 1;
-            } else {
-              sh_invalidopt (CString::new("-I").unwrap().as_ptr() as * mut c_char);
-              builtin_usage ();
-              return EX_USAGE;
-            }
-           }
-           'F'=>{
-              w.word = list_optarg;
-              Farg  = list_optarg;
-              w.flags = 0;
-              if check_identifier (&mut w, posixly_correct) == 0 || libc::strpbrk (Farg, shell_break_chars()) != std::ptr::null_mut() {
-                  sh_invalidid (Farg);
-                  return EX_USAGE;
-              }
-           }
-           'G'=>{
-            Garg = list_optarg;
-           }
-           'P'=>{
-            Parg = list_optarg;
-           }
-           'S'=>{
-            Sarg = list_optarg;
-           }
-           'W'=>{
-            Warg = list_optarg;
-           }
-           'X'=>{
-            Xarg = list_optarg;
-           }
-           _=>{
-            if opt == -99 {
-              r_builtin_help();
-              return EX_USAGE;
-          }
-            builtin_usage ();
-            return EX_USAGE;
-          }
+            opt = internal_getopt(
+                list,
+                CString::new("abcdefgjko:prsuvA:G:W:P:S:X:F:C:DEI")
+                    .unwrap()
+                    .as_ptr() as *mut c_char,
+            );
         }
         opt=internal_getopt(list, CString::new("abcdefgjko:prsuvA:G:W:P:S:X:F:C:DEI").unwrap().as_ptr() as * mut c_char);
       }
