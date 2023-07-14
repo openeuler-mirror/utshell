@@ -1568,4 +1568,19 @@ extern "C" {
         __old_limit: *mut rlimit,
     ) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn memccpy(
+        __dest: *mut ::std::os::raw::c_void,
+        __src: *const ::std::os::raw::c_void,
+        __c: ::std::os::raw::c_int,
+        __n: usize,
+    ) -> *mut ::std::os::raw::c_void;
+}
+extern "C" {
+    pub fn memset(
+        __s: *mut ::std::os::raw::c_void,
+        __c: ::std::os::raw::c_int,
+        __n: usize,
+    ) -> *mut ::std::os::raw::c_void;
+}
 }
