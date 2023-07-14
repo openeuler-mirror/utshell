@@ -1024,8 +1024,13 @@ pub unsafe extern "C"  fn  save_proc_status(mut pid: pid_t, mut status:  c_int) 
     UNBLOCK_CHILD(&mut oset);
 }
 
-
-
+unsafe extern "C" fn procsub_free(mut p: *mut PROCESS) 
+{
+    if !((*p).command).is_null() {
+        free(((*p).command) as *mut c_void);
+    }  
+    free (p as *mut c_void);
+}
 
 
 
