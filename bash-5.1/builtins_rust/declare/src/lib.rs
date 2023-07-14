@@ -821,44 +821,52 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
             return sh_chkwrite(EXECUTION_SUCCESS!());
         }
 
-  }
+        if pflag != 0 {
+            /* declare -p [-aAfFirtx] name [name...] */
+            any_failed = 0;
+            while list != std::ptr::null_mut() {
+                if (flags_on & att_function!()) != 0 {
+                    pflag = show_func_attributes((*(*list).word).word, nodefs);
+                } else if local_var != 0 {
+                    pflag = show_localname_attributes((*(*list).word).word, nodefs);
+                } else {
+                    pflag = show_name_attributes((*(*list).word).word, nodefs);
+                }
+                if pflag != 0 {
+                    sh_notfound((*(*list).word).word);
+                    any_failed += 1;
+                }
+                list = (*list).next;
+            }
 
-  if pflag != 1 {	/* declare -p [-aAfFirtx] name [name...] */
-      any_failed=0;
-      while  list != std::ptr::null_mut() {
-        if (flags_on & att_function!()) != 0 {
-          pflag = show_func_attributes ((*(*list).word).word, nodefs);
-        } else if local_var !=0 {
-          pflag = show_localname_attributes ((*(*list).word).word, nodefs);
-        } else {
-          pflag = show_name_attributes ((*(*list).word).word, nodefs);
+            if any_failed != 0 {
+                return EXECUTION_FAILURE!();
+            } else {
+                return EXECUTION_SUCCESS!();
+            }
         }
-        if pflag !=0 {
-            sh_notfound ((*(*list).word).word);
-            any_failed += 1;
-        }
-         list = (*list).next;
-	  }
+        let tmpValue = CString::new("").unwrap();
 
-      if any_failed !=0 {
-        return EXECUTION_FAILURE!();
-      } else {
-        return EXECUTION_SUCCESS!();
-      }
-  }
-  let tmpValue = CString::new("").unwrap();
+        /* There are arguments left, so we are making variables. */
+        'outter: while list != std::ptr::null_mut() {
+            /* declare [-aAfFirx] name [name ...] */
+            let mut value: *mut c_char;
+            let mut name: *mut c_char;
+            let mut oldname: *mut c_char;
+            let mut offset: i32;
+            let mut aflags: i32;
+            let wflags: i32;
+            let mut created_var: i32;
+            let mut namelen: i32;
+            let assoc_noexpand: bool;
 
-  /* There are arguments left, so we are making variables. */
- 'outter: while list !=std::ptr::null_mut() {		/* declare [-aAfFirx] name [name ...] */
-      let mut value:* mut c_char;
-	  let mut name:* mut c_char;
-	  let mut oldname:* mut c_char;
-      let mut offset:i32;
-	  let mut aflags:i32;
-	  let wflags:i32;
-	  let mut created_var:i32;
-	  let mut namelen:i32;
-      let assoc_noexpand:bool;
+            let mut making_array_special: i32;
+            let mut compound_array_assign: i32;
+            let mut simple_array_assign: i32;
+            let mut var_exists: i32;
+            let mut array_exists: i32;
+            let mut creating_array: i32;
+            let mut array_subscript_assignment: bool;
 
       let mut making_array_special:i32;
 	  let mut compound_array_assign:i32;
