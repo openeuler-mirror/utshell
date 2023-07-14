@@ -690,24 +690,16 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
                 let c_str_file = CString::new("file").unwrap();
                 libc::puts(c_str_file.as_ptr());
             }
+        } else if dflags & (CDESC_REUSABLE!() | CDESC_PATH_ONLY!()) != 0 {
+            unsafe {
+                println!("{:?}", CStr::from_ptr(command));
+            }
+
+            /* There's no use looking in the hash table or in $PATH,
+            because they're not consulted when an absolute program
+            name is supplied. */
+            return 1;
         }
-       }
-       else if dflags & CDESC_SHORTDESC!() != 0 {
-           unsafe {
-               let name = String::from("is");
-               translation_fn(&name,command,command);
-           }
-       }
-       else if dflags & (CDESC_REUSABLE!()|CDESC_PATH_ONLY!()) != 0{
-        unsafe {
-            println!("{:?}",CStr::from_ptr(command));
-       }
- 
-       /* There's no use looking in the hash table or in $PATH,
-          because they're not consulted when an absolute program
-          name is supplied. */
-       return 1;
-     }
     }
 
     /* If the user isn't doing "-a", then we might care about

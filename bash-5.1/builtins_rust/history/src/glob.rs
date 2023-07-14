@@ -1446,4 +1446,23 @@ pub const r_instruction_r_reading_string: r_instruction = 5;
 pub const r_instruction_r_duplicating_input: r_instruction = 6;
 pub const r_instruction_r_duplicating_output: r_instruction = 7;
 pub const r_instruction_r_deblank_reading_until: r_instruction = 8;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union command__bindgen_ty_1 {
+    pub For: *mut for_com,
+    pub Case: *mut case_com,
+    pub While: *mut while_com,
+    pub If: *mut if_com,
+    pub Connection: *mut connection,
+    pub Simple: *mut simple_com,
+    pub Function_def: *mut function_def,
+    pub Group: *mut group_com,
+    pub Select: *mut select_com,
+    pub Arith: *mut arith_com,
+    pub Cond: *mut cond_com,
+    pub ArithFor: *mut arith_for_com,
+    pub Subshell: *mut subshell_com,
+    pub Coproc: *mut coproc_com,
+    _bindgen_union_align: u64,
+}
 }
