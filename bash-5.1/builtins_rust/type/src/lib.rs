@@ -782,12 +782,15 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
             // return 0;
             break;
         }
-        
-    }
-      if full_path == std::ptr::null_mut(){
-         // return 0;
-        break;
-      }
+
+        /* If we found the command as itself by looking through $PATH, it
+        probably doesn't exist.  Check whether or not the command is an
+        executable file.  If it's not, don't report a match.  This is
+        the default posix mode behavior */
+        if (unsafe { STREQ!(full_path, command) } || unsafe { posixly_correct } != 0) {
+            unsafe {
+                f = file_status(full_path);
+            }
             if f & FS_EXECABLE!() == 0 {
                 unsafe {
                     libc::free(full_path as *mut c_void);
