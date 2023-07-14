@@ -285,4 +285,9 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
             }
         }
 
+        if !(*command).redirects.is_null() {
+            cprintf_1(b" \0" as *const u8 as *const c_char); 
+            print_redirection_list((*command).redirects);
+        }
+
 }
