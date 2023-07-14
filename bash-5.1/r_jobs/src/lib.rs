@@ -989,6 +989,21 @@ unsafe extern "C" fn bgp_clear() {
 unsafe extern "C" fn bgp_search(mut pid: pid_t) ->  c_int {
     let mut psi: ps_index_t = 0;
     let mut orig_psi: ps_index_t = 0;
+    psi = *pshash_getbucket(pid);
+    orig_psi = psi;
+
+
+    while psi != NO_PIDSTAT {
+        if (*(bgpids.storage).offset(psi as isize)).pid == pid {
+            return (*(bgpids.storage).offset(psi as isize)).status as c_int;
+        }
+        if orig_psi == (*(bgpids.storage).offset(psi as isize)).bucket_next {
+            internal_warning(b"bgp_search: LOOP: psi (%d) == storage[psi].bucket_next\0" as *const u8 as *const c_char,psi);
+            return -1;
+        }
+        psi = (*(bgpids.storage).offset(psi as isize)).bucket_next;
+    }
+
 
 }
 
