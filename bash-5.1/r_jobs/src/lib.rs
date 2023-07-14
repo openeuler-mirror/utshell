@@ -948,6 +948,20 @@ unsafe extern "C"  fn  pshash_delindex(mut psi: ps_index_t) {
 unsafe extern "C" fn bgp_delete(mut pid: pid_t) ->  c_int {
     let mut psi: ps_index_t = 0;
     let mut orig_psi: ps_index_t = 0;
+
+    psi = *pshash_getbucket(pid);
+    orig_psi = psi;
+    while psi != NO_PIDSTAT {
+        if (*(bgpids.storage).offset(psi as isize)).pid == pid {
+            break;
+        }
+        if orig_psi == (*(bgpids.storage).offset(psi as isize)).bucket_next {
+            internal_warning( b"bgp_delete: LOOP: psi (%d) == storage[psi].bucket_next\0" as *const u8 as *const c_char,psi);
+            return 0 as  c_int;
+        }
+        psi = (*(bgpids.storage).offset(psi as isize)).bucket_next;
+    }
+
 }
 
 
