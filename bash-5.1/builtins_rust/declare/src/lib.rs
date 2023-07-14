@@ -582,27 +582,33 @@ pub extern "C" fn r_local_builtin(list: *mut WordList) -> i32 {
 }
 
 unsafe fn local_p(varr: *mut SHELL_VAR) -> i32 {
-    (*varr).attributes & att_local!()
+    return (*varr).attributes & att_local!();
 }
 
 #[no_mangle]
-pub extern "C" fn r_declare_find_variable (name:* const c_char, mkglobal:i32, chklocal:i32)->* mut SHELL_VAR
-{
-  let varr: * mut SHELL_VAR;
-  unsafe {
-    if mkglobal == 0 {
-      return find_variable (name);
-    } else if chklocal !=0 {
-      varr = find_variable (name);
-      if varr != std::ptr::null_mut() && local_p (varr) !=0 && (*varr).context == variable_context {
-        return varr;
-      }
+pub extern "C" fn r_declare_find_variable(
+    name: *const c_char,
+    mkglobal: i32,
+    chklocal: i32,
+) -> *mut SHELL_VAR {
+    let varr: *mut SHELL_VAR;
+    unsafe {
+        if mkglobal == 0 {
+            return find_variable(name);
+        } else if chklocal != 0 {
+            varr = find_variable(name);
+            if varr != std::ptr::null_mut()
+                && local_p(varr) != 0
+                && (*varr).context == variable_context
+            {
+                return varr;
+            }
 
-      return find_global_variable (name);
-    } else {
-      return find_global_variable (name);
+            return find_global_variable(name);
+        } else {
+            return find_global_variable(name);
+        }
     }
-  }
 }
 
 unsafe fn DECLARE_OPTS()-> CString
@@ -665,44 +671,40 @@ unsafe fn noassign_p(var:*mut SHELL_VAR) ->i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i32
-{
-  let mut flags_on:i32=0;
-  let mut flags_off:i32=0;
-  let mut flags:* mut i32;
-  let mut any_failed:i32=0;
-  let mut assign_error:i32=0;
-  let mut pflag:i32=0;
-  let mut nodefs:i32=0;
-  let mut opt:i32;
-  let mut onref:i32;
-  let mut offref:i32;
-  let mut mkglobal:i32=0;
-  let mut chklocal:i32=0;
-  let mut inherit_flag:i32=0;
+pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) -> i32 {
+    let mut flags_on: i32 = 0;
+    let mut flags_off: i32 = 0;
+    let mut flags: *mut i32;
+    let mut any_failed: i32 = 0;
+    let mut assign_error: i32 = 0;
+    let mut pflag: i32 = 0;
+    let mut nodefs: i32 = 0;
+    let mut opt: i32;
+    let mut onref: i32;
+    let mut offref: i32;
+    let mut mkglobal: i32 = 0;
+    let mut chklocal: i32 = 0;
+    let mut inherit_flag: i32 = 0;
 
-  let mut t: *mut c_char;
-  let mut subscript_start: *mut c_char;
-  let mut var:*mut SHELL_VAR;
-  let mut refvar:*mut SHELL_VAR;
-  let mut v:*mut SHELL_VAR;
+    let mut t: *mut c_char;
+    let mut subscript_start: *mut c_char;
+    let mut var: *mut SHELL_VAR;
+    let mut refvar: *mut SHELL_VAR;
+    let mut v: *mut SHELL_VAR;
 
     let mut shell_fn: *mut function_def;
 
-  refvar = std::ptr::null_mut();
-  unsafe {
-  reset_internal_getopt ();
-  let tmp = DECLARE_OPTS();
-  opt = internal_getopt (list, tmp.as_ptr() as * mut c_char);
-  while  opt != -1 {
-      if list_opttype == '+' as i32 {
-        flags= &mut flags_off;
-      } else {
-        flags= &mut flags_on;
-      }
-     
-      let optu8:u8= opt as u8;
-      let optChar:char=char::from(optu8);
+    refvar = std::ptr::null_mut();
+    unsafe {
+        reset_internal_getopt();
+        let tmp = DECLARE_OPTS();
+        opt = internal_getopt(list, tmp.as_ptr() as *mut c_char);
+        while opt != 0 {
+            if list_opttype == '+' as i32 {
+                flags = &mut flags_off;
+            } else {
+                flags = &mut flags_on;
+            }
 
             let optu8: u8 = opt as u8;
             let optChar: char = char::from(optu8);

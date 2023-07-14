@@ -307,6 +307,7 @@ pub unsafe extern "C" fn r_print_word_list(list:*mut WORD_LIST, separator:*mut c
             print!("{}",CStr::from_ptr((*(*w).word).word).to_str().unwrap());
         }
 
+        w = (*w).next;
     }
 }
 
@@ -325,5 +326,7 @@ pub unsafe extern "C" fn r_xtrace_set(fd:c_int, fp:*mut FILE)
     if fd >= 0 && fileno(fp) != fd {
         internal_warning(b"xtrace fd (%d) != fileno xtrace fp (%d)\0" as *const u8 as *const c_char as *mut c_char, fd, fileno(fp));
     }
-
+   
+    xtrace_fd = fd;
+    xtrace_fp = fp;
 }
