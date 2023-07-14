@@ -945,6 +945,66 @@ pub type __nlink_t = ::std::os::raw::c_ulong;
 pub type __off_t = ::std::os::raw::c_long;
 pub type __off64_t = ::std::os::raw::c_long;
 pub type __pid_t = ::std::os::raw::c_int;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __fsid_t {
+    pub __val: [::std::os::raw::c_int; 2usize],
+}
+pub type __clock_t = ::std::os::raw::c_long;
+pub type __rlim_t = ::std::os::raw::c_ulong;
+pub type __rlim64_t = ::std::os::raw::c_ulong;
+pub type __id_t = ::std::os::raw::c_uint;
+pub type __time_t = ::std::os::raw::c_long;
+pub type __useconds_t = ::std::os::raw::c_uint;
+pub type __suseconds_t = ::std::os::raw::c_long;
+pub type __daddr_t = ::std::os::raw::c_int;
+pub type __key_t = ::std::os::raw::c_int;
+pub type __clockid_t = ::std::os::raw::c_int;
+pub type __timer_t = *mut ::std::os::raw::c_void;
+pub type __blksize_t = ::std::os::raw::c_long;
+pub type __blkcnt_t = ::std::os::raw::c_long;
+pub type __blkcnt64_t = ::std::os::raw::c_long;
+pub type __fsblkcnt_t = ::std::os::raw::c_ulong;
+pub type __fsblkcnt64_t = ::std::os::raw::c_ulong;
+pub type __fsfilcnt_t = ::std::os::raw::c_ulong;
+pub type __fsfilcnt64_t = ::std::os::raw::c_ulong;
+pub type __fsword_t = ::std::os::raw::c_long;
+pub type __ssize_t = ::std::os::raw::c_long;
+pub type __syscall_slong_t = ::std::os::raw::c_long;
+pub type __syscall_ulong_t = ::std::os::raw::c_ulong;
+pub type __loff_t = __off64_t;
+pub type __caddr_t = *mut ::std::os::raw::c_char;
+pub type __intptr_t = ::std::os::raw::c_long;
+pub type __socklen_t = ::std::os::raw::c_uint;
+pub type __sig_atomic_t = ::std::os::raw::c_int;
+pub type wctype_t = ::std::os::raw::c_ulong;
+pub const __ISwupper: _bindgen_ty_1 = 0;
+pub const __ISwlower: _bindgen_ty_1 = 1;
+pub const __ISwalpha: _bindgen_ty_1 = 2;
+pub const __ISwdigit: _bindgen_ty_1 = 3;
+pub const __ISwxdigit: _bindgen_ty_1 = 4;
+pub const __ISwspace: _bindgen_ty_1 = 5;
+pub const __ISwprint: _bindgen_ty_1 = 6;
+pub const __ISwgraph: _bindgen_ty_1 = 7;
+pub const __ISwblank: _bindgen_ty_1 = 8;
+pub const __ISwcntrl: _bindgen_ty_1 = 9;
+pub const __ISwpunct: _bindgen_ty_1 = 10;
+pub const __ISwalnum: _bindgen_ty_1 = 11;
+pub const _ISwupper: _bindgen_ty_1 = 16777216;
+pub const _ISwlower: _bindgen_ty_1 = 33554432;
+pub const _ISwalpha: _bindgen_ty_1 = 67108864;
+pub const _ISwdigit: _bindgen_ty_1 = 134217728;
+pub const _ISwxdigit: _bindgen_ty_1 = 268435456;
+pub const _ISwspace: _bindgen_ty_1 = 536870912;
+pub const _ISwprint: _bindgen_ty_1 = 1073741824;
+pub const _ISwgraph: _bindgen_ty_1 = -2147483648;
+pub const _ISwblank: _bindgen_ty_1 = 65536;
+pub const _ISwcntrl: _bindgen_ty_1 = 131072;
+pub const _ISwpunct: _bindgen_ty_1 = 262144;
+pub const _ISwalnum: _bindgen_ty_1 = 524288;
+pub type _bindgen_ty_1 = i32;
+
 extern "C" {
     pub fn iswalnum_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
 }
