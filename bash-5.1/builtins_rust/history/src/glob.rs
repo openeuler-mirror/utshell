@@ -1534,4 +1534,12 @@ extern "C" {
         __mask: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
 }
+pub const __rlimit_resource_RLIMIT_CPU: __rlimit_resource = 0;
+pub const __rlimit_resource_RLIMIT_FSIZE: __rlimit_resource = 1;
+pub const __rlimit_resource_RLIMIT_DATA: __rlimit_resource = 2;
+pub const __rlimit_resource_RLIMIT_STACK: __rlimit_resource = 3;
+pub const __rlimit_resource_RLIMIT_CORE: __rlimit_resource = 4;
+pub const __rlimit_resource___RLIMIT_RSS: __rlimit_resource = 5;
+pub const __rlimit_resource_RLIMIT_NOFILE: __rlimit_resource = 7;
+pub const __rlimit_resource___RLIMIT_OFILE: __rlimit_resource = 7;
 }
