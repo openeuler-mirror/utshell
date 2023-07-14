@@ -336,3 +336,17 @@ pub unsafe extern "C" fn r_xtrace_init()
 {
     r_xtrace_set(-1, stderr);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_reset()
+{
+    if xtrace_fd >= 0  && !xtrace_fp.is_null(){
+        libc::fflush(xtrace_fp);
+        libc::fclose(xtrace_fp);
+    }
+    else if xtrace_fd >= 0{
+        libc::close(xtrace_fd);
+    }
+    xtrace_fd = -1;
+    xtrace_fp = stderr;
+}

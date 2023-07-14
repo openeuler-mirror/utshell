@@ -496,52 +496,67 @@ extern "C" {
     static mut loptend: *mut WordList;
     fn show_local_var_attributes(v: i32, nodefs: i32) -> i32;
     // fn show_all_var_attributes (v:i32, nodefs:i32)->i32;
-    fn set_builtin (list:*mut WordList)->i32;
-    fn sh_chkwrite (ret:i32)->i32;
-    fn show_func_attributes (name:* mut c_char, nodefs:i32)->i32;
-    fn show_localname_attributes (name:* mut c_char, nodefs:i32)->i32;
-    fn sh_notfound (name:* mut c_char);
-	static assoc_expand_once:i32;
-	fn assignment (str1:* const c_char, flags:i32)->i32;
-	fn make_local_variable (name:* const c_char, flags:i32)->* mut SHELL_VAR;
-	fn get_current_options ()->* mut c_char;
-	fn valid_array_reference (name:* const c_char, flags:i32)->i32;
-	fn check_selfref (name:* const c_char, value:* mut c_char, flags:i32)->i32;
-	fn valid_nameref_value (name:* const c_char, flags:i32)->i32;
-	fn sh_invalidid (value:* mut c_char);
-	static mut posixly_correct:i32;	
-	fn nameref_transform_name (name:* mut c_char, flags:i32)->* mut c_char;
-	fn find_variable_last_nameref (name:* const c_char, flags:i32)->* mut SHELL_VAR;
-	fn make_local_assoc_variable (value:* mut c_char, flags:i32)->* mut SHELL_VAR;
-	fn make_local_array_variable (value:* mut c_char, flags:i32)->* mut SHELL_VAR;
-	fn find_global_variable_last_nameref (value:* const c_char, flags:i32)->* mut SHELL_VAR;
-	fn find_global_variable_noref (value:* const c_char)->* mut SHELL_VAR;
-	fn find_variable_noref (value:* const c_char)->* mut SHELL_VAR;
-	fn sh_readonly (name:* const c_char);
-	fn sh_invalidopt (value:* mut c_char);
-	static mut debugging_mode:i32;
-	fn find_function_def (name:* const c_char)->* mut function_def;
-	fn named_function_string (name:* mut c_char, cmd:* mut COMMAND, i:i32)->* mut c_char;
-	fn make_new_assoc_variable (name:* mut c_char)->* mut SHELL_VAR;
-	fn make_new_array_variable (name:* mut c_char)->* mut SHELL_VAR;
-	fn bind_global_variable (name:* const c_char,value:* mut c_char,flags:i32)->* mut SHELL_VAR;
-	fn bind_variable (name:* const c_char,value:* mut c_char,flags:i32)->* mut SHELL_VAR;
-	static mut shell_compatibility_level:i32;
-	fn internal_warning (format:* const c_char, ...);
-	fn assign_array_element (name:* mut c_char, value:* mut c_char, flags:i32)->* mut SHELL_VAR;
-	fn bind_assoc_variable (var:* mut SHELL_VAR, name:* mut c_char, key:* mut c_char, value:* mut c_char, flags:i32)->* mut SHELL_VAR;
-	fn bind_array_variable (name:* mut c_char, s:libc::c_long,  value:* mut c_char, flags:i32)->* mut SHELL_VAR;
-	fn bind_variable_value (var:* mut SHELL_VAR, name:* mut c_char, flags:i32)->* mut SHELL_VAR;
-	fn delete_var (name:* const c_char, varc:* mut VAR_CONTEXT)->i32;
-	static global_variables:* mut VAR_CONTEXT;
-	static shell_variables:* mut VAR_CONTEXT;
-	fn find_tempenv_variable (format:* const c_char)->* mut SHELL_VAR;
-	fn stupidly_hack_special_variables (name:* mut c_char);
-	fn assign_array_var_from_string (var:* mut SHELL_VAR, value:* mut c_char, flags:i32)->* mut SHELL_VAR;
-	fn convert_var_to_array (var:* mut SHELL_VAR)->* mut SHELL_VAR;
-	fn convert_var_to_assoc (var:* mut SHELL_VAR)->* mut SHELL_VAR;
-	fn find_function (name:* const c_char)->* mut SHELL_VAR;
-	fn legal_identifier (name:* const c_char)->i32;
+    fn set_builtin(list: *mut WordList) -> i32;
+    fn sh_chkwrite(ret: i32) -> i32;
+    fn show_func_attributes(name: *mut c_char, nodefs: i32) -> i32;
+    fn show_localname_attributes(name: *mut c_char, nodefs: i32) -> i32;
+    fn sh_notfound(name: *mut c_char);
+    static assoc_expand_once: i32;
+    fn assignment(str1: *const c_char, flags: i32) -> i32;
+    fn make_local_variable(name: *const c_char, flags: i32) -> *mut SHELL_VAR;
+    fn get_current_options() -> *mut c_char;
+    fn valid_array_reference(name: *const c_char, flags: i32) -> i32;
+    fn check_selfref(name: *const c_char, value: *mut c_char, flags: i32) -> i32;
+    fn valid_nameref_value(name: *const c_char, flags: i32) -> i32;
+    fn sh_invalidid(value: *mut c_char);
+    static mut posixly_correct: i32;
+    fn nameref_transform_name(name: *mut c_char, flags: i32) -> *mut c_char;
+    fn find_variable_last_nameref(name: *const c_char, flags: i32) -> *mut SHELL_VAR;
+    fn make_local_assoc_variable(value: *mut c_char, flags: i32) -> *mut SHELL_VAR;
+    fn make_local_array_variable(value: *mut c_char, flags: i32) -> *mut SHELL_VAR;
+    fn find_global_variable_last_nameref(value: *const c_char, flags: i32) -> *mut SHELL_VAR;
+    fn find_global_variable_noref(value: *const c_char) -> *mut SHELL_VAR;
+    fn find_variable_noref(value: *const c_char) -> *mut SHELL_VAR;
+    fn sh_readonly(name: *const c_char);
+    fn sh_invalidopt(value: *mut c_char);
+    static mut debugging_mode: i32;
+    fn find_function_def(name: *const c_char) -> *mut function_def;
+    fn named_function_string(name: *mut c_char, cmd: *mut COMMAND, i: i32) -> *mut c_char;
+    fn make_new_assoc_variable(name: *mut c_char) -> *mut SHELL_VAR;
+    fn make_new_array_variable(name: *mut c_char) -> *mut SHELL_VAR;
+    fn bind_global_variable(name: *const c_char, value: *mut c_char, flags: i32) -> *mut SHELL_VAR;
+    fn bind_variable(name: *const c_char, value: *mut c_char, flags: i32) -> *mut SHELL_VAR;
+    static mut shell_compatibility_level: i32;
+    fn internal_warning(format: *const c_char, ...);
+    fn assign_array_element(name: *mut c_char, value: *mut c_char, flags: i32) -> *mut SHELL_VAR;
+    fn bind_assoc_variable(
+        var: *mut SHELL_VAR,
+        name: *mut c_char,
+        key: *mut c_char,
+        value: *mut c_char,
+        flags: i32,
+    ) -> *mut SHELL_VAR;
+    fn bind_array_variable(
+        name: *mut c_char,
+        s: libc::c_long,
+        value: *mut c_char,
+        flags: i32,
+    ) -> *mut SHELL_VAR;
+    fn bind_variable_value(var: *mut SHELL_VAR, name: *mut c_char, flags: i32) -> *mut SHELL_VAR;
+    fn delete_var(name: *const c_char, varc: *mut VAR_CONTEXT) -> i32;
+    static global_variables: *mut VAR_CONTEXT;
+    static shell_variables: *mut VAR_CONTEXT;
+    fn find_tempenv_variable(format: *const c_char) -> *mut SHELL_VAR;
+    fn stupidly_hack_special_variables(name: *mut c_char);
+    fn assign_array_var_from_string(
+        var: *mut SHELL_VAR,
+        value: *mut c_char,
+        flags: i32,
+    ) -> *mut SHELL_VAR;
+    fn convert_var_to_array(var: *mut SHELL_VAR) -> *mut SHELL_VAR;
+    fn convert_var_to_assoc(var: *mut SHELL_VAR) -> *mut SHELL_VAR;
+    fn find_function(name: *const c_char) -> *mut SHELL_VAR;
+    fn legal_identifier(name: *const c_char) -> i32;
 }
 
 #[no_mangle]
@@ -627,44 +642,44 @@ unsafe fn VSETATTR(var: *mut SHELL_VAR, attr: i32) {
     (*var).attributes |= attr;
 }
 
-unsafe fn readonly_p(var:*mut SHELL_VAR) ->i32 {
-	return (*var).attributes & att_readonly!();
+unsafe fn readonly_p(var: *mut SHELL_VAR) -> i32 {
+    return (*var).attributes & att_readonly!();
 }
 
-unsafe fn nameref_p(var:*mut SHELL_VAR) ->i32 {
-	return (*var).attributes & att_nameref!();
+unsafe fn nameref_p(var: *mut SHELL_VAR) -> i32 {
+    return (*var).attributes & att_nameref!();
 }
 
-unsafe fn nameref_cell(var:*mut SHELL_VAR) ->* mut c_char {
-	return (*var).value;/* so it can change later */
+unsafe fn nameref_cell(var: *mut SHELL_VAR) -> *mut c_char {
+    return (*var).value; /* so it can change later */
 }
 
-unsafe fn function_cell(var:*mut SHELL_VAR) ->* mut COMMAND {
-	return (*var).value as * mut COMMAND;
+unsafe fn function_cell(var: *mut SHELL_VAR) -> *mut COMMAND {
+    return (*var).value as *mut COMMAND;
 }
 
-unsafe fn VUNSETATTR(var:*mut SHELL_VAR,attr:i32) {
-	(*var).attributes &= !attr;
+unsafe fn VUNSETATTR(var: *mut SHELL_VAR, attr: i32) {
+    (*var).attributes &= !attr;
 }
 
-unsafe fn array_p(var:*mut SHELL_VAR) ->i32 {
-	return (*var).attributes & att_array!();
+unsafe fn array_p(var: *mut SHELL_VAR) -> i32 {
+    return (*var).attributes & att_array!();
 }
 
-unsafe fn assoc_p(var:*mut SHELL_VAR) ->i32 {
-	return (*var).attributes & att_assoc!();
+unsafe fn assoc_p(var: *mut SHELL_VAR) -> i32 {
+    return (*var).attributes & att_assoc!();
 }
 
-unsafe fn var_isset(var:*mut SHELL_VAR) ->bool {
-	return (*var).value !=std::ptr::null_mut();
+unsafe fn var_isset(var: *mut SHELL_VAR) -> bool {
+    return (*var).value != std::ptr::null_mut();
 }
 
-unsafe fn tempvar_p(var:*mut SHELL_VAR) ->i32 {
-	return (*var).attributes & att_tempvar!();
+unsafe fn tempvar_p(var: *mut SHELL_VAR) -> i32 {
+    return (*var).attributes & att_tempvar!();
 }
 
-unsafe fn noassign_p(var:*mut SHELL_VAR) ->i32 {
-	return (*var).attributes & att_noassign!();
+unsafe fn noassign_p(var: *mut SHELL_VAR) -> i32 {
+    return (*var).attributes & att_noassign!();
 }
 
 #[no_mangle]
@@ -808,7 +823,7 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
 
   }
 
-  if pflag !=0 {	/* declare -p [-aAfFirtx] name [name...] */
+  if pflag != 1 {	/* declare -p [-aAfFirtx] name [name...] */
       any_failed=0;
       while  list != std::ptr::null_mut() {
         if (flags_on & att_function!()) != 0 {
