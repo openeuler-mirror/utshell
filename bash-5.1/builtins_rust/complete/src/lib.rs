@@ -62,13 +62,13 @@ pub union REDIRECTEE {
 
 #[repr(C)]
 pub union REDIRECT {
-  next:*mut REDIRECT,
-  redirector:REDIRECTEE,
-  rflags:c_int,
-  flags:c_int,
-  instruction:r_instruction,
-  redirectee:REDIRECTEE,
-  here_doc_eof:*mut c_char
+    next: *mut REDIRECT,
+    redirector: REDIRECTEE,
+    rflags: c_int,
+    flags: c_int,
+    instruction: r_instruction,
+    redirectee: REDIRECTEE,
+    here_doc_eof: *mut c_char,
 }
 
 /* FOR command. */
@@ -244,36 +244,136 @@ pub struct CompactsArray {
 }
 
 impl CompactsArray {
-    pub fn new()->CompactsArray {
-      CompactsArray{
-        compactsArr:[
-          _compacts{ actname:b"alias\0".as_ptr() as *const c_char, actflag: CA_ALIAS!(),actopt: 'a' as c_int },
-          _compacts{ actname:b"arrayvar\0".as_ptr() as *const c_char, actflag: CA_ARRAYVAR!(),actopt: 0 as c_int },
-          _compacts{ actname:b"binding\0".as_ptr() as *const c_char, actflag: CA_BINDING!(),actopt: 0 as c_int },
-          _compacts{ actname:b"builtin\0".as_ptr() as *const c_char, actflag: CA_BUILTIN!(),actopt: 'b' as c_int },
-          _compacts{ actname:b"command\0".as_ptr() as *const c_char, actflag: CA_COMMAND!(),actopt: 'c' as c_int },
-          _compacts{ actname:b"directory\0".as_ptr() as *const c_char, actflag: CA_DIRECTORY!(),actopt: 'd' as c_int },
-          _compacts{ actname:b"disabled\0".as_ptr() as *const c_char, actflag: CA_DISABLED!(),actopt: 0 as c_int },
-          _compacts{ actname:b"enabled\0".as_ptr() as *const c_char, actflag: CA_ENABLED!(),actopt: 0 as c_int },
-          _compacts{ actname:b"export\0".as_ptr() as *const c_char, actflag: CA_EXPORT!(),actopt: 'e' as c_int },
-          _compacts{ actname:b"file\0".as_ptr() as *const c_char, actflag: CA_FILE!(),actopt: 'f' as c_int },
-          _compacts{ actname:b"function\0".as_ptr() as *const c_char, actflag: CA_FUNCTION!(),actopt: 0 as c_int },
-          _compacts{ actname:b"helptopic\0".as_ptr() as *const c_char, actflag: CA_HELPTOPIC!(),actopt: 0 as c_int },
-          _compacts{ actname:b"hostname\0".as_ptr() as *const c_char, actflag: CA_HOSTNAME!(),actopt: 0 as c_int },
-          _compacts{ actname:b"group\0".as_ptr() as *const c_char, actflag: CA_GROUP!(),actopt: 'g' as c_int },
-          _compacts{ actname:b"job\0".as_ptr() as *const c_char, actflag: CA_JOB!(),actopt: 'j' as c_int },
-          _compacts{ actname:b"keyword\0".as_ptr() as *const c_char, actflag: CA_KEYWORD!(),actopt: 'k' as c_int },
-          _compacts{ actname:b"running\0".as_ptr() as *const c_char, actflag: CA_RUNNING!(),actopt: 0 as c_int },
-          _compacts{ actname:b"service\0".as_ptr() as *const c_char, actflag: CA_SERVICE!(),actopt: 's' as c_int },
-          _compacts{ actname:b"setopt\0".as_ptr() as *const c_char, actflag: CA_SETOPT!(),actopt: 0 as c_int },
-          _compacts{ actname:b"shopt\0".as_ptr() as *const c_char, actflag: CA_SHOPT!(),actopt: 0 as c_int },
-          _compacts{ actname:b"signal\0".as_ptr() as *const c_char, actflag: CA_SIGNAL!(),actopt: 0 as c_int },
-          _compacts{ actname:b"stopped\0".as_ptr() as *const c_char, actflag: CA_STOPPED!(),actopt: 0 as c_int },
-          _compacts{ actname:b"user\0".as_ptr() as *const c_char, actflag: CA_USER!(),actopt: 'u' as c_int },
-          _compacts{ actname:b"variable\0".as_ptr() as *const c_char, actflag: CA_VARIABLE!(),actopt: 'v' as c_int },
-          _compacts{ actname:std::ptr::null_mut(), actflag: 0,actopt: 0 as c_int },  
-        ]
-      }
+    pub fn new() -> CompactsArray {
+        CompactsArray {
+            compactsArr: [
+                _compacts {
+                    actname: b"alias\0".as_ptr() as *const c_char,
+                    actflag: CA_ALIAS!(),
+                    actopt: 'a' as c_int,
+                },
+                _compacts {
+                    actname: b"arrayvar\0".as_ptr() as *const c_char,
+                    actflag: CA_ARRAYVAR!(),
+                    actopt: 0 as c_int,
+                },
+                _compacts {
+                    actname: b"binding\0".as_ptr() as *const c_char,
+                    actflag: CA_BINDING!(),
+                    actopt: 0 as c_int,
+                },
+                _compacts {
+                    actname: b"builtin\0".as_ptr() as *const c_char,
+                    actflag: CA_BUILTIN!(),
+                    actopt: 'b' as c_int,
+                },
+                _compacts {
+                    actname: b"command\0".as_ptr() as *const c_char,
+                    actflag: CA_COMMAND!(),
+                    actopt: 'c' as c_int,
+                },
+                _compacts {
+                    actname: b"directory\0".as_ptr() as *const c_char,
+                    actflag: CA_DIRECTORY!(),
+                    actopt: 'd' as c_int,
+                },
+                _compacts {
+                    actname: b"disabled\0".as_ptr() as *const c_char,
+                    actflag: CA_DISABLED!(),
+                    actopt: 0 as c_int,
+                },
+                _compacts {
+                    actname: b"enabled\0".as_ptr() as *const c_char,
+                    actflag: CA_ENABLED!(),
+                    actopt: 0 as c_int,
+                },
+                _compacts {
+                    actname: b"export\0".as_ptr() as *const c_char,
+                    actflag: CA_EXPORT!(),
+                    actopt: 'e' as c_int,
+                },
+                _compacts {
+                    actname: b"file\0".as_ptr() as *const c_char,
+                    actflag: CA_FILE!(),
+                    actopt: 'f' as c_int,
+                },
+                _compacts {
+                    actname: b"function\0".as_ptr() as *const c_char,
+                    actflag: CA_FUNCTION!(),
+                    actopt: 0 as c_int,
+                },
+                _compacts {
+                    actname: b"helptopic\0".as_ptr() as *const c_char,
+                    actflag: CA_HELPTOPIC!(),
+                    actopt: 0 as c_int,
+                },
+                _compacts {
+                    actname: b"hostname\0".as_ptr() as *const c_char,
+                    actflag: CA_HOSTNAME!(),
+                    actopt: 0 as c_int,
+                },
+                _compacts {
+                    actname: b"group\0".as_ptr() as *const c_char,
+                    actflag: CA_GROUP!(),
+                    actopt: 'g' as c_int,
+                },
+                _compacts {
+                    actname: b"job\0".as_ptr() as *const c_char,
+                    actflag: CA_JOB!(),
+                    actopt: 'j' as c_int,
+                },
+                _compacts {
+                    actname: b"keyword\0".as_ptr() as *const c_char,
+                    actflag: CA_KEYWORD!(),
+                    actopt: 'k' as c_int,
+                },
+                _compacts {
+                    actname: b"running\0".as_ptr() as *const c_char,
+                    actflag: CA_RUNNING!(),
+                    actopt: 0 as c_int,
+                },
+                _compacts {
+                    actname: b"service\0".as_ptr() as *const c_char,
+                    actflag: CA_SERVICE!(),
+                    actopt: 's' as c_int,
+                },
+                _compacts {
+                    actname: b"setopt\0".as_ptr() as *const c_char,
+                    actflag: CA_SETOPT!(),
+                    actopt: 0 as c_int,
+                },
+                _compacts {
+                    actname: b"shopt\0".as_ptr() as *const c_char,
+                    actflag: CA_SHOPT!(),
+                    actopt: 0 as c_int,
+                },
+                _compacts {
+                    actname: b"signal\0".as_ptr() as *const c_char,
+                    actflag: CA_SIGNAL!(),
+                    actopt: 0 as c_int,
+                },
+                _compacts {
+                    actname: b"stopped\0".as_ptr() as *const c_char,
+                    actflag: CA_STOPPED!(),
+                    actopt: 0 as c_int,
+                },
+                _compacts {
+                    actname: b"user\0".as_ptr() as *const c_char,
+                    actflag: CA_USER!(),
+                    actopt: 'u' as c_int,
+                },
+                _compacts {
+                    actname: b"variable\0".as_ptr() as *const c_char,
+                    actflag: CA_VARIABLE!(),
+                    actopt: 'v' as c_int,
+                },
+                _compacts {
+                    actname: std::ptr::null_mut(),
+                    actflag: 0,
+                    actopt: 0 as c_int,
+                },
+            ],
+        }
     }
 }
 
@@ -702,24 +802,23 @@ pub extern "C" fn r_find_compact(name: *mut c_char) -> i32 {
             }
             i += 1;
         }
-        return 1;
+        return -1;
     }
 }
 
 #[no_mangle]
-pub extern "C" fn r_find_compopt (name:* mut c_char)->i32
-{
-  let mut i:i32=0;
-  let compopts:CompoptArray=CompoptArray::new();
-  unsafe {
-    while compopts.compoptArr[i as usize].optname != std::ptr::null_mut() {
-      if STREQ (name, compopts.compoptArr[i as usize].optname) {
-        return i;
-      }
-      i+=1;
+pub extern "C" fn r_find_compopt(name: *mut c_char) -> i32 {
+    let mut i: i32 = 0;
+    let compopts: CompoptArray = CompoptArray::new();
+    unsafe {
+        while compopts.compoptArr[i as usize].optname != std::ptr::null_mut() {
+            if STREQ(name, compopts.compoptArr[i as usize].optname) {
+                return i;
+            }
+            i += 1;
+        }
+        return -1;
     }
-    return -1;
-  }
 }
 
 #[no_mangle]

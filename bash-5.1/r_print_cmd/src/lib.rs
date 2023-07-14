@@ -427,4 +427,8 @@ pub unsafe extern "C" fn r_indirection_level_string()->*mut c_char
         j += 1;
     }
 
+    *indirection_string.offset(i as isize) = '\u{0}' as i32 as c_char;
+    libc::free(ps4 as *mut libc::c_void);
+    return indirection_string;    
+
 }
