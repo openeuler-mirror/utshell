@@ -121,23 +121,22 @@ pub extern "C" fn r_trap_builtin(mut list: *mut WordList) -> i32 {
                                         set_signal_handler(sig, std::mem::transmute(1_usize));
                                     }
                                 }
-                            _ => (),
+                                _ => (),
+                            }
+                            break;
                         }
-                        break;
+                        _ => (),
                     }
-                    _ => (),
                 }
-            }
 
-            list = (*list).next;
+                list = (*list).next;
+            }
         }
     }
-}
     return result;
 }
 
-unsafe fn showtrap(i: c_int, show_default: c_int)
-{
+unsafe fn showtrap(i: c_int, show_default: c_int) {
     let t: *mut c_char;
 
     let p = trap_list[i as usize];
