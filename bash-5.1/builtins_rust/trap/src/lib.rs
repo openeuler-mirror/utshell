@@ -78,10 +78,10 @@ pub extern "C" fn r_trap_builtin(mut list: *mut WordList) -> i32 {
                 }
             }
 
-        if subshell_environment & SUBSHELL_RESETTRAP != 0 {
-            free_trap_strings();
-            subshell_environment &= !SUBSHELL_RESETTRAP;
-        }
+            if subshell_environment & SUBSHELL_RESETTRAP != 0 {
+                free_trap_strings();
+                subshell_environment &= !SUBSHELL_RESETTRAP;
+            }
 
         let mut sig: c_int;
         while !list.is_null() {
@@ -143,7 +143,11 @@ unsafe fn showtrap(i: c_int, show_default: c_int)
     } else if signal_is_hard_ignored(i) != 0 {
         t = PT_NULL as *mut c_char;
     } else {
-        t = if p == libc::SIG_IGN as *mut c_char {PT_NULL as *mut c_char} else {sh_single_quote(p)}
+        t = if p == libc::SIG_IGN as *mut c_char {
+            PT_NULL as *mut c_char
+        } else {
+            sh_single_quote(p)
+        }
     }
 
     let sn = signal_name(i);
