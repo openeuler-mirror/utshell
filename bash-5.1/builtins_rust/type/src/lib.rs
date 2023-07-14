@@ -540,19 +540,19 @@ pub unsafe extern "C" fn r_type_builtin(mut list: *mut WordList) -> i32 {
                     return EX_USAGE;
                 }
             }
-        } 
-        opt = internal_getopt (list, c_str_afptP.as_ptr() as * mut libc::c_char);
-   }
-   list = loptend;
-    while list !=  std::ptr::null_mut() {
-        let found : i32;
-        unsafe {
-           found = describe_command ((*(*list).word).word, dflags);
         }
-        if found ==0 && (dflags & (CDESC_PATH_ONLY!()|CDESC_TYPE!()))==0 {
+        opt = internal_getopt(list, c_str_afptP.as_ptr() as *mut libc::c_char);
+    }
+    list = loptend;
+    while list != std::ptr::null_mut() {
+        let found: i32;
+        unsafe {
+            found = describe_command((*(*list).word).word, dflags);
+        }
+        if found == 0 && (dflags & (CDESC_PATH_ONLY!() | CDESC_TYPE!())) == 0 {
             unsafe {
                 sh_notfound((*(*list).word).word);
-            }    
+            }
         }
         any_failed = found + any_failed;
         let _ = any_failed == 0;
