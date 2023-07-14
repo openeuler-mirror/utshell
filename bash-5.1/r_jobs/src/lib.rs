@@ -974,7 +974,17 @@ unsafe extern "C" fn bgp_delete(mut pid: pid_t) ->  c_int {
     return 1 ;
 }
 
+unsafe extern "C" fn bgp_clear() {
+    if (bgpids.storage).is_null() || bgpids.nalloc == 0 {
+        return;
+    }
+    libc::free(bgpids.storage as *mut  c_void);
 
+    bgpids.storage = 0 as *mut pidstat;
+    bgpids.nalloc = 0 ;
+    bgpids.head = 0 ;
+    bgpids.npid = 0 ;
+}
 
 
 
