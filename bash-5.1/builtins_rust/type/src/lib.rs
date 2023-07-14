@@ -843,42 +843,14 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
         }
 
         unsafe {
-            x = sh_makepath ( std::ptr::null_mut() , full_path, MP_DOCWD!()|MP_RMDOT!());
-            libc::free (full_path as *mut c_void);
+            libc::free(full_path as *mut c_void);
         }
-	  full_path = x;
-	}
-    found_file += 1;
-    found = 1;
-    if dflags & CDESC_TYPE!() != 0{
-          unsafe {
-            let c_str_file = CString::new("file").unwrap();
-            libc::puts(c_str_file.as_ptr());
-          }
-    }
-    else if dflags & CDESC_SHORTDESC!() != 0{
-        unsafe{
-            let name = String::from("is");
-            translation_fn(&name,command,full_path);
+        full_path = std::ptr::null_mut();
+        if all == 0 {
+            break;
         }
     }
-	else if dflags & (CDESC_REUSABLE!()|CDESC_PATH_ONLY!()) != 0{
-        unsafe{
-            println! ("{:?}", CStr::from_ptr(full_path));
-        }
-        
-    }
-
-    unsafe {
-        libc::free (full_path as *mut c_void);
-    } 
-      full_path =  std::ptr::null_mut() ;
-      if all == 0{
-        break;
-      }
-	
-    }
-   found
+    found
 }
 
 unsafe fn translation_fn(command: &String, args1: *mut libc::c_char, args2: *mut libc::c_char) {
