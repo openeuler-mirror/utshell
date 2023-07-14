@@ -672,20 +672,19 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
         }
     }
 
-    found = 1;
-    if all == 0{
-        return 1;
-    }
-  }
-
- /* Command is a disk file? */
-  /* If the command name given is already an absolute command, just
-     check to see if it is executable. */
-     if unsafe {absolute_program (command)} != 0 {
-  
-       f = unsafe {file_status (command)};
-       if f & FS_EXECABLE!()  != 0{
-        if dflags & CDESC_TYPE!()  != 0{
+    /* Command is a disk file? */
+    /* If the command name given is already an absolute command, just
+    check to see if it is executable. */
+    if unsafe { absolute_program(command) } != 0 {
+        f = unsafe { file_status(command) };
+        if f & FS_EXECABLE!() != 0 {
+            if dflags & CDESC_TYPE!() != 0 {
+                unsafe {
+                    let c_str_file = CString::new("file").unwrap();
+                    libc::puts(c_str_file.as_ptr());
+                }
+            }
+        } else if dflags & CDESC_SHORTDESC!() != 0 {
             unsafe {
                 let name = String::from("is");
                 translation_fn(&name, command, command);
