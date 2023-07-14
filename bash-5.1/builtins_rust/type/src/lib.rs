@@ -411,6 +411,7 @@ macro_rules! ABSPATH {
     ($s :expr) => {
         unsafe {
             char::from(*($s as *mut libc::c_char) as u8) }== '/';
+
     // $x  == '/';
    }
  }
@@ -657,9 +658,21 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
                  let name = String::from("special");
                  translation_fn(&name,command,std::ptr::null_mut());
             }
-
-        }
-        else {
+        } else if dflags & CDESC_SHORTDESC!() != 0 {
+            if unsafe { posixly_correct } != 0
+                && unsafe { find_special_builtin(command) } != std::ptr::null_mut()
+            {
+                unsafe {
+                    let name = String::from("special");
+                    translation_fn(&name, command, std::ptr::null_mut());
+                }
+            } else {
+                unsafe {
+                    let name = String::from("isbuiltin");
+                    translation_fn(&name, command, std::ptr::null_mut());
+                }
+            }
+        } else if dflags & CDESC_REUSABLE!() != 0 {
             unsafe {
                 let name = String::from("isbuiltin");
                 translation_fn(&name,command,std::ptr::null_mut());
