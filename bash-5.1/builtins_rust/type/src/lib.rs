@@ -591,6 +591,34 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
         full_path = std::ptr::null_mut();
     }
 
+        // #if defined (ALIAS)
+        alias = find_alias(command);
+        if (((dflags & CDESC_FORCE_PATH!()) == 0) && expand_aliases!=0 && alias != std::ptr::null_mut())
+        {
+          if (dflags & CDESC_TYPE!()) != 0{
+              unsafe {
+                libc::puts("alias" as *const libc::c_char );
+              }
+          }
+          else if (dflags & CDESC_SHORTDESC!()) != 0 {
+              unsafe{
+                println!("{:?} is aliased to {:?}\n",CStr::from_ptr(command), CStr::from_ptr(alias.value));
+              }
+          }
+          else if dflags & CDESC_REUSABLE!(){
+              unsafe {
+                x = sh_single_quote((*alias).value);
+                println!("alias {:?} = {:?}",CStr::from_ptr(command),CStr::from_ptr(x));
+                libc::free(x);
+              }
+        }
+          found = 1;
+
+          if all == 0 {
+            return 1;
+          }
+        }
+
     /* Command is a shell reserved word? */
     if ((dflags & CDESC_FORCE_PATH!()) == 0) && unsafe { find_reserved_word(command) } >= 0 {
         if dflags & CDESC_TYPE!() != 0 {
