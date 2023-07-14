@@ -949,6 +949,10 @@ unsafe extern "C" fn bgp_delete(mut pid: pid_t) ->  c_int {
     let mut psi: ps_index_t = 0;
     let mut orig_psi: ps_index_t = 0;
 
+    if (bgpids.storage).is_null() || bgpids.nalloc == 0 || bgpids.npid == 0 {
+        return 0;
+    }
+
     psi = *pshash_getbucket(pid);
     orig_psi = psi;
     while psi != NO_PIDSTAT {
@@ -962,6 +966,12 @@ unsafe extern "C" fn bgp_delete(mut pid: pid_t) ->  c_int {
         psi = (*(bgpids.storage).offset(psi as isize)).bucket_next;
     }
 
+    if psi == NO_PIDSTAT {
+        return 0;
+    }
+    pshash_delindex(psi);
+    bgpids.npid -= 1;
+    return 1 ;
 }
 
 
