@@ -450,40 +450,42 @@ extern "C" {
         i: i32,
     ) -> *mut libc::c_char;
     //fn find_alias(alia : *mut libc::c_char) -> *mut alias_t;
-    static  expand_aliases : i32;
-    static mut loptend:*mut WordList;
-    static posixly_correct:i32;
+    static expand_aliases: i32;
+    static mut loptend: *mut WordList;
+    static posixly_correct: i32;
 }
 
-unsafe fn function_cell(var:*mut SHELL_VAR) ->* mut COMMAND {
-	return (*var).value as * mut COMMAND;
+unsafe fn function_cell(var: *mut SHELL_VAR) -> *mut COMMAND {
+    return (*var).value as *mut COMMAND;
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn r_type_builtin (mut list :*mut WordList) -> i32 {
+pub unsafe extern "C" fn r_type_builtin(mut list: *mut WordList) -> i32 {
     //println!("rtype  is run");
-    let  mut dflags : i32;
-    let mut any_failed: i32 = 0 ;
-    let  _opt : i32  = 0;
-    let mut this : *mut WordList;
+    let mut dflags: i32;
+    let mut any_failed: i32 = 0;
+    let _opt: i32 = 0;
+    let mut this: *mut WordList;
 
-    dflags = CDESC_SHORTDESC!();	/* default */
-    unsafe{
-    this = list;  
-    while this != std::ptr::null_mut() && char::from((*(*(*this).word).word) as u8) == '-' {
-         let flag  = (((*(*this).word).word) as usize + 1) as *mut libc::c_char;
-         let c_str_type = CString::new("type").unwrap();
-         let c_str_type1 = CString::new("-type").unwrap();
-         let c_str_path = CString::new("path").unwrap();
-         let c_str_path1 = CString::new("-path").unwrap();
-         let c_str_all = CString::new("all").unwrap();
-         let c_str_all1 = CString::new("-all").unwrap();
-         if STREQ!(flag, c_str_type.as_ptr() as *mut libc::c_char ) || STREQ!(flag, c_str_type1.as_ptr() as *mut libc::c_char) {
-           unsafe {
+    dflags = CDESC_SHORTDESC!(); /* default */
+    unsafe {
+        this = list;
+        while this != std::ptr::null_mut() && char::from((*(*(*this).word).word) as u8) == '-' {
+            let flag = (((*(*this).word).word) as usize + 1) as *mut libc::c_char;
+            let c_str_type = CString::new("type").unwrap();
+            let c_str_type1 = CString::new("-type").unwrap();
+            let c_str_path = CString::new("path").unwrap();
+            let c_str_path1 = CString::new("-path").unwrap();
+            let c_str_all = CString::new("all").unwrap();
+            let c_str_all1 = CString::new("-all").unwrap();
+        if STREQ!(flag, c_str_type.as_ptr() as *mut libc::c_char)
+                || STREQ!(flag, c_str_type1.as_ptr() as *mut libc::c_char)
+            {
+                unsafe {
             *((*(*this).word).word).offset(1) = 't' as libc::c_char ;
             *((*(*this).word).word).offset(2) = '\0' as libc::c_char ;
-            } 
-        }
+                 } 
+            }
         else if STREQ!(flag, c_str_path.as_ptr() as *mut libc::c_char) || STREQ!(flag, c_str_path1.as_ptr() as *mut libc::c_char){
             *((*(*this).word).word).offset(1) = 'p' as libc::c_char ;
             *((*(*this).word).word).offset(2) = '\0' as libc::c_char ;
