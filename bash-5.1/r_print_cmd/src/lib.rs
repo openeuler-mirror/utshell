@@ -350,3 +350,12 @@ pub unsafe extern "C" fn r_xtrace_reset()
     xtrace_fd = -1;
     xtrace_fp = stderr;
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_fdchk(fd:c_int)
+{
+    if fd == xtrace_fd{
+        r_xtrace_reset();
+    }
+}
