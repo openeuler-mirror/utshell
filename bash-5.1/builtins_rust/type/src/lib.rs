@@ -609,42 +609,39 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
         }
 
         found = 1;
-        if all==0 {
+        if all == 0 {
             return 1;
         }
-  }
-
-  /* Command is a function? */
-  if (dflags & (CDESC_FORCE_PATH!()|CDESC_NOFUNCS!()) == 0) && unsafe{find_function (command)}!=  std::ptr::null_mut()  {
-      if dflags & CDESC_TYPE!()  != 0 {
-          unsafe {
-            let c_str_function = CString::new("function").unwrap();
-            libc::puts(c_str_function.as_ptr());
-          }
-      }
-      else if dflags & CDESC_SHORTDESC!() != 0 {
-          let result : *mut libc::c_char;
-          unsafe {
-            let name = String::from("isfunction");
-            translation_fn(&name,command,std::ptr::null_mut());
-            result = named_function_string (command, function_cell(find_function (command)), FUNC_MULTILINE!()|FUNC_EXTERNAL!());
-                println!("{:?}",CStr::from_ptr(result));
-          }
-          
-      }
-      else if dflags & CDESC_REUSABLE!() != 0{ 
-         
-            unsafe {
-                println!("{:?}",CStr::from_ptr(command));
-            }
-      }
-
-      found = 1;
-
-      if all == 0{
-        return 1; 
-      }
     }
+
+    /* Command is a function? */
+    if (dflags & (CDESC_FORCE_PATH!() | CDESC_NOFUNCS!()) == 0)
+        && unsafe { find_function(command) } != std::ptr::null_mut()
+    {
+        if dflags & CDESC_TYPE!() != 0 {
+            unsafe {
+                let c_str_function = CString::new("function").unwrap();
+                libc::puts(c_str_function.as_ptr());
+            }
+        } else if dflags & CDESC_SHORTDESC!() != 0 {
+            let result: *mut libc::c_char;
+            unsafe {
+                let name = String::from("isfunction");
+                translation_fn(&name, command, std::ptr::null_mut());
+                result = named_function_string(
+                    command,
+                    function_cell(find_function(command)),
+                    FUNC_MULTILINE!() | FUNC_EXTERNAL!(),
+                );
+                println!("{:?}", CStr::from_ptr(result));
+            }
+        } else if dflags & CDESC_REUSABLE!() != 0 {
+            unsafe {
+                println!("{:?}", CStr::from_ptr(command));
+            }
+        }
+
+        found = 1;
 
      /* Command is a builtin? */
   if ((dflags & CDESC_FORCE_PATH!()) == 0) && unsafe{find_shell_builtin (command)}!=  std::ptr::null_mut()  {
