@@ -1410,4 +1410,11 @@ extern "C" {
     #[link_name = "\u{1}sys_siglist"]
     pub static mut sys_siglist: [*const ::std::os::raw::c_char; 65usize];
 }
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union sigcontext__bindgen_ty_1 {
+    pub fpstate: *mut _fpstate,
+    pub __fpstate_word: __uint64_t,
+    _bindgen_union_align: u64,
+}
 }

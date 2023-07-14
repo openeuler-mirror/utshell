@@ -785,9 +785,10 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
 	 executable file.  If it's not, don't report a match.  This is
 	 the default posix mode behavior */
     if (unsafe {STREQ!(full_path, command)} || unsafe {posixly_correct}!=0){
-        unsafe{
-            f = file_status (full_path);
-        }
+                unsafe {
+                    x = sh_makepath(std::ptr::null_mut(), full_path, f);
+                    libc::free(full_path as *mut c_void);
+                }
         if f & FS_EXECABLE!() == 0 {
             unsafe {
                 libc::free (full_path as *mut c_void);
