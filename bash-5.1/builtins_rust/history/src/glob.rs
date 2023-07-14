@@ -1526,4 +1526,10 @@ extern "C" {
         __base: ::std::os::raw::c_int,
     ) -> intmax_t;
 }
+extern "C" {
+    pub fn isctype(
+        __c: ::std::os::raw::c_int,
+        __mask: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
 }
