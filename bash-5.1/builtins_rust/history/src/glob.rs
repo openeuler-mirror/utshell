@@ -1363,4 +1363,12 @@ pub struct siginfo_t__bindgen_ty_1__bindgen_ty_7 {
     pub _syscall: ::std::os::raw::c_int,
     pub _arch: ::std::os::raw::c_uint,
 }
+pub const ILL_ILLOPC: _bindgen_ty_6 = 1;
+pub const ILL_ILLOPN: _bindgen_ty_6 = 2;
+pub const ILL_ILLADR: _bindgen_ty_6 = 3;
+pub const ILL_ILLTRP: _bindgen_ty_6 = 4;
+pub const ILL_PRVOPC: _bindgen_ty_6 = 5;
+pub const ILL_PRVREG: _bindgen_ty_6 = 6;
+pub const ILL_COPROC: _bindgen_ty_6 = 7;
+pub const ILL_BADSTK: _bindgen_ty_6 = 8;
 }
