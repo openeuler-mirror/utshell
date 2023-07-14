@@ -611,23 +611,20 @@ pub extern "C" fn r_declare_find_variable(
     }
 }
 
-unsafe fn DECLARE_OPTS()-> CString
-{
-  return CString::new("+acfgilnprtuxAFGI").unwrap();
+unsafe fn DECLARE_OPTS() -> CString {
+    return CString::new("+acfgilnprtuxAFGI").unwrap();
 }
 
-unsafe fn  value_cell(var:*mut SHELL_VAR)->* mut c_char
-{
-  return (*var).value;
+unsafe fn value_cell(var: *mut SHELL_VAR) -> *mut c_char {
+    return (*var).value;
 }
 
-unsafe fn  var_setvalue(var:*mut SHELL_VAR,str1:* mut c_char)
-{
-  (*var).value=str1;
+unsafe fn var_setvalue(var: *mut SHELL_VAR, str1: *mut c_char) {
+    (*var).value = str1;
 }
 
-unsafe fn VSETATTR(var:*mut SHELL_VAR, attr:i32) {
-	(*var).attributes |= attr;
+unsafe fn VSETATTR(var: *mut SHELL_VAR, attr: i32) {
+    (*var).attributes |= attr;
 }
 
 unsafe fn readonly_p(var:*mut SHELL_VAR) ->i32 {

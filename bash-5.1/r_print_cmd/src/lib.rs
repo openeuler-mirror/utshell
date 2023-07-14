@@ -330,3 +330,9 @@ pub unsafe extern "C" fn r_xtrace_set(fd:c_int, fp:*mut FILE)
     xtrace_fd = fd;
     xtrace_fp = fp;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_init()
+{
+    r_xtrace_set(-1, stderr);
+}
