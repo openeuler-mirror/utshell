@@ -770,7 +770,16 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
          // return 0;
         break;
       }
-
+            if f & FS_EXECABLE!() == 0 {
+                unsafe {
+                    libc::free(full_path as *mut c_void);
+                    full_path = std::ptr::null_mut();
+                }
+                if all == 0 {
+                    break;
+                }
+            } else if ABSPATH!(full_path) {
+            }
     /* If we found the command as itself by looking through $PATH, it
 	 probably doesn't exist.  Check whether or not the command is an
 	 executable file.  If it's not, don't report a match.  This is

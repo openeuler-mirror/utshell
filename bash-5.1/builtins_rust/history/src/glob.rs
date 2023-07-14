@@ -1371,6 +1371,14 @@ pub const ILL_PRVOPC: _bindgen_ty_6 = 5;
 pub const ILL_PRVREG: _bindgen_ty_6 = 6;
 pub const ILL_COPROC: _bindgen_ty_6 = 7;
 pub const ILL_BADSTK: _bindgen_ty_6 = 8;
+
+pub const POLL_IN: _bindgen_ty_12 = 1;
+pub const POLL_OUT: _bindgen_ty_12 = 2;
+pub const POLL_MSG: _bindgen_ty_12 = 3;
+pub const POLL_ERR: _bindgen_ty_12 = 4;
+pub const POLL_PRI: _bindgen_ty_12 = 5;
+pub const POLL_HUP: _bindgen_ty_12 = 6;
+
 extern "C" {
     pub fn __sysv_signal(__sig: ::std::os::raw::c_int, __handler: __sighandler_t)
         -> __sighandler_t;
