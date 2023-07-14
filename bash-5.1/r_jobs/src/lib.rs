@@ -945,6 +945,10 @@ unsafe extern "C"  fn  pshash_delindex(mut psi: ps_index_t) {
 }
 
 
+unsafe extern "C" fn bgp_delete(mut pid: pid_t) ->  c_int {
+    let mut psi: ps_index_t = 0;
+    let mut orig_psi: ps_index_t = 0;
+}
 
 
 
