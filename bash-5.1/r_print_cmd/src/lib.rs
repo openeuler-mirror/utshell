@@ -399,4 +399,15 @@ pub unsafe extern "C" fn r_indirection_level_string()->*mut c_char
     {
         libc::memcpy(ps4_firstc.as_mut_ptr() as *mut c_void, ps4  as *const c_void , ps4_firstc_len as usize);
     }
+
+    ineed = ((ps4_firstc_len * indirection_level) as libc::c_ulong).wrapping_add(libc::strlen(ps4).try_into().unwrap()) as c_int;
+    
+    if ineed > indirection_stringsiz - 1{
+        indirection_stringsiz = ineed + 1;
+        indirection_string = libc::realloc(indirection_string as *mut c_void, indirection_stringsiz as size_t) as *mut c_char;
+    }
+
+    i = 0;
+    j = 0;
+    
 }
