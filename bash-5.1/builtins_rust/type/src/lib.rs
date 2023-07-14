@@ -716,7 +716,10 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
 
     full_path = unsafe{phash_search (command)};
     if full_path != std::ptr::null_mut(){
-
+	unsafe {
+	    let name = String::from("hashed");
+	    translation_fn(&name, command, full_path);
+	}
     if dflags & CDESC_TYPE!() != 0{
         unsafe{
             let c_str_file = CString::new("file").unwrap();

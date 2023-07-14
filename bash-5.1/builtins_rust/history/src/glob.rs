@@ -1415,4 +1415,15 @@ pub union sigcontext__bindgen_ty_1 {
     pub __fpstate_word: __uint64_t,
     _bindgen_union_align: u64,
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ucontext_t {
+    pub uc_flags: ::std::os::raw::c_ulong,
+    pub uc_link: *mut ucontext_t,
+    pub uc_stack: stack_t,
+    pub uc_mcontext: mcontext_t,
+    pub uc_sigmask: sigset_t,
+    pub __fpregs_mem: _libc_fpstate,
+    pub __ssp: [::std::os::raw::c_ulonglong; 4usize],
+}
 }
