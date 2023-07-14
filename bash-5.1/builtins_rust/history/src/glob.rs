@@ -1205,4 +1205,35 @@ extern "C" {
         __name: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_long;
 }
+extern "C" {
+    pub fn sysconf(__name: ::std::os::raw::c_int) -> ::std::os::raw::c_long;
+}
+extern "C" {
+    pub fn confstr(
+        __name: ::std::os::raw::c_int,
+        __buf: *mut ::std::os::raw::c_char,
+        __len: usize,
+    ) -> usize;
+}
+extern "C" {
+    pub fn getpid() -> __pid_t;
+}
+extern "C" {
+    pub fn getppid() -> __pid_t;
+}
+extern "C" {
+    pub fn getpgrp() -> __pid_t;
+}
+extern "C" {
+    pub fn __getpgid(__pid: __pid_t) -> __pid_t;
+}
+extern "C" {
+    pub fn getpgid(__pid: __pid_t) -> __pid_t;
+}
+extern "C" {
+    pub fn setpgid(__pid: __pid_t, __pgid: __pid_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn setpgrp() -> ::std::os::raw::c_int;
+}
 }
