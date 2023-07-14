@@ -159,13 +159,13 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
             indent(indentation);
         }
         if (*command).flags != 0 && CMD_TIME_PIPELINE != 0{
-            cprintf_1(b"time " as *const u8 as *const i8);
+            cprintf_1(b"time \0" as *const u8 as *const i8);
             if (*command).flags != 0 && CMD_TIME_POSIX != 0{
-                cprintf_1(b"-p " as *const u8 as *const i8);
+                cprintf_1(b"-p \0" as *const u8 as *const i8);
             }
         }
         if (*command).flags != 0 && CMD_INVERT_RETURN != 0{
-            cprintf_1(b"! " as *const u8 as *const i8);
+            cprintf_1(b"! \0" as *const u8 as *const i8);
         }   
 
         // (*command).type_ = 11;
@@ -268,5 +268,71 @@ unsafe fn make_command_string_internal(command:*mut COMMAND)
                 make_command_string_internal((*(*command).value.Subshell).command);
                 PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
                 cprintf_1(b" )\0" as *const u8 as *const c_char);
+            
             }
+            
+            command_type_cm_coproc => {
+                let mut str = format!("coproc {}\0", CStr::from_ptr((*(*command).value.Coproc).name).to_str().unwrap());
+                cprintf_1(str.as_mut_ptr() as *mut c_char);
+                skip_this_indent += 1;
+                make_command_string_internal((*(*command).value.Coproc).command);
+            }
+
+            _ => {
+                // let c_str = CString::new("print_command").unwrap();
+                // let c_str_ptr = c_str.as_ptr();
+                command_error(b"print_command\0" as *const u8 as *const c_char, CMDERR_BADTYPE as i32, (*command).type_ as i32, 0 as i32);
+            }
+        }
+
+        if !(*command).redirects.is_null() {
+            cprintf_1(b" \0" as *const u8 as *const c_char); 
+            print_redirection_list((*command).redirects);
+        }
+
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn r_print_word_list(list:*mut WORD_LIST, separator:*mut c_char)
+{
+    let mut w:*mut WORD_LIST;
+    // let mut str:*mut c_char;
+    w = list;
+    
+    while !w.is_null()  {
+        if !(*w).word.is_null(){          
+            print!("{}{}",CStr::from_ptr((*(*w).word).word).to_str().unwrap(),CStr::from_ptr(separator).to_str().unwrap());
+        }
+        else {      
+            print!("{}",CStr::from_ptr((*(*w).word).word).to_str().unwrap());
+        }
+
+        w = (*w).next;
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_set(fd:c_int, fp:*mut FILE)
+{
+
+    if fd >= 0 && sh_validfd(fd) == 0 {
+        internal_error(b"xtrace_set: %d: invalid file descriptor\0" as *const u8 as *const c_char as *mut c_char, fd );
+        return;
+    }
+    if fp.is_null() {
+        internal_error(b"xtrace_set: NULL file pointer\0" as *const u8 as *const c_char);
+        return;
+    }
+    if fd >= 0 && fileno(fp) != fd {
+        internal_warning(b"xtrace fd (%d) != fileno xtrace fp (%d)\0" as *const u8 as *const c_char as *mut c_char, fd, fileno(fp));
+    }
+   
+    xtrace_fd = fd;
+    xtrace_fp = fp;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_init()
+{
+    r_xtrace_set(-1, stderr);
 }

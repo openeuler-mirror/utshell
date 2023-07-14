@@ -213,42 +213,47 @@ pub union VALUE_COMMAND {
 
 #[repr(C)]
 pub struct COMMAND {
-    type_c:command_type,
-    flags:i32,
-    line:i32,
-    redirects:*mut REDIRECT,
-    value:VALUE_COMMAND
+    type_c: command_type,
+    flags: i32,
+    line: i32,
+    redirects: *mut REDIRECT,
+    value: VALUE_COMMAND,
 }
 
 #[repr(C)]
 pub struct SHELL_VAR {
-  name:*mut c_char,			/* Symbol that the user types. */
-  value:*mut c_char,			/* Value that is returned. */
-  exportstr:*mut c_char,	/* String for the environment. */
-  dynamic_value:*mut fn(v:* mut SHELL_VAR)->*mut SHELL_VAR,	/* Function called to return a `dynamic'
-				   value for a variable, like $SECONDS
-				   or $RANDOM. */
-  assign_func:* mut fn(v:* mut SHELL_VAR,str1:* mut c_char,t:c_long,str2:* mut c_char)->*mut SHELL_VAR, /* Function called when this `special
-				   variable' is assigned a value in
-				   bind_variable. */
-  attributes:i32,		/* export, readonly, array, invisible... */
-  context:i32			/* Which context this variable belongs to. */
+    name: *mut c_char,      /* Symbol that the user types. */
+    value: *mut c_char,     /* Value that is returned. */
+    exportstr: *mut c_char, /* String for the environment. */
+    dynamic_value: *mut fn(v: *mut SHELL_VAR) -> *mut SHELL_VAR, /* Function called to return a `dynamic'
+                                                                 value for a variable, like $SECONDS
+                                                                 or $RANDOM. */
+    assign_func: *mut fn(
+        v: *mut SHELL_VAR,
+        str1: *mut c_char,
+        t: c_long,
+        str2: *mut c_char,
+    ) -> *mut SHELL_VAR, /* Function called when this `special
+                         variable' is assigned a value in
+                         bind_variable. */
+    attributes: i32, /* export, readonly, array, invisible... */
+    context: i32,    /* Which context this variable belongs to. */
 }
 
 #[repr(C)]
 pub struct BUCKET_CONTENTS {
-	next:* mut BUCKET_CONTENTS,	/* Link to next hashed key in this bucket. */
-	key:* mut c_char,		/* What we look up. */
-	data:* mut c_void,			/* What we really want. */
-	khash:u32,		/* What key hashes to */
-	times_found:i32		/* Number of times this item has been found. */
+    next: *mut BUCKET_CONTENTS, /* Link to next hashed key in this bucket. */
+    key: *mut c_char,           /* What we look up. */
+    data: *mut c_void,          /* What we really want. */
+    khash: u32,                 /* What key hashes to */
+    times_found: i32,           /* Number of times this item has been found. */
 }
 
 #[repr(C)]
 pub struct HASH_TABLE {
-	bucket_array:*mut * mut BUCKET_CONTENTS,	/* Where the data is kept. */
-	nbuckets:i32,			/* How many buckets does this table have. */
-	nentries:i32			/* How many entries does this table have. */
+    bucket_array: *mut *mut BUCKET_CONTENTS, /* Where the data is kept. */
+    nbuckets: i32,                           /* How many buckets does this table have. */
+    nentries: i32,                           /* How many entries does this table have. */
 }
 
 #[repr(C)]
@@ -271,7 +276,7 @@ macro_rules! ARGS_SETBLTIN {
 #[macro_export]
 macro_rules! EXITPROG {
     () => {
-        0x03
+        3
     };
 }
 
@@ -432,7 +437,7 @@ macro_rules! ASS_NOEXPAND {
 #[macro_export]
 macro_rules! EX_BADASSIGN {
     () => {
-        260 /* variable assignment error */
+        26 /* variable assignment error */
     };
 }
 
@@ -484,12 +489,12 @@ extern "C" {
     fn find_variable(str: *const c_char) -> *mut SHELL_VAR;
     fn find_global_variable(str: *const c_char) -> *mut SHELL_VAR;
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
-    static mut list_opttype:i32;
-    static mut array_needs_making:i32;
+    fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> i32;
+    static mut list_opttype: i32;
+    static mut array_needs_making: i32;
     fn builtin_usage();
-    static mut loptend:*mut WordList;
-    fn show_local_var_attributes (v:i32, nodefs:i32)->i32;
+    static mut loptend: *mut WordList;
+    fn show_local_var_attributes(v: i32, nodefs: i32) -> i32;
     // fn show_all_var_attributes (v:i32, nodefs:i32)->i32;
     fn set_builtin (list:*mut WordList)->i32;
     fn sh_chkwrite (ret:i32)->i32;
@@ -576,47 +581,50 @@ pub extern "C" fn r_local_builtin(list: *mut WordList) -> i32 {
     }
 }
 
-unsafe fn local_p( varr:* mut SHELL_VAR)->i32 {
-  return (*varr).attributes & att_local!();
+unsafe fn local_p(varr: *mut SHELL_VAR) -> i32 {
+    return (*varr).attributes & att_local!();
 }
 
 #[no_mangle]
-pub extern "C" fn r_declare_find_variable (name:* const c_char, mkglobal:i32, chklocal:i32)->* mut SHELL_VAR
-{
-  let varr: * mut SHELL_VAR;
-  unsafe {
-    if mkglobal == 0 {
-      return find_variable (name);
-    } else if chklocal !=0 {
-      varr = find_variable (name);
-      if varr != std::ptr::null_mut() && local_p (varr) !=0 && (*varr).context == variable_context {
-        return varr;
-      }
+pub extern "C" fn r_declare_find_variable(
+    name: *const c_char,
+    mkglobal: i32,
+    chklocal: i32,
+) -> *mut SHELL_VAR {
+    let varr: *mut SHELL_VAR;
+    unsafe {
+        if mkglobal == 0 {
+            return find_variable(name);
+        } else if chklocal != 0 {
+            varr = find_variable(name);
+            if varr != std::ptr::null_mut()
+                && local_p(varr) != 0
+                && (*varr).context == variable_context
+            {
+                return varr;
+            }
 
-      return find_global_variable (name);
-    } else {
-      return find_global_variable (name);
+            return find_global_variable(name);
+        } else {
+            return find_global_variable(name);
+        }
     }
-  }
 }
 
-unsafe fn DECLARE_OPTS()-> CString
-{
-  return CString::new("+acfgilnprtuxAFGI").unwrap();
+unsafe fn DECLARE_OPTS() -> CString {
+    return CString::new("+acfgilnprtuxAFGI").unwrap();
 }
 
-unsafe fn  value_cell(var:*mut SHELL_VAR)->* mut c_char
-{
-  return (*var).value;
+unsafe fn value_cell(var: *mut SHELL_VAR) -> *mut c_char {
+    return (*var).value;
 }
 
-unsafe fn  var_setvalue(var:*mut SHELL_VAR,str1:* mut c_char)
-{
-  (*var).value=str1;
+unsafe fn var_setvalue(var: *mut SHELL_VAR, str1: *mut c_char) {
+    (*var).value = str1;
 }
 
-unsafe fn VSETATTR(var:*mut SHELL_VAR, attr:i32) {
-	(*var).attributes |= attr;
+unsafe fn VSETATTR(var: *mut SHELL_VAR, attr: i32) {
+    (*var).attributes |= attr;
 }
 
 unsafe fn readonly_p(var:*mut SHELL_VAR) ->i32 {
@@ -660,119 +668,144 @@ unsafe fn noassign_p(var:*mut SHELL_VAR) ->i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i32
-{
-  let mut flags_on:i32=0;
-  let mut flags_off:i32=0;
-  let mut flags:* mut i32;
-  let mut any_failed:i32=0;
-  let mut assign_error:i32=0;
-  let mut pflag:i32=0;
-  let mut nodefs:i32=0;
-  let mut opt:i32;
-  let mut onref:i32;
-  let mut offref:i32;
-  let mut mkglobal:i32=0;
-  let mut chklocal:i32=0;
-  let mut inherit_flag:i32=0;
+pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) -> i32 {
+    let mut flags_on: i32 = 0;
+    let mut flags_off: i32 = 0;
+    let mut flags: *mut i32;
+    let mut any_failed: i32 = 0;
+    let mut assign_error: i32 = 0;
+    let mut pflag: i32 = 0;
+    let mut nodefs: i32 = 0;
+    let mut opt: i32;
+    let mut onref: i32;
+    let mut offref: i32;
+    let mut mkglobal: i32 = 0;
+    let mut chklocal: i32 = 0;
+    let mut inherit_flag: i32 = 0;
 
-  let mut t: *mut c_char;
-  let mut subscript_start: *mut c_char;
-  let mut var:*mut SHELL_VAR;
-  let mut refvar:*mut SHELL_VAR;
-  let mut v:*mut SHELL_VAR;
+    let mut t: *mut c_char;
+    let mut subscript_start: *mut c_char;
+    let mut var: *mut SHELL_VAR;
+    let mut refvar: *mut SHELL_VAR;
+    let mut v: *mut SHELL_VAR;
 
-  let mut shell_fn:*mut function_def;
+    let mut shell_fn: *mut function_def;
 
-  refvar = std::ptr::null_mut();
-  unsafe {
-  reset_internal_getopt ();
-  let tmp = DECLARE_OPTS();
-  opt = internal_getopt (list, tmp.as_ptr() as * mut c_char);
-  while  opt != -1 {
-      if list_opttype == '+' as i32 {
-        flags= &mut flags_off;
-      } else {
-        flags= &mut flags_on;
-      }
-     
-      let optu8:u8= opt as u8;
-      let optChar:char=char::from(optu8);
-
-      /* If you add options here, see whether or not they need to be added to
-	 the loop in subst.c:shell_expand_word_list() */
-      match optChar {
-        'a'=>{ *flags |= att_array!();}
-		'A'=>{ *flags |= att_assoc!();}
-        'p'=>{ pflag+=1;}
-        'F'=>{ nodefs+=1;
-              *flags |= att_function!();
-             }
-        'f'=>{ *flags |= att_function!();}
-        'G'=>{ 
-              if flags == &mut flags_on {
-                chklocal = 1;
-              }
-             }
-        'g'=>{
-          if flags == &mut flags_on {
-            mkglobal = 1;
-          }
-        }
-        'i'=>{ *flags |= att_integer!();}
-        'n'=>{ *flags |= att_nameref!();}
-        'r'=>{ *flags |= att_readonly!();}
-        't'=>{ *flags |= att_trace!();}
-        'x'=>{ *flags |= att_exported!();
-               array_needs_making = 1;
-             }
-        'c'=>{ *flags |= att_capcase!();
-              if flags == &mut flags_on {
-                flags_off |= att_uppercase!() | att_lowercase!();
-              }
-             }
-        'l'=>{ *flags |= att_lowercase!();
-              if flags == &mut flags_on {
-                flags_off |= att_capcase!()| att_uppercase!();
-              }
-             }
-        'u'=>{ *flags |= att_uppercase!();
-              if flags == &mut flags_on {
-                flags_off |= att_capcase!()| att_lowercase!();
-              }
-             }
-        'I'=>{ inherit_flag = MKLOC_INHERIT!();}
-        _=>{
-			if opt == -99 {
-				r_builtin_help();
-				return EX_USAGE;
-			}
-			 builtin_usage ();
-             return EX_USAGE;
+    refvar = std::ptr::null_mut();
+    unsafe {
+        reset_internal_getopt();
+        let tmp = DECLARE_OPTS();
+        opt = internal_getopt(list, tmp.as_ptr() as *mut c_char);
+        while opt != 0 {
+            if list_opttype == '+' as i32 {
+                flags = &mut flags_off;
+            } else {
+                flags = &mut flags_on;
             }
-	    }
-		opt = internal_getopt (list, tmp.as_ptr() as * mut c_char);
-  }
-    list = loptend;
-  /* If there are no more arguments left, then we just want to show
-     some variables. */
-  if list == std::ptr::null_mut() {	/* declare -[aAfFirtx] */
-      /* Show local variables defined at this context level if this is
-	 the `local' builtin. */
-      if local_var != 0 {
-        show_local_var_attributes (0, nodefs);	/* XXX - fix up args later */
-      } else if pflag != 0 && (flags_on == 0 || flags_on == att_function!()) {
-        let mut ret=0;
-        if flags_on == 0 {
-          ret=1;
+
+            let optu8: u8 = opt as u8;
+            let optChar: char = char::from(optu8);
+
+            /* If you add options here, see whether or not they need to be added to
+            the loop in subst.c:shell_expand_word_list() */
+            match optChar {
+                'a' => {
+                    *flags |= att_array!();
+                }
+                'A' => {
+                    *flags |= att_assoc!();
+                }
+                'p' => {
+                    pflag += 1;
+                }
+                'F' => {
+                    nodefs += 1;
+                    *flags |= att_function!();
+                }
+                'f' => {
+                    *flags |= att_function!();
+                }
+                'G' => {
+                    if flags == &mut flags_on {
+                        chklocal = 1;
+                    }
+                }
+                'g' => {
+                    if flags == &mut flags_on {
+                        mkglobal = 1;
+                    }
+                }
+                'i' => {
+                    *flags |= att_integer!();
+                }
+                'n' => {
+                    *flags |= att_nameref!();
+                }
+                'r' => {
+                    *flags |= att_readonly!();
+                }
+                't' => {
+                    *flags |= att_trace!();
+                }
+                'x' => {
+                    *flags |= att_exported!();
+                    array_needs_making = 1;
+                }
+                'c' => {
+                    *flags |= att_capcase!();
+                    if flags == &mut flags_on {
+                        flags_off |= att_uppercase!() | att_lowercase!();
+                    }
+                }
+                'l' => {
+                    *flags |= att_lowercase!();
+                    if flags == &mut flags_on {
+                        flags_off |= att_capcase!() | att_uppercase!();
+                    }
+                }
+                'u' => {
+                    *flags |= att_uppercase!();
+                    if flags == &mut flags_on {
+                        flags_off |= att_capcase!() | att_lowercase!();
+                    }
+                }
+                'I' => {
+                    inherit_flag = MKLOC_INHERIT!();
+                }
+                _ => {
+                    if opt == -99 {
+                        r_builtin_help();
+                        return EX_USAGE;
+                    }
+                    builtin_usage();
+                    return EX_USAGE;
+                }
+            }
+            opt = internal_getopt(list, tmp.as_ptr() as *mut c_char);
         }
-        show_all_var_attributes (ret, nodefs);
-      } else if flags_on == 0 {
-        return set_builtin (std::ptr::null_mut());
-      } else {
-        set_or_show_attributes (std::ptr::null_mut(), flags_on, nodefs);
-      }
-      return sh_chkwrite (EXECUTION_SUCCESS!());
+        list = loptend;
+        /* If there are no more arguments left, then we just want to show
+        some variables. */
+        if list == std::ptr::null_mut() {
+            /* declare -[aAfFirtx] */
+            /* Show local variables defined at this context level if this is
+            the `local' builtin. */
+            if local_var != 0 {
+                show_local_var_attributes(0, nodefs); /* XXX - fix up args later */
+            } else if pflag != 0 && (flags_on == 0 || flags_on == att_function!()) {
+                let mut ret = 0;
+                if flags_on == 0 {
+                    ret = 1;
+                }
+                show_all_var_attributes(ret, nodefs);
+            } else if flags_on == 0 {
+                return set_builtin(std::ptr::null_mut());
+            } else {
+                set_or_show_attributes(std::ptr::null_mut(), flags_on, nodefs);
+            }
+            return sh_chkwrite(EXECUTION_SUCCESS!());
+        }
+
   }
 
   if pflag !=0 {	/* declare -p [-aAfFirtx] name [name...] */
@@ -1183,68 +1216,69 @@ pub extern "C" fn r_declare_internal (mut list:* mut WordList, local_var:i32)->i
 		  	  oldname = name;	/* need to free this */
 		      namelen = libc::strlen (nameref_cell (refvar)) as i32;
 
-		      if subscript_start != std::ptr::null_mut() {
-		      	*subscript_start = '[' as c_char;		/*]*/
-		        namelen += libc::strlen (subscript_start) as i32;
-		      }
+                            name =
+                                libc::malloc(namelen as libc::size_t + 2 + libc::strlen(value) + 1)
+                                    as *mut c_char;
+                            libc::strcpy(name, nameref_cell(refvar));
 
-		  name = libc::malloc (namelen as libc::size_t + 2 + libc::strlen (value) + 1 ) as * mut c_char ;
-		  libc::strcpy (name, nameref_cell (refvar));
+                            if subscript_start != std::ptr::null_mut() {
+                                libc::strcpy(
+                                    name.offset(libc::strlen(nameref_cell(refvar)) as isize),
+                                    subscript_start,
+                                );
+                            }
 
-		  if subscript_start != std::ptr::null_mut() {
-			libc::strcpy (name.offset(libc::strlen (nameref_cell (refvar)) as isize), subscript_start);
-		  }
+                            /* We are committed to using the new name, so reset */
+                            if offset != 0 {
+                                /* Rebuild assignment and restore offset and value */
+                                if (aflags & ASS_APPEND!()) != 0 {
+                                    *(name.offset(namelen as isize) as *mut c_char) = '+' as c_char;
 
-		  /* We are committed to using the new name, so reset */
-		  if offset !=0 {
-		      /* Rebuild assignment and restore offset and value */
-		      if (aflags & ASS_APPEND!()) !=0 {
-				*(name.offset( namelen as isize)  as * mut c_char) = '+' as c_char;
+                                    namelen += 1;
+                                }
+                                *(name.offset(namelen as isize) as *mut c_char) = '=' as c_char;
+                                //   *((name as usize + namelen as usize) as * mut c_char) = '=' as c_char;
+                                namelen += 1;
 
-				namelen+=1;
-			  }
-              *(name.offset( namelen as isize)  as * mut c_char) = '=' as c_char;
-			//   *((name as usize + namelen as usize) as * mut c_char) = '=' as c_char;
-		      namelen+=1;
+                                if value != std::ptr::null_mut() && (*value) != 0 {
+                                    libc::strcpy(name.offset(namelen as isize), value);
+                                } else {
+                                    *(name.offset(namelen as isize) as *mut c_char) =
+                                        '\0' as c_char;
+                                }
 
-			  if value != std::ptr::null_mut() && (*value) !=0 {
-				libc::strcpy (name.offset(namelen as isize), value);
-			  } else {
-				*(name.offset( namelen as isize)  as * mut c_char) = '\0' as c_char;
-			  }
+                                offset = assignment(name, 1);
+                                /* if offset was valid previously, but the substituting
+                                of the nameref value results in an invalid assignment,
+                                throw an invalid identifier error */
+                                if offset == 0 {
+                                    libc::free(oldname as *mut c_void);
+                                    sh_invalidid(name);
+                                    assign_error += 1;
+                                    libc::free(name as *mut c_void);
+                                    list = (*list).next;
+                                    continue 'outter;
+                                }
+                                *(name.offset(offset as isize)) = '\0' as c_char;
 
-		      offset = assignment (name, 0);
-		      /* if offset was valid previously, but the substituting
-			 of the nameref value results in an invalid assignment,
-			 throw an invalid identifier error */
-		      if offset == 0 {
-				libc::free (oldname as * mut c_void);
-				sh_invalidid (name);
-				assign_error+=1;
-				libc::free (name as * mut c_void);
-				list = (*list).next;
-				continue 'outter; 
-			  }
-		        *(name.offset(offset as isize)) = '\0' as c_char;
-			      	      
-		      value = name.offset(namelen as isize) ;
-		    }
-		    libc::free (oldname as * mut c_void);
+                                value = name.offset(namelen as isize);
+                            }
+                            libc::free(oldname as *mut c_void);
 
-			/* OK, let's turn off the nameref attribute.
-				Now everything else applies to VAR. */
-		    if (flags_off & att_nameref!()) !=0 {
-				VUNSETATTR (refvar, att_nameref!());
-			}
+                            /* OK, let's turn off the nameref attribute.
+                            Now everything else applies to VAR. */
+                            if (flags_off & att_nameref!()) != 0 {
+                                VUNSETATTR(refvar, att_nameref!());
+                            }
 
-			//goto restart_new_var_name;
-			continue 'inner;
-			/* NOTREACHED */
-		  }
-	    }
-	    if var == std::ptr::null_mut() {
-			var = r_declare_find_variable (name, mkglobal, chklocal);
-		}
+                            //goto restart_new_var_name;
+                            continue 'inner;
+                            /* NOTREACHED */
+                        }
+                    }
+                    if var == std::ptr::null_mut() {
+                        var = r_declare_find_variable(name, mkglobal, chklocal);
+                    }
 
 		var_exists = (var != std::ptr::null_mut()) as i32;
 	    array_exists = (var != std::ptr::null_mut() && (array_p (var) !=0 || assoc_p (var) !=0 )) as i32;

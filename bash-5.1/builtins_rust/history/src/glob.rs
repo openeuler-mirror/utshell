@@ -945,6 +945,7 @@ pub type __nlink_t = ::std::os::raw::c_ulong;
 pub type __off_t = ::std::os::raw::c_long;
 pub type __off64_t = ::std::os::raw::c_long;
 pub type __pid_t = ::std::os::raw::c_int;
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct __fsid_t {
@@ -1003,6 +1004,7 @@ pub const _ISwcntrl: _bindgen_ty_1 = 131072;
 pub const _ISwpunct: _bindgen_ty_1 = 262144;
 pub const _ISwalnum: _bindgen_ty_1 = 524288;
 pub type _bindgen_ty_1 = i32;
+
 extern "C" {
     pub fn iswalnum_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
 }
