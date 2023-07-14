@@ -812,10 +812,15 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
                     x = sh_makepath(std::ptr::null_mut(), full_path, f);
                     libc::free(full_path as *mut c_void);
                 }
-        if f & FS_EXECABLE!() == 0 {
+
+                full_path = x;
+            }
+        }
+        /* If we require a full path and don't have one, make one */
+        else if ((dflags & CDESC_ABSPATH!()) != 0) && ABSPATH!(full_path) == false {
             unsafe {
-                libc::free (full_path as *mut c_void);
-	            full_path =  std::ptr::null_mut() ;
+                x = sh_makepath(std::ptr::null_mut(), full_path, MP_DOCWD!() | MP_RMDOT!());
+                libc::free(full_path as *mut c_void);
             }
             full_path = x;
         }
