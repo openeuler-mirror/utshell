@@ -778,11 +778,9 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
                 /* XXX - should that be FS_EXEC_PREFERRED? */
             }
         }
-        
-    }
-	else{
-        unsafe {
-            full_path = user_command_matches (command, FS_EXEC_ONLY!(), found_file);	/* XXX - should that be FS_EXEC_PREFERRED? */
+        if full_path == std::ptr::null_mut() {
+            // return 0;
+            break;
         }
         
     }
