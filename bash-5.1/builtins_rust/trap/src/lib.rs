@@ -91,29 +91,36 @@ pub extern "C" fn r_trap_builtin(mut list: *mut WordList) -> i32 {
                 result = EXECUTION_FAILURE;
             } else {
                 match operation {
-                    SET => set_signal(sig, first_arg),
-                    IGNORE => ignore_signal(sig),
-                    REVERT => {
-                        restore_default_signal(sig);
-                        match sig {
-                            libc::SIGINT => {
-                                if interactive != 0 {
-                                    set_signal_handler(libc::SIGINT, sigint_sighandler as *mut SigHandler);
-                                } else if interactive_shell != 0 &&
-                                    (sourcelevel != 0 || running_trap != 0 || parse_and_execute_level != 0) {
-                                        set_signal_handler(libc::SIGINT, sigint_sighandler as *mut SigHandler);
-                                } else {
-                                    set_signal_handler(libc::SIGINT, termsig_sighandler as *mut SigHandler);
+                                libc::SIGINT => {
+                                    if interactive != 0 {
+                                        set_signal_handler(
+                                            libc::SIGINT,
+                                            sigint_sighandler as *mut SigHandler,
+                                        );
+                                    } else if interactive_shell != 0
+                                        && (sourcelevel != 0
+                                            || running_trap != 0
+                                            || parse_and_execute_level != 0)
+                                    {
+                                        set_signal_handler(
+                                            libc::SIGINT,
+                                            sigint_sighandler as *mut SigHandler,
+                                        );
+                                    } else {
+                                        set_signal_handler(
+                                            libc::SIGINT,
+                                            termsig_sighandler as *mut SigHandler,
+                                        );
+                                    }
                                 }
-                            }
-                            libc::SIGQUIT => {
-                                set_signal_handler(libc::SIGQUIT, std::mem::transmute(1_usize));
-                            }
-                            libc::SIGTERM | libc::SIGTTIN | libc::SIGTTOU | libc::SIGTSTP => {
-                                if interactive != 0 {
-                                    set_signal_handler(sig, std::mem::transmute(1_usize));
+                                libc::SIGQUIT => {
+                                    set_signal_handler(libc::SIGQUIT, std::mem::transmute(1_usize));
                                 }
-                            }
+                                libc::SIGTERM | libc::SIGTTIN | libc::SIGTTOU | libc::SIGTSTP => {
+                                    if interactive != 0 {
+                                        set_signal_handler(sig, std::mem::transmute(1_usize));
+                                    }
+                                }
                             _ => (),
                         }
                         break;
