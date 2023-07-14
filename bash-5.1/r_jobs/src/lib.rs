@@ -986,6 +986,9 @@ unsafe extern "C" fn bgp_clear() {
     bgpids.npid = 0 ;
 }
 
+unsafe extern "C" fn bgp_search(mut pid: pid_t) ->  c_int {
+    let mut psi: ps_index_t = 0;
+    let mut orig_psi: ps_index_t = 0;
 
-
+}
 
