@@ -1670,4 +1670,28 @@ extern "C" {
         __base: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_ulonglong;
 }
+extern "C" {
+    pub fn strfromd(
+        __dest: *mut ::std::os::raw::c_char,
+        __size: usize,
+        __format: *const ::std::os::raw::c_char,
+        __f: f64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn strfromf(
+        __dest: *mut ::std::os::raw::c_char,
+        __size: usize,
+        __format: *const ::std::os::raw::c_char,
+        __f: f32,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn strfroml(
+        __dest: *mut ::std::os::raw::c_char,
+        __size: usize,
+        __format: *const ::std::os::raw::c_char,
+        __f: f64,
+    ) -> ::std::os::raw::c_int;
+}
 }
