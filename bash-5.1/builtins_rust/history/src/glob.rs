@@ -1631,4 +1631,29 @@ extern "C" {
         __s2: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
 }
+
+extern "C" {
+    pub fn strtof32(
+        __nptr: *const ::std::os::raw::c_char,
+        __endptr: *mut *mut ::std::os::raw::c_char,
+    ) -> _Float32;
+}
+extern "C" {
+    pub fn strtof64(
+        __nptr: *const ::std::os::raw::c_char,
+        __endptr: *mut *mut ::std::os::raw::c_char,
+    ) -> _Float64;
+}
+extern "C" {
+    pub fn strtof32x(
+        __nptr: *const ::std::os::raw::c_char,
+        __endptr: *mut *mut ::std::os::raw::c_char,
+    ) -> _Float32x;
+}
+extern "C" {
+    pub fn strtof64x(
+        __nptr: *const ::std::os::raw::c_char,
+        __endptr: *mut *mut ::std::os::raw::c_char,
+    ) -> _Float64x;
+}
 }
