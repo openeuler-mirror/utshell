@@ -1708,4 +1708,13 @@ extern "C" {
         __loc: locale_t,
     ) -> _Float32x;
 }
+extern "C" {
+    pub fn rand() -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn srand(__seed: ::std::os::raw::c_uint);
+}
+extern "C" {
+    pub fn rand_r(__seed: *mut ::std::os::raw::c_uint) -> ::std::os::raw::c_int;
+}
 }
