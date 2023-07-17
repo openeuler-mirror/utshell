@@ -461,4 +461,12 @@ pub unsafe  extern "C" fn r_xtrace_print_assignment(name:*mut c_char, value:*mut
         nval = value;
     }
 
+    if assign_list != 0
+    {
+        fprintf(xtrace_fp, CString::new("%s=(%s)\n").unwrap().as_ptr(), name, nval);
+    }
+    else
+    {
+        fprintf(xtrace_fp, CString::new("%s=%s\n").unwrap().as_ptr(), name, nval);
+    }
 }

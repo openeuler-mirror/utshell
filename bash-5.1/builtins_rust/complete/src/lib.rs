@@ -106,42 +106,42 @@ pub struct while_com {
 
 #[repr(C)]
 pub struct if_com {
-    flags:c_int,
-    test:*mut COMMAND,
-    true_case:*mut COMMAND,
-    false_case:*mut COMMAND
+    flags: c_int,
+    test: *mut COMMAND,
+    true_case: *mut COMMAND,
+    false_case: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct connection {
-    ignore:c_int,
-    first:*mut COMMAND,
-    second:*mut COMMAND,
-    connector:c_int
+    ignore: c_int,
+    first: *mut COMMAND,
+    second: *mut COMMAND,
+    connector: c_int,
 }
 
 #[repr(C)]
 pub struct simple_com {
-    flags:c_int,
-    line:c_int,
-    words:*mut WordList,
-    redirects:*mut REDIRECT
+    flags: c_int,
+    line: c_int,
+    words: *mut WordList,
+    redirects: *mut REDIRECT,
 }
 
 #[repr(C)]
 pub struct function_def {
-    flags:c_int,
-    line:c_int,
-    name:*mut WordDesc,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    flags: c_int,
+    line: c_int,
+    name: *mut WordDesc,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
 pub struct group_com {
-    ignore:libc::c_int,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    ignore: libc::c_int,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
@@ -220,23 +220,23 @@ pub struct COMMAND {
 }
 
 /* Structure containing all the non-action (binary) options; filled in by
-   build_actions(). */
+build_actions(). */
 #[repr(C)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct _optflags {
-    pflag:c_int,
-    rflag:c_int,
-    Dflag:c_int,
-    Eflag:c_int,
-    Iflag:c_int
+    pflag: c_int,
+    rflag: c_int,
+    Dflag: c_int,
+    Eflag: c_int,
+    Iflag: c_int,
 }
 
 #[repr(C)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct _compacts {
-  actname:* const c_char,
-  actflag:libc::c_ulong,
-  actopt:c_int,
+    actname: *const c_char,
+    actflag: libc::c_ulong,
+    actopt: c_int,
 }
 
 pub struct CompactsArray {
@@ -542,16 +542,16 @@ macro_rules! CA_FUNCTION {
 
 #[macro_export]
 macro_rules! CA_GROUP {
-  () => {
-    1<<11
-  }
+    () => {
+        1 << 11
+    };
 }
 
 #[macro_export]
 macro_rules! CA_HELPTOPIC {
-  () => {
-    1<<12
-  }
+    () => {
+        1 << 12
+    };
 }
 
 #[macro_export]
@@ -584,16 +584,16 @@ macro_rules! CA_RUNNING {
 
 #[macro_export]
 macro_rules! CA_SERVICE {
-  () => {
-    1<<17
-  }
+    () => {
+        1 << 17
+    };
 }
 
 #[macro_export]
 macro_rules! CA_SETOPT {
-  () => {
-    1<<18
-  }
+    () => {
+        1 << 18
+    };
 }
 
 #[macro_export]
