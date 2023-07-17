@@ -1933,4 +1933,17 @@ extern "C" {
 extern "C" {
     pub fn check_dev_tty();
 }
+extern "C" {
+    pub fn bash_tilde_find_word(
+        arg1: *const ::std::os::raw::c_char,
+        arg2: ::std::os::raw::c_int,
+        arg3: *mut ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn bash_tilde_expand(
+        arg1: *const ::std::os::raw::c_char,
+        arg2: ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
 }
