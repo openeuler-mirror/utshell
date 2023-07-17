@@ -1051,3 +1051,28 @@ pub unsafe extern "C"  fn  procsub_add(mut p: *mut PROCESS) -> *mut PROCESS {
     UNBLOCK_CHILD(&mut oset);
     return p;
 }
+
+#[no_mangle]
+pub unsafe extern "C"  fn  procsub_search(mut pid: pid_t) -> *mut PROCESS {
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+
+    return p;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
