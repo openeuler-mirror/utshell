@@ -1038,7 +1038,15 @@ pub unsafe extern "C"  fn  procsub_add(mut p: *mut PROCESS) -> *mut PROCESS {
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
     BLOCK_CHILD(&mut set, &mut oset);
-    
+    if (procsubs.head).is_null() {
+        procsubs.end = p;
+        procsubs.head = procsubs.end;
+        procsubs.nproc = 0;
+    } else {
+        (*procsubs.end).next = p;
+        procsubs.end = p;
+    }
+    procsubs.nproc += 1; 
     
     UNBLOCK_CHILD(&mut oset);
     return p;
