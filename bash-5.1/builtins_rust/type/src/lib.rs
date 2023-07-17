@@ -789,10 +789,10 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
     #[warn(while_true)]
     loop {
         if dflags & CDESC_STDPATH!() != 0 {
-          	/* command -p, all cannot be non-zero */
-              unsafe{
-                pathlist = conf_standard_path ();
-                full_path = find_in_path (command, pathlist, FS_EXEC_PREFERRED!()|FS_NODIRS!());
+            /* command -p, all cannot be non-zero */
+            unsafe {
+                pathlist = conf_standard_path();
+                full_path = find_in_path(command, pathlist, FS_EXEC_PREFERRED!() | FS_NODIRS!());
                 libc::free(pathlist as *mut c_void);
             }
         /* Will only go through this once, since all == 0 if STDPATH set */
