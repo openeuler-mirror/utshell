@@ -1918,4 +1918,19 @@ extern "C" {
 extern "C" {
     pub fn set_posix_options(arg1: *const ::std::os::raw::c_char);
 }
+extern "C" {
+    pub fn sh_unset_nodelay_mode(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sh_setclexec(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sh_validfd(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn fd_ispipe(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn check_dev_tty();
+}
 }
