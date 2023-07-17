@@ -1906,4 +1906,16 @@ pub type sh_icppfunc_t = ::core::option::Option<
 pub type sh_iptrfunc_t = ::core::option::Option<
     unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_void) -> ::std::os::raw::c_int,
 >;
+extern "C" {
+    pub fn posix_initialize(arg1: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn num_posix_options() -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn get_posix_options(arg1: *mut ::std::os::raw::c_char) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn set_posix_options(arg1: *const ::std::os::raw::c_char);
+}
 }
