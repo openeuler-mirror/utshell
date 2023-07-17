@@ -1986,6 +1986,36 @@ extern "C" {
     pub fn array_unshift_element(arg1: *mut ARRAY) -> *mut ARRAY_ELEMENT;
 }
 extern "C" {
+    pub fn array_shift_element(
+        arg1: *mut ARRAY,
+        arg2: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn array_quote(arg1: *mut ARRAY) -> *mut ARRAY;
+}
+extern "C" {
+    pub fn array_quote_escapes(arg1: *mut ARRAY) -> *mut ARRAY;
+}
+extern "C" {
+    pub fn array_dequote(arg1: *mut ARRAY) -> *mut ARRAY;
+}
+extern "C" {
+    pub fn array_dequote_escapes(arg1: *mut ARRAY) -> *mut ARRAY;
+}
+extern "C" {
+    pub fn array_remove_quoted_nulls(arg1: *mut ARRAY) -> *mut ARRAY;
+}
+extern "C" {
+    pub fn array_subrange(
+        arg1: *mut ARRAY,
+        arg2: arrayind_t,
+        arg3: arrayind_t,
+        arg4: ::std::os::raw::c_int,
+        arg5: ::std::os::raw::c_int,
+        arg6: ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
     pub fn array_remove(arg1: *mut ARRAY, arg2: arrayind_t) -> *mut ARRAY_ELEMENT;
 }
 extern "C" {
