@@ -1985,4 +1985,22 @@ extern "C" {
 extern "C" {
     pub fn array_unshift_element(arg1: *mut ARRAY) -> *mut ARRAY_ELEMENT;
 }
+extern "C" {
+    pub fn array_remove(arg1: *mut ARRAY, arg2: arrayind_t) -> *mut ARRAY_ELEMENT;
+}
+extern "C" {
+    pub fn array_reference(arg1: *mut ARRAY, arg2: arrayind_t) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn array_to_word_list(arg1: *mut ARRAY) -> *mut WORD_LIST;
+}
+extern "C" {
+    pub fn array_from_word_list(arg1: *mut WORD_LIST) -> *mut ARRAY;
+}
+extern "C" {
+    pub fn array_keys_to_word_list(arg1: *mut ARRAY) -> *mut WORD_LIST;
+}
+extern "C" {
+    pub fn array_assign_list(arg1: *mut ARRAY, arg2: *mut WORD_LIST) -> *mut ARRAY;
+}
 }
