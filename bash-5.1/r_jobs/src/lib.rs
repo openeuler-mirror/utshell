@@ -1089,6 +1089,18 @@ pub unsafe extern "C"  fn  procsub_delete(mut pid: pid_t) -> *mut PROCESS {
         }
     }
 
+    if p.is_null() {
+        return p;
+    }
+    if p == procsubs.head {
+        procsubs.head = (*procsubs.head).next;
+    } else if p == procsubs.end {
+        procsubs.end = prev;
+    }
+
+
+
+
     return p;
 }
 
