@@ -2016,6 +2016,42 @@ extern "C" {
         arg6: ::std::os::raw::c_int,
     ) -> *mut ::std::os::raw::c_char;
 }
+extern "C" {
+    pub fn array_patsub(
+        arg1: *mut ARRAY,
+        arg2: *mut ::std::os::raw::c_char,
+        arg3: *mut ::std::os::raw::c_char,
+        arg4: ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn array_modcase(
+        arg1: *mut ARRAY,
+        arg2: *mut ::std::os::raw::c_char,
+        arg3: ::std::os::raw::c_int,
+        arg4: ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn array_create_element(
+        arg1: arrayind_t,
+        arg2: *mut ::std::os::raw::c_char,
+    ) -> *mut ARRAY_ELEMENT;
+}
+extern "C" {
+    pub fn array_copy_element(arg1: *mut ARRAY_ELEMENT) -> *mut ARRAY_ELEMENT;
+}
+extern "C" {
+    pub fn array_dispose_element(arg1: *mut ARRAY_ELEMENT);
+}
+extern "C" {
+    pub fn array_insert(
+        arg1: *mut ARRAY,
+        arg2: arrayind_t,
+        arg3: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn array_remove(arg1: *mut ARRAY, arg2: arrayind_t) -> *mut ARRAY_ELEMENT;
 }
 extern "C" {
