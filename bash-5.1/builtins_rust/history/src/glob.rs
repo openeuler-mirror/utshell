@@ -1888,4 +1888,22 @@ extern "C" {
         __buf: *mut ::std::os::raw::c_char,
         __len: usize,
     ) -> ::std::os::raw::c_int;
+pub type Function = ::core::option::Option<unsafe extern "C" fn() -> ::std::os::raw::c_int>;
+pub type VFunction = ::core::option::Option<unsafe extern "C" fn()>;
+pub type CPFunction = ::core::option::Option<unsafe extern "C" fn() -> *mut ::std::os::raw::c_char>;
+pub type CPPFunction =
+    ::core::option::Option<unsafe extern "C" fn() -> *mut *mut ::std::os::raw::c_char>;
+pub type sh_intfunc_t = ::core::option::Option<
+    unsafe extern "C" fn(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int,
+>;
+pub type sh_ivoidfunc_t = ::core::option::Option<unsafe extern "C" fn() -> ::std::os::raw::c_int>;
+pub type sh_icpfunc_t = ::core::option::Option<
+    unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_char) -> ::std::os::raw::c_int,
+>;
+pub type sh_icppfunc_t = ::core::option::Option<
+    unsafe extern "C" fn(arg1: *mut *mut ::std::os::raw::c_char) -> ::std::os::raw::c_int,
+>;
+pub type sh_iptrfunc_t = ::core::option::Option<
+    unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_void) -> ::std::os::raw::c_int,
+>;
 }
