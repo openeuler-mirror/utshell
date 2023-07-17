@@ -1717,4 +1717,37 @@ extern "C" {
 extern "C" {
     pub fn rand_r(__seed: *mut ::std::os::raw::c_uint) -> ::std::os::raw::c_int;
 }
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct drand48_data {
+    pub __x: [::std::os::raw::c_ushort; 3usize],
+    pub __old_x: [::std::os::raw::c_ushort; 3usize],
+    pub __c: ::std::os::raw::c_ushort,
+    pub __init: ::std::os::raw::c_ushort,
+    pub __a: ::std::os::raw::c_ulonglong,
+}
+extern "C" {
+    pub fn drand48_r(__buffer: *mut drand48_data, __result: *mut f64) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn erand48_r(
+        __xsubi: *mut ::std::os::raw::c_ushort,
+        __buffer: *mut drand48_data,
+        __result: *mut f64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn lrand48_r(
+        __buffer: *mut drand48_data,
+        __result: *mut ::std::os::raw::c_long,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn nrand48_r(
+        __xsubi: *mut ::std::os::raw::c_ushort,
+        __buffer: *mut drand48_data,
+        __result: *mut ::std::os::raw::c_long,
+    ) -> ::std::os::raw::c_int;
+}
 }
