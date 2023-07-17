@@ -1058,7 +1058,15 @@ pub unsafe extern "C"  fn  procsub_search(mut pid: pid_t) -> *mut PROCESS {
     let mut set: sigset_t = __sigset_t { __val: [0; 16] };
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-
+    BLOCK_CHILD(&mut set, &mut oset);
+    p = procsubs.head;
+    while !p.is_null() {
+        if (*p).pid == pid {
+            break;
+        }
+        p = (*p).next;
+    }
+    UNBLOCK_CHILD(&mut oset);
     return p;
 }
 
