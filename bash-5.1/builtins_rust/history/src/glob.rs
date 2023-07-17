@@ -1947,6 +1947,47 @@ extern "C" {
     ) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
+    pub fn get_group_list(arg1: *mut ::std::os::raw::c_int) -> *mut *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn get_group_array(arg1: *mut ::std::os::raw::c_int) -> *mut ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn conf_standard_path() -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn default_columns() -> ::std::os::raw::c_int;
+}
+pub type arrayind_t = intmax_t;
+pub const atype_array_indexed: atype = 0;
+pub const atype_array_assoc: atype = 1;
+pub type atype = u32;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct array {
+    pub type_: atype,
+    pub max_index: arrayind_t,
+    pub num_elements: ::std::os::raw::c_int,
+    pub head: *mut array_element,
+    pub lastref: *mut array_element,
+}
+pub type ARRAY = array;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct array_element {
+    pub ind: arrayind_t,
+    pub value: *mut ::std::os::raw::c_char,
+    pub next: *mut array_element,
+    pub prev: *mut array_element,
+}
+pub type ARRAY_ELEMENT = array_element;
+pub type sh_ae_map_func_t = ::core::option::Option<
+    unsafe extern "C" fn(
+        arg1: *mut ARRAY_ELEMENT,
+        arg2: *mut ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int,
+>;
+extern "C" {
     pub fn array_create() -> *mut ARRAY;
 }
 extern "C" {
