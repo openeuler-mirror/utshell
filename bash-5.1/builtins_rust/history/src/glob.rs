@@ -1694,4 +1694,18 @@ extern "C" {
         __f: f64,
     ) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn strtof64_l(
+        __nptr: *const ::std::os::raw::c_char,
+        __endptr: *mut *mut ::std::os::raw::c_char,
+        __loc: locale_t,
+    ) -> _Float64;
+}
+extern "C" {
+    pub fn strtof32x_l(
+        __nptr: *const ::std::os::raw::c_char,
+        __endptr: *mut *mut ::std::os::raw::c_char,
+        __loc: locale_t,
+    ) -> _Float32x;
+}
 }
