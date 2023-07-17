@@ -1098,8 +1098,14 @@ pub unsafe extern "C"  fn  procsub_delete(mut pid: pid_t) -> *mut PROCESS {
         procsubs.end = prev;
     }
 
-
-
+    procsubs.nproc -= 1;
+    if procsubs.nproc == 0 {
+        procsubs.end = 0 as *mut PROCESS;
+        procsubs.head = procsubs.end;
+    } else if procsubs.nproc == 1 {
+        procsubs.end = procsubs.head;
+    }
+    bgp_add((*p).pid, process_exit_status((*p).status));
 
     return p;
 }
