@@ -1946,4 +1946,43 @@ extern "C" {
         arg2: ::std::os::raw::c_int,
     ) -> *mut ::std::os::raw::c_char;
 }
+extern "C" {
+    pub fn array_create() -> *mut ARRAY;
+}
+extern "C" {
+    pub fn array_flush(arg1: *mut ARRAY);
+}
+extern "C" {
+    pub fn array_dispose(arg1: *mut ARRAY);
+}
+extern "C" {
+    pub fn array_copy(arg1: *mut ARRAY) -> *mut ARRAY;
+}
+extern "C" {
+    pub fn array_slice(
+        arg1: *mut ARRAY,
+        arg2: *mut ARRAY_ELEMENT,
+        arg3: *mut ARRAY_ELEMENT,
+    ) -> *mut ARRAY;
+}
+extern "C" {
+    pub fn array_walk(arg1: *mut ARRAY, arg2: sh_ae_map_func_t, arg3: *mut ::std::os::raw::c_void);
+}
+extern "C" {
+    pub fn array_shift(
+        arg1: *mut ARRAY,
+        arg2: ::std::os::raw::c_int,
+        arg3: ::std::os::raw::c_int,
+    ) -> *mut ARRAY_ELEMENT;
+}
+extern "C" {
+    pub fn array_rshift(
+        arg1: *mut ARRAY,
+        arg2: ::std::os::raw::c_int,
+        arg3: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn array_unshift_element(arg1: *mut ARRAY) -> *mut ARRAY_ELEMENT;
+}
 }
