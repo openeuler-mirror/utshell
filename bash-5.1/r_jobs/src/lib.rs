@@ -1077,8 +1077,17 @@ pub unsafe extern "C"  fn  procsub_delete(mut pid: pid_t) -> *mut PROCESS {
     let mut set: sigset_t = __sigset_t { __val: [0; 16] };
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-
-
+    prev = procsubs.head;
+    p = prev;
+    while !p.is_null() {
+        if (*p).pid == pid {
+            (*prev).next = (*p).next;
+            break;
+        } else {
+            prev = p;
+            p = (*p).next;
+        }
+    }
 
     return p;
 }
