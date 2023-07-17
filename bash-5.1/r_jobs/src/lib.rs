@@ -1118,6 +1118,14 @@ pub unsafe extern "C"  fn  procsub_waitpid(mut pid: pid_t) -> c_int {
     let mut p: *mut PROCESS = 0 as *mut PROCESS;
     let mut r:  c_int = 0;
 
+    p = procsub_search(pid);
+    if p.is_null() {
+        return -1;
+    }
+    if (*p).running == PS_DONE as i32 {
+        return (*p).status;
+    }
+    r = wait_for((*p).pid, 0 );
 
     return r;
 }
