@@ -1750,4 +1750,32 @@ extern "C" {
         __result: *mut ::std::os::raw::c_long,
     ) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn malloc(__size: usize) -> *mut ::std::os::raw::c_void;
+}
+extern "C" {
+    pub fn calloc(__nmemb: usize, __size: usize) -> *mut ::std::os::raw::c_void;
+}
+extern "C" {
+    pub fn realloc(
+        __ptr: *mut ::std::os::raw::c_void,
+        __size: usize,
+    ) -> *mut ::std::os::raw::c_void;
+}
+extern "C" {
+    pub fn reallocarray(
+        __ptr: *mut ::std::os::raw::c_void,
+        __nmemb: usize,
+        __size: usize,
+    ) -> *mut ::std::os::raw::c_void;
+}
+extern "C" {
+    pub fn free(__ptr: *mut ::std::os::raw::c_void);
+}
+extern "C" {
+    pub fn alloca(__size: usize) -> *mut ::std::os::raw::c_void;
+}
+extern "C" {
+    pub fn valloc(__size: usize) -> *mut ::std::os::raw::c_void;
+}
 }

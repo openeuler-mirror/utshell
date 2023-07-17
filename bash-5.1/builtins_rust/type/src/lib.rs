@@ -787,7 +787,7 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
 
     /* Now search through $PATH. */
     #[warn(while_true)]
-  loop{
+    loop {
         if dflags & CDESC_STDPATH!() != 0 {
           	/* command -p, all cannot be non-zero */
               unsafe{
