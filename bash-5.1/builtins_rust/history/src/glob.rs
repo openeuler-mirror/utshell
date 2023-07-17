@@ -2003,4 +2003,35 @@ extern "C" {
 extern "C" {
     pub fn array_assign_list(arg1: *mut ARRAY, arg2: *mut WORD_LIST) -> *mut ARRAY;
 }
+extern "C" {
+    pub fn array_to_argv(
+        arg1: *mut ARRAY,
+        arg2: *mut ::std::os::raw::c_int,
+    ) -> *mut *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn array_to_kvpair(
+        arg1: *mut ARRAY,
+        arg2: ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn array_to_assign(
+        arg1: *mut ARRAY,
+        arg2: ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn array_to_string(
+        arg1: *mut ARRAY,
+        arg2: *mut ::std::os::raw::c_char,
+        arg3: ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn array_from_string(
+        arg1: *mut ::std::os::raw::c_char,
+        arg2: *mut ::std::os::raw::c_char,
+    ) -> *mut ARRAY;
+}
 }
