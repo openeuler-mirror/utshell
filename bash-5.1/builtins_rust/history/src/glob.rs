@@ -1778,4 +1778,47 @@ extern "C" {
 extern "C" {
     pub fn valloc(__size: usize) -> *mut ::std::os::raw::c_void;
 }
+extern "C" {
+    pub fn exit(__status: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn quick_exit(__status: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn _Exit(__status: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn getenv(__name: *const ::std::os::raw::c_char) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn secure_getenv(__name: *const ::std::os::raw::c_char) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn putenv(__string: *mut ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn aligned_alloc(__alignment: usize, __size: usize) -> *mut ::std::os::raw::c_void;
+}
+extern "C" {
+    pub fn abort();
+}
+extern "C" {
+    pub fn atexit(__func: ::core::option::Option<unsafe extern "C" fn()>) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn at_quick_exit(
+        __func: ::core::option::Option<unsafe extern "C" fn()>,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn on_exit(
+        __func: ::core::option::Option<
+            unsafe extern "C" fn(
+                __status: ::std::os::raw::c_int,
+                __arg: *mut ::std::os::raw::c_void,
+            ),
+        >,
+        __arg: *mut ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
+}
 }
