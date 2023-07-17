@@ -146,18 +146,18 @@ pub struct group_com {
 
 #[repr(C)]
 pub struct select_com {
-    flags:c_int,
-    line:c_int,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: c_int,
+    line: c_int,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct arith_com {
-    flags:c_int,
-    line:c_int,
-    exp:*mut WordList
+    flags: c_int,
+    line: c_int,
+    exp: *mut WordList,
 }
 
 #[repr(C)]
@@ -212,11 +212,11 @@ pub union VALUE_COMMAND {
 
 #[repr(C)]
 pub struct COMMAND {
-    type_c:command_type,
-    flags:i32,
-    line:i32,
-    redirects:*mut REDIRECT,
-    value:VALUE_COMMAND
+    type_c: command_type,
+    flags: i32,
+    line: i32,
+    redirects: *mut REDIRECT,
+    value: VALUE_COMMAND,
 }
 
 /* Structure containing all the non-action (binary) options; filled in by
@@ -360,7 +360,7 @@ impl CompactsArray {
                 _compacts {
                     actname: b"user\0".as_ptr() as *const c_char,
                     actflag: CA_USER!(),
-                    actopt: 'u' as c_int,
+                    actopt: 0 as c_int,
                 },
                 _compacts {
                     actname: b"variable\0".as_ptr() as *const c_char,
