@@ -1077,6 +1077,7 @@ pub unsafe extern "C"  fn  procsub_delete(mut pid: pid_t) -> *mut PROCESS {
     let mut set: sigset_t = __sigset_t { __val: [0; 16] };
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
+    BLOCK_CHILD(&mut set, &mut oset);    
     prev = procsubs.head;
     p = prev;
     while !p.is_null() {
@@ -1090,6 +1091,7 @@ pub unsafe extern "C"  fn  procsub_delete(mut pid: pid_t) -> *mut PROCESS {
     }
 
     if p.is_null() {
+        UNBLOCK_CHILD(&mut oset);   
         return p;
     }
     if p == procsubs.head {
@@ -1107,6 +1109,7 @@ pub unsafe extern "C"  fn  procsub_delete(mut pid: pid_t) -> *mut PROCESS {
     }
     bgp_add((*p).pid, process_exit_status((*p).status));
 
+    UNBLOCK_CHILD(&mut oset);
     return p;
 }
 
