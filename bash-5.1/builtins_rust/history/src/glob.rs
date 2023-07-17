@@ -1859,4 +1859,33 @@ extern "C" {
         __len: usize,
     ) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn fcvt_r(
+        __value: f64,
+        __ndigit: ::std::os::raw::c_int,
+        __decpt: *mut ::std::os::raw::c_int,
+        __sign: *mut ::std::os::raw::c_int,
+        __buf: *mut ::std::os::raw::c_char,
+        __len: usize,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn qecvt_r(
+        __value: f64,
+        __ndigit: ::std::os::raw::c_int,
+        __decpt: *mut ::std::os::raw::c_int,
+        __sign: *mut ::std::os::raw::c_int,
+        __buf: *mut ::std::os::raw::c_char,
+        __len: usize,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn qfcvt_r(
+        __value: f64,
+        __ndigit: ::std::os::raw::c_int,
+        __decpt: *mut ::std::os::raw::c_int,
+        __sign: *mut ::std::os::raw::c_int,
+        __buf: *mut ::std::os::raw::c_char,
+        __len: usize,
+    ) -> ::std::os::raw::c_int;
 }
