@@ -469,4 +469,11 @@ pub unsafe  extern "C" fn r_xtrace_print_assignment(name:*mut c_char, value:*mut
     {
         fprintf(xtrace_fp, CString::new("%s=%s\n").unwrap().as_ptr(), name, nval);
     }
+
+    if nval != value  {
+        if !nval.is_null() {
+            libc::free(nval as *mut c_void);
+        }
+    }
+    
 }
