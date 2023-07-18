@@ -438,6 +438,12 @@ pub unsafe extern "C" fn r_indirection_level_string()->*mut c_char
 pub unsafe extern "C" fn r_xtrace_print_word_list(list:*mut WORD_LIST, xtflags: c_int) 
 {
 
+    let mut w:*mut WORD_LIST;
+    let mut t:*mut c_char;
+    let mut x:*mut c_char;
+    
+    CHECK_XTRACE_FP!();
+
 }
 
 #[no_mangle]
