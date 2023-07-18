@@ -475,5 +475,6 @@ pub unsafe  extern "C" fn r_xtrace_print_assignment(name:*mut c_char, value:*mut
             libc::free(nval as *mut c_void);
         }
     }
-    
+
+    libc::fflush(xtrace_fp);
 }

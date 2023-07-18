@@ -4,25 +4,25 @@
 extern crate libc;
 extern crate rread;
 
-use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
-use libc::{c_char,PT_NULL,c_long,};
-use std::ffi::{CStr,CString};
+use libc::{c_char, c_int, c_long, PT_NULL};
+use rcommon::{WordDesc, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
+use std::ffi::{CStr, CString};
 
-use rread::{SHELL_VAR,ARRAY,intmax_t,};
 use rhelp::r_builtin_help;
+use rread::{intmax_t, ARRAY, SHELL_VAR};
 
 #[macro_export]
 macro_rules! att_array {
-  () => {
-    0x0000004 /* value is an array */
-  }
+    () => {
+        0x04 /* value is an array */
+    };
 }
 
 #[macro_export]
 macro_rules! att_cell {
-  ($var:expr) => {  
-    return (*($var).value) as *mut ARRAY;
-  }
+    ($var:expr) => {
+        return (*($var).value) as *mut ARRAY;
+    };
 }
 
 // #[macro_export]
