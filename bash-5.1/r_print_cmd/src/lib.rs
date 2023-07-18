@@ -433,6 +433,13 @@ pub unsafe extern "C" fn r_indirection_level_string()->*mut c_char
 
 }
 
+
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_print_word_list(list:*mut WORD_LIST, xtflags: c_int) 
+{
+
+}
+
 #[no_mangle]
 pub unsafe  extern "C" fn r_xtrace_print_assignment(name:*mut c_char, value:*mut c_char, assign_list:c_int,xflags:c_int)
 {
