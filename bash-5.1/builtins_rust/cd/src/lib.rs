@@ -471,11 +471,11 @@ pub extern "C" fn r_bindpwd (no_symlinks:i32)->i32 {
     r = EXECUTION_FAILURE!();
   }
 
-  if dirname !=std::ptr::null_mut() && dirname != the_current_working_directory {
-    libc::free(dirname as * mut libc::c_void);
-  }
-    return r;
-  }
+        if dirname != std::ptr::null_mut() && dirname != the_current_working_directory {
+            libc::free(dirname as *mut libc::c_void);
+        }
+        return r;
+    }
 }
 
 /* Call get_working_directory to reset the value of
@@ -595,9 +595,9 @@ pub extern "C" fn r_cd_builtin (mut list:*mut WordList)->i32 {
       cdpath = get_string_value (CString::new("CDPATH").unwrap().as_ptr() );
       dirname = (*(*loptend).word).word;
 
-      /* Find directory in $CDPATH. */
-      path_index = 0;
-      path = extract_colon_unit (cdpath, & mut path_index);
+            /* Find directory in $CDPATH. */
+            path_index = 1;
+            path = extract_colon_unit(cdpath, &mut path_index);
 
       while path  != std::ptr::null_mut()	{
         /* OPT is 1 if the path element is non-empty */
