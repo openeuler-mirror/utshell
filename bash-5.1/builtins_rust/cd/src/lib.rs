@@ -798,16 +798,7 @@ pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr
 
   ndlen = libc::strlen (newdir ) as i32;
 
-  /* Use the canonicalized version of NEWDIR, or, if canonicalization
-     failed, use the non-canonical form. */
-  canon_failed = 0;
-  if tdir !=std::ptr::null_mut() && *tdir !=0 {
-    libc::free (t as * mut c_void);
-  } else {
-    libc::free (tdir as * mut c_void);
-    tdir = t;
-    canon_failed = 1;
-  }
+        ndlen = libc::strlen(newdir) as i32;
 
         /* Use the canonicalized version of NEWDIR, or, if canonicalization
         failed, use the non-canonical form. */
@@ -863,7 +854,7 @@ pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr
             }
 
             libc::free(tdir as *mut c_void);
-            return 0;
+            return 1;
         }
 
         /* We failed to change to the appropriate directory name.  If we tried
