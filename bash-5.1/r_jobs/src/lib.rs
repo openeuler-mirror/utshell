@@ -1185,9 +1185,16 @@ pub unsafe extern "C"  fn  procsub_prune() {
     procsubs.head = procsubs.end;
     procsubs.nproc = 0 as c_int;
 
-
-
-
-
-
+    p = ohead;
+    while !p.is_null() {
+        ps = (*p).next;
+        (*p).next = 0 as *mut process;
+        if (*p).running == 0 as  c_int {
+            bgp_add((*p).pid, process_exit_status((*p).status));
+            procsub_free(p);
+        } else {
+            procsub_add(p);
+        }
+        p = ps;
+    }
 }
