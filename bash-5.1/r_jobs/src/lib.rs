@@ -1219,8 +1219,11 @@ unsafe extern "C" fn reset_job_indices() {
             }
             js.j_firstj += 1;
         }
-
-
+        if js.j_firstj == old {
+            js.j_njobs = 0;
+            js.j_lastj = js.j_njobs;
+            js.j_firstj = js.j_lastj;
+        }
     }
 
 
