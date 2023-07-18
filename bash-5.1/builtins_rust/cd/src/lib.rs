@@ -19,9 +19,22 @@ pub enum JOB_STATE {
 }
 
 #[repr(u8)]
-enum command_type { cm_for, cm_case, cm_while, cm_if, cm_simple, cm_select,
-    cm_connection, cm_function_def, cm_until, cm_group,
-    cm_arith, cm_cond, cm_arith_for, cm_subshell, cm_coproc
+enum command_type {
+    cm_for,
+    cm_case,
+    cm_while,
+    cm_if,
+    cm_simple,
+    cm_select,
+    cm_connection,
+    cm_function_def,
+    cm_until,
+    cm_group,
+    cm_arith,
+    cm_cond,
+    cm_arith_for,
+    cm_subshell,
+    cm_coproc,
 }
 
 #[repr(u8)]
@@ -39,10 +52,10 @@ enum r_instruction {
 #[repr(C)]
 pub struct PROCESS {
     next: *mut PROCESS,
-    pid:libc::c_int,
-    status:libc::c_int,
-    running:libc::c_int,
-    command:*mut c_char
+    pid: libc::c_int,
+    status: libc::c_int,
+    running: libc::c_int,
+    command: *mut c_char,
 }
 
 #[repr(C)]
@@ -241,14 +254,16 @@ pub struct SHELL_VAR {
 
 #[macro_export]
 macro_rules! DUP_JOB {
-   () => {-2}
+    () => {
+        -2
+    };
 }
 
 #[macro_export]
 macro_rules! readonly_p {
-  ($var:expr) => {
-    (*$var).attributes & 0x0000002
-  }
+    ($var:expr) => {
+        (*$var).attributes & 0x0000002
+    };
 }
 
 #[macro_export]
