@@ -1202,6 +1202,27 @@ extern "C" {
         __envp: *const *mut ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
 }
+pub const _PC_LINK_MAX: _bindgen_ty_2 = 0;
+pub const _PC_MAX_CANON: _bindgen_ty_2 = 1;
+pub const _PC_MAX_INPUT: _bindgen_ty_2 = 2;
+pub const _PC_NAME_MAX: _bindgen_ty_2 = 3;
+pub const _PC_PATH_MAX: _bindgen_ty_2 = 4;
+pub const _PC_PIPE_BUF: _bindgen_ty_2 = 5;
+pub const _PC_CHOWN_RESTRICTED: _bindgen_ty_2 = 6;
+pub const _PC_NO_TRUNC: _bindgen_ty_2 = 7;
+pub const _PC_VDISABLE: _bindgen_ty_2 = 8;
+pub const _PC_SYNC_IO: _bindgen_ty_2 = 9;
+pub const _PC_ASYNC_IO: _bindgen_ty_2 = 10;
+pub const _PC_PRIO_IO: _bindgen_ty_2 = 11;
+pub const _PC_SOCK_MAXBUF: _bindgen_ty_2 = 12;
+pub const _PC_FILESIZEBITS: _bindgen_ty_2 = 13;
+pub const _PC_REC_INCR_XFER_SIZE: _bindgen_ty_2 = 14;
+pub const _PC_REC_MAX_XFER_SIZE: _bindgen_ty_2 = 15;
+pub const _PC_REC_MIN_XFER_SIZE: _bindgen_ty_2 = 16;
+pub const _PC_REC_XFER_ALIGN: _bindgen_ty_2 = 17;
+pub const _PC_ALLOC_SIZE_MIN: _bindgen_ty_2 = 18;
+pub const _PC_SYMLINK_MAX: _bindgen_ty_2 = 19;
+pub const _PC_2_SYMLINKS: _bindgen_ty_2 = 20;
 extern "C" {
     pub fn pathconf(
         __path: *const ::std::os::raw::c_char,
