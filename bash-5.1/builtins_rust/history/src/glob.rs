@@ -1442,6 +1442,20 @@ pub union sigcontext__bindgen_ty_1 {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
+pub struct _libc_fpstate {
+    pub cwd: __uint16_t,
+    pub swd: __uint16_t,
+    pub ftw: __uint16_t,
+    pub fop: __uint16_t,
+    pub rip: __uint64_t,
+    pub rdp: __uint64_t,
+    pub mxcsr: __uint32_t,
+    pub mxcr_mask: __uint32_t,
+    pub _st: [_libc_fpxreg; 8usize],
+    pub _xmm: [_libc_xmmreg; 16usize],
+    pub __glibc_reserved1: [__uint32_t; 24usize],
+}
+#[derive(Debug, Copy, Clone)]
 pub struct ucontext_t {
     pub uc_flags: ::std::os::raw::c_ulong,
     pub uc_link: *mut ucontext_t,
