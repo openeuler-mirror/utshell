@@ -2242,4 +2242,19 @@ extern "C" {
         arg2: ::std::os::raw::c_int,
     ) -> *mut *mut ::std::os::raw::c_char;
 }
+extern "C" {
+    pub fn extglob_pattern_p(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}glob_error_return"]
+    pub static mut glob_error_return: *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    #[link_name = "\u{1}noglob_dot_filenames"]
+    pub static mut noglob_dot_filenames: ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}glob_ignore_case"]
+    pub static mut glob_ignore_case: ::std::os::raw::c_int;
+}
 }
