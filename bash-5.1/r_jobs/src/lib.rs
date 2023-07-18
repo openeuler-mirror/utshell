@@ -1198,3 +1198,19 @@ pub unsafe extern "C"  fn  procsub_prune() {
         p = ps;
     }
 }
+
+
+unsafe extern "C" fn reset_job_indices() {
+    let mut old:  c_int = 0;
+
+    if (*jobs.offset(js.j_firstj as isize)).is_null() {
+        js.j_firstj = js.j_firstj + 1;
+        old = js.j_firstj;
+    
+    
+    }
+
+
+
+
+}
