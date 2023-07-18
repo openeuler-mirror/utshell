@@ -1670,6 +1670,16 @@ extern "C" {
 extern "C" {
     pub fn isalpha_l(arg1: ::std::os::raw::c_int, arg2: locale_t) -> ::std::os::raw::c_int;
 }
+pub type __timezone_ptr_t = *mut timezone;
+extern "C" {
+    pub fn gettimeofday(__tv: *mut timeval, __tz: __timezone_ptr_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn settimeofday(__tv: *const timeval, __tz: *const timezone) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn adjtime(__delta: *const timeval, __olddelta: *mut timeval) -> ::std::os::raw::c_int;
+}
 pub const __rlimit_resource_RLIMIT_CPU: __rlimit_resource = 0;
 pub const __rlimit_resource_RLIMIT_FSIZE: __rlimit_resource = 1;
 pub const __rlimit_resource_RLIMIT_DATA: __rlimit_resource = 2;
