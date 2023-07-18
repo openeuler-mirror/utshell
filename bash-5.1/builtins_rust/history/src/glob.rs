@@ -2213,4 +2213,20 @@ extern "C" {
 extern "C" {
     pub fn free_trap_strings();
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct direct {
+    pub d_ino: ::std::os::raw::c_long,
+    pub d_reclen: ::std::os::raw::c_ushort,
+    pub d_namlen: ::std::os::raw::c_ushort,
+    pub d_name: [::std::os::raw::c_char; 16usize],
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct DIR {
+    pub dd_fd: ::std::os::raw::c_int,
+    pub dd_loc: ::std::os::raw::c_int,
+    pub dd_size: ::std::os::raw::c_int,
+    pub dd_buf: [::std::os::raw::c_char; 512usize],
+}
 }
