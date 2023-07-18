@@ -1224,7 +1224,18 @@ pub const _PC_ALLOC_SIZE_MIN: _bindgen_ty_2 = 18;
 pub const _PC_SYMLINK_MAX: _bindgen_ty_2 = 19;
 pub const _PC_2_SYMLINKS: _bindgen_ty_2 = 20;
 
-
+pub const _SC_SSIZE_MAX: _bindgen_ty_3 = 110;
+pub const _SC_SCHAR_MAX: _bindgen_ty_3 = 111;
+pub const _SC_SCHAR_MIN: _bindgen_ty_3 = 112;
+pub const _SC_SHRT_MAX: _bindgen_ty_3 = 113;
+pub const _SC_SHRT_MIN: _bindgen_ty_3 = 114;
+pub const _SC_UCHAR_MAX: _bindgen_ty_3 = 115;
+pub const _SC_UINT_MAX: _bindgen_ty_3 = 116;
+pub const _SC_ULONG_MAX: _bindgen_ty_3 = 117;
+pub const _SC_USHRT_MAX: _bindgen_ty_3 = 118;
+pub const _SC_NL_ARGMAX: _bindgen_ty_3 = 119;
+pub const _SC_NL_LANGMAX: _bindgen_ty_3 = 120;
+pub const _SC_NL_MSGMAX: _bindgen_ty_3 = 121;
 pub const _SC_LEVEL1_ICACHE_SIZE: _bindgen_ty_3 = 185;
 pub const _SC_LEVEL1_ICACHE_ASSOC: _bindgen_ty_3 = 186;
 pub const _SC_LEVEL1_ICACHE_LINESIZE: _bindgen_ty_3 = 187;
