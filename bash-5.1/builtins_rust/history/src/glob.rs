@@ -1932,7 +1932,21 @@ extern "C" {
         __func: ::core::option::Option<unsafe extern "C" fn()>,
     ) -> ::std::os::raw::c_int;
 }
-
+extern "C" {
+    pub fn mkstemps64(
+        __template: *mut ::std::os::raw::c_char,
+        __suffixlen: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn mkdtemp(__template: *mut ::std::os::raw::c_char) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn mkostemp(
+        __template: *mut ::std::os::raw::c_char,
+        __flags: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
 extern "C" {
     pub fn fcvt(
         __value: f64,
