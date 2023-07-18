@@ -632,14 +632,22 @@ pub extern "C" fn r_cd_builtin (mut list:*mut WordList)->i32 {
         else {
           libc::free (temp as * mut c_void);
         }
-        
-        path = extract_colon_unit (cdpath, &mut path_index);
-      }
-    }  
-    else{
-        dirname = (*(*loptend).word).word;
-    }
 
+        /* If the user requests it, try to find a directory name similar in
+        spelling to the one requested, in case the user made a simple
+        typo.  This is similar to the UNIX 8th and 9th Edition shells. */
+        if (lflag & LCD_DOSPELL!()) != 0 {
+            temp = dirspell(dirname);
+            if temp != std::ptr::null_mut()
+                && r_change_to_directory(temp, no_symlinks, xattrflag) != 0
+            {
+                println!("{:?}", temp);
+                libc::free(temp as *mut c_void);
+                return r_bindpwd(no_symlinks);
+            } else {
+                libc::free(temp as *mut c_void);
+            }
+        }
 
     /* When we get here, DIRNAME is the directory to change to.  If we
       chdir successfully, just return. */
@@ -706,7 +714,7 @@ pub extern "C" fn r_pwd_builtin (list:* mut WordList)->i32 {
           pflag = 1;}
 	    'L'=>{verbatim_pwd = 0;}
       _=>{
-        if opt == -99 {
+        if opt == '?' {
           r_builtin_help();
           return EX_USAGE;
       }
@@ -755,10 +763,10 @@ pub extern "C" fn r_pwd_builtin (list:* mut WordList)->i32 {
 }
 
 /* Do the work of changing to the directory NEWDIR.  Handle symbolic
-   link following, etc.  This function *must* return with
-   the_current_working_directory either set to NULL (in which case
-   getcwd() will eventually be called), or set to a string corresponding
-   to the working directory.  Return 1 on success, 0 on failure. */
+link following, etc.  This function *must* return with
+the_current_working_directory either set to NULL (in which case
+getcwd() will eventually be called), or set to a string corresponding
+to the working directory.  Return 1 on success, 0 on failure. */
 #[no_mangle]
 pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr:i32)->i32 {
   unsafe {
