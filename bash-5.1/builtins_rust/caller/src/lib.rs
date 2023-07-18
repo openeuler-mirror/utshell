@@ -63,7 +63,10 @@ macro_rules! GET_ARRAY_FROM_VAR {
 #[macro_export]
 macro_rules! CHECK_HELPOPT {
     ($l:expr) => {
-        if $l != std::ptr::null_mut() && (*($l)).word != std::ptr::null_mut() && ISHELP((*(*($l)).word).word) == true{
+        if $l != std::ptr::null_mut()
+            && (*($l)).word != std::ptr::null_mut()
+            && ISHELP((*(*($l)).word).word) == true
+        {
             r_builtin_help();
             return EX_USAGE;
         }
@@ -73,36 +76,32 @@ macro_rules! CHECK_HELPOPT {
 type arrayind_t = intmax_t;
 
 extern "C" {
-    static loptend:*mut WordList;
+    static loptend: *mut WordList;
 
-    fn find_variable(str:*const c_char)->*mut SHELL_VAR;
-    fn array_reference(a:*mut ARRAY,i:arrayind_t)->*mut c_char;
+    fn find_variable(str: *const c_char) -> *mut SHELL_VAR;
+    fn array_reference(a: *mut ARRAY, i: arrayind_t) -> *mut c_char;
     fn builtin_usage();
-    fn no_options(list:*mut WordList)->i32;
-    fn legal_number(string:*mut c_char,result:*mut c_long)->i32;
-    fn sh_invalidnum(s:*mut c_char);
+    fn no_options(list: *mut WordList) -> i32;
+    fn legal_number(string: *mut c_char, result: *mut c_long) -> i32;
+    fn sh_invalidnum(s: *mut c_char);
 }
 
-
-unsafe fn STREQ(a:*const c_char,b:*const c_char)->bool{
-    return *a == *b && libc::strcmp(a,b) == 0;
+unsafe fn STREQ(a: *const c_char, b: *const c_char) -> bool {
+    return *a == *b && libc::strcmp(a, b) == 0;
 }
-unsafe fn ISHELP(s:*const c_char)->bool{
+unsafe fn ISHELP(s: *const c_char) -> bool {
     // let s_str = CString::new("--help").unwrap().as_ptr();
-    return STREQ( s,CString::new("--help").unwrap().as_ptr());
+    return STREQ(s, CString::new("--help").unwrap().as_ptr());
 }
-unsafe fn array_p(var:*mut SHELL_VAR) ->i32 {
+unsafe fn array_p(var: *mut SHELL_VAR) -> i32 {
     return (*var).attributes & att_array!();
 }
-unsafe fn array_empty(a:*mut ARRAY)->bool{
-  
-    if (*a).num_elements == 0{
+unsafe fn array_empty(a: *mut ARRAY) -> bool {
+    if (*a).num_elements == 0 {
+        return false;
+    } else {
         return true;
     }
-    else{
-        return false ;
-    }
-
 }
 
 //rust

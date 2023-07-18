@@ -478,3 +478,19 @@ pub unsafe  extern "C" fn r_xtrace_print_assignment(name:*mut c_char, value:*mut
 
     libc::fflush(xtrace_fp);
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn command_print_word_list(list:*mut WORD_LIST, separator:*mut c_char)
+{
+    //_print_word_list(list,separator,cprintf);
+    let mut w:*mut WORD_LIST;
+    w = list;
+
+    while !w.is_null() 
+    {
+        let mut str = format!("{}{}\0",CStr::from_ptr((*(*w).word).word).to_str().unwrap(),CStr::from_ptr(separator).to_str().unwrap());
+        cprintf_1(str.as_mut_ptr() as *mut c_char);
+        w = (*w).next;
+    }
+}
