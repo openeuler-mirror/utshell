@@ -1152,7 +1152,16 @@ pub unsafe extern "C"  fn  procsub_clear() {
     let mut set: sigset_t = __sigset_t { __val: [0; 16] };
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-
-
+    BLOCK_CHILD(&mut set, &mut oset);
+    ps = procsubs.head;
+    while !ps.is_null() {
+        p = ps;
+        ps = (*ps).next;
+        procsub_free(p);
+    }
+    procsubs.end = 0 as *mut PROCESS;
+    procsubs.head = procsubs.end;
+    procsubs.nproc = 0 as  c_int;
+    UNBLOCK_CHILD(&mut oset);
 
 }
