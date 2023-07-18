@@ -491,16 +491,28 @@ pub unsafe extern "C" fn command_print_word_list(list:*mut WORD_LIST, separator:
     {
         if !(*w).next.is_null()
         {
-            let mut str = format!("{}{}\0",CStr::from_ptr((*(*w).word).word).to_str().unwrap(),CStr::from_ptr(separator).to_str().unwrap());
+            let mut str = format!("{}{}",CStr::from_ptr((*(*w).word).word).to_str().unwrap(),CStr::from_ptr(separator).to_str().unwrap());
             cprintf_1(str.as_mut_ptr() as *mut c_char);
         }
         else 
         {
-            let mut str = format!("{}\0",CStr::from_ptr((*(*w).word).word).to_str().unwrap());
+            let mut str = format!("{}",CStr::from_ptr((*(*w).word).word).to_str().unwrap());
             cprintf_1(str.as_mut_ptr() as *mut c_char);
         }
 
         w = (*w).next;
-        
+
     }
+}
+
+
+// 有个cprintf函数
+#[no_mangle]
+
+pub unsafe extern "C" fn r_print_for_command_head(for_command:*mut FOR_COM)
+{
+    println!("r_print_for_command_head");
+    let mut str = format!("for {} in ", CStr::from_ptr((*(*for_command).name).word).to_str().unwrap());
+    cprintf_1(str.as_mut_ptr() as *mut c_char);
+    command_print_word_list((*for_command).map_list, b" " as *const u8  as *mut c_char);
 }
