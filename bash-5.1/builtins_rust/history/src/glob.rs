@@ -1303,6 +1303,21 @@ extern "C" {
     pub fn getegid() -> __gid_t;
 }
 extern "C" {
+    pub fn link(
+        __from: *const ::std::os::raw::c_char,
+        __to: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn linkat(
+        __fromfd: ::std::os::raw::c_int,
+        __from: *const ::std::os::raw::c_char,
+        __tofd: ::std::os::raw::c_int,
+        __to: *const ::std::os::raw::c_char,
+        __flags: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn rmdir(__path: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
 }
 extern "C" {
