@@ -1312,6 +1312,19 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn symlink(
+        __from: *const ::std::os::raw::c_char,
+        __to: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn readlink(
+        __path: *const ::std::os::raw::c_char,
+        __buf: *mut ::std::os::raw::c_char,
+        __len: usize,
+    ) -> isize;
+}
+extern "C" {
     pub fn rmdir(__path: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
 }
 extern "C" {
