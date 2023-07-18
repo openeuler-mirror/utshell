@@ -2229,4 +2229,17 @@ pub struct DIR {
     pub dd_size: ::std::os::raw::c_int,
     pub dd_buf: [::std::os::raw::c_char; 512usize],
 }
+extern "C" {
+    pub fn glob_vector(
+        arg1: *mut ::std::os::raw::c_char,
+        arg2: *mut ::std::os::raw::c_char,
+        arg3: ::std::os::raw::c_int,
+    ) -> *mut *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn glob_filename(
+        arg1: *mut ::std::os::raw::c_char,
+        arg2: ::std::os::raw::c_int,
+    ) -> *mut *mut ::std::os::raw::c_char;
+}
 }
