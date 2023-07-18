@@ -1223,6 +1223,24 @@ pub const _PC_REC_XFER_ALIGN: _bindgen_ty_2 = 17;
 pub const _PC_ALLOC_SIZE_MIN: _bindgen_ty_2 = 18;
 pub const _PC_SYMLINK_MAX: _bindgen_ty_2 = 19;
 pub const _PC_2_SYMLINKS: _bindgen_ty_2 = 20;
+
+
+pub const _SC_LEVEL1_ICACHE_SIZE: _bindgen_ty_3 = 185;
+pub const _SC_LEVEL1_ICACHE_ASSOC: _bindgen_ty_3 = 186;
+pub const _SC_LEVEL1_ICACHE_LINESIZE: _bindgen_ty_3 = 187;
+pub const _SC_LEVEL1_DCACHE_SIZE: _bindgen_ty_3 = 188;
+pub const _SC_LEVEL1_DCACHE_ASSOC: _bindgen_ty_3 = 189;
+pub const _SC_LEVEL1_DCACHE_LINESIZE: _bindgen_ty_3 = 190;
+pub const _SC_LEVEL2_CACHE_SIZE: _bindgen_ty_3 = 191;
+pub const _SC_LEVEL2_CACHE_ASSOC: _bindgen_ty_3 = 192;
+pub const _SC_LEVEL2_CACHE_LINESIZE: _bindgen_ty_3 = 193;
+pub const _SC_LEVEL3_CACHE_SIZE: _bindgen_ty_3 = 194;
+pub const _SC_LEVEL3_CACHE_ASSOC: _bindgen_ty_3 = 195;
+pub const _SC_LEVEL3_CACHE_LINESIZE: _bindgen_ty_3 = 196;
+pub const _SC_LEVEL4_CACHE_SIZE: _bindgen_ty_3 = 197;
+pub const _SC_LEVEL4_CACHE_ASSOC: _bindgen_ty_3 = 198;
+pub const _SC_LEVEL4_CACHE_LINESIZE: _bindgen_ty_3 = 199;
+
 extern "C" {
     pub fn pathconf(
         __path: *const ::std::os::raw::c_char,
