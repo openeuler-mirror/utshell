@@ -241,27 +241,32 @@ pub struct COMMAND {
 pub struct JOB {
     wd: *mut c_char,
     pipe: *mut PROCESS,
-    pgrp:i32,
-    state:JOB_STATE,
-    flags:i32,
-    deferred:*mut COMMAND,
-    j_cleanup:*mut fn(),
-    cleanarg:* mut fn()
+    pgrp: i32,
+    state: JOB_STATE,
+    flags: i32,
+    deferred: *mut COMMAND,
+    j_cleanup: *mut fn(),
+    cleanarg: *mut fn(),
 }
 
 #[repr(C)]
 pub struct SHELL_VAR {
-  name:*mut c_char,			/* Symbol that the user types. */
-  value:*mut c_char,			/* Value that is returned. */
-  exportstr:*mut c_char,	/* String for the environment. */
-  dynamic_value:*mut fn(v:* mut SHELL_VAR)->*mut SHELL_VAR,	/* Function called to return a `dynamic'
-				   value for a variable, like $SECONDS
-				   or $RANDOM. */
-  assign_func:* mut fn(v:* mut SHELL_VAR,str1:* mut c_char,t:c_long,str2:* mut c_char)->*mut SHELL_VAR, /* Function called when this `special
-				   variable' is assigned a value in
-				   bind_variable. */
-  attributes:i32,		/* export, readonly, array, invisible... */
-  context:i32			/* Which context this variable belongs to. */
+    name: *mut c_char,      /* Symbol that the user types. */
+    value: *mut c_char,     /* Value that is returned. */
+    exportstr: *mut c_char, /* String for the environment. */
+    dynamic_value: *mut fn(v: *mut SHELL_VAR) -> *mut SHELL_VAR, /* Function called to return a `dynamic'
+                                                                 value for a variable, like $SECONDS
+                                                                 or $RANDOM. */
+    assign_func: *mut fn(
+        v: *mut SHELL_VAR,
+        str1: *mut c_char,
+        t: c_long,
+        str2: *mut c_char,
+    ) -> *mut SHELL_VAR, /* Function called when this `special
+                         variable' is assigned a value in
+                         bind_variable. */
+    attributes: i32, /* export, readonly, array, invisible... */
+    context: i32,    /* Which context this variable belongs to. */
 }
 
 #[macro_export]
@@ -327,61 +332,66 @@ macro_rules! PATH_CHECKDOTDOT {
 
 #[macro_export]
 macro_rules! PATH_CHECKEXISTS {
-  () => {
-    0x0002
-  }
+    () => {
+        0x0002
+    };
 }
 
 #[macro_export]
 macro_rules! errno {
-  () => {
-    *libc::__errno_location()
-  }
+    () => {
+        *libc::__errno_location()
+    };
 }
 
 extern "C" {
-    fn builtin_error(err:*const c_char,...);
-    
-    static mut loptend:*mut WordList;
+    fn builtin_error(err: *const c_char, ...);
 
-    static mut array_needs_making:i32;
-    fn bind_variable ( lhs:*const c_char, rhs:* mut c_char, i:i32)->* mut SHELL_VAR;
-    fn update_export_env_inplace (env_prefix:* mut c_char, preflen:i32, value:* mut c_char);
-    static mut the_current_working_directory:* mut c_char;
-    fn get_working_directory (for_whom:* mut c_char)->* mut c_char;
-    fn sh_physpath (path:*mut c_char, flags:i32)->* mut c_char;
-    fn sh_chkwrite (s:i32)->i32;
-    fn get_string_value (var_name:*const c_char)->* mut c_char;   
-    
-    static mut restricted:i32;
-    fn sh_restricted (s:*mut c_char);
-    static no_symbolic_links:i32;
-    
+    static mut loptend: *mut WordList;
+
+    static mut array_needs_making: i32;
+    fn bind_variable(lhs: *const c_char, rhs: *mut c_char, i: i32) -> *mut SHELL_VAR;
+    fn update_export_env_inplace(env_prefix: *mut c_char, preflen: i32, value: *mut c_char);
+    static mut the_current_working_directory: *mut c_char;
+    fn get_working_directory(for_whom: *mut c_char) -> *mut c_char;
+    fn sh_physpath(path: *mut c_char, flags: i32) -> *mut c_char;
+    fn sh_chkwrite(s: i32) -> i32;
+    fn get_string_value(var_name: *const c_char) -> *mut c_char;
+
+    static mut restricted: i32;
+    fn sh_restricted(s: *mut c_char);
+    static no_symbolic_links: i32;
+
     fn reset_internal_getopt();
-    fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
+    fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> i32;
     fn builtin_usage();
-    static cdable_vars:i32;
-    static  interactive:i32;
-    static cdspelling:i32;
-    fn absolute_pathname (str:*const c_char)->i32;
-    fn extract_colon_unit (string:*mut c_char, p_index:*mut i32)->* mut c_char;
-    fn sh_makepath (path:*const c_char, dir:*const c_char, flags:i32)->* mut c_char;
-    static privileged_mode:i32;
-    fn dirspell (dirname:* mut c_char)->* mut c_char;
-    fn printable_filename (fnc:* mut c_char, flags:i32)->* mut c_char;
-    
-    static posixly_correct:i32;
-    fn same_file (path1:*const c_char, path2:*const c_char, stp1:*mut libc::stat, stp2:*mut libc::stat)->i32;
-    fn make_absolute (str1:*const c_char, dot_path:*const c_char)->* mut c_char;
-    fn sh_canonpath (path:* mut c_char, flags:i32)->* mut c_char;
-    fn set_working_directory (path:* mut c_char);   
-    
+    static cdable_vars: i32;
+    static interactive: i32;
+    static cdspelling: i32;
+    fn absolute_pathname(str: *const c_char) -> i32;
+    fn extract_colon_unit(string: *mut c_char, p_index: *mut i32) -> *mut c_char;
+    fn sh_makepath(path: *const c_char, dir: *const c_char, flags: i32) -> *mut c_char;
+    static privileged_mode: i32;
+    fn dirspell(dirname: *mut c_char) -> *mut c_char;
+    fn printable_filename(fnc: *mut c_char, flags: i32) -> *mut c_char;
+
+    static posixly_correct: i32;
+    fn same_file(
+        path1: *const c_char,
+        path2: *const c_char,
+        stp1: *mut libc::stat,
+        stp2: *mut libc::stat,
+    ) -> i32;
+    fn make_absolute(str1: *const c_char, dot_path: *const c_char) -> *mut c_char;
+    fn sh_canonpath(path: *mut c_char, flags: i32) -> *mut c_char;
+    fn set_working_directory(path: *mut c_char);
+
 }
 
-pub static mut xattrfd:i32=-1;
-pub static  mut xattrflag:i32=0;
-pub static  mut verbatim_pwd:i32=0;
-pub static  mut eflag:i32=0;
+pub static mut xattrfd: i32 = -1;
+pub static mut xattrflag: i32 = 0;
+pub static mut verbatim_pwd: i32 = 0;
+pub static mut eflag: i32 = 0;
 
 /* How to bring a job into the foreground. */
 #[no_mangle]
@@ -409,10 +419,6 @@ pub extern "C" fn r_setpwd (dirname:* mut c_char)->i32
     } else {
       update_export_env_inplace (c_str_pwd.as_ptr() as * mut c_char, 4, dirname);
     }
-    array_needs_making = 0;
-  }
-  return EXECUTION_SUCCESS!();
-  }
 }
 
 #[no_mangle]
@@ -473,21 +479,21 @@ pub extern "C" fn r_bindpwd (no_symlinks:i32)->i32 {
 }
 
 /* Call get_working_directory to reset the value of
-   the_current_working_directory () */
+the_current_working_directory () */
 #[no_mangle]
-pub extern "C" fn r_resetpwd (caller:*mut c_char)->*mut c_char {
-  let tdir:*mut c_char;
-  unsafe {
-    libc::free(the_current_working_directory as * mut libc::c_void);
-    the_current_working_directory = 0 as * mut c_char;
-    tdir = get_working_directory (caller);
-    return tdir;
-  }
+pub extern "C" fn r_resetpwd(caller: *mut c_char) -> *mut c_char {
+    let tdir: *mut c_char;
+    unsafe {
+        libc::free(the_current_working_directory as *mut libc::c_void);
+        the_current_working_directory = 0 as *mut c_char;
+        tdir = get_working_directory(caller);
+        return tdir;
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn r_cdxattr (dir: *mut c_char, ndirp:*mut c_char)->i32 {
-  return -1;
+pub extern "C" fn r_cdxattr(dir: *mut c_char, ndirp: *mut c_char) -> i32 {
+    return -1;
 }
 
 #[no_mangle]
@@ -611,6 +617,9 @@ pub extern "C" fn r_cd_builtin (mut list:*mut WordList)->i32 {
             else {
               path=the_current_working_directory;
             }
+        } else {
+            dirname = (*(*loptend).word).word;
+        }
 
             if path !=std::ptr::null_mut() {
               libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,path);
@@ -664,6 +673,7 @@ pub extern "C" fn r_cd_builtin (mut list:*mut WordList)->i32 {
         }  else {
           libc::free (temp as * mut c_void);
         }
+        return EXECUTION_FAILURE!();
     }
 
     e =errno!();
