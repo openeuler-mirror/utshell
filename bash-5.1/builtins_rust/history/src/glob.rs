@@ -1687,6 +1687,24 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn getrlimit64(
+        __resource: __rlimit_resource_t,
+        __rlimits: *mut rlimit64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn setrlimit(
+        __resource: __rlimit_resource_t,
+        __rlimits: *const rlimit,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn setrlimit64(
+        __resource: __rlimit_resource_t,
+        __rlimits: *const rlimit64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn memccpy(
         __dest: *mut ::std::os::raw::c_void,
         __src: *const ::std::os::raw::c_void,
