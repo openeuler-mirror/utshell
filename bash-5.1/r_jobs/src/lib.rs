@@ -1143,3 +1143,16 @@ pub unsafe extern "C"  fn  procsub_waitall() {
         p = (*p).next;
     }
 }
+
+
+#[no_mangle]
+pub unsafe extern "C"  fn  procsub_clear() {
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut ps: *mut PROCESS = 0 as *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+
+
+
+}
