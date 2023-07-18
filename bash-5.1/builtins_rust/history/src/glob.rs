@@ -1652,6 +1652,24 @@ extern "C" {
         __mask: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn isascii(__c: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn toascii(__c: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn _toupper(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn _tolower(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn isalnum_l(arg1: ::std::os::raw::c_int, arg2: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn isalpha_l(arg1: ::std::os::raw::c_int, arg2: locale_t) -> ::std::os::raw::c_int;
+}
 pub const __rlimit_resource_RLIMIT_CPU: __rlimit_resource = 0;
 pub const __rlimit_resource_RLIMIT_FSIZE: __rlimit_resource = 1;
 pub const __rlimit_resource_RLIMIT_DATA: __rlimit_resource = 2;
