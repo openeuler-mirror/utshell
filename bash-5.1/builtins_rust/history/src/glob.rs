@@ -1412,6 +1412,20 @@ extern "C" {
     pub fn siggetmask() -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn sigandset(
+        __set: *mut sigset_t,
+        __left: *const sigset_t,
+        __right: *const sigset_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sigorset(
+        __set: *mut sigset_t,
+        __left: *const sigset_t,
+        __right: *const sigset_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     #[link_name = "\u{1}_sys_siglist"]
     pub static mut _sys_siglist: [*const ::std::os::raw::c_char; 65usize];
 }
