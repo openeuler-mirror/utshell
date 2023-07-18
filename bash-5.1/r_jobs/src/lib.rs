@@ -1129,3 +1129,12 @@ pub unsafe extern "C"  fn  procsub_waitpid(mut pid: pid_t) -> c_int {
 
     return r;
 }
+
+#[no_mangle]
+pub unsafe extern "C"  fn  procsub_waitall() {
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut r:  c_int = 0;
+
+
+
+}
