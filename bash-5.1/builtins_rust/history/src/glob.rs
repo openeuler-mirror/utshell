@@ -2213,6 +2213,36 @@ extern "C" {
 extern "C" {
     pub fn free_trap_strings();
 }
+extern "C" {
+    pub fn run_interrupt_trap(arg1: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn maybe_call_trap_handler(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn signal_is_special(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn signal_is_trapped(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn signal_is_pending(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn signal_is_ignored(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn signal_is_hard_ignored(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn set_signal_hard_ignored(arg1: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn set_signal_ignored(arg1: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn signal_in_progress(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct direct {
