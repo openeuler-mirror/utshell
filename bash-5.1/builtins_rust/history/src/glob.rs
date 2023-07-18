@@ -180,6 +180,15 @@ pub const HAVE_GETTIMEOFDAY: u32 = 1;
 pub const HAVE_ICONV: u32 = 1;
 pub const HAVE_IMAXDIV: u32 = 1;
 pub const HAVE_INET_ATON: u32 = 1;
+pub const HAVE_ISASCII: u32 = 1;
+pub const HAVE_ISBLANK: u32 = 1;
+pub const HAVE_ISGRAPH: u32 = 1;
+pub const HAVE_ISPRINT: u32 = 1;
+pub const HAVE_ISSPACE: u32 = 1;
+pub const HAVE_ISWCTYPE: u32 = 1;
+pub const HAVE_ISWLOWER: u32 = 1;
+pub const HAVE_ISWUPPER: u32 = 1;
+pub const HAVE_ISXDIGIT: u32 = 1;
 #[no_mangle]
 pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
 
@@ -2287,4 +2296,24 @@ extern "C" {
     #[link_name = "\u{1}glob_ignore_case"]
     pub static mut glob_ignore_case: ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn wcsmatch(
+        arg1: *mut wchar_t,
+        arg2: *mut wchar_t,
+        arg3: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+pub type __builtin_va_list = [__va_list_tag; 1usize];
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __va_list_tag {
+    pub gp_offset: ::std::os::raw::c_uint,
+    pub fp_offset: ::std::os::raw::c_uint,
+    pub overflow_arg_area: *mut ::std::os::raw::c_void,
+    pub reg_save_area: *mut ::std::os::raw::c_void,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __locale_data {
+    pub _address: u8,
 }
