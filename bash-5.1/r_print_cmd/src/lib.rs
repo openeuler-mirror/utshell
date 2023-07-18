@@ -455,13 +455,26 @@ pub unsafe extern "C" fn r_xtrace_print_word_list(list:*mut WORD_LIST, xtflags: 
     {
 
         t = (*(*w).word).word;
-        if t.is_null() || *t as c_int == '\u{0}' as i32{
+        
+        if t.is_null() || *t as c_int == '\u{0}' as i32
+        {
             fprintf(xtrace_fp, CString::new("''%s").unwrap().as_ptr(), 
                     if !((*w).next).is_null(){
                         b" " as *const u8 as *const c_char
                     }else{
                         b"" as *const u8 as *const c_char
                     },
+            );
+        }
+
+        else if (xtflags & 2) != 0
+        {
+            fprintf(xtrace_fp, CString::new("%s%s").unwrap().as_ptr(),t,
+                if !((*w).next).is_null(){
+                    b" " as *const u8 as *const c_char
+                }else{
+                    b"" as *const u8 as *const c_char
+                },
             );
         }
     }
