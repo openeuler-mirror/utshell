@@ -1165,3 +1165,16 @@ pub unsafe extern "C"  fn  procsub_clear() {
     UNBLOCK_CHILD(&mut oset);
 
 }
+
+#[no_mangle]
+pub unsafe extern "C"  fn  procsub_prune() {
+    let mut ohead: *mut PROCESS = 0 as *mut PROCESS;
+    let mut oend: *mut PROCESS = 0 as *mut PROCESS;
+    let mut ps: *mut PROCESS = 0 as *mut PROCESS;
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut onproc:  c_int = 0;
+
+
+
+
+}
