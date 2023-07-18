@@ -1174,6 +1174,19 @@ pub unsafe extern "C"  fn  procsub_prune() {
     let mut p: *mut PROCESS = 0 as *mut PROCESS;
     let mut onproc:  c_int = 0;
 
+    if procsubs.nproc == 0  {
+        return;
+    }
+    ohead = procsubs.head;
+    oend = procsubs.end;
+    onproc = procsubs.nproc;
+
+    procsubs.end = 0 as *mut PROCESS;
+    procsubs.head = procsubs.end;
+    procsubs.nproc = 0 as c_int;
+
+
+
 
 
 
