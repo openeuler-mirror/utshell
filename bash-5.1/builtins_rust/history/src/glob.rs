@@ -1934,6 +1934,24 @@ extern "C" {
     pub fn check_dev_tty();
 }
 extern "C" {
+    pub fn absolute_pathname(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn absolute_program(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn make_absolute(
+        arg1: *const ::std::os::raw::c_char,
+        arg2: *const ::std::os::raw::c_char,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn base_pathname(arg1: *mut ::std::os::raw::c_char) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn full_pathname(arg1: *mut ::std::os::raw::c_char) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
     pub fn bash_tilde_find_word(
         arg1: *const ::std::os::raw::c_char,
         arg2: ::std::os::raw::c_int,
