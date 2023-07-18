@@ -1497,6 +1497,22 @@ pub struct __pthread_cond_s {
     pub __wrefs: ::std::os::raw::c_uint,
     pub __g_signals: [::std::os::raw::c_uint; 2usize],
 }
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union pthread_mutex_t {
+    pub __data: __pthread_mutex_s,
+    pub __size: [::std::os::raw::c_char; 40usize],
+    pub __align: ::std::os::raw::c_long,
+    _bindgen_union_align: [u64; 5usize],
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union pthread_cond_t {
+    pub __data: __pthread_cond_s,
+    pub __size: [::std::os::raw::c_char; 48usize],
+    pub __align: ::std::os::raw::c_longlong,
+    _bindgen_union_align: [u64; 6usize],
+}
 pub const r_instruction_r_output_direction: r_instruction = 0;
 pub const r_instruction_r_input_direction: r_instruction = 1;
 pub const r_instruction_r_inputa_direction: r_instruction = 2;
