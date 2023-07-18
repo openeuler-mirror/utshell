@@ -2141,4 +2141,28 @@ extern "C" {
         arg2: *mut ::std::os::raw::c_char,
     ) -> *mut ARRAY;
 }
+extern "C" {
+    #[link_name = "\u{1}trap_list"]
+    pub static mut trap_list: [*mut ::std::os::raw::c_char; 0usize];
+}
+extern "C" {
+    #[link_name = "\u{1}trapped_signal_received"]
+    pub static mut trapped_signal_received: ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}wait_signal_received"]
+    pub static mut wait_signal_received: ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}running_trap"]
+    pub static mut running_trap: ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}trap_saved_exit_value"]
+    pub static mut trap_saved_exit_value: ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}suppress_debug_trap_verbose"]
+    pub static mut suppress_debug_trap_verbose: ::std::os::raw::c_int;
+}
 }
