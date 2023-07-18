@@ -492,6 +492,18 @@ pub unsafe extern "C" fn r_xtrace_print_word_list(list:*mut WORD_LIST, xtflags: 
             libc::free(x as *mut c_void);
         }
 
+        else if ansic_shouldquote(t) != 0
+        {
+            x = ansic_quote(t,0,0 as *mut c_int);
+            fprintf(xtrace_fp, CString::new("%s%s").unwrap().as_ptr(), x,
+                if !((*w).next).is_null(){
+                    b" " as *const u8 as *const c_char
+                }else{
+                    b"" as *const u8 as *const c_char
+                },
+            );
+            libc::free(x as *mut c_void);
+        }
     }
 }
 
