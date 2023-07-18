@@ -2204,4 +2204,13 @@ extern "C" {
 extern "C" {
     pub fn set_debug_trap(arg1: *mut ::std::os::raw::c_char);
 }
+extern "C" {
+    pub fn run_error_trap();
+}
+extern "C" {
+    pub fn run_return_trap();
+}
+extern "C" {
+    pub fn free_trap_strings();
+}
 }
