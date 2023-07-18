@@ -801,77 +801,90 @@ pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr
     canon_failed = 1;
   }
 
-  /* In POSIX mode, if we're resolving symlinks logically and sh_canonpath
-     returns NULL (because it checks the path, it will return NULL if the
-     resolved path doesn't exist), fail immediately. */
-  if posixly_correct !=0 && nolinks == 0 && canon_failed !=0 && (errno!() != libc::ENAMETOOLONG || ndlen > libc::PATH_MAX) {
-      if errno!() != libc::ENOENT && errno!() != libc::ENAMETOOLONG {
-        errno!() = libc::ENOTDIR;
-      }
-      libc::free (tdir as * mut c_void);
-      return 0;
-  }
-
-  {
-    if nolinks !=0 {
-      r = libc::chdir (newdir);
-    } else {
-      r = libc::chdir (tdir);
-    }
-
-    if r >= 0 {
-      r_resetxattr ();
-    }
-
-  }
-
-  /* If the chdir succeeds, update the_current_working_directory. */
-  if r == 0 {
-      /* If canonicalization failed, but the chdir succeeded, reset the
-	 shell's idea of the_current_working_directory. */
-      if canon_failed !=0	{
-	      t = r_resetpwd (CString::new("cd").unwrap().as_ptr() as * mut c_char);
-        if t == std::ptr::null_mut(){
-          set_working_directory (tdir);
+        /* Use the canonicalized version of NEWDIR, or, if canonicalization
+        failed, use the non-canonical form. */
+        canon_failed = 0;
+        if tdir != std::ptr::null_mut() && *tdir != 0 {
+            libc::free(t as *mut c_void);
         } else {
-          libc::free (t as * mut c_void);         
+            libc::free(tdir as *mut c_void);
+            tdir = t;
+            canon_failed = 1;
         }
-      } else {
-        set_working_directory (tdir);
-      }
 
-      libc::free (tdir as * mut c_void);  
-      return 1;
-  }
+        /* In POSIX mode, if we're resolving symlinks logically and sh_canonpath
+        returns NULL (because it checks the path, it will return NULL if the
+        resolved path doesn't exist), fail immediately. */
+        if posixly_correct != 0
+            && nolinks == 0
+            && canon_failed != 0
+            && (errno!() != libc::ENAMETOOLONG || ndlen > libc::PATH_MAX)
+        {
+            if errno!() != libc::ENOENT && errno!() != libc::ENAMETOOLONG {
+                errno!() = libc::ENOTDIR;
+            }
+            libc::free(tdir as *mut c_void);
+            return 0;
+        }
 
-  /* We failed to change to the appropriate directory name.  If we tried
-     what the user passed (nolinks != 0), punt now. */
-  if nolinks !=0 {
-      libc::free (tdir as * mut c_void);
-      return 0;
-  }
+        {
+            if nolinks != 0 {
+                r = libc::chdir(newdir);
+            } else {
+                r = libc::chdir(tdir);
+            }
 
-  err = errno!();
+            if r >= 0 {
+                r_resetxattr();
+            }
+        }
 
-  /* We're not in physical mode (nolinks == 0), but we failed to change to
-     the canonicalized directory name (TDIR).  Try what the user passed
-     verbatim. If we succeed, reinitialize the_current_working_directory.
-     POSIX requires that we just fail here, so we do in posix mode. */
-  if posixly_correct == 0 && libc::chdir (newdir) == 0  {
-      t = r_resetpwd (CString::new("cd").unwrap().as_ptr() as * mut c_char);
-      if t == std::ptr::null_mut() {
-        set_working_directory (tdir);
-      } else {
-        libc::free (t as * mut c_void);  
-      }
-      r = 1;
-  } else {
-    errno!()= err;
-    r = 0;
-  }
+        /* If the chdir succeeds, update the_current_working_directory. */
+        if r == 0 {
+            /* If canonicalization failed, but the chdir succeeded, reset the
+            shell's idea of the_current_working_directory. */
+            if canon_failed != 0 {
+                t = r_resetpwd(CString::new("cd").unwrap().as_ptr() as *mut c_char);
+                if t == std::ptr::null_mut() {
+                    set_working_directory(tdir);
+                } else {
+                    libc::free(t as *mut c_void);
+                }
+            } else {
+                set_working_directory(tdir);
+            }
 
-  libc::free (tdir as * mut c_void);
-  return r;
-  }
+            libc::free(tdir as *mut c_void);
+            return 0;
+        }
+
+        /* We failed to change to the appropriate directory name.  If we tried
+        what the user passed (nolinks != 0), punt now. */
+        if nolinks != 0 {
+            libc::free(tdir as *mut c_void);
+            return 0;
+        }
+
+        err = errno!();
+
+        /* We're not in physical mode (nolinks == 0), but we failed to change to
+        the canonicalized directory name (TDIR).  Try what the user passed
+        verbatim. If we succeed, reinitialize the_current_working_directory.
+        POSIX requires that we just fail here, so we do in posix mode. */
+        if posixly_correct == 0 && libc::chdir(newdir) == 0 {
+            t = r_resetpwd(CString::new("cd").unwrap().as_ptr() as *mut c_char);
+            if t == std::ptr::null_mut() {
+                set_working_directory(tdir);
+            } else {
+                libc::free(t as *mut c_void);
+            }
+            r = 1;
+        } else {
+            errno!() = err;
+            r = 0;
+        }
+
+        libc::free(tdir as *mut c_void);
+        return r;
+    }
 }
-
