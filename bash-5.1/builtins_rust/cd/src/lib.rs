@@ -15,7 +15,7 @@ pub enum JOB_STATE {
     JRUNNING = 1,
     JSTOPPED = 2,
     JDEAD = 4,
-    JMIXED = 16,
+    JMIXED = 8,
 }
 
 #[repr(u8)]
@@ -199,20 +199,20 @@ pub struct coproc_com {
 
 #[repr(C)]
 pub union VALUE_COMMAND {
-    For:*mut for_com,
-    Case:*mut case_com,
-    While:*mut while_com,
-    If:*mut if_com,
-    Connection:*mut connection,
-    Simple:*mut simple_com,
-    Function_def:*mut function_def,
-    Group:*mut group_com,
-    Select:*mut select_com,
-    Arith:*mut arith_com,
-    Cond:*mut cond_com,
-    ArithFor:*mut arith_for_com,
-    Subshell:*mut subshell_com,
-    Coproc:*mut coproc_com
+    For: *mut for_com,
+    Case: *mut case_com,
+    While: *mut while_com,
+    If: *mut if_com,
+    Connection: *mut connection,
+    Simple: *mut simple_com,
+    Function_def: *mut function_def,
+    Group: *mut group_com,
+    Select: *mut select_com,
+    Arith: *mut arith_com,
+    Cond: *mut cond_com,
+    ArithFor: *mut arith_for_com,
+    Subshell: *mut subshell_com,
+    Coproc: *mut coproc_com,
 }
 
 #[repr(C)]
@@ -268,49 +268,49 @@ macro_rules! readonly_p {
 
 #[macro_export]
 macro_rules! exported_p {
-  ($var:expr) => {
-    (*$var).attributes & 0x0000001
-  }
+    ($var:expr) => {
+        (*$var).attributes & 0x0000001
+    };
 }
 
 #[macro_export]
 macro_rules! LCD_DOVARS {
-  () => {
-    0x001
-  }
+    () => {
+        0x001
+    };
 }
 #[macro_export]
 macro_rules! LCD_DOSPELL {
-  () => {
-    0x002
-  }
+    () => {
+        0x002
+    };
 }
 #[macro_export]
 macro_rules! LCD_PRINTPATH {
-  () => {
-    0x004
-  }
+    () => {
+        0x004
+    };
 }
 
 #[macro_export]
 macro_rules! LCD_FREEDIRNAME {
-  () => {
-    0x008
-  }
+    () => {
+        0x008
+    };
 }
 
 #[macro_export]
 macro_rules! MP_DOTILDE {
-  () => {
-    0x01
-  }
+    () => {
+        0x01
+    };
 }
 
 #[macro_export]
 macro_rules! PATH_CHECKDOTDOT {
-  () => {
-    0x0001
-  }
+    () => {
+        0x0001
+    };
 }
 
 #[macro_export]
