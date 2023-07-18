@@ -2010,6 +2010,18 @@ extern "C" {
         __buf: *mut ::std::os::raw::c_char,
         __len: usize,
     ) -> ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct g_list {
+    pub next: *mut g_list,
+}
+pub type GENERIC_LIST = g_list;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct STRING_INT_ALIST {
+    pub word: *mut ::std::os::raw::c_char,
+    pub token: ::std::os::raw::c_int,
+}
 pub type Function = ::core::option::Option<unsafe extern "C" fn() -> ::std::os::raw::c_int>;
 pub type VFunction = ::core::option::Option<unsafe extern "C" fn()>;
 pub type CPFunction = ::core::option::Option<unsafe extern "C" fn() -> *mut ::std::os::raw::c_char>;
