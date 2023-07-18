@@ -1852,6 +1852,22 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn strfromf32x(
+        __dest: *mut ::std::os::raw::c_char,
+        __size: usize,
+        __format: *const ::std::os::raw::c_char,
+        __f: _Float32x,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn strfromf64x(
+        __dest: *mut ::std::os::raw::c_char,
+        __size: usize,
+        __format: *const ::std::os::raw::c_char,
+        __f: _Float64x,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn strtof64_l(
         __nptr: *const ::std::os::raw::c_char,
         __endptr: *mut *mut ::std::os::raw::c_char,
