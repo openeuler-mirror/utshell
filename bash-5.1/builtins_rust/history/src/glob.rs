@@ -335,43 +335,15 @@ unsafe {
         return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
     }
 }
-    else if (flags & (AFLAG | RFLAG | NFLAG | WFLAG | CFLAG)) == 0 {
-        result = display_history(list);
-        return r_sh_chkwrite(result);
-    }
-
-    filename = if !list.is_null() {(*((*list).word)).word} else {get_string_value("HISTFILE\0".as_ptr() as *mut c_char)};
-    result = EXECUTION_SUCCESS;
-
-    if restricted != 0 && !(libc::strchr(filename, b'/' as c_int).is_null()) {
-        r_sh_restricted(filename);
-        return EXECUTION_FAILURE;
-    }
-    if (flags & AFLAG) != 0 {
-        result = maybe_append_history(filename);
-    } else if (flags & WFLAG) != 0 {
-        result = write_history(filename);
-    } else if (flags & RFLAG) != 0{
-        result = read_history(filename);
-        history_lines_in_file = history_lines_read_from_file;
-    } else if (flags & NFLAG) != 0{
-        let old_history_lines = history_lines_in_file;
-        let obase = history_base;
-
-        using_history();
-        result = read_history_range(filename, history_lines_in_file, -1);
-        using_history();
-
-        history_lines_in_file = history_lines_read_from_file;
-        if force_append_history == 0 {
-            history_lines_this_session +=
-            history_lines_in_file - old_history_lines + history_base - obase;
-        }
-    }
-}
-
-    return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
-}
+pub const _STRMATCH_H: u32 = 1;
+pub const FNM_PATHNAME: u32 = 1;
+pub const FNM_NOESCAPE: u32 = 2;
+pub const FNM_PERIOD: u32 = 4;
+pub const FNM_LEADING_DIR: u32 = 8;
+pub const FNM_CASEFOLD: u32 = 16;
+pub const FNM_EXTMATCH: u32 = 32;
+pub const FNM_FIRSTCHAR: u32 = 64;
+pub const FNM_NOMATCH: u32 = 1;
 
 fn histtime(hlist: *mut HIST_ENTRY, histtimefmt: *const c_char) -> *mut c_char
 {
@@ -396,6 +368,11 @@ unsafe {
 
     return timestr.as_mut_ptr();
 }
+pub type mbstate_t = __mbstate_t;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _IO_FILE {
+    _unused: [u8; 0],
 }
 
 unsafe fn quit()
