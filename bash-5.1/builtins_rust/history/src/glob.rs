@@ -180,6 +180,15 @@ pub const HAVE_GETTIMEOFDAY: u32 = 1;
 pub const HAVE_ICONV: u32 = 1;
 pub const HAVE_IMAXDIV: u32 = 1;
 pub const HAVE_INET_ATON: u32 = 1;
+pub const HAVE_ISASCII: u32 = 1;
+pub const HAVE_ISBLANK: u32 = 1;
+pub const HAVE_ISGRAPH: u32 = 1;
+pub const HAVE_ISPRINT: u32 = 1;
+pub const HAVE_ISSPACE: u32 = 1;
+pub const HAVE_ISWCTYPE: u32 = 1;
+pub const HAVE_ISWLOWER: u32 = 1;
+pub const HAVE_ISWUPPER: u32 = 1;
+pub const HAVE_ISXDIGIT: u32 = 1;
 #[no_mangle]
 pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
 
