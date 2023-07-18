@@ -444,4 +444,21 @@ pub unsafe  extern "C" fn r_xtrace_print_assignment(name:*mut c_char, value:*mut
         fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(), r_indirection_level_string());
     }
 
+    if *value as c_int == '\u{0}' as i32 || assign_list != 0
+    {
+        nval = value;
+    }
+    else if sh_contains_shell_metas(value) != 0
+    {
+        nval = sh_single_quote(value);
+    }
+    else if ansic_shouldquote(value) != 0
+    {
+        nval = ansic_quote(value, 0, 0 as *mut c_int);
+    }
+    else 
+    {
+        nval = value;
+    }
+
 }

@@ -74,34 +74,34 @@ pub union REDIRECT {
 /* FOR command. */
 #[repr(C)]
 pub struct for_com {
-    flags:c_int,
-    line:c_int,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: c_int,
+    line: c_int,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct PATTERN_LIST {
-    next:* mut PATTERN_LIST,
-    patterns:* mut WordList,
-    action:*mut COMMAND,
-    flags:c_int
+    next: *mut PATTERN_LIST,
+    patterns: *mut WordList,
+    action: *mut COMMAND,
+    flags: c_int,
 }
 
 #[repr(C)]
 pub struct case_com {
-    flags:c_int,
-    line:c_int,
-    word:*mut WordDesc,
-    clauses:*mut PATTERN_LIST
+    flags: c_int,
+    line: c_int,
+    word: *mut WordDesc,
+    clauses: *mut PATTERN_LIST,
 }
 
 #[repr(C)]
 pub struct while_com {
-    flags:c_int,
-    test:*mut COMMAND,
-    action:*mut COMMAND
+    flags: c_int,
+    test: *mut COMMAND,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
@@ -240,7 +240,7 @@ pub struct _compacts {
 }
 
 pub struct CompactsArray {
-  compactsArr:[_compacts;25usize]
+    compactsArr: [_compacts; 25usize],
 }
 
 impl CompactsArray {
@@ -435,102 +435,102 @@ impl CompoptArray {
 
 #[repr(C)]
 pub struct COMPSPEC {
-  refcount:c_int,
-  actions:c_ulong,
-  options:c_ulong,
-  globpat:* mut c_char,
-  words:* mut c_char,
-  prefix: * mut c_char,
-  suffix: * mut c_char,
-  funcname: * mut c_char,
-  command:* mut c_char,
-  lcommand:* mut c_char,
-  filterpat:* mut c_char,
+    refcount: c_int,
+    actions: c_ulong,
+    options: c_ulong,
+    globpat: *mut c_char,
+    words: *mut c_char,
+    prefix: *mut c_char,
+    suffix: *mut c_char,
+    funcname: *mut c_char,
+    command: *mut c_char,
+    lcommand: *mut c_char,
+    filterpat: *mut c_char,
 }
 #[repr(C)]
 pub struct BUCKET_CONTENTS {
-  next:* mut BUCKET_CONTENTS,	/* Link to next hashed key in this bucket. */
-  key:* mut c_char,			/* What we look up. */
-  data:* mut libc::c_void,	/* What we really want. */
-  khash:libc::c_uint,	/* What key hashes to */
-  times_found:i32,		/* Number of times this item has been found. */
+    next: *mut BUCKET_CONTENTS, /* Link to next hashed key in this bucket. */
+    key: *mut c_char,           /* What we look up. */
+    data: *mut libc::c_void,    /* What we really want. */
+    khash: libc::c_uint,        /* What key hashes to */
+    times_found: i32,           /* Number of times this item has been found. */
 }
 
 #[repr(C)]
 pub struct STRINGLIST {
-  list:* mut * mut c_char,
-  list_size:c_int,
-  list_len:c_int,
+    list: *mut *mut c_char,
+    list_size: c_int,
+    list_len: c_int,
 }
 
 #[macro_export]
 macro_rules! CA_ALIAS {
-  () => {
-    1<<0
-  }
+    () => {
+        1 << 0
+    };
 }
 
 #[macro_export]
 macro_rules! CA_ARRAYVAR {
-  () => {
-    1<<1
-  }
+    () => {
+        1 << 1
+    };
 }
 
 #[macro_export]
 macro_rules! CA_BINDING {
-  () => {
-    1<<2
-  }
+    () => {
+        1 << 2
+    };
 }
 
 #[macro_export]
 macro_rules! CA_BUILTIN {
-  () => {
-    1<<3
-  }
+    () => {
+        1 << 3
+    };
 }
 
 #[macro_export]
 macro_rules! CA_COMMAND {
-  () => {
-    1<<4
-  }
+    () => {
+        1 << 4
+    };
 }
 
 #[macro_export]
 macro_rules! CA_DIRECTORY {
-  () => {
-    1<<5
-  }
+    () => {
+        1 << 5
+    };
 }
 
 #[macro_export]
 macro_rules! CA_DISABLED {
-  () => {
-    1<<6
-  }
+    () => {
+        1 << 6
+    };
 }
 
 #[macro_export]
 macro_rules! CA_ENABLED {
-  () => {
-    1<<7
-  }
+    () => {
+        1 << 7
+    };
 }
 
 #[macro_export]
 macro_rules! CA_EXPORT {
-  () => {
-    1<<8
-  }
+    () => {
+        1 << 8
+    };
 }
 
 #[macro_export]
 macro_rules! CA_FILE {
-  () => {
-    1<<9
-  }
+    () => {
+        1 << 9
+    };
 }
 
 #[macro_export]
