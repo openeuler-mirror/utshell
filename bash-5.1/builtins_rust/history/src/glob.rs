@@ -2165,4 +2165,25 @@ extern "C" {
     #[link_name = "\u{1}suppress_debug_trap_verbose"]
     pub static mut suppress_debug_trap_verbose: ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn initialize_traps();
+}
+extern "C" {
+    pub fn run_pending_traps();
+}
+extern "C" {
+    pub fn queue_sigchld_trap(arg1: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn maybe_set_sigchld_trap(arg1: *mut ::std::os::raw::c_char);
+}
+extern "C" {
+    pub fn set_impossible_sigchld_trap();
+}
+extern "C" {
+    pub fn set_sigchld_trap(arg1: *mut ::std::os::raw::c_char);
+}
+extern "C" {
+    pub fn set_debug_trap(arg1: *mut ::std::os::raw::c_char);
+}
 }
