@@ -2327,6 +2327,15 @@ extern "C" {
     pub fn set_debug_trap(arg1: *mut ::std::os::raw::c_char);
 }
 extern "C" {
+    pub fn run_exit_trap() -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn run_trap_cleanup(arg1: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn run_debug_trap() -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn run_error_trap();
 }
 extern "C" {
