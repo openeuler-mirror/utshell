@@ -38,15 +38,28 @@ enum command_type {
 }
 
 #[repr(u8)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 enum r_instruction {
-    r_output_direction, r_input_direction, r_inputa_direction,
-    r_appending_to, r_reading_until, r_reading_string,
-    r_duplicating_input, r_duplicating_output, r_deblank_reading_until,
-    r_close_this, r_err_and_out, r_input_output, r_output_force,
-    r_duplicating_input_word, r_duplicating_output_word,
-    r_move_input, r_move_output, r_move_input_word, r_move_output_word,
-    r_append_err_and_out
+    r_output_direction,
+    r_input_direction,
+    r_inputa_direction,
+    r_appending_to,
+    r_reading_until,
+    r_reading_string,
+    r_duplicating_input,
+    r_duplicating_output,
+    r_deblank_reading_until,
+    r_close_this,
+    r_err_and_out,
+    r_input_output,
+    r_output_force,
+    r_duplicating_input_word,
+    r_duplicating_output_word,
+    r_move_input,
+    r_move_output,
+    r_move_input_word,
+    r_move_output_word,
+    r_append_err_and_out,
 }
 
 #[repr(C)]
@@ -59,31 +72,31 @@ pub struct PROCESS {
 }
 
 #[repr(C)]
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub union REDIRECTEE {
-    dest:libc::c_int,
-    filename:* mut WordDesc
+    dest: libc::c_int,
+    filename: *mut WordDesc,
 }
 
 #[repr(C)]
 pub union REDIRECT {
-  next:*mut REDIRECT,	/* Next element, or NULL. */
-  redirector:REDIRECTEE, 	/* Descriptor or varname to be redirected. */
-  rflags:libc::c_int,			/* Private flags for this redirection */
-  flags:libc::c_int,			/* Flag value for `open'. */
-  instruction:r_instruction, /* What to do with the information. */
-  redirectee:REDIRECTEE,	/* File descriptor or filename */
-  here_doc_eof:*mut c_char		/* The word that appeared in <<foo. */
+    next: *mut REDIRECT,        /* Next element, or NULL. */
+    redirector: REDIRECTEE,     /* Descriptor or varname to be redirected. */
+    rflags: libc::c_int,        /* Private flags for this redirection */
+    flags: libc::c_int,         /* Flag value for `open'. */
+    instruction: r_instruction, /* What to do with the information. */
+    redirectee: REDIRECTEE,     /* File descriptor or filename */
+    here_doc_eof: *mut c_char,  /* The word that appeared in <<foo. */
 }
 
 /* FOR command. */
 #[repr(C)]
 pub struct for_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
@@ -135,18 +148,18 @@ pub struct simple_com {
 
 #[repr(C)]
 pub struct function_def {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
 pub struct group_com {
-    ignore:libc::c_int, 
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    ignore: libc::c_int,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
@@ -217,11 +230,11 @@ pub union VALUE_COMMAND {
 
 #[repr(C)]
 pub struct COMMAND {
-    type_c:command_type,
-    flags:i32,
-    line:i32,
-    redirects:*mut REDIRECT,
-    value:VALUE_COMMAND
+    type_c: command_type,
+    flags: i32,
+    line: i32,
+    redirects: *mut REDIRECT,
+    value: VALUE_COMMAND,
 }
 
 #[repr(C)]
@@ -250,7 +263,6 @@ pub struct SHELL_VAR {
   attributes:i32,		/* export, readonly, array, invisible... */
   context:i32			/* Which context this variable belongs to. */
 }
-
 
 #[macro_export]
 macro_rules! DUP_JOB {
