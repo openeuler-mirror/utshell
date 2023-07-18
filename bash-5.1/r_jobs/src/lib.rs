@@ -1135,6 +1135,11 @@ pub unsafe extern "C"  fn  procsub_waitall() {
     let mut p: *mut PROCESS = 0 as *mut PROCESS;
     let mut r:  c_int = 0;
 
-
-
+    p = procsubs.head;
+    while !p.is_null() {
+        if !((*p).running == PS_DONE as i32) {
+            r = wait_for((*p).pid, 0 );
+        }
+        p = (*p).next;
+    }
 }
