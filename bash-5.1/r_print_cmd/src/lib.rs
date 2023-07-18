@@ -450,6 +450,21 @@ pub unsafe extern "C" fn r_xtrace_print_word_list(list:*mut WORD_LIST, xtflags: 
         fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(), r_indirection_level_string());
     }
 
+    w = list;
+    while !w.is_null()
+    {
+
+        t = (*(*w).word).word;
+        if t.is_null() || *t as c_int == '\u{0}' as i32{
+            fprintf(xtrace_fp, CString::new("''%s").unwrap().as_ptr(), 
+                    if !((*w).next).is_null(){
+                        b" " as *const u8 as *const c_char
+                    }else{
+                        b"" as *const u8 as *const c_char
+                    },
+            );
+        }
+    }
 }
 
 #[no_mangle]
