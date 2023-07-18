@@ -11,7 +11,7 @@ use std::ffi::{CStr, CString};
 
 #[repr(i8)]
 pub enum JOB_STATE {
-    JNONE = -1,
+    JNONE = 0,
     JRUNNING = 1,
     JSTOPPED = 2,
     JDEAD = 4,
@@ -101,49 +101,49 @@ pub struct for_com {
 
 #[repr(C)]
 pub struct PATTERN_LIST {
-    next:* mut PATTERN_LIST,
-    patterns:* mut WordList,
-    action:*mut COMMAND,
-    flags:libc::c_int
+    next: *mut PATTERN_LIST,
+    patterns: *mut WordList,
+    action: *mut COMMAND,
+    flags: libc::c_int,
 }
 
 #[repr(C)]
 pub struct case_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    word:*mut WordDesc,
-    clauses:*mut PATTERN_LIST
+    flags: libc::c_int,
+    line: libc::c_int,
+    word: *mut WordDesc,
+    clauses: *mut PATTERN_LIST,
 }
 
 #[repr(C)]
 pub struct while_com {
-    flags:libc::c_int,
-    test:*mut COMMAND,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    test: *mut COMMAND,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct if_com {
-    flags:libc::c_int,
-    test:*mut COMMAND,
-    true_case:*mut COMMAND,
-    false_case:*mut COMMAND
+    flags: libc::c_int,
+    test: *mut COMMAND,
+    true_case: *mut COMMAND,
+    false_case: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct connection {
-    ignore:libc::c_int,
-    first:*mut COMMAND,
-    second:*mut COMMAND,
-    connector:libc::c_int
+    ignore: libc::c_int,
+    first: *mut COMMAND,
+    second: *mut COMMAND,
+    connector: libc::c_int,
 }
 
 #[repr(C)]
 pub struct simple_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    words:*mut WordList,
-    redirects:*mut REDIRECT
+    flags: libc::c_int,
+    line: libc::c_int,
+    words: *mut WordList,
+    redirects: *mut REDIRECT,
 }
 
 #[repr(C)]
@@ -164,26 +164,26 @@ pub struct group_com {
 
 #[repr(C)]
 pub struct select_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct arith_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    exp:*mut WordList
+    flags: libc::c_int,
+    line: libc::c_int,
+    exp: *mut WordList,
 }
 
 #[repr(C)]
 pub struct cond_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    type_c:libc::c_int,
-    exp:*mut WordList
+    flags: libc::c_int,
+    line: libc::c_int,
+    type_c: libc::c_int,
+    exp: *mut WordList,
 }
 
 #[repr(C)]

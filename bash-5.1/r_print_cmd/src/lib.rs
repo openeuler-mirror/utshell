@@ -441,8 +441,14 @@ pub unsafe extern "C" fn r_xtrace_print_word_list(list:*mut WORD_LIST, xtflags: 
     let mut w:*mut WORD_LIST;
     let mut t:*mut c_char;
     let mut x:*mut c_char;
-    
+
     CHECK_XTRACE_FP!();
+
+ 
+    if (xtflags & 1) != 0
+    {
+        fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(), r_indirection_level_string());
+    }
 
 }
 
