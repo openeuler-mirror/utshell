@@ -1200,7 +1200,13 @@ pub const _PC_REC_XFER_ALIGN: _bindgen_ty_2 = 17;
 pub const _PC_ALLOC_SIZE_MIN: _bindgen_ty_2 = 18;
 pub const _PC_SYMLINK_MAX: _bindgen_ty_2 = 19;
 pub const _PC_2_SYMLINKS: _bindgen_ty_2 = 20;
-
+pub const _SC_2_VERSION: _bindgen_ty_3 = 46;
+pub const _SC_2_C_BIND: _bindgen_ty_3 = 47;
+pub const _SC_2_C_DEV: _bindgen_ty_3 = 48;
+pub const _SC_2_FORT_DEV: _bindgen_ty_3 = 49;
+pub const _SC_2_FORT_RUN: _bindgen_ty_3 = 50;
+pub const _SC_2_SW_DEV: _bindgen_ty_3 = 51;
+pub const _SC_2_LOCALEDEF: _bindgen_ty_3 = 52;
 pub const _SC_SSIZE_MAX: _bindgen_ty_3 = 110;
 pub const _SC_SCHAR_MAX: _bindgen_ty_3 = 111;
 pub const _SC_SCHAR_MIN: _bindgen_ty_3 = 112;
