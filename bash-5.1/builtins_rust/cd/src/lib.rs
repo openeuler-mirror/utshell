@@ -422,54 +422,58 @@ pub extern "C" fn r_setpwd (dirname:* mut c_char)->i32
 }
 
 #[no_mangle]
-pub extern "C" fn r_bindpwd (no_symlinks:i32)->i32 {
-  let mut dirname:*mut c_char;
-  let pwdvar:*mut c_char;
-  let old_anm:i32;
-  let mut r:i32;
-  let mut canon_failed:i32;
-  let tvar:* mut SHELL_VAR;
-  unsafe {
-  r = sh_chkwrite (EXECUTION_SUCCESS!());
-  if the_current_working_directory !=std::ptr::null_mut() {
-    if no_symlinks !=0{
-      dirname=sh_physpath (the_current_working_directory, 0);
-    }else {
-      dirname =the_current_working_directory;
-    }
-  } else {
-    let c_str_cd = CString::new("cd").unwrap();
-    dirname=get_working_directory(c_str_cd.as_ptr() as * mut c_char);
-  }
+pub extern "C" fn r_bindpwd(no_symlinks: i32) -> i32 {
+    let mut dirname: *mut c_char;
+    let pwdvar: *mut c_char;
+    let old_anm: i32;
+    let mut r: i32;
+    let mut canon_failed: i32;
+    let tvar: *mut SHELL_VAR;
+    unsafe {
+        r = sh_chkwrite(EXECUTION_SUCCESS!());
+        if the_current_working_directory != std::ptr::null_mut() {
+            if no_symlinks != 0 {
+                dirname = sh_physpath(the_current_working_directory, 0);
+            } else {
+                dirname = the_current_working_directory;
+            }
+        } else {
+            let c_str_cd = CString::new("cd").unwrap();
+            dirname = get_working_directory(c_str_cd.as_ptr() as *mut c_char);
+        }
 
-  /* If canonicalization fails, reset dirname to the_current_working_directory */
-  canon_failed = 0;
-  if dirname == std::ptr::null_mut() {
-      canon_failed = 1;
-      dirname = the_current_working_directory;
-  }
+        /* If canonicalization fails, reset dirname to the_current_working_directory */
+        canon_failed = 0;
+        if dirname == std::ptr::null_mut() {
+            canon_failed = 0;
+            dirname = the_current_working_directory;
+        }
 
-  old_anm = array_needs_making;
-  let c_str_pwd = CString::new("PWD").unwrap();
-  pwdvar = get_string_value (c_str_pwd.as_ptr());
+        old_anm = array_needs_making;
+        let c_str_pwd = CString::new("PWD").unwrap();
+        pwdvar = get_string_value(c_str_pwd.as_ptr());
 
-  tvar = bind_variable (CString::new("OLDPWD").unwrap().as_ptr(), pwdvar, 0);
-  if tvar !=std::ptr::null_mut() && readonly_p! (tvar) !=0{
-      r = EXECUTION_FAILURE!();
-  }
+        tvar = bind_variable(CString::new("OLDPWD").unwrap().as_ptr(), pwdvar, 0);
+        if tvar != std::ptr::null_mut() && readonly_p!(tvar) != 0 {
+            r = EXECUTION_FAILURE!();
+        }
 
-  if old_anm == 0 && array_needs_making !=0 && exported_p! (tvar) !=0 {
-      update_export_env_inplace (CString::new("OLDPWD").unwrap().as_ptr() as * mut c_char, 7, pwdvar);
-      array_needs_making = 0;
-  }
+        if old_anm == 0 && array_needs_making != 0 && exported_p!(tvar) != 0 {
+            update_export_env_inplace(
+                CString::new("OLDPWD").unwrap().as_ptr() as *mut c_char,
+                7,
+                pwdvar,
+            );
+            array_needs_making = 0;
+        }
 
-  if r_setpwd (dirname) == EXECUTION_FAILURE!() {
-    r = EXECUTION_FAILURE!();
-  }
+        if r_setpwd(dirname) == EXECUTION_FAILURE!() {
+            r = EXECUTION_FAILURE!();
+        }
 
-  if canon_failed !=0 && eflag !=0 {
-    r = EXECUTION_FAILURE!();
-  }
+        if canon_failed != 0 && eflag != 0 {
+            r = EXECUTION_FAILURE!();
+        }
 
         if dirname != std::ptr::null_mut() && dirname != the_current_working_directory {
             libc::free(dirname as *mut libc::c_void);
