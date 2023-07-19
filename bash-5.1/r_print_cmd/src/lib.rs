@@ -643,5 +643,12 @@ pub unsafe extern "C" fn print_arith_for_command(arith_for_command:*mut ARITH_FO
     command_print_word_list((*arith_for_command).step, b" \0" as *const u8 as *const c_char as *mut c_char);
     cprintf_1(b"))\0" as *const u8 as *const i8);
     newline(b"do\n\0" as *const u8 as *const c_char as *mut c_char);
-    
+
+    indentation += indentation_amount;
+    make_command_string_internal((*arith_for_command).action);
+    PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
+    semicolon();
+    indentation -= indentation_amount;
+    newline(b"done\0" as *const u8 as *const c_char as *mut c_char);
+
 }

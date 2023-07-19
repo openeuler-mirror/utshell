@@ -116,7 +116,7 @@ pub extern "C" fn r_caller_builtin(mut list:*mut WordList)->i32{
 
     let mut c_str :CString;
 
-    unsafe{
+    unsafe {
         CHECK_HELPOPT!(list);
 
         let c_str1 = CString::new("FUNCNAME").unwrap();
@@ -141,12 +141,12 @@ pub extern "C" fn r_caller_builtin(mut list:*mut WordList)->i32{
         if bash_source_a.is_null() || array_empty(bash_source_a){
             return EXECUTION_FAILURE!();
         }
-      
-        if no_options(list) != 0{
+
+        if no_options(list) != 0 {
             return EX_USAGE;
         }
 
-        list = loptend;     /* skip over possible `--' */
+        list = loptend; /* skip over possible `--' */
         /* If there is no argument list, then give short form: line filename. */
         if list.is_null() {
             lineno_s = array_reference(bash_lineno_a,0);
@@ -171,33 +171,33 @@ pub extern "C" fn r_caller_builtin(mut list:*mut WordList)->i32{
             let source_s_str = CStr::from_ptr(source_s).to_str().unwrap().to_owned();
             println!("{} {}",lineno_s_str,source_s_str);
 
-            return EXECUTION_SUCCESS!();   
+            return EXECUTION_SUCCESS!();
         }
 
         if funcname_a.is_null() || array_empty(funcname_a) {
             return EXECUTION_FAILURE!();
         }
-        if legal_number((*(*list).word).word,&mut num) != 0{
-            lineno_s = array_reference(bash_lineno_a,num);
-            source_s = array_reference(bash_source_a,num+1);
-            funcname_s = array_reference(funcname_a,num+1);
-            
-            if lineno_s == PT_NULL as *mut c_char || source_s == PT_NULL as *mut c_char || funcname_s == PT_NULL as *mut c_char{
+        if legal_number((*(*list).word).word, &mut num) != 0 {
+            lineno_s = array_reference(bash_lineno_a, num);
+            source_s = array_reference(bash_source_a, num + 1);
+            funcname_s = array_reference(funcname_a, num + 1);
+
+            if lineno_s == PT_NULL as *mut c_char
+                || source_s == PT_NULL as *mut c_char
+                || funcname_s == PT_NULL as *mut c_char
+            {
                 return EXECUTION_FAILURE!();
             }
             let lineno_s_str = CStr::from_ptr(lineno_s).to_str().unwrap().to_owned();
             let funcname_s_str = CStr::from_ptr(funcname_s).to_str().unwrap().to_owned();
             let source_s_str = CStr::from_ptr(source_s).to_str().unwrap().to_owned();
-            println!("{} {} {}",lineno_s_str,funcname_s_str,source_s_str);
-        }
-        else{
+            println!("{} {} {}", lineno_s_str, funcname_s_str, source_s_str);
+        } else {
             sh_invalidnum((*(*list).word).word);
             builtin_usage();
-            return EX_USAGE;
+            return EX_USAGE!();
         }
 
         return EXECUTION_SUCCESS!();
     }
 }
-
-
