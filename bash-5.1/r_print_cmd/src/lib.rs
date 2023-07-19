@@ -622,11 +622,17 @@ pub unsafe extern "C" fn print_for_command(for_command:*mut FOR_COM)
     newline(b"do\n" as *const u8 as *const c_char as *mut c_char);
     indentation += indentation_amount;
     make_command_string_internal((*for_command).action);
-    
+
     PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *mut c_char);
     semicolon();
 
     indentation -= indentation_amount;
     newline(b"done\0" as *const u8 as *const c_char as *mut c_char);
 
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn print_arith_for_command(arith_for_command:*mut ARITH_FOR_COM)
+{
+    
 }
