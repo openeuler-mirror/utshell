@@ -460,9 +460,9 @@ pub unsafe extern "C" fn r_xtrace_print_word_list(list:*mut WORD_LIST, xtflags: 
         {
             fprintf(xtrace_fp, CString::new("''%s").unwrap().as_ptr(), 
                     if !((*w).next).is_null(){
-                        b" " as *const u8 as *const c_char
+                        b" \0" as *const u8 as *const c_char
                     }else{
-                        b"" as *const u8 as *const c_char
+                        b"\0" as *const u8 as *const c_char
                     },
             );
         }
@@ -471,9 +471,9 @@ pub unsafe extern "C" fn r_xtrace_print_word_list(list:*mut WORD_LIST, xtflags: 
         {
             fprintf(xtrace_fp, CString::new("%s%s").unwrap().as_ptr(),t,
                 if !((*w).next).is_null(){
-                    b" " as *const u8 as *const c_char
+                    b" \0" as *const u8 as *const c_char
                 }else{
-                    b"" as *const u8 as *const c_char
+                    b"\0" as *const u8 as *const c_char
                 },
             );
         }
@@ -484,9 +484,9 @@ pub unsafe extern "C" fn r_xtrace_print_word_list(list:*mut WORD_LIST, xtflags: 
             x = sh_single_quote(t);
             fprintf(xtrace_fp,CString::new("%s%s").unwrap().as_ptr(),x,
                 if !((*w).next).is_null(){
-                    b" " as *const u8 as *const c_char
+                    b" \0" as *const u8 as *const c_char
                 }else{
-                    b"" as *const u8 as *const c_char
+                    b"\0" as *const u8 as *const c_char
                 },
             );
             libc::free(x as *mut c_void);
@@ -497,9 +497,9 @@ pub unsafe extern "C" fn r_xtrace_print_word_list(list:*mut WORD_LIST, xtflags: 
             x = ansic_quote(t,0,0 as *mut c_int);
             fprintf(xtrace_fp, CString::new("%s%s").unwrap().as_ptr(), x,
                 if !((*w).next).is_null(){
-                    b" " as *const u8 as *const c_char
+                    b" \0" as *const u8 as *const c_char
                 }else{
-                    b"" as *const u8 as *const c_char
+                    b"\0" as *const u8 as *const c_char
                 },
             );
             libc::free(x as *mut c_void);
@@ -509,9 +509,9 @@ pub unsafe extern "C" fn r_xtrace_print_word_list(list:*mut WORD_LIST, xtflags: 
         {
             fprintf(xtrace_fp, CString::new("%s%s").unwrap().as_ptr(), t,
                 if !((*w).next).is_null(){
-                    b" " as *const u8 as *const c_char
+                    b" \0" as *const u8 as *const c_char
                 }else{
-                    b"" as *const u8 as *const c_char
+                    b"\0" as *const u8 as *const c_char
                 },
             );
         }
@@ -526,7 +526,7 @@ pub unsafe  extern "C" fn r_xtrace_print_assignment(name:*mut c_char, value:*mut
     CHECK_XTRACE_FP!();
    
     if xflags != 0{
-        fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(), r_indirection_level_string());
+        fprintf(xtrace_fp, CString::new("%s \0").unwrap().as_ptr(), r_indirection_level_string());
     }
 
     if *value as c_int == '\u{0}' as i32 || assign_list != 0
@@ -576,12 +576,12 @@ pub unsafe extern "C" fn command_print_word_list(list:*mut WORD_LIST, separator:
     {
         if !(*w).next.is_null()
         {
-            let mut str = format!("{}{}",CStr::from_ptr((*(*w).word).word).to_str().unwrap(),CStr::from_ptr(separator).to_str().unwrap());
+            let mut str = format!("{}{}\0",CStr::from_ptr((*(*w).word).word).to_str().unwrap(),CStr::from_ptr(separator).to_str().unwrap());
             cprintf_1(str.as_mut_ptr() as *mut c_char);
         }
         else 
         {
-            let mut str = format!("{}",CStr::from_ptr((*(*w).word).word).to_str().unwrap());
+            let mut str = format!("{}\0",CStr::from_ptr((*(*w).word).word).to_str().unwrap());
             cprintf_1(str.as_mut_ptr() as *mut c_char);
         }
 
@@ -611,5 +611,5 @@ pub unsafe extern "C" fn r_xtrace_print_for_command_head(for_command:*mut FOR_CO
     fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(), r_indirection_level_string());
     fprintf(xtrace_fp,CString::new("for %s in ").unwrap().as_ptr(),(*(*for_command).name).word);
     r_xtrace_print_word_list((*for_command).map_list,2);
-    
+
 }
