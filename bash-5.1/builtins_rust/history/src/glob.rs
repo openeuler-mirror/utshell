@@ -1895,6 +1895,26 @@ pub const __rlimit_resource_RLIMIT_NOFILE: __rlimit_resource = 7;
 pub const __rlimit_resource___RLIMIT_OFILE: __rlimit_resource = 7;
 #[repr(C)]
 #[derive(Copy, Clone)]
+pub struct rusage {
+    pub ru_utime: timeval,
+    pub ru_stime: timeval,
+    pub __bindgen_anon_1: rusage__bindgen_ty_1,
+    pub __bindgen_anon_2: rusage__bindgen_ty_2,
+    pub __bindgen_anon_3: rusage__bindgen_ty_3,
+    pub __bindgen_anon_4: rusage__bindgen_ty_4,
+    pub __bindgen_anon_5: rusage__bindgen_ty_5,
+    pub __bindgen_anon_6: rusage__bindgen_ty_6,
+    pub __bindgen_anon_7: rusage__bindgen_ty_7,
+    pub __bindgen_anon_8: rusage__bindgen_ty_8,
+    pub __bindgen_anon_9: rusage__bindgen_ty_9,
+    pub __bindgen_anon_10: rusage__bindgen_ty_10,
+    pub __bindgen_anon_11: rusage__bindgen_ty_11,
+    pub __bindgen_anon_12: rusage__bindgen_ty_12,
+    pub __bindgen_anon_13: rusage__bindgen_ty_13,
+    pub __bindgen_anon_14: rusage__bindgen_ty_14,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub union rusage__bindgen_ty_2 {
     pub ru_ixrss: ::std::os::raw::c_long,
     pub __ru_ixrss_word: __syscall_slong_t,
