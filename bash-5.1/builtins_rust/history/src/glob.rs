@@ -1962,6 +1962,20 @@ pub union rusage__bindgen_ty_3 {
     pub __ru_idrss_word: __syscall_slong_t,
     _bindgen_union_align: u64,
 }
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union rusage__bindgen_ty_13 {
+    pub ru_nvcsw: ::std::os::raw::c_long,
+    pub __ru_nvcsw_word: __syscall_slong_t,
+    _bindgen_union_align: u64,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union rusage__bindgen_ty_14 {
+    pub ru_nivcsw: ::std::os::raw::c_long,
+    pub __ru_nivcsw_word: __syscall_slong_t,
+    _bindgen_union_align: u64,
+}
 pub const __priority_which_PRIO_PROCESS: __priority_which = 0;
 pub const __priority_which_PRIO_PGRP: __priority_which = 1;
 pub const __priority_which_PRIO_USER: __priority_which = 2;
