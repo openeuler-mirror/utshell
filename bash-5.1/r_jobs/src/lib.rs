@@ -1297,8 +1297,14 @@ unsafe extern "C" fn delete_old_job(mut pid: pid_t) {
     let mut p: *mut PROCESS = 0 as *mut PROCESS;
     let mut job:  c_int = 0;
 
-
-
+    job = find_job(pid, 0 , &mut p);
+    if job != NO_JOB {
+        if JOBSTATE!(job) == JDEAD {
+            delete_job(job, 2 as  c_int);
+        } else if !p.is_null() {
+            (*p).pid = 0 ;
+        }
+    }
 }
 
 
