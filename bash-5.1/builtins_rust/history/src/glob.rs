@@ -2314,6 +2314,14 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn system(__command: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn canonicalize_file_name(
+        __name: *const ::std::os::raw::c_char,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
     pub fn fcvt(
         __value: f64,
         __ndigit: ::std::os::raw::c_int,
