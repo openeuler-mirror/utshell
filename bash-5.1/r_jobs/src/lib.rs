@@ -1232,8 +1232,17 @@ unsafe extern "C" fn reset_job_indices() {
         if old < 0 {
             old = 0 ;
         }
-    
-    
+        while js.j_lastj != old {
+            if js.j_lastj < 0 {
+                js.j_lastj = js.j_jobslots - 1 ;
+            }
+            if !(*jobs.offset(js.j_lastj as isize)).is_null() || js.j_lastj == old {
+                break;
+            }
+            js.j_lastj -= 1;
+        } 
+
+
 
     }
 }
