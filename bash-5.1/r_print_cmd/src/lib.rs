@@ -601,3 +601,15 @@ pub unsafe extern "C" fn r_print_for_command_head(for_command:*mut FOR_COM)
     cprintf_1(str.as_mut_ptr() as *mut c_char);
     command_print_word_list((*for_command).map_list, b" " as *const u8  as *mut c_char);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_print_for_command_head(for_command:*mut FOR_COM)
+{
+
+    println!("r_xtrace_print_for_command_head");
+    CHECK_XTRACE_FP!();
+    fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(), r_indirection_level_string());
+    fprintf(xtrace_fp,CString::new("for %s in ").unwrap().as_ptr(),(*(*for_command).name).word);
+    r_xtrace_print_word_list((*for_command).map_list,2);
+    
+}
