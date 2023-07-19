@@ -1743,6 +1743,24 @@ pub union command__bindgen_ty_1 {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
+pub struct case_com {
+    pub flags: ::std::os::raw::c_int,
+    pub line: ::std::os::raw::c_int,
+    pub word: *mut WORD_DESC,
+    pub clauses: *mut PATTERN_LIST,
+}
+pub type CASE_COM = case_com;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct for_com {
+    pub flags: ::std::os::raw::c_int,
+    pub line: ::std::os::raw::c_int,
+    pub name: *mut WORD_DESC,
+    pub map_list: *mut WORD_LIST,
+    pub action: *mut COMMAND,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct if_com {
     pub flags: ::std::os::raw::c_int,
     pub test: *mut COMMAND,
