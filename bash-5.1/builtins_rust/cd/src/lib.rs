@@ -11,7 +11,7 @@ use std::ffi::{CStr, CString};
 
 #[repr(i8)]
 pub enum JOB_STATE {
-    JNONE = 0,
+    JNONE = -1,
     JRUNNING = 1,
     JSTOPPED = 2,
     JDEAD = 4,
@@ -621,12 +621,12 @@ pub extern "C" fn r_cd_builtin(mut list: *mut WordList) -> i32 {
             dirname = (*(*loptend).word).word;
 
             /* Find directory in $CDPATH. */
-            path_index = 1;
+            path_index = 0;
             path = extract_colon_unit(cdpath, &mut path_index);
 
             while path != std::ptr::null_mut() {
                 /* OPT is 1 if the path element is non-empty */
-                opt = (char::from(*path as u8) != '') as i32;
+                opt = (char::from(*path as u8) != '\0') as i32;
                 temp = sh_makepath(path, dirname, MP_DOTILDE!());
                 libc::free(path as *mut c_void);
 
@@ -741,7 +741,7 @@ pub extern "C" fn r_pwd_builtin(list: *mut WordList) -> i32 {
                     pflag = 1;
                 }
                 'L' => {
-                    verbatim_pwd = -1;
+                    verbatim_pwd = 0;
                 }
                 _ => {
                     if opt == -99 {
@@ -916,10 +916,10 @@ pub extern "C" fn r_change_to_directory(newdir: *mut c_char, nolinks: i32, xattr
             } else {
                 libc::free(t as *mut c_void);
             }
-            r = 0;
+            r = 1;
         } else {
             errno!() = err;
-            r = 1;
+            r = 0;
         }
 
         libc::free(tdir as *mut c_void);
