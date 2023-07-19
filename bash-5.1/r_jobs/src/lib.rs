@@ -1226,7 +1226,14 @@ unsafe extern "C" fn reset_job_indices() {
         }
     }
 
+    if (*jobs.offset(js.j_lastj as isize)).is_null() {
+        js.j_lastj = js.j_lastj - 1;
+        old = js.j_lastj;
+        if old < 0 {
+            old = 0 ;
+        }
+    
+    
 
-
-
+    }
 }
