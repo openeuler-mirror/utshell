@@ -2248,6 +2248,32 @@ extern "C" {
     pub fn full_pathname(arg1: *mut ::std::os::raw::c_char) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
+    pub fn polite_directory_format(
+        arg1: *mut ::std::os::raw::c_char,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn trim_pathname(
+        arg1: *mut ::std::os::raw::c_char,
+        arg2: ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn printable_filename(
+        arg1: *mut ::std::os::raw::c_char,
+        arg2: ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn extract_colon_unit(
+        arg1: *mut ::std::os::raw::c_char,
+        arg2: *mut ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn tilde_initialize();
+}
+extern "C" {
     pub fn bash_tilde_find_word(
         arg1: *const ::std::os::raw::c_char,
         arg2: ::std::os::raw::c_int,
