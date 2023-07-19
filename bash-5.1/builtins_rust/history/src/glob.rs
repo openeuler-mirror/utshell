@@ -1894,6 +1894,22 @@ extern "C" {
 extern "C" {
     pub fn isalpha_l(arg1: ::std::os::raw::c_int, arg2: locale_t) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn iscntrl_l(arg1: ::std::os::raw::c_int, arg2: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn isdigit_l(arg1: ::std::os::raw::c_int, arg2: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn islower_l(arg1: ::std::os::raw::c_int, arg2: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn isgraph_l(arg1: ::std::os::raw::c_int, arg2: locale_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn isprint_l(arg1: ::std::os::raw::c_int, arg2: locale_t) -> ::std::os::raw::c_int;
+}pub fn isalpha_l(arg1: ::std::os::raw::c_int, arg2: locale_t) -> ::std::os::raw::c_int;
+}
 pub type __timezone_ptr_t = *mut timezone;
 extern "C" {
     pub fn gettimeofday(__tv: *mut timeval, __tz: __timezone_ptr_t) -> ::std::os::raw::c_int;
