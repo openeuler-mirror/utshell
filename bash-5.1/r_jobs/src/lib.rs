@@ -1293,3 +1293,14 @@ unsafe extern "C" fn processes_in_job(mut job:  c_int) ->  c_int {
     return nproc;
 }
 
+unsafe extern "C" fn delete_old_job(mut pid: pid_t) {
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut job:  c_int = 0;
+
+
+
+}
+
+
+
+
