@@ -573,53 +573,69 @@ pub extern "C" fn r_cd_builtin (mut list:*mut WordList)->i32 {
       /* `cd' without arguments is equivalent to `cd $HOME' */
       dirname = get_string_value (CString::new("HOME").unwrap().as_ptr());
 
-      if dirname == std::ptr::null_mut() {
-        builtin_error (CString::new("HOME not set").unwrap().as_ptr());
-        return EXECUTION_FAILURE!();
-      }
-      lflag = 0;
-    }
-    else if (*loptend).next != std::ptr::null_mut() {
-        builtin_error (CString::new("too many arguments").unwrap().as_ptr());
-        return EXECUTION_FAILURE!();
-    }
-    else if char::from((*(*(*loptend).word).word) as u8) == '-' && char::from(*((((*(*loptend).word).word) as usize +4) as *mut c_char) as u8) == '\0' {
-      /* This is `cd -', equivalent to `cd $OLDPWD' */
-      dirname = get_string_value (CString::new("OLDPWD").unwrap().as_ptr());
-      if dirname == std::ptr::null_mut() {
-        builtin_error (CString::new("OLDPWD not set").unwrap().as_ptr());
-        return EXECUTION_FAILURE!();
-      }
-      lflag = LCD_PRINTPATH!();		/* According to SUSv3 */
-    } 
-    else if absolute_pathname ((*(*loptend).word).word) !=0 {
-      dirname = (*(*loptend).word).word;
-    }
-    else if privileged_mode == 0 && get_string_value (CString::new("CDPATH").unwrap().as_ptr() ) != std::ptr::null_mut(){
-      cdpath = get_string_value (CString::new("CDPATH").unwrap().as_ptr() );
-      dirname = (*(*loptend).word).word;
+            if dirname == std::ptr::null_mut() {
+                builtin_error(CString::new("HOME not set").unwrap().as_ptr());
+                return EXECUTION_FAILURE!();
+            }
+            lflag = 0;
+        } else if (*loptend).next != std::ptr::null_mut() {
+            builtin_error(CString::new("too many arguments").unwrap().as_ptr());
+            return EXECUTION_FAILURE!();
+        } else if char::from((*(*(*loptend).word).word) as u8) == '-'
+            && char::from(*((((*(*loptend).word).word) as usize + 4) as *mut c_char) as u8) == '\0'
+        {
+            /* This is `cd -', equivalent to `cd $OLDPWD' */
+            dirname = get_string_value(CString::new("OLDPWD").unwrap().as_ptr());
+            if dirname == std::ptr::null_mut() {
+                builtin_error(CString::new("OLDPWD not set").unwrap().as_ptr());
+                return EXECUTION_FAILURE!();
+            }
+            lflag = LCD_PRINTPATH!(); /* According to SUSv3 */
+        } else if absolute_pathname((*(*loptend).word).word) != 0 {
+            dirname = (*(*loptend).word).word;
+        } else if privileged_mode == 0
+            && get_string_value(CString::new("CDPATH").unwrap().as_ptr()) != std::ptr::null_mut()
+        {
+            cdpath = get_string_value(CString::new("CDPATH").unwrap().as_ptr());
+            dirname = (*(*loptend).word).word;
 
             /* Find directory in $CDPATH. */
             path_index = 1;
             path = extract_colon_unit(cdpath, &mut path_index);
 
-      while path  != std::ptr::null_mut()	{
-        /* OPT is 1 if the path element is non-empty */
-        opt = (char::from(*path as u8 )!= '\0') as i32 ;
-        temp = sh_makepath (path, dirname, MP_DOTILDE!());
-        libc::free (path as * mut c_void);
+            while path != std::ptr::null_mut() {
+                /* OPT is 1 if the path element is non-empty */
+                opt = (char::from(*path as u8) != '') as i32;
+                temp = sh_makepath(path, dirname, MP_DOTILDE!());
+                libc::free(path as *mut c_void);
 
-        if r_change_to_directory (temp, no_symlinks, xattrflag) !=0 {
-          /* POSIX.2 says that if a nonempty directory from CDPATH
-          is used to find the directory to change to, the new
-          directory name is echoed to stdout, whether or not
-          the shell is interactive. */
-          if opt !=0 {
-            if no_symlinks !=0 {
-              path=temp;
-            } 
-            else {
-              path=the_current_working_directory;
+                if r_change_to_directory(temp, no_symlinks, xattrflag) != 0 {
+                    /* POSIX.2 says that if a nonempty directory from CDPATH
+                    is used to find the directory to change to, the new
+                    directory name is echoed to stdout, whether or not
+                    the shell is interactive. */
+                    if opt != 0 {
+                        if no_symlinks != 0 {
+                            path = temp;
+                        } else {
+                            path = the_current_working_directory;
+                        }
+
+                        if path != std::ptr::null_mut() {
+                            libc::printf(
+                                CString::new("%s\n").unwrap().as_ptr() as *const c_char,
+                                path,
+                            );
+                        }
+                    }
+
+                    libc::free(temp as *mut c_void);
+                    return r_bindpwd(no_symlinks);
+                } else {
+                    libc::free(temp as *mut c_void);
+                }
+
+                path = extract_colon_unit(cdpath, &mut path_index);
             }
         } else {
             dirname = (*(*loptend).word).word;
