@@ -14,7 +14,7 @@ use rread::{intmax_t, ARRAY, SHELL_VAR};
 #[macro_export]
 macro_rules! att_array {
     () => {
-        0x04 /* value is an array */
+        0x0000004 /* value is an array */
     };
 }
 
@@ -27,7 +27,7 @@ macro_rules! att_cell {
 
 // #[macro_export]
 // macro_rules! array_empty {
-//   ($a:expr) => { 
+//   ($a:expr) => {
 //       if (*($a)).num_elements == 0{
 //           return true;
 //       }
@@ -41,7 +41,6 @@ macro_rules! att_cell {
 macro_rules! array_cell {
     ($var:expr) => {
         (*($var)).value as *mut ARRAY
-        
     };
 }
 
@@ -49,16 +48,13 @@ macro_rules! array_cell {
 macro_rules! GET_ARRAY_FROM_VAR {
     ($n:expr,$v:expr,$a:expr) => {
         $v = find_variable($n);
-        if ($v) != std::ptr::null_mut() && array_p($v) != 0{
+        if ($v) != std::ptr::null_mut() && array_p($v) != 0 {
             $a = array_cell!($v);
-        }
-        else{
+        } else {
             $a = 0 as *mut ARRAY;
         }
-    }
+    };
 }
-
-
 
 #[macro_export]
 macro_rules! CHECK_HELPOPT {
@@ -98,9 +94,9 @@ unsafe fn array_p(var: *mut SHELL_VAR) -> i32 {
 }
 unsafe fn array_empty(a: *mut ARRAY) -> bool {
     if (*a).num_elements == 0 {
-        return false;
-    } else {
         return true;
+    } else {
+        return false;
     }
 }
 
