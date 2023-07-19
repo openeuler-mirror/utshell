@@ -741,7 +741,7 @@ pub extern "C" fn r_pwd_builtin(list: *mut WordList) -> i32 {
                     pflag = 1;
                 }
                 'L' => {
-                    verbatim_pwd = 0;
+                    verbatim_pwd = -1;
                 }
                 _ => {
                     if opt == -99 {
@@ -764,32 +764,43 @@ pub extern "C" fn r_pwd_builtin(list: *mut WordList) -> i32 {
             directory = get_working_directory(CString::new("pwd").unwrap().as_ptr() as *mut c_char);
         }
 
-  /* Try again using getcwd() if canonicalization fails (for instance, if
-     the file system has changed state underneath bash). */
-  if (the_current_working_directory != std::ptr::null_mut() && directory == std::ptr::null_mut()) ||
-      (posixly_correct !=0 && same_file (CString::new(".").unwrap().as_ptr(), the_current_working_directory, std::ptr::null_mut() , std::ptr::null_mut()) == 0) {
-      if directory !=std::ptr::null_mut() && directory != the_current_working_directory {
-        libc::free (directory as * mut c_void);
-      }
-      directory = r_resetpwd (CString::new("pwd").unwrap().as_ptr() as * mut c_char);
-    }
+        /* Try again using getcwd() if canonicalization fails (for instance, if
+        the file system has changed state underneath bash). */
+        if (the_current_working_directory != std::ptr::null_mut()
+            && directory == std::ptr::null_mut())
+            || (posixly_correct != 0
+                && same_file(
+                    CString::new(".").unwrap().as_ptr(),
+                    the_current_working_directory,
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                ) == 0)
+        {
+            if directory != std::ptr::null_mut() && directory != the_current_working_directory {
+                libc::free(directory as *mut c_void);
+            }
+            directory = r_resetpwd(CString::new("pwd").unwrap().as_ptr() as *mut c_char);
+        }
 
-  if directory != std::ptr::null_mut() {
-      opt = EXECUTION_SUCCESS!();
-      libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,directory);
-      /* This is dumb but posix-mandated. */
-      if posixly_correct !=0 && pflag !=0 {
-        opt = r_setpwd (directory);
-      }
-	
-      if directory != the_current_working_directory {
-        libc::free (directory as * mut c_void);
-      }
-      return sh_chkwrite (opt);
-    } else {
-      return EXECUTION_FAILURE!();
-    }    
-  }
+        if directory != std::ptr::null_mut() {
+            opt = EXECUTION_SUCCESS!();
+            libc::printf(
+                CString::new("%s\n").unwrap().as_ptr() as *const c_char,
+                directory,
+            );
+            /* This is dumb but posix-mandated. */
+            if posixly_correct != 0 && pflag != 0 {
+                opt = r_setpwd(directory);
+            }
+
+            if directory != the_current_working_directory {
+                libc::free(directory as *mut c_void);
+            }
+            return sh_chkwrite(opt);
+        } else {
+            return EXECUTION_FAILURE!();
+        }
+    }
 }
 
 /* Do the work of changing to the directory NEWDIR.  Handle symbolic
@@ -798,35 +809,33 @@ the_current_working_directory either set to NULL (in which case
 getcwd() will eventually be called), or set to a string corresponding
 to the working directory.  Return 1 on success, 0 on failure. */
 #[no_mangle]
-pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr:i32)->i32 {
-  unsafe {
-  let mut t:*mut c_char;
-  let mut tdir:*mut c_char;
-  let mut ndir:*mut c_char;
-  let err:i32;
-  let mut canon_failed:i32;
-  let mut r:i32;
-  let ndlen:i32;
-  
-  tdir = std::ptr::null_mut();
+pub extern "C" fn r_change_to_directory(newdir: *mut c_char, nolinks: i32, xattr: i32) -> i32 {
+    unsafe {
+        let mut t: *mut c_char;
+        let mut tdir: *mut c_char;
+        let mut ndir: *mut c_char;
+        let err: i32;
+        let mut canon_failed: i32;
+        let mut r: i32;
+        let ndlen: i32;
 
-  if the_current_working_directory == std::ptr::null_mut() {
-      t = get_working_directory (CString::new("chdir").unwrap().as_ptr() as * mut c_char);
-      libc::free (t as * mut c_void);
-  }
+        tdir = std::ptr::null_mut();
 
-  t = make_absolute (newdir, the_current_working_directory);
+        if the_current_working_directory == std::ptr::null_mut() {
+            t = get_working_directory(CString::new("chdir").unwrap().as_ptr() as *mut c_char);
+            libc::free(t as *mut c_void);
+        }
 
-  /* TDIR is either the canonicalized absolute pathname of NEWDIR
-     (nolinks == 0) or the absolute physical pathname of NEWDIR
-     (nolinks != 0). */
-  if nolinks !=0 {
-    tdir=sh_physpath (t, 0);
-  } else {
-    tdir=sh_canonpath (t, PATH_CHECKDOTDOT!()|PATH_CHECKEXISTS!());
-  }
+        t = make_absolute(newdir, the_current_working_directory);
 
-  ndlen = libc::strlen (newdir ) as i32;
+        /* TDIR is either the canonicalized absolute pathname of NEWDIR
+        (nolinks == 0) or the absolute physical pathname of NEWDIR
+        (nolinks != 0). */
+        if nolinks != 0 {
+            tdir = sh_physpath(t, 0);
+        } else {
+            tdir = sh_canonpath(t, PATH_CHECKDOTDOT!() | PATH_CHECKEXISTS!());
+        }
 
         ndlen = libc::strlen(newdir) as i32;
 
@@ -907,10 +916,10 @@ pub extern "C" fn r_change_to_directory (newdir:* mut c_char, nolinks:i32, xattr
             } else {
                 libc::free(t as *mut c_void);
             }
-            r = 1;
+            r = 0;
         } else {
             errno!() = err;
-            r = 0;
+            r = 1;
         }
 
         libc::free(tdir as *mut c_void);
