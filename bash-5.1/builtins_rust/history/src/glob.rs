@@ -1638,6 +1638,25 @@ extern "C" {
     ) -> intmax_t;
 }
 extern "C" {
+    pub fn wcstoumax(
+        __nptr: *const __gwchar_t,
+        __endptr: *mut *mut __gwchar_t,
+        __base: ::std::os::raw::c_int,
+    ) -> uintmax_t;
+}
+pub const _ISupper: _bindgen_ty_16 = 256;
+pub const _ISlower: _bindgen_ty_16 = 512;
+pub const _ISalpha: _bindgen_ty_16 = 1024;
+pub const _ISdigit: _bindgen_ty_16 = 2048;
+pub const _ISxdigit: _bindgen_ty_16 = 4096;
+pub const _ISspace: _bindgen_ty_16 = 8192;
+pub const _ISprint: _bindgen_ty_16 = 16384;
+pub const _ISgraph: _bindgen_ty_16 = 32768;
+pub const _ISblank: _bindgen_ty_16 = 1;
+pub const _IScntrl: _bindgen_ty_16 = 2;
+pub const _ISpunct: _bindgen_ty_16 = 4;
+pub const _ISalnum: _bindgen_ty_16 = 8;
+extern "C" {
     pub fn isctype(
         __c: ::std::os::raw::c_int,
         __mask: ::std::os::raw::c_int,
