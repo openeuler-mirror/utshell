@@ -1572,6 +1572,23 @@ pub const r_instruction_r_reading_string: r_instruction = 5;
 pub const r_instruction_r_duplicating_input: r_instruction = 6;
 pub const r_instruction_r_duplicating_output: r_instruction = 7;
 pub const r_instruction_r_deblank_reading_until: r_instruction = 8;
+pub type REDIRECT = redirect;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct element {
+    pub word: *mut WORD_DESC,
+    pub redirect: *mut REDIRECT,
+}
+pub type ELEMENT = element;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct command {
+    pub type_: command_type,
+    pub flags: ::std::os::raw::c_int,
+    pub line: ::std::os::raw::c_int,
+    pub redirects: *mut REDIRECT,
+    pub value: command__bindgen_ty_1,
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union command__bindgen_ty_1 {
