@@ -460,7 +460,7 @@ pub extern "C" fn r_bindpwd(no_symlinks: i32) -> i32 {
         /* If canonicalization fails, reset dirname to the_current_working_directory */
         canon_failed = 0;
         if dirname == std::ptr::null_mut() {
-            canon_failed = 0;
+            canon_failed = 1;
             dirname = the_current_working_directory;
         }
 

@@ -121,7 +121,7 @@ pub extern "C" fn r_caller_builtin(mut list: *mut WordList) -> i32 {
 
         let c_str1 = CString::new("FUNCNAME").unwrap();
         let c_ptr1 = c_str1.as_ptr();
-        GET_ARRAY_FROM_VAR!(c_ptr1,funcname_v,funcname_a);
+        GET_ARRAY_FROM_VAR!(c_ptr1, funcname_v, funcname_a);
         // GET_ARRAY_FROM_VAR!(CString::new("FUNCNAME").unwrap().as_ptr(),funcname_v,funcname_a);
 
         let c_str1 = CString::new("BASH_SOURCE").unwrap();
@@ -149,10 +149,10 @@ pub extern "C" fn r_caller_builtin(mut list: *mut WordList) -> i32 {
         list = loptend; /* skip over possible `--' */
         /* If there is no argument list, then give short form: line filename. */
         if list.is_null() {
-            lineno_s = array_reference(bash_lineno_a,0);
-            source_s = array_reference(bash_source_a,1);
-            
-            if lineno_s.is_null(){
+            lineno_s = array_reference(bash_lineno_a, 0);
+            source_s = array_reference(bash_source_a, 1);
+
+            if !lineno_s.is_null() {
                 lineno_s = lineno_s;
             } else {
                 c_str = CString::new("NULL").unwrap();
@@ -193,7 +193,7 @@ pub extern "C" fn r_caller_builtin(mut list: *mut WordList) -> i32 {
         } else {
             sh_invalidnum((*(*list).word).word);
             builtin_usage();
-            return EX_USAGE!();
+            return EX_USAGE;
         }
 
         return EXECUTION_SUCCESS!();
