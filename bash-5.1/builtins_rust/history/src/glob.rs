@@ -335,6 +335,16 @@ unsafe {
         return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
     }
 }
+pub const GX_MARKDIRS: u32 = 1;
+pub const GX_NOCASE: u32 = 2;
+pub const GX_MATCHDOT: u32 = 4;
+pub const GX_MATCHDIRS: u32 = 8;
+pub const GX_ALLDIRS: u32 = 16;
+pub const GX_NULLDIR: u32 = 256;
+pub const GX_ADDCURDIR: u32 = 512;
+pub const GX_GLOBSTAR: u32 = 1024;
+pub const GX_RECURSE: u32 = 2048;
+pub const GX_SYMLINK: u32 = 4096;
 pub const _STRMATCH_H: u32 = 1;
 pub const FNM_PATHNAME: u32 = 1;
 pub const FNM_NOESCAPE: u32 = 2;
