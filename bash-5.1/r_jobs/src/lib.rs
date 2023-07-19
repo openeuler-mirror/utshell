@@ -1249,3 +1249,22 @@ unsafe extern "C" fn reset_job_indices() {
         }
     }
 }
+
+
+unsafe extern "C" fn cleanup_dead_jobs() {
+    let mut i:  c_int = 0;
+    let mut os:  c_int = 0;
+    let mut discard: *mut PROCESS = 0 as *mut PROCESS;
+
+
+
+}
+
+
+
+
+
+
+
+
+
