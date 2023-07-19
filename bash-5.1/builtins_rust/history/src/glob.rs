@@ -1524,7 +1524,24 @@ pub const POLL_MSG: _bindgen_ty_12 = 3;
 pub const POLL_ERR: _bindgen_ty_12 = 4;
 pub const POLL_PRI: _bindgen_ty_12 = 5;
 pub const POLL_HUP: _bindgen_ty_12 = 6;
-
+pub type _bindgen_ty_12 = u32;
+pub type sigval_t = __sigval_t;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct sigevent {
+    pub sigev_value: __sigval_t,
+    pub sigev_signo: ::std::os::raw::c_int,
+    pub sigev_notify: ::std::os::raw::c_int,
+    pub _sigev_un: sigevent__bindgen_ty_1,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union sigevent__bindgen_ty_1 {
+    pub _pad: [::std::os::raw::c_int; 12usize],
+    pub _tid: __pid_t,
+    pub _sigev_thread: sigevent__bindgen_ty_1__bindgen_ty_1,
+    _bindgen_union_align: [u64; 6usize],
+}
 extern "C" {
     pub fn __sysv_signal(__sig: ::std::os::raw::c_int, __handler: __sighandler_t)
         -> __sighandler_t;
