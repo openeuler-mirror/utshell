@@ -1281,8 +1281,15 @@ unsafe extern "C" fn cleanup_dead_jobs() {
 unsafe extern "C" fn processes_in_job(mut job:  c_int) ->  c_int {
     let mut nproc:  c_int = 0;
     let mut p: *mut PROCESS = 0 as *mut PROCESS;
-
-
+    nproc = 0 as  c_int;
+    p = (**jobs.offset(job as isize)).pipe;
+    loop {
+        p = (*p).next;
+        nproc += 1;
+        if !(p != (**jobs.offset(job as isize)).pipe) {
+            break;
+        }
+    }
     return nproc;
 }
 
