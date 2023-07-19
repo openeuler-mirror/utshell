@@ -432,92 +432,16 @@ pub type mbstate_t = __mbstate_t;
 pub struct _IO_FILE {
     _unused: [u8; 0],
 }
-
-unsafe fn quit()
-{
-    if terminating_signal != 0 {
-        termsig_handler(terminating_signal);
-    }
-    if interrupt_state != 0 {
-        throw_to_top_level();
-    }
-}
-
-unsafe fn display_history(list: *mut WordList) -> c_int
-{
-    let mut limit:c_long = 0;
-    let histtimefmt: *mut c_char;
-    let mut timestr: *mut c_char;
-
-    if !list.is_null() {
-        if  r_get_numeric_arg(list, 0,&mut limit)== 0 {
-            return EXECUTION_FAILURE;
-        }
-        if limit < 0 {
-            limit = -limit;
-        }
-    } else {
-        limit = -1;
-    }
-    let hlist = history_list();
-
-    if !hlist.is_null() {
-        let mut i: c_long = 0;
-        while !(*hlist.offset(i as isize)).is_null() {
-            i += 1;
-        }
-
-        i = if 0 <= limit && limit < i {i - limit} else {0};
-
-        histtimefmt = get_string_value(b"HISTTIMEFORMAT\0" as *const u8 as *const c_char);
-
-        while !(*hlist.offset(i as isize)).is_null() {
-            if terminating_signal != 0 {
-                termsig_handler(terminating_signal);
-            }
-            if interrupt_state != 0 {
-                throw_to_top_level();
-            }
-            timestr = if !histtimefmt.is_null() && *histtimefmt as libc::c_int != 0 {
-                histtime(*hlist.offset(i as isize), histtimefmt)
-            } else {
-                0 as *mut libc::c_void as *mut libc::c_char
-            };
-            printf(
-                b"%5d%c %s%s\n\0" as *const u8 as *const libc::c_char,
-                i + history_base as c_long,
-                if !((**hlist.offset(i as isize)).data).is_null() {
-                    '*' as i32
-                } else {
-                    ' ' as i32
-                },
-                if !timestr.is_null() && *timestr as libc::c_int != 0 {
-                    timestr
-                } else {
-                    b"\0" as *const u8 as *const libc::c_char
-                },
-                (**hlist.offset(i as isize)).line,
-            );
-            i += 1;
-        }
-    }
-    return EXECUTION_SUCCESS;
-}
-
-fn push_history(list: *mut WordList) {
-unsafe {
-    if remember_on_history != 0 && hist_last_line_pushed == 0 &&
-        (hist_last_line_added != 0 || (current_command_line_count > 0 && current_command_first_line_saved != 0 && command_oriented_history != 0)) &&
-        bash_delete_last_history() == 0 {
-        return;
-    }
-
-    let s = string_list(list);
-    check_add_history(s, 1);
-
-    hist_last_line_pushed = 1;
-    libc::free(s as *mut c_void);
-}
+pub type __FILE = _IO_FILE;
+pub type FILE = _IO_FILE;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __locale_struct {
+    pub __locales: [*mut __locale_data; 13usize],
+    pub __ctype_b: *const ::std::os::raw::c_ushort,
+    pub __ctype_tolower: *const ::std::os::raw::c_int,
+    pub __ctype_toupper: *const ::std::os::raw::c_int,
+    pub __names: [*const ::std::os::raw::c_char; 13usize],
 }
 pub type __locale_t = *mut __locale_struct;
 pub type locale_t = __locale_t;
