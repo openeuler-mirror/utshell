@@ -1256,7 +1256,15 @@ unsafe extern "C" fn cleanup_dead_jobs() {
     let mut os:  c_int = 0;
     let mut discard: *mut PROCESS = 0 as *mut PROCESS;
 
+    if js.j_jobslots == 0 || jobs_list_frozen != 0 {
+        return;
+    }
+    QUEUE_SIGCHLD!(os);
 
+    procsub_prune();
+    last_procsub_child = 0 as *mut  c_void as *mut PROCESS;
+    coproc_reap();
+    UNQUEUE_SIGCHLD(os)
 
 }
 
