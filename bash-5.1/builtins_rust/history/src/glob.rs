@@ -1959,6 +1959,53 @@ extern "C" {
         __n: usize,
     ) -> *mut ::std::os::raw::c_void;
 }
+
+
+extern "C" {
+    pub fn strcpy(
+        __dest: *mut ::std::os::raw::c_char,
+        __src: *const ::std::os::raw::c_char,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn strncpy(
+        __dest: *mut ::std::os::raw::c_char,
+        __src: *const ::std::os::raw::c_char,
+        __n: usize,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn strcat(
+        __dest: *mut ::std::os::raw::c_char,
+        __src: *const ::std::os::raw::c_char,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn strncat(
+        __dest: *mut ::std::os::raw::c_char,
+        __src: *const ::std::os::raw::c_char,
+        __n: usize,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn strcmp(
+        __s1: *const ::std::os::raw::c_char,
+        __s2: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn strncmp(
+        __s1: *const ::std::os::raw::c_char,
+        __s2: *const ::std::os::raw::c_char,
+        __n: usize,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn strcoll(
+        __s1: *const ::std::os::raw::c_char,
+        __s2: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
 extern "C" {
     pub fn strxfrm(
         __dest: *mut ::std::os::raw::c_char,
