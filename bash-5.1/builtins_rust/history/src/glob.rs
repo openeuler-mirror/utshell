@@ -1388,6 +1388,29 @@ extern "C" {
     pub fn setlogin(__name: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    #[link_name = "\u{1}optarg"]
+    pub static mut optarg: *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    #[link_name = "\u{1}optind"]
+    pub static mut optind: ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}opterr"]
+    pub static mut opterr: ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}optopt"]
+    pub static mut optopt: ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn getopt(
+        ___argc: ::std::os::raw::c_int,
+        ___argv: *const *mut ::std::os::raw::c_char,
+        __shortopts: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn daemon(
         __nochdir: ::std::os::raw::c_int,
         __noclose: ::std::os::raw::c_int,
