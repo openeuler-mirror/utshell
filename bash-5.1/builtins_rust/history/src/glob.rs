@@ -1563,6 +1563,26 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn sigprocmask(
+        __how: ::std::os::raw::c_int,
+        __set: *const sigset_t,
+        __oset: *mut sigset_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sigsuspend(__set: *const sigset_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sigaction(
+        __sig: ::std::os::raw::c_int,
+        __act: *const sigaction,
+        __oact: *mut sigaction,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sigpending(__set: *mut sigset_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
     #[link_name = "\u{1}_sys_siglist"]
     pub static mut _sys_siglist: [*const ::std::os::raw::c_char; 65usize];
 }
