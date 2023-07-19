@@ -634,5 +634,14 @@ pub unsafe extern "C" fn print_for_command(for_command:*mut FOR_COM)
 #[no_mangle]
 pub unsafe extern "C" fn print_arith_for_command(arith_for_command:*mut ARITH_FOR_COM)
 {
+
+    cprintf_1(b"for ((\0" as *const u8 as *const i8 );
+    command_print_word_list((*arith_for_command).init, b" \0" as *const u8 as *const c_char as *mut c_char);
+    cprintf_1(b"; \0" as *const u8 as *const i8);
+    command_print_word_list((*arith_for_command).test, b" \0" as *const u8 as *const c_char as *mut c_char);
+    cprintf_1(b"; \0" as *const u8 as *const i8);
+    command_print_word_list((*arith_for_command).step, b" \0" as *const u8 as *const c_char as *mut c_char);
+    cprintf_1(b"))\0" as *const u8 as *const i8);
+    newline(b"do\n\0" as *const u8 as *const c_char as *mut c_char);
     
 }
