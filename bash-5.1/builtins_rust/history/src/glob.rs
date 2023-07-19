@@ -1051,6 +1051,53 @@ pub type useconds_t = __useconds_t;
 pub type pid_t = __pid_t;
 pub type socklen_t = __socklen_t;
 extern "C" {
+    pub fn lseek(
+        __fd: ::std::os::raw::c_int,
+        __offset: __off_t,
+        __whence: ::std::os::raw::c_int,
+    ) -> __off_t;
+}
+extern "C" {
+    pub fn lseek64(
+        __fd: ::std::os::raw::c_int,
+        __offset: __off64_t,
+        __whence: ::std::os::raw::c_int,
+    ) -> __off64_t;
+}
+extern "C" {
+    pub fn close(__fd: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn read(
+        __fd: ::std::os::raw::c_int,
+        __buf: *mut ::std::os::raw::c_void,
+        __nbytes: usize,
+    ) -> isize;
+}
+extern "C" {
+    pub fn write(
+        __fd: ::std::os::raw::c_int,
+        __buf: *const ::std::os::raw::c_void,
+        __n: usize,
+    ) -> isize;
+}
+extern "C" {
+    pub fn pread(
+        __fd: ::std::os::raw::c_int,
+        __buf: *mut ::std::os::raw::c_void,
+        __nbytes: usize,
+        __offset: __off_t,
+    ) -> isize;
+}
+extern "C" {
+    pub fn pwrite(
+        __fd: ::std::os::raw::c_int,
+        __buf: *const ::std::os::raw::c_void,
+        __n: usize,
+        __offset: __off_t,
+    ) -> isize;
+}
+extern "C" {
     pub fn pread64(
         __fd: ::std::os::raw::c_int,
         __buf: *mut ::std::os::raw::c_void,
