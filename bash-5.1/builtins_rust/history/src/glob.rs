@@ -1654,6 +1654,18 @@ pub struct ucontext_t {
     pub __fpregs_mem: _libc_fpstate,
     pub __ssp: [::std::os::raw::c_ulonglong; 4usize],
 }
+extern "C" {
+    pub fn siginterrupt(
+        __sig: ::std::os::raw::c_int,
+        __interrupt: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+pub const SS_ONSTACK: _bindgen_ty_15 = 1;
+pub const SS_DISABLE: _bindgen_ty_15 = 2;
+pub type _bindgen_ty_15 = u32;
+extern "C" {
+    pub fn sigaltstack(__ss: *const stack_t, __oss: *mut stack_t) -> ::std::os::raw::c_int;
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct __pthread_cond_s {
