@@ -656,7 +656,21 @@ pub unsafe extern "C" fn print_arith_for_command(arith_for_command:*mut ARITH_FO
 #[no_mangle]
 pub unsafe extern "C" fn r_print_select_command_head(select_command:*mut SELECT_COM)
 {
+
     let mut str = format!("select {} in \0", CStr::from_ptr((*(*select_command).name).word).to_str().unwrap());
     cprintf_1(str.as_mut_ptr() as *mut c_char);
     command_print_word_list((*select_command).map_list, b" \0" as *const u8 as *const c_char as *mut c_char);
+
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_print_select_command_head(select_command:*mut SELECT_COM)
+{
+
+    println!("r_xtrace_print_select_command_head");
+    CHECK_XTRACE_FP!();
+    fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(),r_indirection_level_string());
+    fprintf(xtrace_fp, CString::new("select %s in ").unwrap().as_ptr(),(*(*select_command).name).word);
+    r_xtrace_print_word_list((*select_command).map_list, 2);
+    
 }
