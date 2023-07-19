@@ -1618,6 +1618,21 @@ pub union pthread_cond_t {
     pub __align: ::std::os::raw::c_longlong,
     _bindgen_union_align: [u64; 6usize],
 }
+pub type pthread_spinlock_t = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union pthread_barrier_t {
+    pub __size: [::std::os::raw::c_char; 32usize],
+    pub __align: ::std::os::raw::c_long,
+    _bindgen_union_align: [u64; 4usize],
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union pthread_barrierattr_t {
+    pub __size: [::std::os::raw::c_char; 4usize],
+    pub __align: ::std::os::raw::c_int,
+    _bindgen_union_align: u32,
+}
 pub const r_instruction_r_output_direction: r_instruction = 0;
 pub const r_instruction_r_input_direction: r_instruction = 1;
 pub const r_instruction_r_inputa_direction: r_instruction = 2;
