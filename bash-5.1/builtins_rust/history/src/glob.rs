@@ -1721,6 +1721,25 @@ pub union command__bindgen_ty_1 {
     pub Coproc: *mut coproc_com,
     _bindgen_union_align: u64,
 }
+pub type COMMAND = command;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct connection {
+    pub ignore: ::std::os::raw::c_int,
+    pub first: *mut COMMAND,
+    pub second: *mut COMMAND,
+    pub connector: ::std::os::raw::c_int,
+}
+pub type CONNECTION = connection;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct pattern_list {
+    pub next: *mut pattern_list,
+    pub patterns: *mut WORD_LIST,
+    pub action: *mut COMMAND,
+    pub flags: ::std::os::raw::c_int,
+}
+pub type PATTERN_LIST = pattern_list;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct case_com {
