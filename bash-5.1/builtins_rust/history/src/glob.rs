@@ -545,39 +545,8 @@ extern "C" {
 extern "C" {
     pub fn wcschrnul(__s: *const wchar_t, __wc: wchar_t) -> *mut wchar_t;
 }
-
-
-fn expand_and_print_history(mut list: *mut WordList) -> c_int
-{
-unsafe {
-
-    let s: *mut c_char = PT_NULL as *mut c_char;
-    let mut result: c_int;
-
-    if hist_last_line_pushed == 0 && hist_last_line_added != 0 && bash_delete_last_history() == 0 {
-        return EXECUTION_FAILURE;
-    }
-    result = EXECUTION_SUCCESS;
-    while !list.is_null() {
-        let r = history_expand((*((*list).word)).word, std::mem::transmute(&s));
-        if r < 0 {
-            let c_err = CString::new("%s: history expansion failed").unwrap();
-            builtin_error( c_err.as_ptr(), (*((*list).word)).word);
-            result = EXECUTION_FAILURE;
-        } else {
-            println!("{}",CStr::from_ptr(s).to_str().unwrap());
-            //println!("{}",String::from(CStr::from_ptr(s).to_str().unwrap()));
-            //std::io::stdout().lock().write_all(CStr::from_ptr(s).to_bytes()).unwrap();
-            //libc::putchar(b'\n' as c_int);
-        }
-        if !s.is_null() {
-            libc::free(s as *mut c_void);
-        }
-        list = (*list).next;
-    }
-    std::io::stdout().lock().flush().unwrap();
-    return result;
-}
+extern "C" {
+    pub fn wcscspn(__wcs: *const wchar_t, __reject: *const wchar_t) -> usize;
 }
 extern "C" {
     pub fn wcsspn(__wcs: *const wchar_t, __accept: *const wchar_t) -> usize;
