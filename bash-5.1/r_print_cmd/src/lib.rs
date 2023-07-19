@@ -613,3 +613,17 @@ pub unsafe extern "C" fn r_xtrace_print_for_command_head(for_command:*mut FOR_CO
     r_xtrace_print_word_list((*for_command).map_list,2);
 
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn print_for_command(for_command:*mut FOR_COM)
+{
+    r_print_for_command_head(for_command);
+    cprintf_1(b";" as *const u8 as *const i8);
+    newline(b"do\n" as *const u8 as *const c_char as *mut c_char);
+    indentation += indentation_amount;
+    make_command_string_internal((*for_command).action);
+
+    indentation -= indentation_amount;
+    newline(b"done" as *const u8 as *const c_char as *mut c_char);
+    
+}
