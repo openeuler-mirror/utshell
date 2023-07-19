@@ -1261,6 +1261,16 @@ unsafe extern "C" fn cleanup_dead_jobs() {
     }
     QUEUE_SIGCHLD!(os);
 
+    i = 0 ;
+    while i < js.j_jobslots {
+        if !(*jobs.offset(i as isize)).is_null()
+            && DEADJOB!(i)
+            && IS_NOTIFIED!(i) 
+        {
+            delete_job(i, 0 as  c_int);
+        }
+        i += 1;
+    }
     procsub_prune();
     last_procsub_child = 0 as *mut  c_void as *mut PROCESS;
     coproc_reap();
