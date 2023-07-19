@@ -395,29 +395,44 @@ pub static mut eflag: i32 = 0;
 
 /* How to bring a job into the foreground. */
 #[no_mangle]
-pub extern "C" fn r_setpwd (dirname:* mut c_char)->i32
-{
-  let old_anm:i32;
-  let tvar:* mut SHELL_VAR;
-  unsafe {
-  old_anm = array_needs_making;
-  
-  let c_str_pwd = CString::new("PWD").unwrap();
-  if dirname ==std::ptr::null_mut() {
-    tvar=bind_variable (c_str_pwd.as_ptr(), CString::new("").unwrap().as_ptr() as * mut c_char, 0);    
-  } else {
-    tvar = bind_variable (c_str_pwd.as_ptr(), dirname , 0);
-  }
-  
-  if tvar !=std::ptr::null_mut() && readonly_p! (tvar) !=0 {
-    return EXECUTION_FAILURE!();
-  }
-  
-  if tvar  !=std::ptr::null_mut() && old_anm == 0 && array_needs_making !=0 && exported_p !(tvar) !=0 {
-    if dirname ==std::ptr::null_mut() {
-      update_export_env_inplace (c_str_pwd.as_ptr() as * mut c_char, 4, CString::new("").unwrap().as_ptr() as * mut c_char);      
-    } else {
-      update_export_env_inplace (c_str_pwd.as_ptr() as * mut c_char, 4, dirname);
+pub extern "C" fn r_setpwd(dirname: *mut c_char) -> i32 {
+    let old_anm: i32;
+    let tvar: *mut SHELL_VAR;
+    unsafe {
+        old_anm = array_needs_making;
+
+        let c_str_pwd = CString::new("PWD").unwrap();
+        if dirname == std::ptr::null_mut() {
+            tvar = bind_variable(
+                c_str_pwd.as_ptr(),
+                CString::new("").unwrap().as_ptr() as *mut c_char,
+                0,
+            );
+        } else {
+            tvar = bind_variable(c_str_pwd.as_ptr(), dirname, 0);
+        }
+
+        if tvar != std::ptr::null_mut() && readonly_p!(tvar) != 0 {
+            return EXECUTION_FAILURE!();
+        }
+
+        if tvar != std::ptr::null_mut()
+            && old_anm == 0
+            && array_needs_making != 0
+            && exported_p!(tvar) != 0
+        {
+            if dirname == std::ptr::null_mut() {
+                update_export_env_inplace(
+                    c_str_pwd.as_ptr() as *mut c_char,
+                    4,
+                    CString::new("").unwrap().as_ptr() as *mut c_char,
+                );
+            } else {
+                update_export_env_inplace(c_str_pwd.as_ptr() as *mut c_char, 4, dirname);
+            }
+            array_needs_making = 0;
+        }
+        return EXECUTION_SUCCESS!();
     }
 }
 
@@ -501,77 +516,83 @@ pub extern "C" fn r_cdxattr(dir: *mut c_char, ndirp: *mut c_char) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn r_resetxattr () {
-  unsafe {
-    xattrfd = -1;		/* not strictly necessary */
-  }
+pub extern "C" fn r_resetxattr() {
+    unsafe {
+        xattrfd = -1; /* not strictly necessary */
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn r_cd_builtin (mut list:*mut WordList)->i32 {
-  let mut dirname:*mut c_char=std::ptr::null_mut();
-  let cdpath:*mut c_char;
-  let mut path:*mut c_char;
-  let mut temp:*mut c_char;
-  let mut path_index:i32;
-  let mut no_symlinks:i32;
-  let mut opt:i32;
-  let mut lflag:i32;
-  let e:i32;
+pub extern "C" fn r_cd_builtin(mut list: *mut WordList) -> i32 {
+    let mut dirname: *mut c_char = std::ptr::null_mut();
+    let cdpath: *mut c_char;
+    let mut path: *mut c_char;
+    let mut temp: *mut c_char;
+    let mut path_index: i32;
+    let mut no_symlinks: i32;
+    let mut opt: i32;
+    let mut lflag: i32;
+    let e: i32;
 
-  unsafe {
-    if restricted !=0 {
-        sh_restricted (0 as * mut c_char);
-        return EXECUTION_FAILURE!();
-    }
+    unsafe {
+        if restricted != 0 {
+            sh_restricted(0 as *mut c_char);
+            return EXECUTION_FAILURE!();
+        }
 
-    eflag = 0;
-    no_symlinks = no_symbolic_links;
-    xattrflag = 0;
-    reset_internal_getopt ();
+        eflag = 0;
+        no_symlinks = no_symbolic_links;
+        xattrflag = 0;
+        reset_internal_getopt();
 
-    let c_str_elp = CString::new("eLP").unwrap(); // from a &str, creates a new allocation     
-    opt = internal_getopt (list, c_str_elp.as_ptr() as * mut c_char);
-    while  opt != -1 {
-      let optu8:u8= opt as u8;
-      let optChar:char=char::from(optu8);
-      match optChar {
-        'P'=>{no_symlinks = 1;}  
-        'L'=>{no_symlinks = 0;} 
-        'e'=>{eflag = 1;}
-          _=>{
-            if opt == -99 {
-              r_builtin_help();
-              return EX_USAGE;
-          }
-              builtin_usage ();
-              return EX_USAGE;
+        let c_str_elp = CString::new("eLP").unwrap(); // from a &str, creates a new allocation
+        opt = internal_getopt(list, c_str_elp.as_ptr() as *mut c_char);
+        while opt != -1 {
+            let optu8: u8 = opt as u8;
+            let optChar: char = char::from(optu8);
+            match optChar {
+                'P' => {
+                    no_symlinks = 1;
+                }
+                'L' => {
+                    no_symlinks = 0;
+                }
+                'e' => {
+                    eflag = 1;
+                }
+                _ => {
+                    if opt == -99 {
+                        r_builtin_help();
+                        return EX_USAGE;
+                    }
+                    builtin_usage();
+                    return EX_USAGE;
+                }
             }
-      }
-      opt =internal_getopt (list, c_str_elp.as_ptr() as * mut c_char);
-    }
+            opt = internal_getopt(list, c_str_elp.as_ptr() as *mut c_char);
+        }
 
-    // list = loptend;     //后加的
+        // list = loptend;     //后加的
 
-    if cdable_vars != 0 {
-      lflag=LCD_DOVARS!();
-    } else {
-      lflag=0;
-    }
+        if cdable_vars != 0 {
+            lflag = LCD_DOVARS!();
+        } else {
+            lflag = 0;
+        }
 
-    if interactive !=0 && cdspelling !=0 {
-      lflag=lflag | LCD_DOSPELL!();
-    } else {
-      lflag=lflag | 0;
-    }
+        if interactive != 0 && cdspelling != 0 {
+            lflag = lflag | LCD_DOSPELL!();
+        } else {
+            lflag = lflag | 0;
+        }
 
-    if eflag !=0 && no_symlinks == 0{
-      eflag = 0;
-    }
+        if eflag != 0 && no_symlinks == 0 {
+            eflag = 0;
+        }
 
-    if loptend == std::ptr::null_mut()  {
-      /* `cd' without arguments is equivalent to `cd $HOME' */
-      dirname = get_string_value (CString::new("HOME").unwrap().as_ptr());
+        if loptend == std::ptr::null_mut() {
+            /* `cd' without arguments is equivalent to `cd $HOME' */
+            dirname = get_string_value(CString::new("HOME").unwrap().as_ptr());
 
             if dirname == std::ptr::null_mut() {
                 builtin_error(CString::new("HOME not set").unwrap().as_ptr());
@@ -641,16 +662,32 @@ pub extern "C" fn r_cd_builtin (mut list:*mut WordList)->i32 {
             dirname = (*(*loptend).word).word;
         }
 
-            if path !=std::ptr::null_mut() {
-              libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,path);
+        /* When we get here, DIRNAME is the directory to change to.  If we
+        chdir successfully, just return. */
+        if 0 != r_change_to_directory(dirname, no_symlinks, xattrflag) {
+            if (lflag & LCD_PRINTPATH!()) != 0 {
+                libc::printf(
+                    CString::new("%s\n").unwrap().as_ptr() as *const c_char,
+                    dirname,
+                );
             }
-          } 
+            return r_bindpwd(no_symlinks);
+        }
 
-          libc::free (temp as * mut c_void);
-          return r_bindpwd (no_symlinks);
-        }	
-        else {
-          libc::free (temp as * mut c_void);
+        /* If the user requests it, then perhaps this is the name of
+        a shell variable, whose value contains the directory to
+        change to. */
+        if (lflag & LCD_DOVARS!()) != 0 {
+            temp = get_string_value(dirname);
+            if temp != std::ptr::null_mut()
+                && r_change_to_directory(temp, no_symlinks, xattrflag) != 0
+            {
+                libc::printf(
+                    CString::new("%s\n").unwrap().as_ptr() as *const c_char,
+                    temp,
+                );
+                return r_bindpwd(no_symlinks);
+            }
         }
 
         /* If the user requests it, try to find a directory name similar in
