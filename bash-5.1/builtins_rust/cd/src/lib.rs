@@ -188,26 +188,26 @@ pub struct cond_com {
 
 #[repr(C)]
 pub struct arith_for_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    init:*mut WordList,
-    test:*mut WordList,
-    step:*mut WordList,
-    action:*mut COMMAND  
+    flags: libc::c_int,
+    line: libc::c_int,
+    init: *mut WordList,
+    test: *mut WordList,
+    step: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct subshell_com {
-    flags:i32,
-    line:i32,
-    command:*mut COMMAND
+    flags: i32,
+    line: i32,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct coproc_com {
-    flags:i32,
-    name:*mut c_char,
-    command:*mut COMMAND
+    flags: i32,
+    name: *mut c_char,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
@@ -706,90 +706,63 @@ pub extern "C" fn r_cd_builtin(mut list: *mut WordList) -> i32 {
             }
         }
 
-    /* When we get here, DIRNAME is the directory to change to.  If we
-      chdir successfully, just return. */
-    if 0 != r_change_to_directory (dirname, no_symlinks, xattrflag) {
-      if (lflag  & LCD_PRINTPATH!()) !=0 {
-          libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,dirname);
-      }
-      return r_bindpwd (no_symlinks);
-    }
+        e = errno!();
+        temp = printable_filename(dirname, 0);
+        builtin_error(
+            CString::new("%s: %s").unwrap().as_ptr(),
+            temp,
+            libc::strerror(e),
+        );
 
-    /* If the user requests it, then perhaps this is the name of
-      a shell variable, whose value contains the directory to
-      change to. */
-    if (lflag & LCD_DOVARS!()) !=0 {
-      temp = get_string_value (dirname);
-      if temp != std::ptr::null_mut() && r_change_to_directory (temp, no_symlinks, xattrflag) !=0 {
-        libc::printf(CString::new("%s\n").unwrap().as_ptr() as * const c_char,temp);
-        return r_bindpwd (no_symlinks);
-      }
-    }
-
-    /* If the user requests it, try to find a directory name similar in
-      spelling to the one requested, in case the user made a simple
-      typo.  This is similar to the UNIX 8th and 9th Edition shells. */
-    if (lflag & LCD_DOSPELL!()) !=0 {
-        temp = dirspell (dirname);
-        if temp !=std::ptr::null_mut() && r_change_to_directory (temp, no_symlinks, xattrflag) !=0  {
-          println!("{:?}", temp);
-          libc::free (temp as * mut c_void);
-          return r_bindpwd (no_symlinks);
-        }  else {
-          libc::free (temp as * mut c_void);
+        if temp != dirname {
+            libc::free(temp as *mut c_void);
         }
         return EXECUTION_FAILURE!();
     }
-
-    e =errno!();
-    temp = printable_filename (dirname, 0);
-    builtin_error (CString::new("%s: %s").unwrap().as_ptr(), temp, libc::strerror (e));
-
-    if temp != dirname {
-      libc::free (temp as * mut c_void);
-    }  
-    return EXECUTION_FAILURE!();
-  }
 }
 
 #[no_mangle]
-pub extern "C" fn r_pwd_builtin (list:* mut WordList)->i32 {
-  let mut directory:* mut c_char;
-  let mut opt:i32;
-  let mut pflag:i32;
-  unsafe {
-  verbatim_pwd = no_symbolic_links;
-  pflag = 0;
-  reset_internal_getopt ();
-  let c_str_lp = CString::new("LP").unwrap(); // from a &str, creates a new allocation      
-  opt = internal_getopt (list, c_str_lp.as_ptr() as * mut c_char);
-  while  opt != -1 {
-    let optu8:u8= opt as u8;
-    let optChar:char=char::from(optu8);
-    match optChar{      	 
-      'P'=>{verbatim_pwd =1;
-          pflag = 1;}
-	    'L'=>{verbatim_pwd = 0;}
-      _=>{
-        if opt == '?' {
-          r_builtin_help();
-          return EX_USAGE;
-      }
-      builtin_usage ();
-          return EX_USAGE;
+pub extern "C" fn r_pwd_builtin(list: *mut WordList) -> i32 {
+    let mut directory: *mut c_char;
+    let mut opt: i32;
+    let mut pflag: i32;
+    unsafe {
+        verbatim_pwd = no_symbolic_links;
+        pflag = 0;
+        reset_internal_getopt();
+        let c_str_lp = CString::new("LP").unwrap(); // from a &str, creates a new allocation
+        opt = internal_getopt(list, c_str_lp.as_ptr() as *mut c_char);
+        while opt != -1 {
+            let optu8: u8 = opt as u8;
+            let optChar: char = char::from(optu8);
+            match optChar {
+                'P' => {
+                    verbatim_pwd = 1;
+                    pflag = 1;
+                }
+                'L' => {
+                    verbatim_pwd = 0;
+                }
+                _ => {
+                    if opt == -99 {
+                        r_builtin_help();
+                        return EX_USAGE;
+                    }
+                    builtin_usage();
+                    return EX_USAGE;
+                }
+            }
+            opt = internal_getopt(list, c_str_lp.as_ptr() as *mut c_char);
         }
-	  }
-    opt = internal_getopt (list, c_str_lp.as_ptr() as * mut c_char);
-  }
-  if the_current_working_directory != std::ptr::null_mut() {
-      if verbatim_pwd != 0 {
-        directory=sh_physpath (the_current_working_directory, 0);
-      } else {
-        directory=the_current_working_directory;
-      }
-  } else {
-    directory=get_working_directory(CString::new("pwd").unwrap().as_ptr() as * mut c_char);
-  }
+        if the_current_working_directory != std::ptr::null_mut() {
+            if verbatim_pwd != 0 {
+                directory = sh_physpath(the_current_working_directory, 0);
+            } else {
+                directory = the_current_working_directory;
+            }
+        } else {
+            directory = get_working_directory(CString::new("pwd").unwrap().as_ptr() as *mut c_char);
+        }
 
   /* Try again using getcwd() if canonicalization fails (for instance, if
      the file system has changed state underneath bash). */
