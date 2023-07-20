@@ -564,6 +564,14 @@ pub const PRIoPTR: &'static [u8; 3usize] = b"lo\0";
 pub const PRIuPTR: &'static [u8; 3usize] = b"lu\0";
 pub const PRIxPTR: &'static [u8; 3usize] = b"lx\0";
 pub const PRIXPTR: &'static [u8; 3usize] = b"lX\0";
+pub const SCNuFAST8: &'static [u8; 4usize] = b"hhu\0";
+pub const SCNuFAST16: &'static [u8; 3usize] = b"lu\0";
+pub const SCNuFAST32: &'static [u8; 3usize] = b"lu\0";
+pub const SCNuFAST64: &'static [u8; 3usize] = b"lu\0";
+pub const SCNo8: &'static [u8; 4usize] = b"hho\0";
+pub const SCNo16: &'static [u8; 3usize] = b"ho\0";
+pub const SCNo32: &'static [u8; 2usize] = b"o\0";
+pub const SCNo64: &'static [u8; 3usize] = b"lo\0";
 pub const GX_MARKDIRS: u32 = 1;
 pub const GX_NOCASE: u32 = 2;
 pub const GX_MATCHDOT: u32 = 4;
@@ -3275,6 +3283,9 @@ extern "C" {
 }
 extern "C" {
     pub fn free_trap_strings();
+}
+extern "C" {
+    pub fn restore_original_signals();
 }
 extern "C" {
     pub fn run_interrupt_trap(arg1: ::std::os::raw::c_int);
