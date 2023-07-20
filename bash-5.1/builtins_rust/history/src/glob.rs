@@ -2927,6 +2927,17 @@ extern "C" {
     pub fn set_posix_options(arg1: *const ::std::os::raw::c_char);
 }
 extern "C" {
+    pub fn save_posix_options();
+}
+extern "C" {
+    pub fn string_to_rlimtype(arg1: *mut ::std::os::raw::c_char) -> rlim_t;
+}
+extern "C" {
+    pub fn print_rlimtype(arg1: rlim_t, arg2: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn all_digits(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
     pub fn sh_unset_nodelay_mode(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
 }
 extern "C" {
