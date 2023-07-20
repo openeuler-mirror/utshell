@@ -324,6 +324,15 @@ pub const XATTR_NAME_MAX: u32 = 255;
 pub const XATTR_SIZE_MAX: u32 = 65536;
 pub const XATTR_LIST_MAX: u32 = 65536;
 pub const RTSIG_MAX: u32 = 32;
+pub const _POSIX2_BC_BASE_MAX: u32 = 99;
+pub const _POSIX2_BC_DIM_MAX: u32 = 2048;
+pub const _POSIX2_BC_SCALE_MAX: u32 = 99;
+pub const _POSIX2_BC_STRING_MAX: u32 = 1000;
+pub const _POSIX2_COLL_WEIGHTS_MAX: u32 = 2;
+pub const _POSIX2_EXPR_NEST_MAX: u32 = 32;
+pub const _POSIX2_LINE_MAX: u32 = 2048;
+pub const _POSIX2_RE_DUP_MAX: u32 = 255;
+pub const _POSIX2_CHARCLASS_NAME_MAX: u32 = 14;
 pub const SIGINT: u32 = 2;
 pub const SIGILL: u32 = 4;
 pub const SIGABRT: u32 = 6;
@@ -2690,6 +2699,20 @@ extern "C" {
         __format: *const ::std::os::raw::c_char,
         __f: _Float64x,
     ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn strtold_l(
+        __nptr: *const ::std::os::raw::c_char,
+        __endptr: *mut *mut ::std::os::raw::c_char,
+        __loc: locale_t,
+    ) -> f64;
+}
+extern "C" {
+    pub fn strtof32_l(
+        __nptr: *const ::std::os::raw::c_char,
+        __endptr: *mut *mut ::std::os::raw::c_char,
+        __loc: locale_t,
+    ) -> _Float32;
 }
 extern "C" {
     pub fn strtof64_l(
