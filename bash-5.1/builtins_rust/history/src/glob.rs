@@ -407,6 +407,18 @@ pub const PRIiFAST8: &'static [u8; 2usize] = b"i\0";
 pub const PRIiFAST16: &'static [u8; 3usize] = b"li\0";
 pub const PRIiFAST32: &'static [u8; 3usize] = b"li\0";
 pub const PRIiFAST64: &'static [u8; 3usize] = b"li\0";
+pub const PRIdMAX: &'static [u8; 3usize] = b"ld\0";
+pub const PRIiMAX: &'static [u8; 3usize] = b"li\0";
+pub const PRIoMAX: &'static [u8; 3usize] = b"lo\0";
+pub const PRIuMAX: &'static [u8; 3usize] = b"lu\0";
+pub const PRIxMAX: &'static [u8; 3usize] = b"lx\0";
+pub const PRIXMAX: &'static [u8; 3usize] = b"lX\0";
+pub const PRIdPTR: &'static [u8; 3usize] = b"ld\0";
+pub const PRIiPTR: &'static [u8; 3usize] = b"li\0";
+pub const PRIoPTR: &'static [u8; 3usize] = b"lo\0";
+pub const PRIuPTR: &'static [u8; 3usize] = b"lu\0";
+pub const PRIxPTR: &'static [u8; 3usize] = b"lx\0";
+pub const PRIXPTR: &'static [u8; 3usize] = b"lX\0";
 pub const GX_MARKDIRS: u32 = 1;
 pub const GX_NOCASE: u32 = 2;
 pub const GX_MATCHDOT: u32 = 4;
@@ -3024,6 +3036,13 @@ extern "C" {
 extern "C" {
     #[link_name = "\u{1}glob_ignore_case"]
     pub static mut glob_ignore_case: ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn strmatch(
+        arg1: *mut ::std::os::raw::c_char,
+        arg2: *mut ::std::os::raw::c_char,
+        arg3: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
 }
 extern "C" {
     pub fn wcsmatch(
