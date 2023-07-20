@@ -189,6 +189,23 @@ pub const HAVE_ISWCTYPE: u32 = 1;
 pub const HAVE_ISWLOWER: u32 = 1;
 pub const HAVE_ISWUPPER: u32 = 1;
 pub const HAVE_ISXDIGIT: u32 = 1;
+pub const HAVE_KILL: u32 = 1;
+pub const HAVE_KILLPG: u32 = 1;
+pub const HAVE_LSTAT: u32 = 1;
+pub const HAVE_MBRLEN: u32 = 1;
+pub const HAVE_MBRTOWC: u32 = 1;
+pub const HAVE_MBSNRTOWCS: u32 = 1;
+pub const HAVE_MBSRTOWCS: u32 = 1;
+pub const HAVE_MEMMOVE: u32 = 1;
+pub const HAVE_MEMSET: u32 = 1;
+pub const HAVE_MKDTEMP: u32 = 1;
+pub const HAVE_MKFIFO: u32 = 1;
+pub const HAVE_MKSTEMP: u32 = 1;
+pub const HAVE_PATHCONF: u32 = 1;
+pub const HAVE_PSELECT: u32 = 1;
+pub const HAVE_PREAD: u32 = 1;
+pub const HAVE_PUTENV: u32 = 1;
+pub const HAVE_RAISE: u32 = 1;
 pub const HAVE_PWD_H: u32 = 1;
 pub const HAVE_REGEX_H: u32 = 1;
 pub const HAVE_STDLIB_H: u32 = 1;
@@ -2509,6 +2526,12 @@ extern "C" {
         __s1: *const ::std::os::raw::c_char,
         __s2: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct lldiv_t {
+    pub quot: ::std::os::raw::c_longlong,
+    pub rem: ::std::os::raw::c_longlong,
 }
 extern "C" {
     pub fn __ctype_get_mb_cur_max() -> usize;
