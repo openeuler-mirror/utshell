@@ -475,6 +475,17 @@ pub const PTRDIFF_MIN: i64 = -9223372036854775808;
 pub const PTRDIFF_MAX: u64 = 9223372036854775807;
 pub const SIG_ATOMIC_MIN: i32 = -2147483648;
 pub const SIG_ATOMIC_MAX: u32 = 2147483647;
+pub const SIZE_MAX: i32 = -1;
+pub const WINT_MIN: u32 = 0;
+pub const WINT_MAX: u32 = 4294967295;
+pub const INT8_WIDTH: u32 = 8;
+pub const UINT8_WIDTH: u32 = 8;
+pub const INT16_WIDTH: u32 = 16;
+pub const UINT16_WIDTH: u32 = 16;
+pub const INT32_WIDTH: u32 = 32;
+pub const UINT32_WIDTH: u32 = 32;
+pub const INT64_WIDTH: u32 = 64;
+pub const UINT64_WIDTH: u32 = 64;
 pub const PRId8: &'static [u8; 2usize] = b"d\0";
 pub const PRId16: &'static [u8; 2usize] = b"d\0";
 pub const PRId32: &'static [u8; 2usize] = b"d\0";
@@ -1392,6 +1403,18 @@ pub const _SC_USHRT_MAX: _bindgen_ty_3 = 118;
 pub const _SC_NL_ARGMAX: _bindgen_ty_3 = 119;
 pub const _SC_NL_LANGMAX: _bindgen_ty_3 = 120;
 pub const _SC_NL_MSGMAX: _bindgen_ty_3 = 121;
+pub const _SC_NL_NMAX: _bindgen_ty_3 = 122;
+pub const _SC_NL_SETMAX: _bindgen_ty_3 = 123;
+pub const _SC_NL_TEXTMAX: _bindgen_ty_3 = 124;
+pub const _SC_XBS5_ILP32_OFF32: _bindgen_ty_3 = 125;
+pub const _SC_XBS5_ILP32_OFFBIG: _bindgen_ty_3 = 126;
+pub const _SC_XBS5_LP64_OFF64: _bindgen_ty_3 = 127;
+pub const _SC_XBS5_LPBIG_OFFBIG: _bindgen_ty_3 = 128;
+pub const _SC_XOPEN_LEGACY: _bindgen_ty_3 = 129;
+pub const _SC_XOPEN_REALTIME: _bindgen_ty_3 = 130;
+pub const _SC_XOPEN_REALTIME_THREADS: _bindgen_ty_3 = 131;
+pub const _SC_ADVISORY_INFO: _bindgen_ty_3 = 132;
+pub const _SC_BARRIERS: _bindgen_ty_3 = 133;
 pub const _SC_LEVEL1_ICACHE_SIZE: _bindgen_ty_3 = 185;
 pub const _SC_LEVEL1_ICACHE_ASSOC: _bindgen_ty_3 = 186;
 pub const _SC_LEVEL1_ICACHE_LINESIZE: _bindgen_ty_3 = 187;
@@ -3160,6 +3183,9 @@ extern "C" {
 }
 extern "C" {
     pub fn set_debug_trap(arg1: *mut ::std::os::raw::c_char);
+}
+extern "C" {
+    pub fn ignore_signal(arg1: ::std::os::raw::c_int);
 }
 extern "C" {
     pub fn run_exit_trap() -> ::std::os::raw::c_int;
