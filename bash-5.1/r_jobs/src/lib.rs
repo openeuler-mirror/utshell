@@ -1366,9 +1366,24 @@ unsafe extern "C" fn realloc_jobs_list() {
     };
     js.j_njobs = j;
 
+    js.j_jobslots = nsize;
+
+    while j < nsize {
+        *nlist.offset(j as isize) = 0 as *mut JOB;
+        j += 1;
+    }
+
+    if jobs != nlist {
+        libc::free(jobs as *mut c_void);
+        jobs = nlist;
+    }
+   
 
 
-    
+
+
+
+
     UNBLOCK_CHILD (&mut oset);
 }
 
