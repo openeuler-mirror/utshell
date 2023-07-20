@@ -1321,6 +1321,21 @@ unsafe extern "C" fn realloc_jobs_list() {
 
     nprev = NO_JOB;
     ncur = nprev;
+    nsize = (js.j_njobs + JOB_SLOTS as c_int - 1 ) / JOB_SLOTS as c_int ;
+    nsize *= JOB_SLOTS as c_int;
+    i = js.j_njobs % JOB_SLOTS as c_int;
+    if i == 0  || i > (JOB_SLOTS as c_int >> 1) {
+        nsize += JOB_SLOTS as c_int;
+    }
+
+
+
+
+
+
+
+
+
 
 }
 
