@@ -1517,6 +1517,22 @@ extern "C" {
         __flags: ::std::os::raw::c_uint,
     ) -> isize;
 }
+extern "C" {
+    pub fn fdatasync(__fildes: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn crypt(
+        __key: *const ::std::os::raw::c_char,
+        __salt: *const ::std::os::raw::c_char,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn swab(
+        __from: *const ::std::os::raw::c_void,
+        __to: *mut ::std::os::raw::c_void,
+        __n: isize,
+    );
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union siginfo_t__bindgen_ty_1 {
