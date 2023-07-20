@@ -1358,8 +1358,16 @@ unsafe extern "C" fn realloc_jobs_list() {
         i += 1;
     }
     
-    
-    
+    js.j_firstj = 0 ;
+    js.j_lastj = if j > 0  {
+        j - 1 
+    } else {
+        0 
+    };
+    js.j_njobs = j;
+
+
+
     
     UNBLOCK_CHILD (&mut oset);
 }
