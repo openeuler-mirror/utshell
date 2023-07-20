@@ -1314,8 +1314,13 @@ unsafe extern "C" fn realloc_jobs_list() {
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
     let mut nsize:  c_int = 0;
     let mut i:  c_int = 0;
+    let mut j:  c_int = 0;
+    let mut ncur:  c_int = 0;
+    let mut nprev:  c_int = 0;
+    let mut nlist: *mut *mut JOB = 0 as *mut *mut JOB;
 
-
+    nprev = NO_JOB;
+    ncur = nprev;
 
 }
 
