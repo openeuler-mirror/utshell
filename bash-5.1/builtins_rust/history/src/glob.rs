@@ -189,6 +189,17 @@ pub const HAVE_ISWCTYPE: u32 = 1;
 pub const HAVE_ISWLOWER: u32 = 1;
 pub const HAVE_ISWUPPER: u32 = 1;
 pub const HAVE_ISXDIGIT: u32 = 1;
+pub const HAVE_PWD_H: u32 = 1;
+pub const HAVE_REGEX_H: u32 = 1;
+pub const HAVE_STDLIB_H: u32 = 1;
+pub const HAVE_STDARG_H: u32 = 1;
+pub const HAVE_STRING_H: u32 = 1;
+pub const HAVE_STRINGS_H: u32 = 1;
+pub const HAVE_MEMORY_H: u32 = 1;
+pub const HAVE_STDBOOL_H: u32 = 1;
+pub const HAVE_STDDEF_H: u32 = 1;
+pub const HAVE_STDINT_H: u32 = 1;
+pub const HAVE_SYSLOG_H: u32 = 1;
 pub const SIGINT: u32 = 2;
 pub const SIGILL: u32 = 4;
 pub const SIGABRT: u32 = 6;
@@ -407,6 +418,18 @@ pub const PRIiFAST8: &'static [u8; 2usize] = b"i\0";
 pub const PRIiFAST16: &'static [u8; 3usize] = b"li\0";
 pub const PRIiFAST32: &'static [u8; 3usize] = b"li\0";
 pub const PRIiFAST64: &'static [u8; 3usize] = b"li\0";
+pub const PRIdMAX: &'static [u8; 3usize] = b"ld\0";
+pub const PRIiMAX: &'static [u8; 3usize] = b"li\0";
+pub const PRIoMAX: &'static [u8; 3usize] = b"lo\0";
+pub const PRIuMAX: &'static [u8; 3usize] = b"lu\0";
+pub const PRIxMAX: &'static [u8; 3usize] = b"lx\0";
+pub const PRIXMAX: &'static [u8; 3usize] = b"lX\0";
+pub const PRIdPTR: &'static [u8; 3usize] = b"ld\0";
+pub const PRIiPTR: &'static [u8; 3usize] = b"li\0";
+pub const PRIoPTR: &'static [u8; 3usize] = b"lo\0";
+pub const PRIuPTR: &'static [u8; 3usize] = b"lu\0";
+pub const PRIxPTR: &'static [u8; 3usize] = b"lx\0";
+pub const PRIXPTR: &'static [u8; 3usize] = b"lX\0";
 pub const GX_MARKDIRS: u32 = 1;
 pub const GX_NOCASE: u32 = 2;
 pub const GX_MATCHDOT: u32 = 4;
@@ -2420,6 +2443,18 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn seed48_r(
+        __seed16v: *mut ::std::os::raw::c_ushort,
+        __buffer: *mut drand48_data,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn lcong48_r(
+        __param: *mut ::std::os::raw::c_ushort,
+        __buffer: *mut drand48_data,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn malloc(__size: usize) -> *mut ::std::os::raw::c_void;
 }
 extern "C" {
@@ -3024,6 +3059,13 @@ extern "C" {
 extern "C" {
     #[link_name = "\u{1}glob_ignore_case"]
     pub static mut glob_ignore_case: ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn strmatch(
+        arg1: *mut ::std::os::raw::c_char,
+        arg2: *mut ::std::os::raw::c_char,
+        arg3: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
 }
 extern "C" {
     pub fn wcsmatch(
