@@ -200,6 +200,14 @@ pub const HAVE_STDBOOL_H: u32 = 1;
 pub const HAVE_STDDEF_H: u32 = 1;
 pub const HAVE_STDINT_H: u32 = 1;
 pub const HAVE_SYSLOG_H: u32 = 1;
+pub const __HAVE_FLOAT128X: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT16: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT32: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT64: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT32X: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT64X: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT128X: u32 = 0;
+pub const __HAVE_FLOATN_NOT_TYPEDEF: u32 = 0;
 pub const SIGINT: u32 = 2;
 pub const SIGILL: u32 = 4;
 pub const SIGABRT: u32 = 6;
@@ -1683,6 +1691,29 @@ extern "C" {
 }
 extern "C" {
     pub fn sigpending(__set: *mut sigset_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sigwait(
+        __set: *const sigset_t,
+        __sig: *mut ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sigwaitinfo(__set: *const sigset_t, __info: *mut siginfo_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sigtimedwait(
+        __set: *const sigset_t,
+        __info: *mut siginfo_t,
+        __timeout: *const timespec,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sigqueue(
+        __pid: __pid_t,
+        __sig: ::std::os::raw::c_int,
+        __val: sigval,
+    ) -> ::std::os::raw::c_int;
 }
 extern "C" {
     #[link_name = "\u{1}_sys_siglist"]
