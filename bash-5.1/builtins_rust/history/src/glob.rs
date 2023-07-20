@@ -352,6 +352,13 @@ pub const _XOPEN_LEGACY: u32 = 1;
 pub const _BITS_POSIX_OPT_H: u32 = 1;
 pub const _POSIX_JOB_CONTROL: u32 = 1;
 pub const _POSIX_SAVED_IDS: u32 = 1;
+pub const _POSIX_PRIORITY_SCHEDULING: u32 = 200809;
+pub const _POSIX_SYNCHRONIZED_IO: u32 = 200809;
+pub const _POSIX_FSYNC: u32 = 200809;
+pub const _POSIX_MAPPED_FILES: u32 = 200809;
+pub const _POSIX_MEMLOCK: u32 = 200809;
+pub const _POSIX_MEMLOCK_RANGE: u32 = 200809;
+pub const _POSIX_MEMORY_PROTECTION: u32 = 200809;
 pub const SIGINT: u32 = 2;
 pub const SIGILL: u32 = 4;
 pub const SIGABRT: u32 = 6;
@@ -2403,6 +2410,12 @@ extern "C" {
         __resource: __rlimit_resource_t,
         __rlimits: *const rlimit64,
     ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn getrusage(__who: __rusage_who_t, __usage: *mut rusage) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn getpriority(__which: __priority_which_t, __who: id_t) -> ::std::os::raw::c_int;
 }
 extern "C" {
     pub fn memccpy(
