@@ -1335,8 +1335,20 @@ unsafe extern "C" fn realloc_jobs_list() {
         xmalloc((nsize * std::mem::size_of::<JOB>() as c_int) as usize) as *mut *mut JOB   
     };
 
+    js.j_ndead = 0 ;
+    js.c_reaped = js.j_ndead;
+    j = 0 ;
+    i = j;
+    while i < js.j_jobslots {
+        if !(*jobs.offset(i as isize)).is_null() {
+            if i == js.j_current {
+                ncur = j;
+            }
+            
 
-
+        }
+        i += 1;
+    }
     
     
     
