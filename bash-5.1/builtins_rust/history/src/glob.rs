@@ -333,6 +333,14 @@ pub const _POSIX2_EXPR_NEST_MAX: u32 = 32;
 pub const _POSIX2_LINE_MAX: u32 = 2048;
 pub const _POSIX2_RE_DUP_MAX: u32 = 255;
 pub const _POSIX2_CHARCLASS_NAME_MAX: u32 = 14;
+pub const _POSIX_VERSION: u32 = 200809;
+pub const __POSIX2_THIS_VERSION: u32 = 200809;
+pub const _POSIX2_VERSION: u32 = 200809;
+pub const _POSIX2_C_VERSION: u32 = 200809;
+pub const _POSIX2_C_BIND: u32 = 200809;
+pub const _POSIX2_C_DEV: u32 = 200809;
+pub const _POSIX2_SW_DEV: u32 = 200809;
+pub const _POSIX2_LOCALEDEF: u32 = 200809;
 pub const SIGINT: u32 = 2;
 pub const SIGILL: u32 = 4;
 pub const SIGABRT: u32 = 6;
@@ -3020,6 +3028,9 @@ extern "C" {
 }
 extern "C" {
     pub fn check_dev_tty();
+}
+extern "C" {
+    pub fn path_dot_or_dotdot(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
 }
 extern "C" {
     pub fn absolute_pathname(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
