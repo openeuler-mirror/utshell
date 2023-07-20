@@ -200,6 +200,30 @@ pub const HAVE_STDBOOL_H: u32 = 1;
 pub const HAVE_STDDEF_H: u32 = 1;
 pub const HAVE_STDINT_H: u32 = 1;
 pub const HAVE_SYSLOG_H: u32 = 1;
+pub const _XOPEN_SOURCE_EXTENDED: u32 = 1;
+pub const _LARGEFILE64_SOURCE: u32 = 1;
+pub const _DEFAULT_SOURCE: u32 = 1;
+pub const _ATFILE_SOURCE: u32 = 1;
+pub const __USE_ISOC11: u32 = 1;
+pub const __USE_ISOC99: u32 = 1;
+pub const __USE_ISOC95: u32 = 1;
+pub const __USE_POSIX: u32 = 1;
+pub const __USE_POSIX2: u32 = 1;
+pub const __USE_POSIX199309: u32 = 1;
+pub const __USE_POSIX199506: u32 = 1;
+pub const __USE_XOPEN2K: u32 = 1;
+pub const __USE_XOPEN2K8: u32 = 1;
+pub const __USE_XOPEN: u32 = 1;
+pub const __USE_XOPEN_EXTENDED: u32 = 1;
+pub const __USE_UNIX98: u32 = 1;
+pub const _LARGEFILE_SOURCE: u32 = 1;
+pub const __USE_XOPEN2K8XSI: u32 = 1;
+pub const __USE_XOPEN2KXSI: u32 = 1;
+pub const __USE_LARGEFILE: u32 = 1;
+pub const __USE_LARGEFILE64: u32 = 1;
+pub const __USE_MISC: u32 = 1;
+pub const __USE_ATFILE: u32 = 1;
+pub const __USE_GNU: u32 = 1;
 pub const __HAVE_FLOAT128X: u32 = 0;
 pub const __HAVE_DISTINCT_FLOAT16: u32 = 0;
 pub const __HAVE_DISTINCT_FLOAT32: u32 = 0;
@@ -3037,6 +3061,12 @@ extern "C" {
         arg1: *mut ::std::os::raw::c_char,
         arg2: *mut ::std::os::raw::c_char,
     ) -> *mut ARRAY;
+}
+extern "C" {
+    pub fn execute_array_command(
+        arg1: *mut ARRAY,
+        arg2: *mut ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
 }
 extern "C" {
     #[link_name = "\u{1}trap_list"]
