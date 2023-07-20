@@ -1344,8 +1344,16 @@ unsafe extern "C" fn realloc_jobs_list() {
             if i == js.j_current {
                 ncur = j;
             }
-            
+                    if i == js.j_previous {
+                nprev = j;
+            }
 
+            *nlist.offset(j as isize) = *jobs.offset(i as isize);
+            j = j + 1;  //
+            if (**jobs.offset(i as isize)).state as c_int == JDEAD as c_int {
+                js.j_ndead += 1;
+                js.c_reaped += processes_in_job(i);
+            }  
         }
         i += 1;
     }
