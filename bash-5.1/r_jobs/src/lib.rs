@@ -1328,14 +1328,19 @@ unsafe extern "C" fn realloc_jobs_list() {
         nsize += JOB_SLOTS as c_int;
     }
 
+    BLOCK_CHILD(&mut set, &mut oset);
+    nlist = if js.j_jobslots == nsize {
+        jobs
+    } else {
+        xmalloc((nsize * std::mem::size_of::<JOB>() as c_int) as usize) as *mut *mut JOB   
+    };
 
 
 
-
-
-
-
-
-
+    
+    
+    
+    
+    UNBLOCK_CHILD (&mut oset);
 }
 
