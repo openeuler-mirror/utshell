@@ -261,6 +261,18 @@ pub const __HAVE_DISTINCT_FLOAT32X: u32 = 0;
 pub const __HAVE_DISTINCT_FLOAT64X: u32 = 0;
 pub const __HAVE_DISTINCT_FLOAT128X: u32 = 0;
 pub const __HAVE_FLOATN_NOT_TYPEDEF: u32 = 0;
+pub const CHAR_WIDTH: u32 = 8;
+pub const SCHAR_WIDTH: u32 = 8;
+pub const UCHAR_WIDTH: u32 = 8;
+pub const SHRT_WIDTH: u32 = 16;
+pub const USHRT_WIDTH: u32 = 16;
+pub const INT_WIDTH: u32 = 32;
+pub const UINT_WIDTH: u32 = 32;
+pub const LONG_WIDTH: u32 = 64;
+pub const ULONG_WIDTH: u32 = 64;
+pub const LLONG_WIDTH: u32 = 64;
+pub const ULLONG_WIDTH: u32 = 64;
+pub const _BITS_POSIX1_LIM_H: u32 = 1;
 pub const _POSIX_AIO_LISTIO_MAX: u32 = 2;
 pub const _POSIX_AIO_MAX: u32 = 1;
 pub const _POSIX_ARG_MAX: u32 = 4096;
@@ -2945,6 +2957,15 @@ extern "C" {
 }
 extern "C" {
     pub fn all_digits(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn exportable_function_name(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn check_identifier(
+        arg1: *mut WORD_DESC,
+        arg2: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
 }
     pub fn sh_unset_nodelay_mode(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
 }
