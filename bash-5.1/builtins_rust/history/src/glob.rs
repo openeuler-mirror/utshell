@@ -2462,7 +2462,21 @@ extern "C" {
         __s2: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
 }
-
+extern "C" {
+    pub fn __ctype_get_mb_cur_max() -> usize;
+}
+extern "C" {
+    pub fn atof(__nptr: *const ::std::os::raw::c_char) -> f64;
+}
+extern "C" {
+    pub fn atoi(__nptr: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn atol(__nptr: *const ::std::os::raw::c_char) -> ::std::os::raw::c_long;
+}
+extern "C" {
+    pub fn atoll(__nptr: *const ::std::os::raw::c_char) -> ::std::os::raw::c_longlong;
+}
 extern "C" {
     pub fn strtof32(
         __nptr: *const ::std::os::raw::c_char,
