@@ -232,6 +232,21 @@ pub const SIGWINCH: u32 = 28;
 pub const SIGIO: u32 = 23;
 pub const SIGIOT: u32 = 6;
 pub const SIGCLD: u32 = 20;
+pub const __sig_atomic_t_defined: u32 = 1;
+pub const __sigset_t_defined: u32 = 1;
+pub const _STRUCT_TIMESPEC: u32 = 1;
+pub const __siginfo_t_defined: u32 = 1;
+pub const __SI_MAX_SIZE: u32 = 128;
+pub const _BITS_SIGINFO_ARCH_H: u32 = 1;
+pub const __SI_ERRNO_THEN_CODE: u32 = 1;
+pub const __SI_HAVE_SIGSYS: u32 = 1;
+pub const _BITS_SIGINFO_CONSTS_H: u32 = 1;
+pub const __SI_ASYNCIO_AFTER_SIGIO: u32 = 1;
+pub const _BITS_SIGINFO_CONSTS_ARCH_H: u32 = 1;
+pub const __sigevent_t_defined: u32 = 1;
+pub const __SIGEV_MAX_SIZE: u32 = 64;
+pub const __have_pthread_attr_t: u32 = 1;
+pub const _BITS_SIGEVENT_CONSTS_H: u32 = 1;
 #[no_mangle]
 pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
 
@@ -2277,6 +2292,17 @@ extern "C" {
 }
 extern "C" {
     pub fn strnlen(__string: *const ::std::os::raw::c_char, __maxlen: usize) -> usize;
+}
+extern "C" {
+    pub fn explicit_bzero(__s: *mut ::std::os::raw::c_void, __n: usize);
+}
+extern "C" {
+    pub fn strncasecmp_l(
+        __s1: *const ::std::os::raw::c_char,
+        __s2: *const ::std::os::raw::c_char,
+        __n: usize,
+        __loc: locale_t,
+    ) -> ::std::os::raw::c_int;
 }
 extern "C" {
     pub fn strerror(__errnum: ::std::os::raw::c_int) -> *mut ::std::os::raw::c_char;
