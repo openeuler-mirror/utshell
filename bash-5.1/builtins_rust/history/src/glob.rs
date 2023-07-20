@@ -189,6 +189,23 @@ pub const HAVE_ISWCTYPE: u32 = 1;
 pub const HAVE_ISWLOWER: u32 = 1;
 pub const HAVE_ISWUPPER: u32 = 1;
 pub const HAVE_ISXDIGIT: u32 = 1;
+pub const HAVE_KILL: u32 = 1;
+pub const HAVE_KILLPG: u32 = 1;
+pub const HAVE_LSTAT: u32 = 1;
+pub const HAVE_MBRLEN: u32 = 1;
+pub const HAVE_MBRTOWC: u32 = 1;
+pub const HAVE_MBSNRTOWCS: u32 = 1;
+pub const HAVE_MBSRTOWCS: u32 = 1;
+pub const HAVE_MEMMOVE: u32 = 1;
+pub const HAVE_MEMSET: u32 = 1;
+pub const HAVE_MKDTEMP: u32 = 1;
+pub const HAVE_MKFIFO: u32 = 1;
+pub const HAVE_MKSTEMP: u32 = 1;
+pub const HAVE_PATHCONF: u32 = 1;
+pub const HAVE_PSELECT: u32 = 1;
+pub const HAVE_PREAD: u32 = 1;
+pub const HAVE_PUTENV: u32 = 1;
+pub const HAVE_RAISE: u32 = 1;
 pub const HAVE_PWD_H: u32 = 1;
 pub const HAVE_REGEX_H: u32 = 1;
 pub const HAVE_STDLIB_H: u32 = 1;
@@ -266,6 +283,19 @@ pub const _POSIX_QLIMIT: u32 = 1;
 pub const _POSIX_HIWAT: u32 = 512;
 pub const _POSIX_UIO_MAXIOV: u32 = 16;
 pub const _POSIX_CLOCKRES_MIN: u32 = 20000000;
+pub const NR_OPEN: u32 = 1024;
+pub const NGROUPS_MAX: u32 = 65536;
+pub const ARG_MAX: u32 = 131072;
+pub const LINK_MAX: u32 = 127;
+pub const MAX_CANON: u32 = 255;
+pub const MAX_INPUT: u32 = 255;
+pub const NAME_MAX: u32 = 255;
+pub const PATH_MAX: u32 = 4096;
+pub const PIPE_BUF: u32 = 4096;
+pub const XATTR_NAME_MAX: u32 = 255;
+pub const XATTR_SIZE_MAX: u32 = 65536;
+pub const XATTR_LIST_MAX: u32 = 65536;
+pub const RTSIG_MAX: u32 = 32;
 pub const SIGINT: u32 = 2;
 pub const SIGILL: u32 = 4;
 pub const SIGABRT: u32 = 6;
@@ -1580,6 +1610,18 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn acct(__name: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn getusershell() -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn endusershell();
+}
+extern "C" {
+    pub fn setusershell();
+}
+extern "C" {
     pub fn daemon(
         __nochdir: ::std::os::raw::c_int,
         __noclose: ::std::os::raw::c_int,
@@ -2484,6 +2526,12 @@ extern "C" {
         __s1: *const ::std::os::raw::c_char,
         __s2: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct lldiv_t {
+    pub quot: ::std::os::raw::c_longlong,
+    pub rem: ::std::os::raw::c_longlong,
 }
 extern "C" {
     pub fn __ctype_get_mb_cur_max() -> usize;
