@@ -1783,6 +1783,38 @@ extern "C" {
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
+pub struct sigcontext {
+    pub r8: __uint64_t,
+    pub r9: __uint64_t,
+    pub r10: __uint64_t,
+    pub r11: __uint64_t,
+    pub r12: __uint64_t,
+    pub r13: __uint64_t,
+    pub r14: __uint64_t,
+    pub r15: __uint64_t,
+    pub rdi: __uint64_t,
+    pub rsi: __uint64_t,
+    pub rbp: __uint64_t,
+    pub rbx: __uint64_t,
+    pub rdx: __uint64_t,
+    pub rax: __uint64_t,
+    pub rcx: __uint64_t,
+    pub rsp: __uint64_t,
+    pub rip: __uint64_t,
+    pub eflags: __uint64_t,
+    pub cs: ::std::os::raw::c_ushort,
+    pub gs: ::std::os::raw::c_ushort,
+    pub fs: ::std::os::raw::c_ushort,
+    pub __pad0: ::std::os::raw::c_ushort,
+    pub err: __uint64_t,
+    pub trapno: __uint64_t,
+    pub oldmask: __uint64_t,
+    pub cr2: __uint64_t,
+    pub __bindgen_anon_1: sigcontext__bindgen_ty_1,
+    pub __reserved1: [__uint64_t; 8usize],
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub union sigcontext__bindgen_ty_1 {
     pub fpstate: *mut _fpstate,
     pub __fpstate_word: __uint64_t,
@@ -2548,7 +2580,9 @@ extern "C" {
 extern "C" {
     pub fn rand_r(__seed: *mut ::std::os::raw::c_uint) -> ::std::os::raw::c_int;
 }
-
+extern "C" {
+    pub fn lcong48(__param: *mut ::std::os::raw::c_ushort);
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct drand48_data {
