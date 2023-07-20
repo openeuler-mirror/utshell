@@ -266,6 +266,19 @@ pub const _POSIX_QLIMIT: u32 = 1;
 pub const _POSIX_HIWAT: u32 = 512;
 pub const _POSIX_UIO_MAXIOV: u32 = 16;
 pub const _POSIX_CLOCKRES_MIN: u32 = 20000000;
+pub const NR_OPEN: u32 = 1024;
+pub const NGROUPS_MAX: u32 = 65536;
+pub const ARG_MAX: u32 = 131072;
+pub const LINK_MAX: u32 = 127;
+pub const MAX_CANON: u32 = 255;
+pub const MAX_INPUT: u32 = 255;
+pub const NAME_MAX: u32 = 255;
+pub const PATH_MAX: u32 = 4096;
+pub const PIPE_BUF: u32 = 4096;
+pub const XATTR_NAME_MAX: u32 = 255;
+pub const XATTR_SIZE_MAX: u32 = 65536;
+pub const XATTR_LIST_MAX: u32 = 65536;
+pub const RTSIG_MAX: u32 = 32;
 pub const SIGINT: u32 = 2;
 pub const SIGILL: u32 = 4;
 pub const SIGABRT: u32 = 6;
@@ -1578,6 +1591,18 @@ extern "C" {
         ___argv: *const *mut ::std::os::raw::c_char,
         __shortopts: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn acct(__name: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn getusershell() -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn endusershell();
+}
+extern "C" {
+    pub fn setusershell();
 }
 extern "C" {
     pub fn daemon(
