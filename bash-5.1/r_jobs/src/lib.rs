@@ -1308,5 +1308,14 @@ unsafe extern "C" fn delete_old_job(mut pid: pid_t) {
 }
 
 
+unsafe extern "C" fn realloc_jobs_list() {
+    // println!("realloc_jobs_list");
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut nsize:  c_int = 0;
+    let mut i:  c_int = 0;
 
+
+
+}
 
