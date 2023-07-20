@@ -189,6 +189,17 @@ pub const HAVE_ISWCTYPE: u32 = 1;
 pub const HAVE_ISWLOWER: u32 = 1;
 pub const HAVE_ISWUPPER: u32 = 1;
 pub const HAVE_ISXDIGIT: u32 = 1;
+pub const HAVE_PWD_H: u32 = 1;
+pub const HAVE_REGEX_H: u32 = 1;
+pub const HAVE_STDLIB_H: u32 = 1;
+pub const HAVE_STDARG_H: u32 = 1;
+pub const HAVE_STRING_H: u32 = 1;
+pub const HAVE_STRINGS_H: u32 = 1;
+pub const HAVE_MEMORY_H: u32 = 1;
+pub const HAVE_STDBOOL_H: u32 = 1;
+pub const HAVE_STDDEF_H: u32 = 1;
+pub const HAVE_STDINT_H: u32 = 1;
+pub const HAVE_SYSLOG_H: u32 = 1;
 pub const SIGINT: u32 = 2;
 pub const SIGILL: u32 = 4;
 pub const SIGABRT: u32 = 6;
@@ -2429,6 +2440,18 @@ extern "C" {
         __xsubi: *mut ::std::os::raw::c_ushort,
         __buffer: *mut drand48_data,
         __result: *mut ::std::os::raw::c_long,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn seed48_r(
+        __seed16v: *mut ::std::os::raw::c_ushort,
+        __buffer: *mut drand48_data,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn lcong48_r(
+        __param: *mut ::std::os::raw::c_ushort,
+        __buffer: *mut drand48_data,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
