@@ -1848,6 +1848,27 @@ extern "C" {
         __right: *const sigset_t,
     ) -> ::std::os::raw::c_int;
 }
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct sigaction {
+    pub __sigaction_handler: sigaction__bindgen_ty_1,
+    pub sa_mask: __sigset_t,
+    pub sa_flags: ::std::os::raw::c_int,
+    pub sa_restorer: ::core::option::Option<unsafe extern "C" fn()>,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union sigaction__bindgen_ty_1 {
+    pub sa_handler: __sighandler_t,
+    pub sa_sigaction: ::core::option::Option<
+        unsafe extern "C" fn(
+            arg1: ::std::os::raw::c_int,
+            arg2: *mut siginfo_t,
+            arg3: *mut ::std::os::raw::c_void,
+        ),
+    >,
+    _bindgen_union_align: u64,
+}
 extern "C" {
     pub fn sigprocmask(
         __how: ::std::os::raw::c_int,
