@@ -1433,6 +1433,20 @@ pub unsafe extern "C"  fn  delete_job(
         return;
     }
 
+    if dflags & DEL_NOBGPID as c_int == 0 as  c_int
+        && (*temp).flags & (J_ASYNC as c_int|J_FOREGROUND as c_int) == J_ASYNC as c_int
+    {
+        proc_0 = find_last_proc(job_index, 0 );
+        if !proc_0.is_null() {
+            bgp_add((*proc_0).pid, process_exit_status((*proc_0).status));
+        }
+    }
+
+
+
+
+
+
 
 
 
