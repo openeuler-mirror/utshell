@@ -341,6 +341,17 @@ pub const _POSIX2_C_BIND: u32 = 200809;
 pub const _POSIX2_C_DEV: u32 = 200809;
 pub const _POSIX2_SW_DEV: u32 = 200809;
 pub const _POSIX2_LOCALEDEF: u32 = 200809;
+pub const _XOPEN_VERSION: u32 = 700;
+pub const _XOPEN_XCU_VERSION: u32 = 4;
+pub const _XOPEN_XPG2: u32 = 1;
+pub const _XOPEN_XPG3: u32 = 1;
+pub const _XOPEN_XPG4: u32 = 1;
+pub const _XOPEN_UNIX: u32 = 1;
+pub const _XOPEN_ENH_I18N: u32 = 1;
+pub const _XOPEN_LEGACY: u32 = 1;
+pub const _BITS_POSIX_OPT_H: u32 = 1;
+pub const _POSIX_JOB_CONTROL: u32 = 1;
+pub const _POSIX_SAVED_IDS: u32 = 1;
 pub const SIGINT: u32 = 2;
 pub const SIGILL: u32 = 4;
 pub const SIGABRT: u32 = 6;
@@ -1744,6 +1755,19 @@ pub union siginfo_t__bindgen_ty_1 {
     pub _sigpoll: siginfo_t__bindgen_ty_1__bindgen_ty_6,
     pub _sigsys: siginfo_t__bindgen_ty_1__bindgen_ty_7,
     _bindgen_union_align: [u64; 14usize],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct siginfo_t__bindgen_ty_1__bindgen_ty_1 {
+    pub si_pid: __pid_t,
+    pub si_uid: __uid_t,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct siginfo_t__bindgen_ty_1__bindgen_ty_2 {
+    pub si_tid: ::std::os::raw::c_int,
+    pub si_overrun: ::std::os::raw::c_int,
+    pub si_sigval: __sigval_t,
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
