@@ -2296,6 +2296,27 @@ pub union rusage__bindgen_ty_3 {
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
+pub union rusage__bindgen_ty_6 {
+    pub ru_majflt: ::std::os::raw::c_long,
+    pub __ru_majflt_word: __syscall_slong_t,
+    _bindgen_union_align: u64,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union rusage__bindgen_ty_7 {
+    pub ru_nswap: ::std::os::raw::c_long,
+    pub __ru_nswap_word: __syscall_slong_t,
+    _bindgen_union_align: u64,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union rusage__bindgen_ty_8 {
+    pub ru_inblock: ::std::os::raw::c_long,
+    pub __ru_inblock_word: __syscall_slong_t,
+    _bindgen_union_align: u64,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub union rusage__bindgen_ty_13 {
     pub ru_nvcsw: ::std::os::raw::c_long,
     pub __ru_nvcsw_word: __syscall_slong_t,
