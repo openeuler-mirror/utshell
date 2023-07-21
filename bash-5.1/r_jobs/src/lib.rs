@@ -1442,9 +1442,12 @@ pub unsafe extern "C"  fn  delete_job(
         }
     }
 
-
-
-
+    *jobs.offset(job_index as isize) = 0 as *mut JOB;
+    if temp == js.j_lastmade {
+        js.j_lastmade = 0 as *mut JOB;
+    } else if temp == js.j_lastasync {
+        js.j_lastasync = 0 as *mut JOB;
+    }
 
 
 
