@@ -1470,8 +1470,11 @@ pub unsafe extern "C"  fn  delete_job(
     if js.j_njobs == 0  {
         js.j_lastj = 0 ;
         js.j_firstj = js.j_lastj;
+    } else if (*jobs.offset(js.j_firstj as isize)).is_null()
+            || (*jobs.offset(js.j_lastj as isize)).is_null()
+        {
+        reset_job_indices();
     }
-
 
 
 
