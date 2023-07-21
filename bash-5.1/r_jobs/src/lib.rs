@@ -1460,6 +1460,12 @@ pub unsafe extern "C"  fn  delete_job(
             js.c_reaped = 0 ;
         }
     }
+    if !((*temp).deferred).is_null() {
+        dispose_command((*temp).deferred);
+    }
+
+    libc::free(temp as *mut c_void);
+
 
 
 
