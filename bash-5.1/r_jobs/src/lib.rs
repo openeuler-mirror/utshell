@@ -1466,6 +1466,11 @@ pub unsafe extern "C"  fn  delete_job(
 
     libc::free(temp as *mut c_void);
 
+    js.j_njobs -= 1;
+    if js.j_njobs == 0  {
+        js.j_lastj = 0 ;
+        js.j_firstj = js.j_lastj;
+    }
 
 
 
