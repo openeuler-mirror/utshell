@@ -218,6 +218,10 @@ pub const HAVE_SETITIMER: u32 = 1;
 pub const HAVE_SETLINEBUF: u32 = 1;
 pub const HAVE_SETLOCALE: u32 = 1;
 pub const HAVE_DECL_SETREGID: u32 = 1;
+pub const HAVE_STRTOL: u32 = 1;
+pub const HAVE_STRTOLL: u32 = 1;
+pub const HAVE_STRTOUL: u32 = 1;
+pub const HAVE_STRTOULL: u32 = 1;
 pub const HAVE_PWD_H: u32 = 1;
 pub const HAVE_REGEX_H: u32 = 1;
 pub const HAVE_STDLIB_H: u32 = 1;
@@ -2504,6 +2508,19 @@ extern "C" {
     pub fn strncmp(
         __s1: *const ::std::os::raw::c_char,
         __s2: *const ::std::os::raw::c_char,
+        __n: usize,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn strerror_l(
+        __errnum: ::std::os::raw::c_int,
+        __l: locale_t,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn bcmp(
+        __s1: *const ::std::os::raw::c_void,
+        __s2: *const ::std::os::raw::c_void,
         __n: usize,
     ) -> ::std::os::raw::c_int;
 }
