@@ -2942,6 +2942,12 @@ extern "C" {
     pub fn atexit(__func: ::core::option::Option<unsafe extern "C" fn()>) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn unsetenv(__name: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn clearenv() -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn at_quick_exit(
         __func: ::core::option::Option<unsafe extern "C" fn()>,
     ) -> ::std::os::raw::c_int;
