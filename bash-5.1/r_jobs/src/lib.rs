@@ -1449,8 +1449,17 @@ pub unsafe extern "C"  fn  delete_job(
         js.j_lastasync = 0 as *mut JOB;
     }
 
+    libc::free((*temp).wd as *mut c_void);
+    ndel = discard_pipeline((*temp).pipe);
 
-
+    js.c_injobs -= ndel;
+    if (*temp).state  == JDEAD as c_int {
+        js.c_reaped -= ndel;
+        js.j_ndead -= 1;
+        if js.c_reaped < 0  {
+            js.c_reaped = 0 ;
+        }
+    }
 
 
 
