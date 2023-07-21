@@ -43,15 +43,14 @@ pub const SFLAG: i32 = 0x20;
 //#define REQUIRES_BUILTIN 0x80  /* This builtin requires other files. */
 //#define BASE_INDENT	4
 
-pub const BUILTIN_ENABLED :i32 = 0x01;
-pub const BUILTIN_DELETED :i32 = 0x02;
-pub const STATIC_BUILTIN :i32 = 0x04;
-pub const SPECIAL_BUILTIN :i32 = 0x08;
-pub const ASSIGNMENT_BUILTIN :i32 = 0x10;
-pub const POSIX_BUILTIN :i32 = 0x20;
-pub const LOCALVAR_BUILTIN :i32 = 0x40;
-pub const REQUIRES_BUILTIN :i32 = 0x80;
-
+pub const BUILTIN_ENABLED: i32 = 0x01;
+pub const BUILTIN_DELETED: i32 = 0x02;
+pub const STATIC_BUILTIN: i32 = 0x04;
+pub const SPECIAL_BUILTIN: i32 = 0x08;
+pub const ASSIGNMENT_BUILTIN: i32 = 0x10;
+pub const POSIX_BUILTIN: i32 = 0x20;
+pub const LOCALVAR_BUILTIN: i32 = 0x40;
+pub const REQUIRES_BUILTIN: i32 = 0x80;
 
 /* The MODE argument to `dlopen' contains one of the following: */
 // #define RTLD_LAZY	0x00001	/* Lazy function call binding.  */
@@ -59,21 +58,20 @@ pub const REQUIRES_BUILTIN :i32 = 0x80;
 // #define	RTLD_BINDING_MASK   0x3	/* Mask of binding time value.  */
 // #define RTLD_NOLOAD	0x00004	/* Do not load the object.  */
 // #define RTLD_DEEPBIND	0x00008	/* Use deep binding.  */
-
 /* If the following bit is set in the MODE argument to `dlopen',
-   the symbols of the loaded object and its dependencies are made
-   visible as if the object were linked directly into the program.  */
+the symbols of the loaded object and its dependencies are made
+visible as if the object were linked directly into the program.  */
 // #define RTLD_GLOBAL	0x00100
 
-pub const RTLD_LAZY :i32 = 0x00001;
-pub const RTLD_NOW :i32 = 0x00002;
-pub const RTLD_BINDING_MASK :i32 = 0x3;
-pub const RTLD_NOLOAD :i32 = 0x00004;
-pub const RTLD_DEEPBIND :i32 = 0x00008;
-pub const RTLD_GLOBAL :i32 = 0x00100;
+pub const RTLD_LAZY: i32 = 0x00001;
+pub const RTLD_NOW: i32 = 0x00002;
+pub const RTLD_BINDING_MASK: i32 = 0x3;
+pub const RTLD_NOLOAD: i32 = 0x00004;
+pub const RTLD_DEEPBIND: i32 = 0x00008;
+pub const RTLD_GLOBAL: i32 = 0x00100;
 
-pub const FS_NODIRS :i32 = 0x20;
-pub const FS_EXEC_PREFERRED :i32 = 0x4;
+pub const FS_NODIRS: i32 = 0x02;
+pub const FS_EXEC_PREFERRED: i32 = 0x4;
 
 extern "C" {
     fn printf(_: *const libc::c_char, _: ...) -> libc::c_int;
@@ -148,7 +146,7 @@ pub struct builtin {
 #[repr(C)]
 pub struct _list_of_items {
     pub flags: libc::c_int,
-    pub list_getter: Option::<unsafe extern "C" fn(*mut _list_of_items) -> libc::c_int>,
+    pub list_getter: Option<unsafe extern "C" fn(*mut _list_of_items) -> libc::c_int>,
     pub slist: *mut STRINGLIST,
     pub genlist: *mut STRINGLIST,
     pub genindex: libc::c_int,
@@ -162,9 +160,9 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
     let mut filter: i32 = 0;
     let mut filename: *mut libc::c_char = 0 as *mut libc::c_char;
     reset_internal_getopt();
-    let adnpsf = CString::new("adnpsf").expect("CString::new failed");;
+    let adnpsf = CString::new("adnpsf").expect("CString::new failed");
     loop {
-        opt = internal_getopt(list, adnpsf.as_ptr() );
+        opt = internal_getopt(list, adnpsf.as_ptr());
         if !(opt != -1) {
             break;
         }
