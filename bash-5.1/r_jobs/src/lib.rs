@@ -1416,8 +1416,17 @@ pub unsafe extern "C"  fn  delete_job(
     let mut proc_0: *mut PROCESS = 0 as *mut PROCESS;
     let mut ndel:  c_int = 0;
 
-
-
+    if js.j_jobslots == 0 || jobs_list_frozen != 0 {
+        return;
+    }
+    if dflags & DEL_WARNSTOPPED as c_int != 0 && subshell_environment == 0 
+        && STOPPED!(job_index) 
+    {
+        internal_warning(b"deleting stopped job %d with process group %ld\0" as *const u8 as *const c_char,
+            job_index + 1 ,
+            (**jobs.offset(job_index as isize)).pgrp as libc::c_long,
+        );
+    }
 
 
 
