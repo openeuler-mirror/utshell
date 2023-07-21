@@ -1476,8 +1476,9 @@ pub unsafe extern "C"  fn  delete_job(
         reset_job_indices();
     }
 
-
-
+    if job_index == js.j_current || job_index == js.j_previous {
+        reset_current();
+    }
 }
 
 
