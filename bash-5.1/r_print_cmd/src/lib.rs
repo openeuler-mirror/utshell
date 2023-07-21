@@ -701,3 +701,37 @@ pub unsafe extern "C" fn print_select_command(select_command:*mut SELECT_COM)
     newline(b"done\0" as *const u8 as *const c_char as *mut c_char);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn print_group_command(group_command:*mut GROUP_COM)
+{
+    group_command_nesting += 1;
+    cprintf_1(b"{{ \0" as *const u8 as *const i8);
+    if inside_function_def == 0{
+        skip_this_indent += 1;
+    }
+    else {
+        cprintf_1(b"\n\0" as *const u8 as *const i8);
+        indentation += indentation_amount;
+    }
+    make_command_string_internal((*group_command).command);
+    PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
+    if inside_function_def != 0{
+        cprintf_1(b"\n\0" as *const u8 as *const i8);
+        indentation -= indentation_amount;
+        indent(indentation);
+    }
+    else{
+        semicolon();
+        cprintf_1(b" \0" as *const u8 as *const i8);
+    }
+    cprintf_1(b"}\0" as *const u8 as *const i8);
+    group_command_nesting -= 1;
+
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn r_print_case_command_head(case_command:*mut CASE_COM)
+{
+    let mut str = format!("case {} in \0", CStr::from_ptr((*(*case_command).word).word).to_str().unwrap()); 
+    cprintf_1(str.as_mut_ptr() as *mut c_char);
+}
