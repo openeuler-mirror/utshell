@@ -759,3 +759,27 @@ pub unsafe extern "C" fn print_case_command(case_command:*mut CASE_COM)
     }
     newline(b"esac\0" as *const u8 as *const c_char as *mut c_char);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn print_case_clauses(mut clauses:*mut PATTERN_LIST)
+{
+    indentation += indentation_amount;
+    
+    while !clauses.is_null()
+    {
+        
+        newline(b"\0" as *const u8 as *const c_char as *mut c_char);
+        command_print_word_list((*clauses).patterns, CString::new(" | ").unwrap().as_ptr() as *mut c_char);
+        cprintf_1(b")\n\0" as *const u8 as *const i8);
+        indentation += indentation_amount;
+        make_command_string_internal((*clauses).action);
+        indentation -= indentation_amount;
+        PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
+        newline(b";;\0" as *const u8 as *const c_char as *mut c_char);
+        clauses = (*clauses).next;
+
+    }
+    
+    indentation -= indentation_amount;
+
+}

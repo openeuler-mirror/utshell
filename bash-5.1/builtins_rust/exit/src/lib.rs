@@ -246,39 +246,37 @@ pub fn r_exit_or_logout(list: *mut WordList) -> i32 {
             }
 
             if stopmsg != 0 {
-                last_shell_builtin = r_exit_builtin ;
-                this_shell_builtin = last_shell_builtin ;
+                last_shell_builtin = r_exit_builtin;
+                this_shell_builtin = last_shell_builtin;
                 return EXECUTION_FAILURE!();
             }
         }
 
-        if (running_trap ==1) && (list == std::ptr::null_mut()) 
-        {
+        if (running_trap == 1) && (list == std::ptr::null_mut()) {
             exit_value = trap_saved_exit_value;
-        }else{
+        } else {
             exit_value = get_exitstat(list);
         }
 
         r_bash_logout();
-        last_command_exit_value = exit_value; 
+        last_command_exit_value = exit_value;
 
         jump_to_top_level(EXITPROG!());
 
-       0
+        1
     }
 }
 
 //#[no_mangle]
 //pub extern "C" fn r_bash_logout(){
-pub fn r_bash_logout(){
-    unsafe{    
+pub fn r_bash_logout() {
+    unsafe {
         if login_shell != 0 && sourced_logout == 0 && subshell_environment == 0 {
             sourced_logout = sourced_logout + 1;
             let c_str = CString::new("~/.bash_logout").unwrap();
             let c_ptr = c_str.as_ptr();
-            maybe_execute_file(c_ptr,1);
-            maybe_execute_file(SYS_BASH_LOGOOUT!(),1);
+            maybe_execute_file(c_ptr, 1);
+            maybe_execute_file(SYS_BASH_LOGOOUT!(), 1);
         }
     }
-
 }
