@@ -775,11 +775,21 @@ pub unsafe extern "C" fn print_case_clauses(mut clauses:*mut PATTERN_LIST)
         make_command_string_internal((*clauses).action);
         indentation -= indentation_amount;
         PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
-        newline(b";;\0" as *const u8 as *const c_char as *mut c_char);
+
+        if (*clauses).flags & CASEPAT_FALLTHROUGH as i32 != 0{
+            newline(b";&\0" as *const u8 as *const c_char as *mut c_char);
+        }
+        else if (*clauses).flags & CASEPAT_TESTNEXT as i32 != 0{
+            newline(b";;&\0" as *const u8 as *const c_char as *mut c_char);
+        }
+        else {
+            newline(b";;\0" as *const u8 as *const c_char as *mut c_char);
+        }
+        
         clauses = (*clauses).next;
 
     }
-    
+
     indentation -= indentation_amount;
 
 }

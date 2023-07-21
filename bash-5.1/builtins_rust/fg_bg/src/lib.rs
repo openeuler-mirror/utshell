@@ -166,27 +166,27 @@ pub struct select_com {
 
 #[repr(C)]
 pub struct arith_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    exp:*mut WordList
+    flags: libc::c_int,
+    line: libc::c_int,
+    exp: *mut WordList,
 }
 
 #[repr(C)]
 pub struct cond_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    type_c:libc::c_int,
-    exp:*mut WordList  
+    flags: libc::c_int,
+    line: libc::c_int,
+    type_c: libc::c_int,
+    exp: *mut WordList,
 }
 
 #[repr(C)]
 pub struct arith_for_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    init:*mut WordList,
-    test:*mut WordList,
-    step:*mut WordList,
-    action:*mut COMMAND  
+    flags: libc::c_int,
+    line: libc::c_int,
+    init: *mut WordList,
+    test: *mut WordList,
+    step: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
@@ -205,27 +205,27 @@ pub struct coproc_com {
 
 #[repr(C)]
 pub union VALUE_COMMAND {
-    For:*mut for_com,
-    Case:*mut case_com,
-    While:*mut while_com,
-    If:*mut if_com,
-    Connection:*mut connection,
-    Simple:*mut simple_com,
-    Function_def:*mut function_def,
-    Group:*mut group_com,
-    Select:*mut select_com,
-    Arith:*mut arith_com,
-    Cond:*mut cond_com,
-    ArithFor:*mut arith_for_com,
-    Subshell:*mut subshell_com,
-    Coproc:*mut coproc_com
+    For: *mut for_com,
+    Case: *mut case_com,
+    While: *mut while_com,
+    If: *mut if_com,
+    Connection: *mut connection,
+    Simple: *mut simple_com,
+    Function_def: *mut function_def,
+    Group: *mut group_com,
+    Select: *mut select_com,
+    Arith: *mut arith_com,
+    Cond: *mut cond_com,
+    ArithFor: *mut arith_for_com,
+    Subshell: *mut subshell_com,
+    Coproc: *mut coproc_com,
 }
 
 #[repr(C)]
 pub struct COMMAND {
     type_c: command_type,
-    flags: i8,
-    line: i8,
+    flags: i32,
+    line: i32,
     redirects: *mut REDIRECT,
     value: VALUE_COMMAND,
 }
@@ -349,19 +349,19 @@ macro_rules! CHECK_HELPOPT {
   }
 }
 
-extern "C" {  
-    fn builtin_error(err:*const c_char,...);  
-    fn get_job_spec (list:*mut WordList)->i32;
-    fn sh_badjob (str:*mut c_char);
-    static jobs:*mut*mut JOB;    
-    static  js:jobstats ;
-    
-    static mut loptend:*mut WordList; 
-    fn sh_nojobs (str:*mut c_char);
-    fn no_options (list:*mut WordList)->i32;
-    static mut job_control:i32;
-    static mut last_asynchronous_pid:i32;
-    fn start_job (job:i32, foreground:i32)->i32;
+extern "C" {
+    fn builtin_error(err: *const c_char, ...);
+    fn get_job_spec(list: *mut WordList) -> i32;
+    fn sh_badjob(str: *mut c_char);
+    static jobs: *mut *mut JOB;
+    static js: jobstats;
+
+    static mut loptend: *mut WordList;
+    fn sh_nojobs(str: *mut c_char);
+    fn no_options(list: *mut WordList) -> i32;
+    static mut job_control: i32;
+    static mut last_asynchronous_pid: i32;
+    fn start_job(job: i32, foreground: i32) -> i32;
 }
 
 /* How to bring a job into the foreground. */
