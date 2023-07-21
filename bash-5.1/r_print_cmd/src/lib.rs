@@ -674,3 +674,15 @@ pub unsafe extern "C" fn r_xtrace_print_select_command_head(select_command:*mut 
     r_xtrace_print_word_list((*select_command).map_list, 2);
     
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_print_select_command_head(select_command:*mut SELECT_COM)
+{
+
+    println!("r_xtrace_print_select_command_head");
+    CHECK_XTRACE_FP!();
+    fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(),r_indirection_level_string());
+    fprintf(xtrace_fp, CString::new("select %s in ").unwrap().as_ptr(),(*(*select_command).name).word);
+    r_xtrace_print_word_list((*select_command).map_list, 2);
+    
+}

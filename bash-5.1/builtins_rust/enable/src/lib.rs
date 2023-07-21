@@ -1,14 +1,14 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-use std::ffi::{CString,CStr};
+use std::ffi::{CStr, CString};
 extern crate rcmd;
 use libc::c_char;
-
-
+use libloading::Library;
 use rcmd::*;
-use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{WordDesc, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
+use std::path::Path;
 /*
 #define ENABLED  1
 #define DISABLED 2
@@ -32,8 +32,7 @@ pub const NFLAG: i32 = 0x08;
 pub const PFLAG: i32 = 0x10;
 pub const SFLAG: i32 = 0x20;
 
-
-// Flags describing various things about a builtin. 
+// Flags describing various things about a builtin.
 //#define BUILTIN_ENABLED 0x01	/* This builtin is enabled. */
 //#define BUILTIN_DELETED 0x02	/* This has been deleted with enable -d. */
 //#define STATIC_BUILTIN  0x04	/* This builtin is not dynamically loaded. */
@@ -191,7 +190,7 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
                 flags |= DFLAG;
             }
             _ => {
-                if opt ==-99 {
+                if opt == '?' {
                     r_builtin_help();
                     return EX_USAGE;
                 }
