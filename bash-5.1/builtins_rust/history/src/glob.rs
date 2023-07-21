@@ -206,6 +206,18 @@ pub const HAVE_PSELECT: u32 = 1;
 pub const HAVE_PREAD: u32 = 1;
 pub const HAVE_PUTENV: u32 = 1;
 pub const HAVE_RAISE: u32 = 1;
+pub const HAVE_RANDOM: u32 = 1;
+pub const HAVE_READLINK: u32 = 1;
+pub const HAVE_REGCOMP: u32 = 1;
+pub const HAVE_REGEXEC: u32 = 1;
+pub const HAVE_RENAME: u32 = 1;
+pub const HAVE_SBRK: u32 = 1;
+pub const HAVE_SELECT: u32 = 1;
+pub const HAVE_SETENV: u32 = 1;
+pub const HAVE_SETITIMER: u32 = 1;
+pub const HAVE_SETLINEBUF: u32 = 1;
+pub const HAVE_SETLOCALE: u32 = 1;
+pub const HAVE_DECL_SETREGID: u32 = 1;
 pub const HAVE_PWD_H: u32 = 1;
 pub const HAVE_REGEX_H: u32 = 1;
 pub const HAVE_STDLIB_H: u32 = 1;
@@ -3326,6 +3338,11 @@ extern "C" {
 extern "C" {
     #[link_name = "\u{1}glob_ignore_case"]
     pub static mut glob_ignore_case: ::std::os::raw::c_int;
+}
+pub type __COLLSYM = _COLLSYM;
+extern "C" {
+    #[link_name = "\u{1}POSIXCOLL"]
+    pub static mut POSIXCOLL: [__COLLSYM; 96usize];
 }
 extern "C" {
     pub fn strmatch(
