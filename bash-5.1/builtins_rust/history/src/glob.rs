@@ -359,6 +359,21 @@ pub const _POSIX_MAPPED_FILES: u32 = 200809;
 pub const _POSIX_MEMLOCK: u32 = 200809;
 pub const _POSIX_MEMLOCK_RANGE: u32 = 200809;
 pub const _POSIX_MEMORY_PROTECTION: u32 = 200809;
+pub const _POSIX_READER_WRITER_LOCKS: u32 = 200809;
+pub const _POSIX_SHELL: u32 = 1;
+pub const _POSIX_TIMEOUTS: u32 = 200809;
+pub const _POSIX_SPIN_LOCKS: u32 = 200809;
+pub const _POSIX_SPAWN: u32 = 200809;
+pub const _POSIX_TIMERS: u32 = 200809;
+pub const _POSIX_BARRIERS: u32 = 200809;
+pub const _POSIX_MESSAGE_PASSING: u32 = 200809;
+pub const _POSIX_THREAD_PROCESS_SHARED: u32 = 200809;
+pub const _POSIX_MONOTONIC_CLOCK: u32 = 0;
+pub const _POSIX_CLOCK_SELECTION: u32 = 200809;
+pub const _POSIX_ADVISORY_INFO: u32 = 200809;
+pub const _POSIX_IPV6: u32 = 200809;
+pub const _POSIX_RAW_SOCKETS: u32 = 200809;
+pub const _POSIX2_CHAR_TERM: u32 = 200809;
 pub const SIGINT: u32 = 2;
 pub const SIGILL: u32 = 4;
 pub const SIGABRT: u32 = 6;
@@ -3107,6 +3122,12 @@ extern "C" {
 }
 extern "C" {
     pub fn check_dev_tty();
+}
+extern "C" {
+    pub fn file_isdir(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn file_iswdir(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
 }
 extern "C" {
     pub fn path_dot_or_dotdot(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
