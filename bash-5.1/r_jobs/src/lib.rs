@@ -1407,3 +1407,22 @@ unsafe extern "C" fn compact_jobs_list(mut flags: c_int) -> c_int {
     };
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  delete_job(
+    mut job_index: c_int,
+    mut dflags: c_int,
+) {
+    let mut temp: *mut JOB = 0 as *mut JOB;
+    let mut proc_0: *mut PROCESS = 0 as *mut PROCESS;
+    let mut ndel:  c_int = 0;
+
+
+
+
+
+
+
+}
+
+
+
