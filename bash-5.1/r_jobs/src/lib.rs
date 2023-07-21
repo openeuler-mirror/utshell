@@ -1428,6 +1428,13 @@ pub unsafe extern "C"  fn  delete_job(
         );
     }
 
+    temp = *jobs.offset(job_index as isize);
+    if temp.is_null() {
+        return;
+    }
+
+
+
 
 
 
