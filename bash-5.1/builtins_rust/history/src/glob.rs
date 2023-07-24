@@ -675,6 +675,14 @@ pub const INT32_WIDTH: u32 = 32;
 pub const UINT32_WIDTH: u32 = 32;
 pub const INT64_WIDTH: u32 = 64;
 pub const UINT64_WIDTH: u32 = 64;
+pub const SUBSHELL_ASYNC: u32 = 1;
+pub const SUBSHELL_PAREN: u32 = 2;
+pub const SUBSHELL_COMSUB: u32 = 4;
+pub const SUBSHELL_FORK: u32 = 8;
+pub const SUBSHELL_PIPE: u32 = 16;
+pub const SUBSHELL_PROCSUB: u32 = 32;
+pub const SUBSHELL_COPROC: u32 = 64;
+pub const SUBSHELL_RESETTRAP: u32 = 128;
 pub const CMD_WANT_SUBSHELL: u32 = 1;
 pub const CMD_FORCE_SUBSHELL: u32 = 2;
 pub const CMD_INVERT_RETURN: u32 = 4;
@@ -3727,6 +3735,9 @@ extern "C" {
 }
 extern "C" {
     pub fn free_trap_strings();
+}
+extern "C" {
+    pub fn reset_signal_handlers();
 }
 extern "C" {
     pub fn restore_original_signals();
