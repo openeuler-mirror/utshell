@@ -317,15 +317,15 @@ unsafe extern "C" fn enable_shell_command(
             insert_empty_cmd(CStr::from_ptr(name).to_string_lossy().into_owned());
             set_cmd_enable(CStr::from_ptr(name).to_string_lossy().into_owned(), true);
         }
-    } 
+    }
     set_itemlist_dirty(&mut it_enabled);
     set_itemlist_dirty(&mut it_disabled);
     return EXECUTION_SUCCESS!();
 }
 unsafe extern "C" fn dyn_load_builtin(
     mut list: *mut WordList,
-    flags: libc::c_int,
-    filename: *mut libc::c_char,
+    mut flags: libc::c_int,
+    mut filename: *mut libc::c_char,
 ) -> libc::c_int {
     let mut l: *mut WordList = 0 as *mut WordList;
     let mut handle: *mut libc::c_void = 0 as *mut libc::c_void;
@@ -630,13 +630,13 @@ unsafe extern "C" fn dyn_unload_builtin(name: *mut libc::c_char) -> libc::c_int 
         funcname.offset(size as isize),
         b"_builtin_unload\0" as *const u8 as *const libc::c_char,
     );
-    unloadfunc = ::std::mem::transmute::<
-        *mut libc::c_void,
-        Option::<sh_unload_func_t>,
-    >(dlsym(handle, funcname));
+    unloadfunc = ::std::mem::transmute::<*mut libc::c_void, Option<sh_unload_func_t>>(dlsym(
+        handle, funcname,
+    ));
     if unloadfunc.is_some() {
-        (Some(unloadfunc.expect("non-null function pointer")))
-            .expect("no-null function pointer")(name);
+        (Some(unloadfunc.expect("non-null function pointer"))).expect("no-null function pointer")(
+            name,
+        );
     }
     free(funcname as *mut libc::c_void);
     if ref_0 == 1 as libc::c_int && local_dlclose(handle) != 0 as libc::c_int {
