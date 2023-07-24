@@ -710,6 +710,10 @@ pub const SCNo8: &'static [u8; 4usize] = b"hho\0";
 pub const SCNo16: &'static [u8; 3usize] = b"ho\0";
 pub const SCNo32: &'static [u8; 2usize] = b"o\0";
 pub const SCNo64: &'static [u8; 3usize] = b"lo\0";
+pub const SCNx8: &'static [u8; 4usize] = b"hhx\0";
+pub const SCNx16: &'static [u8; 3usize] = b"hx\0";
+pub const SCNx32: &'static [u8; 2usize] = b"x\0";
+pub const SCNx64: &'static [u8; 3usize] = b"lx\0";
 pub const SCNdMAX: &'static [u8; 3usize] = b"ld\0";
 pub const SCNiMAX: &'static [u8; 3usize] = b"li\0";
 pub const SCNoMAX: &'static [u8; 3usize] = b"lo\0";
@@ -1026,6 +1030,21 @@ extern "C" {
         __base: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_ulonglong;
 }
+extern "C" {
+    pub fn wcstoq(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __base: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_longlong;
+}
+extern "C" {
+    pub fn wcstouq(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __base: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_ulonglong;
+}
+extern "C" {
     pub fn wcstol_l(
         __nptr: *const wchar_t,
         __endptr: *mut *mut wchar_t,
