@@ -252,6 +252,24 @@ pub const HAVE_STDBOOL_H: u32 = 1;
 pub const HAVE_STDDEF_H: u32 = 1;
 pub const HAVE_STDINT_H: u32 = 1;
 pub const HAVE_SYSLOG_H: u32 = 1;
+pub const HAVE_LIBDL: u32 = 1;
+pub const HAVE_ARGZ_H: u32 = 1;
+pub const HAVE_ERRNO_H: u32 = 1;
+pub const HAVE_FCNTL_H: u32 = 1;
+pub const HAVE_MALLOC_H: u32 = 1;
+pub const HAVE_STDIO_EXT_H: u32 = 1;
+pub const HAVE_DCGETTEXT: u32 = 1;
+pub const HAVE_LOCALECONV: u32 = 1;
+pub const HAVE_MEMPCPY: u32 = 1;
+pub const HAVE_MMAP: u32 = 1;
+pub const HAVE_MREMAP: u32 = 1;
+pub const HAVE_MUNMAP: u32 = 1;
+pub const HAVE_STPCPY: u32 = 1;
+pub const HAVE_STRCSPN: u32 = 1;
+pub const HAVE_STRDUP: u32 = 1;
+pub const HAVE___ARGZ_COUNT: u32 = 1;
+pub const HAVE___ARGZ_NEXT: u32 = 1;
+pub const HAVE___ARGZ_STRINGIFY: u32 = 1;
 pub const _XOPEN_SOURCE_EXTENDED: u32 = 1;
 pub const _LARGEFILE64_SOURCE: u32 = 1;
 pub const _DEFAULT_SOURCE: u32 = 1;
@@ -3516,6 +3534,12 @@ extern "C" {
 }
 extern "C" {
     pub fn set_debug_trap(arg1: *mut ::std::os::raw::c_char);
+}
+extern "C" {
+    pub fn set_sigint_trap(arg1: *mut ::std::os::raw::c_char);
+}
+extern "C" {
+    pub fn set_signal(arg1: ::std::os::raw::c_int, arg2: *mut ::std::os::raw::c_char);
 }
 extern "C" {
     pub fn restore_default_signal(arg1: ::std::os::raw::c_int);
