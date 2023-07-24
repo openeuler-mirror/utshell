@@ -382,6 +382,17 @@ pub const _POSIX2_EXPR_NEST_MAX: u32 = 32;
 pub const _POSIX2_LINE_MAX: u32 = 2048;
 pub const _POSIX2_RE_DUP_MAX: u32 = 255;
 pub const _POSIX2_CHARCLASS_NAME_MAX: u32 = 14;
+pub const _XOPEN_LIM_H: u32 = 1;
+pub const _XOPEN_IOV_MAX: u32 = 16;
+pub const _BITS_UIO_LIM_H: u32 = 1;
+pub const __IOV_MAX: u32 = 1024;
+pub const IOV_MAX: u32 = 1024;
+pub const NL_ARGMAX: u32 = 4096;
+pub const NL_LANGMAX: u32 = 2048;
+pub const NZERO: u32 = 20;
+pub const WORD_BIT: u32 = 32;
+pub const LONG_BIT: u32 = 64;
+pub const _UNISTD_H: u32 = 1;
 pub const _POSIX_VERSION: u32 = 200809;
 pub const __POSIX2_THIS_VERSION: u32 = 200809;
 pub const _POSIX2_VERSION: u32 = 200809;
@@ -699,6 +710,10 @@ pub const SCNo8: &'static [u8; 4usize] = b"hho\0";
 pub const SCNo16: &'static [u8; 3usize] = b"ho\0";
 pub const SCNo32: &'static [u8; 2usize] = b"o\0";
 pub const SCNo64: &'static [u8; 3usize] = b"lo\0";
+pub const SCNx8: &'static [u8; 4usize] = b"hhx\0";
+pub const SCNx16: &'static [u8; 3usize] = b"hx\0";
+pub const SCNx32: &'static [u8; 2usize] = b"x\0";
+pub const SCNx64: &'static [u8; 3usize] = b"lx\0";
 pub const SCNdMAX: &'static [u8; 3usize] = b"ld\0";
 pub const SCNiMAX: &'static [u8; 3usize] = b"li\0";
 pub const SCNoMAX: &'static [u8; 3usize] = b"lo\0";
@@ -1015,6 +1030,21 @@ extern "C" {
         __base: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_ulonglong;
 }
+extern "C" {
+    pub fn wcstoq(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __base: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_longlong;
+}
+extern "C" {
+    pub fn wcstouq(
+        __nptr: *const wchar_t,
+        __endptr: *mut *mut wchar_t,
+        __base: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_ulonglong;
+}
+extern "C" {
     pub fn wcstol_l(
         __nptr: *const wchar_t,
         __endptr: *mut *mut wchar_t,
@@ -1335,6 +1365,18 @@ pub type off64_t = __off64_t;
 pub type useconds_t = __useconds_t;
 pub type pid_t = __pid_t;
 pub type socklen_t = __socklen_t;
+extern "C" {
+    pub fn access(
+        __name: *const ::std::os::raw::c_char,
+        __type: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn euidaccess(
+        __name: *const ::std::os::raw::c_char,
+        __type: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
 extern "C" {
     pub fn lseek(
         __fd: ::std::os::raw::c_int,
