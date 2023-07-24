@@ -1507,6 +1507,12 @@ pub unsafe extern "C"  fn  discard_pipeline(mut chain: *mut PROCESS) -> c_int {
         if !((*this).command).is_null() {
             libc::free((*this).command as *mut c_void);
         }
+        libc::free(this as *mut c_void);
+        n += 1;
+        this = next;
+        if !(this != chain) {
+            break;
+        }
     }
     return n;  
 }
