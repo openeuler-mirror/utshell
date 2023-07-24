@@ -241,6 +241,19 @@ pub const HAVE_TIMES: u32 = 1;
 pub const HAVE_TOWLOWER: u32 = 1;
 pub const HAVE_TOWUPPER: u32 = 1;
 pub const HAVE_TTYNAME: u32 = 1;
+pub const HAVE_TZSET: u32 = 1;
+pub const HAVE_ULIMIT: u32 = 1;
+pub const HAVE_UNAME: u32 = 1;
+pub const HAVE_UNSETENV: u32 = 1;
+pub const HAVE_VASPRINTF: u32 = 1;
+pub const HAVE_VPRINTF: u32 = 1;
+pub const HAVE_VSNPRINTF: u32 = 1;
+pub const HAVE_WAITPID: u32 = 1;
+pub const HAVE_WAIT3: u32 = 1;
+pub const HAVE_WCRTOMB: u32 = 1;
+pub const HAVE_WCSCOLL: u32 = 1;
+pub const HAVE_WCSDUP: u32 = 1;
+pub const HAVE_WCTYPE: u32 = 1;
 pub const HAVE_PWD_H: u32 = 1;
 pub const HAVE_REGEX_H: u32 = 1;
 pub const HAVE_STDLIB_H: u32 = 1;
@@ -3664,6 +3677,9 @@ extern "C" {
 }
 extern "C" {
     pub fn set_debug_trap(arg1: *mut ::std::os::raw::c_char);
+}
+extern "C" {
+    pub fn maybe_set_return_trap(arg1: *mut ::std::os::raw::c_char);
 }
 extern "C" {
     pub fn set_sigint_trap(arg1: *mut ::std::os::raw::c_char);
