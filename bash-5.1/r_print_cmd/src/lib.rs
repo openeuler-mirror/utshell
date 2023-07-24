@@ -684,5 +684,20 @@ pub unsafe extern "C" fn r_xtrace_print_select_command_head(select_command:*mut 
     fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(),r_indirection_level_string());
     fprintf(xtrace_fp, CString::new("select %s in ").unwrap().as_ptr(),(*(*select_command).name).word);
     r_xtrace_print_word_list((*select_command).map_list, 2);
-    
+
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn print_select_command(select_command:*mut SELECT_COM)
+{
+    r_print_select_command_head(select_command);
+    cprintf_1(b";\0" as *const u8 as *const i8);
+    newline(b"do\n\0" as *const u8 as *const c_char as *mut c_char);
+    indentation += indentation_amount;
+    make_command_string_internal((*select_command).action);
+    PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
+    semicolon();
+    indentation -= indentation_amount;
+    newline(b"done\0" as *const u8 as *const c_char as *mut c_char);
+}
+
