@@ -687,6 +687,16 @@ pub const SCNo8: &'static [u8; 4usize] = b"hho\0";
 pub const SCNo16: &'static [u8; 3usize] = b"ho\0";
 pub const SCNo32: &'static [u8; 2usize] = b"o\0";
 pub const SCNo64: &'static [u8; 3usize] = b"lo\0";
+pub const SCNdMAX: &'static [u8; 3usize] = b"ld\0";
+pub const SCNiMAX: &'static [u8; 3usize] = b"li\0";
+pub const SCNoMAX: &'static [u8; 3usize] = b"lo\0";
+pub const SCNuMAX: &'static [u8; 3usize] = b"lu\0";
+pub const SCNxMAX: &'static [u8; 3usize] = b"lx\0";
+pub const SCNdPTR: &'static [u8; 3usize] = b"ld\0";
+pub const SCNiPTR: &'static [u8; 3usize] = b"li\0";
+pub const SCNoPTR: &'static [u8; 3usize] = b"lo\0";
+pub const SCNuPTR: &'static [u8; 3usize] = b"lu\0";
+pub const SCNxPTR: &'static [u8; 3usize] = b"lx\0";
 pub const GX_MARKDIRS: u32 = 1;
 pub const GX_NOCASE: u32 = 2;
 pub const GX_MATCHDOT: u32 = 4;
@@ -3179,6 +3189,12 @@ extern "C" {
     pub fn all_digits(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn importable_function_name(
+        arg1: *const ::std::os::raw::c_char,
+        arg2: usize,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn exportable_function_name(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
 }
 extern "C" {
@@ -3641,6 +3657,12 @@ extern "C" {
 extern "C" {
     #[link_name = "\u{1}glob_ignore_case"]
     pub static mut glob_ignore_case: ::std::os::raw::c_int;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _COLLSYM {
+    pub name: *mut ::std::os::raw::c_char,
+    pub code: ::std::os::raw::c_uchar,
 }
 pub type __COLLSYM = _COLLSYM;
 extern "C" {
