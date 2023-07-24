@@ -219,7 +219,7 @@ pub fn r_exit_or_logout(list: *mut WordList) -> i32 {
                 if get_job_by_jid!(i) != std::ptr::null_mut() && STOPPED!(i) {
                     stopmsg = JOB_STATE::JSTOPPED as i32;
                     break;
-                } else if (check_jobs_at_exit != 1)
+                } else if (check_jobs_at_exit != 0)
                     && (stopmsg == 0)
                     && get_job_by_jid!(i) != std::ptr::null_mut()
                     && RUNNING!(i)
@@ -237,11 +237,11 @@ pub fn r_exit_or_logout(list: *mut WordList) -> i32 {
                 // libc::fprintf(stream,CString::new("There are runing jobs.\n").unwrap().as_ptr());
                 //eprintln!("There are runing jobs.");
                 let names = String::from("runjobs");
-                err_translate_fn(&names,std::ptr::null_mut());
+                err_translate_fn(&names, std::ptr::null_mut());
                 eprintln!();
             }
 
-            if stopmsg == check_jobs_at_exit{
+            if stopmsg == check_jobs_at_exit {
                 list_all_jobs(JLIST_STANDARD!())
             }
 

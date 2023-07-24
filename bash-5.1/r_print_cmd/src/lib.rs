@@ -748,3 +748,14 @@ pub unsafe extern "C" fn r_xtrace_print_case_command_head(case_command:*mut CASE
     fprintf(xtrace_fp,CString::new("case %s in\n").unwrap().as_ptr(), (*(*case_command).word).word);
 
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn print_case_command(case_command:*mut CASE_COM)
+{
+    r_print_case_command_head(case_command);
+    if !(*case_command).clauses.is_null()
+    {
+        print_case_clauses((*case_command).clauses);
+    }
+    newline(b"esac\0" as *const u8 as *const c_char as *mut c_char);
+}
