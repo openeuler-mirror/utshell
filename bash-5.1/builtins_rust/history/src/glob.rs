@@ -231,6 +231,16 @@ pub const HAVE_STRTOL: u32 = 1;
 pub const HAVE_STRTOLL: u32 = 1;
 pub const HAVE_STRTOUL: u32 = 1;
 pub const HAVE_STRTOULL: u32 = 1;
+pub const HAVE_STRTOUMAX: u32 = 1;
+pub const HAVE_STRSIGNAL: u32 = 1;
+pub const HAVE_SYSCONF: u32 = 1;
+pub const HAVE_SYSLOG: u32 = 1;
+pub const HAVE_TCGETATTR: u32 = 1;
+pub const HAVE_TCGETPGRP: u32 = 1;
+pub const HAVE_TIMES: u32 = 1;
+pub const HAVE_TOWLOWER: u32 = 1;
+pub const HAVE_TOWUPPER: u32 = 1;
+pub const HAVE_TTYNAME: u32 = 1;
 pub const HAVE_PWD_H: u32 = 1;
 pub const HAVE_REGEX_H: u32 = 1;
 pub const HAVE_STDLIB_H: u32 = 1;
@@ -3506,6 +3516,9 @@ extern "C" {
 }
 extern "C" {
     pub fn set_debug_trap(arg1: *mut ::std::os::raw::c_char);
+}
+extern "C" {
+    pub fn restore_default_signal(arg1: ::std::os::raw::c_int);
 }
 extern "C" {
     pub fn ignore_signal(arg1: ::std::os::raw::c_int);
