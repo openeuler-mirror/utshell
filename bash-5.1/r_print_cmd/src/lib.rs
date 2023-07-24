@@ -800,3 +800,10 @@ pub unsafe extern "C" fn print_while_command(while_command:*mut WHILE_COM)
 {
     print_until_or_while(while_command, CString::new("while").unwrap().as_ptr() as *mut c_char);
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn print_until_command(while_command:*mut WHILE_COM)
+{
+    print_until_or_while(while_command,CString::new("until").unwrap().as_ptr() as *mut c_char);
+}

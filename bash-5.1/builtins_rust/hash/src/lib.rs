@@ -53,21 +53,19 @@ pub unsafe fn hash_entries(ht: *mut HASH_TABLE) -> i32 {
 #[macro_export]
 macro_rules! HASH_ENTRIES {
     ($ht:expr) => {
-        if ($ht) != std::ptr::null_mut(){
+        if ($ht) != std::ptr::null_mut() {
             return (*$ht).nentries;
-        }
-        else{
+        } else {
             return 0;
         }
     };
 }
-fn HASH_ENTRIES(ht:*mut HASH_TABLE)->i32{
-    unsafe{
-        if ht != std::ptr::null_mut(){
+fn HASH_ENTRIES(ht: *mut HASH_TABLE) -> i32 {
+    unsafe {
+        if ht != std::ptr::null_mut() {
             return (*ht).nentries;
-        }
-        else{
-            return 0;
+        } else {
+            return 1;
         }
     }
 }
