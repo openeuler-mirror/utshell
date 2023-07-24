@@ -302,6 +302,18 @@ pub const __HAVE_DISTINCT_FLOAT32X: u32 = 0;
 pub const __HAVE_DISTINCT_FLOAT64X: u32 = 0;
 pub const __HAVE_DISTINCT_FLOAT128X: u32 = 0;
 pub const __HAVE_FLOATN_NOT_TYPEDEF: u32 = 0;
+pub const __GNUC_VA_LIST: u32 = 1;
+pub const _BITS_WCHAR_H: u32 = 1;
+pub const __wint_t_defined: u32 = 1;
+pub const _WINT_T: u32 = 1;
+pub const __mbstate_t_defined: u32 = 1;
+pub const ____mbstate_t_defined: u32 = 1;
+pub const ____FILE_defined: u32 = 1;
+pub const __FILE_defined: u32 = 1;
+pub const _BITS_TYPES_LOCALE_T_H: u32 = 1;
+pub const _BITS_TYPES___LOCALE_T_H: u32 = 1;
+pub const WEOF: u32 = 4294967295;
+pub const _WCTYPE_H: u32 = 1;
 pub const CHAR_WIDTH: u32 = 8;
 pub const SCHAR_WIDTH: u32 = 8;
 pub const UCHAR_WIDTH: u32 = 8;
@@ -930,6 +942,25 @@ extern "C" {
         __ps: *mut mbstate_t,
     ) -> usize;
 }
+extern "C" {
+    pub fn mbsnrtowcs(
+        __dst: *mut wchar_t,
+        __src: *mut *const ::std::os::raw::c_char,
+        __nmc: usize,
+        __len: usize,
+        __ps: *mut mbstate_t,
+    ) -> usize;
+}
+extern "C" {
+    pub fn wcsnrtombs(
+        __dst: *mut ::std::os::raw::c_char,
+        __src: *mut *const wchar_t,
+        __nwc: usize,
+        __len: usize,
+        __ps: *mut mbstate_t,
+    ) -> usize;
+}
+extern "C" {
     pub fn wcwidth(__c: wchar_t) -> ::std::os::raw::c_int;
 }
 extern "C" {
