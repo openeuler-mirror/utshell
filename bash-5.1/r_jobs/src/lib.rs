@@ -1551,6 +1551,12 @@ pub unsafe extern "C"  fn  append_process(
     let mut t: *mut PROCESS = 0 as *mut PROCESS;
     let mut p: *mut PROCESS = 0 as *mut PROCESS;
 
+    t = xmalloc(::std::mem::size_of::<PROCESS>() as usize) as *mut PROCESS;
+    (*t).next = 0 as *mut  c_void as *mut PROCESS;
+    (*t).pid = pid;
+    (*t).status = (status & 0xff as  c_int) << WEXITSTATUS_OFFSET as c_int;
+    (*t).running = PS_DONE as c_int;
+    (*t).command = name;
 }
 
 
