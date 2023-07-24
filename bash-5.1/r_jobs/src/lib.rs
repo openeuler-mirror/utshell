@@ -1493,3 +1493,29 @@ pub unsafe extern "C"  fn  nohup_job(mut job_index: c_int) {
         (*temp).flags |= J_NOHUP as c_int;
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C"  fn  discard_pipeline(mut chain: *mut PROCESS) -> c_int {
+    let mut this: *mut PROCESS = 0 as *mut PROCESS;
+    let mut next: *mut PROCESS = 0 as *mut PROCESS;
+    let mut n: c_int = 0;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
