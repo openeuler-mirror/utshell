@@ -2124,6 +2124,15 @@ extern "C" {
     pub static mut sys_siglist: [*const ::std::os::raw::c_char; 65usize];
 }
 #[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _fpx_sw_bytes {
+    pub magic1: __uint32_t,
+    pub extended_size: __uint32_t,
+    pub xstate_bv: __uint64_t,
+    pub xstate_size: __uint32_t,
+    pub __glibc_reserved1: [__uint32_t; 7usize],
+}
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct sigcontext {
     pub r8: __uint64_t,
@@ -2986,6 +2995,19 @@ extern "C" {
         __endptr: *mut *mut ::std::os::raw::c_char,
         __loc: locale_t,
     ) -> _Float32x;
+}
+extern "C" {
+    pub fn strtof64x_l(
+        __nptr: *const ::std::os::raw::c_char,
+        __endptr: *mut *mut ::std::os::raw::c_char,
+        __loc: locale_t,
+    ) -> _Float64x;
+}
+extern "C" {
+    pub fn l64a(__n: ::std::os::raw::c_long) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn a64l(__s: *const ::std::os::raw::c_char) -> ::std::os::raw::c_long;
 }
 extern "C" {
     pub fn initstate_r(
