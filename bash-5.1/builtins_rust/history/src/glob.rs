@@ -618,6 +618,18 @@ pub const PRIiFAST8: &'static [u8; 2usize] = b"i\0";
 pub const PRIiFAST16: &'static [u8; 3usize] = b"li\0";
 pub const PRIiFAST32: &'static [u8; 3usize] = b"li\0";
 pub const PRIiFAST64: &'static [u8; 3usize] = b"li\0";
+pub const PRIo8: &'static [u8; 2usize] = b"o\0";
+pub const PRIo16: &'static [u8; 2usize] = b"o\0";
+pub const PRIo32: &'static [u8; 2usize] = b"o\0";
+pub const PRIo64: &'static [u8; 3usize] = b"lo\0";
+pub const PRIoLEAST8: &'static [u8; 2usize] = b"o\0";
+pub const PRIoLEAST16: &'static [u8; 2usize] = b"o\0";
+pub const PRIoLEAST32: &'static [u8; 2usize] = b"o\0";
+pub const PRIoLEAST64: &'static [u8; 3usize] = b"lo\0";
+pub const PRIoFAST8: &'static [u8; 2usize] = b"o\0";
+pub const PRIoFAST16: &'static [u8; 3usize] = b"lo\0";
+pub const PRIoFAST32: &'static [u8; 3usize] = b"lo\0";
+pub const PRIoFAST64: &'static [u8; 3usize] = b"lo\0";
 pub const PRIdMAX: &'static [u8; 3usize] = b"ld\0";
 pub const PRIiMAX: &'static [u8; 3usize] = b"li\0";
 pub const PRIoMAX: &'static [u8; 3usize] = b"lo\0";
@@ -3128,6 +3140,28 @@ extern "C" {
 }
 extern "C" {
     pub fn check_dev_tty();
+}
+extern "C" {
+    pub fn move_to_high_fd(
+        arg1: ::std::os::raw::c_int,
+        arg2: ::std::os::raw::c_int,
+        arg3: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn check_binary_file(
+        arg1: *const ::std::os::raw::c_char,
+        arg2: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sh_openpipe(arg1: *mut ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sh_closepipe(arg1: *mut ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn file_exists(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
 }
 extern "C" {
     pub fn file_isdir(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
