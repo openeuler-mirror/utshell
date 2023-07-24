@@ -218,6 +218,24 @@ pub const HAVE_SETITIMER: u32 = 1;
 pub const HAVE_SETLINEBUF: u32 = 1;
 pub const HAVE_SETLOCALE: u32 = 1;
 pub const HAVE_DECL_SETREGID: u32 = 1;
+pub const HAVE_SETRESGID: u32 = 1;
+pub const HAVE_SETRESUID: u32 = 1;
+pub const HAVE_SETVBUF: u32 = 1;
+pub const HAVE_SIGINTERRUPT: u32 = 1;
+pub const HAVE_POSIX_SIGSETJMP: u32 = 1;
+pub const HAVE_SNPRINTF: u32 = 1;
+pub const HAVE_STRCASECMP: u32 = 1;
+pub const HAVE_STRCASESTR: u32 = 1;
+pub const HAVE_STRCHR: u32 = 1;
+pub const HAVE_STRCHRNUL: u32 = 1;
+pub const HAVE_STRCOLL: u32 = 1;
+pub const HAVE_STRERROR: u32 = 1;
+pub const HAVE_STRFTIME: u32 = 1;
+pub const HAVE_STRNLEN: u32 = 1;
+pub const HAVE_STRPBRK: u32 = 1;
+pub const HAVE_STRSTR: u32 = 1;
+pub const HAVE_STRTOD: u32 = 1;
+pub const HAVE_STRTOIMAX: u32 = 1;
 pub const HAVE_STRTOL: u32 = 1;
 pub const HAVE_STRTOLL: u32 = 1;
 pub const HAVE_STRTOUL: u32 = 1;
@@ -2841,6 +2859,20 @@ extern "C" {
         __endptr: *mut *mut ::std::os::raw::c_char,
         __loc: locale_t,
     ) -> _Float32x;
+}
+extern "C" {
+    pub fn initstate_r(
+        __seed: ::std::os::raw::c_uint,
+        __statebuf: *mut ::std::os::raw::c_char,
+        __statelen: usize,
+        __buf: *mut random_data,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn setstate_r(
+        __statebuf: *mut ::std::os::raw::c_char,
+        __buf: *mut random_data,
+    ) -> ::std::os::raw::c_int;
 }
 extern "C" {
     pub fn rand() -> ::std::os::raw::c_int;
