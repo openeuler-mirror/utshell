@@ -145,15 +145,6 @@ pub const HAVE_DPRINTF: u32 = 1;
 pub const HAVE_DUP2: u32 = 1;
 pub const HAVE_EACCESS: u32 = 1;
 pub const HAVE_FACCESSAT: u32 = 1;
-pub const AFLAG: c_int = 0x01;
-pub const RFLAG: c_int = 0x02;
-pub const WFLAG: c_int = 0x04;
-pub const NFLAG: c_int = 0x08;
-pub const SFLAG: c_int = 0x10;
-pub const PFLAG: c_int = 0x20;
-pub const CFLAG: c_int = 0x40;
-pub const DFLAG: c_int = 0x80;
-
 pub const HAVE_FCNTL: u32 = 1;
 pub const HAVE_FNMATCH: u32 = 1;
 pub const FNMATCH_EQUIV_FALLBACK: u32 = 1;
@@ -1723,6 +1714,15 @@ extern "C" {
         ___argc: ::std::os::raw::c_int,
         ___argv: *const *mut ::std::os::raw::c_char,
         __shortopts: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn gethostname(__name: *mut ::std::os::raw::c_char, __len: usize) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn sethostname(
+        __name: *const ::std::os::raw::c_char,
+        __len: usize,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
