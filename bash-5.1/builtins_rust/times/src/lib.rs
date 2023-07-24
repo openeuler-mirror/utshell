@@ -7,12 +7,10 @@ include!(concat!("intercdep.rs"));
 
 #[no_mangle]
 pub extern "C" fn r_times_builtin(list: *mut WordList) -> i32 {
-
-unsafe {
-
-    if no_options(list) != 0 {
-        return EX_USAGE;
-    }
+    unsafe {
+        if no_options(list) != 0 {
+            return EX_USAGE;
+        }
 
     let mut curr: libc::rusage = std::mem::zeroed();
     let mut kids: libc::rusage = std::mem::zeroed();
