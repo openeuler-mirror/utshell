@@ -265,6 +265,14 @@ pub const HAVE_STDBOOL_H: u32 = 1;
 pub const HAVE_STDDEF_H: u32 = 1;
 pub const HAVE_STDINT_H: u32 = 1;
 pub const HAVE_SYSLOG_H: u32 = 1;
+pub const HAVE_SYS_WAIT_H: u32 = 1;
+pub const HAVE_TERMCAP_H: u32 = 1;
+pub const HAVE_TERMIO_H: u32 = 1;
+pub const HAVE_TERMIOS_H: u32 = 1;
+pub const HAVE_ULIMIT_H: u32 = 1;
+pub const HAVE_UNISTD_H: u32 = 1;
+pub const HAVE_WCHAR_H: u32 = 1;
+pub const HAVE_WCTYPE_H: u32 = 1;
 pub const HAVE_LIBDL: u32 = 1;
 pub const HAVE_ARGZ_H: u32 = 1;
 pub const HAVE_ERRNO_H: u32 = 1;
@@ -1142,6 +1150,7 @@ extern "C" {
         __loc: locale_t,
     ) -> _Float64x;
 }
+extern "C" {
     pub fn wcpcpy(__dest: *mut wchar_t, __src: *const wchar_t) -> *mut wchar_t;
 }
 extern "C" {
@@ -1158,6 +1167,14 @@ extern "C" {
 }
 extern "C" {
     pub fn wprintf(__format: *const wchar_t, ...) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn swprintf(
+        __s: *mut wchar_t,
+        __n: usize,
+        __format: *const wchar_t,
+        ...
+    ) -> ::std::os::raw::c_int;
 }
 extern "C" {
     pub fn fwscanf(__stream: *mut __FILE, __format: *const wchar_t, ...) -> ::std::os::raw::c_int;
