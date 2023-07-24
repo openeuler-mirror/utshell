@@ -114,10 +114,7 @@ extern "C" {
     fn set_itemlist_dirty(_: *mut ITEMLIST);
     fn dlopen(__file: *const libc::c_char, __mode: libc::c_int) -> *mut libc::c_void;
     fn dlclose(__handle: *mut libc::c_void) -> libc::c_int;
-    fn dlsym(
-        __handle: *mut libc::c_void,
-        __name: *const libc::c_char,
-    ) -> *mut libc::c_void;
+    fn dlsym(__handle: *mut libc::c_void, __name: *const libc::c_char) -> *mut libc::c_void;
     fn dlerror() -> *mut libc::c_char;
 }
 pub type size_t = libc::c_ulong;
@@ -210,11 +207,12 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
     // 否则判断是否带-N
     // 带则打印DISABLED的，不带—N则打印ENABLED的
     if list.is_null() || flags & PFLAG != 0 {
-        filter = if flags & AFLAG != 0 { ENABLED | DISABLED }
-        else if flags & NFLAG != 0 { 
+        filter = if flags & AFLAG != 0 {
+            ENABLED | DISABLED
+        } else if flags & NFLAG != 0 {
             DISABLED
         } else {
-            ENABLED 
+            ENABLED
         };
 
         if flags & SFLAG != 0 {
@@ -222,10 +220,9 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
         }
 
         list_some_builtins(filter);
-
     } else if flags & FFLAG != 0 {
-    // 如果不带-N或者参数不为空,那么判断-F.(bash源文件中判断HAVE_DLSYM，HAVE_DLOPEN两个宏存在)
-    // -F后面需要加文件名，载入so，作为内建命令
+        // 如果不带-N或者参数不为空,那么判断-F.(bash源文件中判断HAVE_DLSYM，HAVE_DLOPEN两个宏存在)
+        // -F后面需要加文件名，载入so，作为内建命令
 
         //判断是ENABLED还是DISABLED
         filter = if flags & NFLAG != 0 {
@@ -241,12 +238,11 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
 
         //载入so
         result = dyn_load_builtin(list, filter, filename);
-        
+
         // 设置完成，bash源代码中判断PROGRAMMABLE_COMPLETION
         set_itemlist_dirty(&mut it_builtins);
-
     } else if flags & DFLAG != 0 {
-    // 否则判断-D,-D含义是删除以 -f 选项加载的内建
+        // 否则判断-D,-D含义是删除以 -f 选项加载的内建
         while !list.is_null() {
             opt = dyn_unload_builtin((*(*list).word).word);
             if opt == EXECUTION_FAILURE!() {
@@ -255,9 +251,8 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
             list = (*list).next;
         }
         set_itemlist_dirty(&mut it_builtins);
-
     } else {
-    // 不带-N -F -D，且选项不为空的其他
+        // 不带-N -F -D，且选项不为空的其他
         while !list.is_null() {
             opt = enable_shell_command((*(*list).word).word, flags & NFLAG);
             if opt == EXECUTION_FAILURE!() {
@@ -271,30 +266,26 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
 }
 
 //仅仅-p的时候会调用，打印，filter决定是enable，disable
-unsafe extern "C" fn list_some_builtins(filter: libc::c_int) {
+unsafe extern "C" fn list_some_builtins(mut filter: libc::c_int) {
     let mut i: i32 = 0;
 
     while i < num_shell_builtins {
-        let tmpIter =*shell_builtins.offset(i as isize);
-        if !(tmpIter.function.is_none()||tmpIter.flags & BUILTIN_DELETED != 0)
-        {
+        let tmpIter = *shell_builtins.offset(i as isize);
+        if !(tmpIter.function.is_none() || tmpIter.flags & BUILTIN_DELETED != 0) {
             if !(filter & SPECIAL != 0
-                && (*shell_builtins.offset(i as isize)).flags & SPECIAL_BUILTIN
-                    == 0)
+                && (*shell_builtins.offset(i as isize)).flags & SPECIAL_BUILTIN == 0)
             {
                 if filter & ENABLED != 0
-                    && (*shell_builtins.offset(i as isize)).flags & BUILTIN_ENABLED
-                        != 0
+                    && (*shell_builtins.offset(i as isize)).flags & BUILTIN_ENABLED != 0
                 {
-                    let name= unsafe{CStr::from_ptr((*shell_builtins.offset(i as isize)).name)};
+                    let name = unsafe { CStr::from_ptr((*shell_builtins.offset(i as isize)).name) };
                     println!("enable {}", name.to_str().expect("name cannot trans"));
                 } else if filter & DISABLED != 0
-                        && (*shell_builtins.offset(i as isize)).flags
-                            & BUILTIN_ENABLED == 0 as libc::c_int
-                    {
-                        let name= unsafe{CStr::from_ptr((*shell_builtins.offset(i as isize)).name)};
-                        println!("enable -n {}", name.to_str().expect("name cannot trans"));
-  
+                    && (*shell_builtins.offset(i as isize)).flags & BUILTIN_ENABLED
+                        == 0 as libc::c_int
+                {
+                    let name = unsafe { CStr::from_ptr((*shell_builtins.offset(i as isize)).name) };
+                    println!("enable -n {}", name.to_str().expect("name cannot trans"));
                 }
             }
         }
@@ -302,8 +293,8 @@ unsafe extern "C" fn list_some_builtins(filter: libc::c_int) {
     }
 }
 unsafe extern "C" fn enable_shell_command(
-    name: *mut libc::c_char,
-    disable_p: libc::c_int,
+    mut name: *mut libc::c_char,
+    mut disable_p: libc::c_int,
 ) -> libc::c_int {
     let mut b: *mut builtin = 0 as *mut builtin;
     b = builtin_address_internal(name, 1);
