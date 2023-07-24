@@ -1528,6 +1528,16 @@ unsafe extern "C" fn add_process(mut name: *mut  c_char, mut pid: pid_t) {
     (*t).running = PS_RUNNING as c_int;
     (*t).command = name;
     the_pipeline = t;
+
+    if ((*t).next).is_null() {
+        (*t).next = t;
+    } else {
+        p = (*t).next;
+        while (*p).next != (*t).next {
+            p = (*p).next;
+        }
+        (*p).next = t;
+    };
 }
 
 
