@@ -1517,7 +1517,13 @@ pub unsafe extern "C"  fn  discard_pipeline(mut chain: *mut PROCESS) -> c_int {
     return n;  
 }
 
+unsafe extern "C" fn add_process(mut name: *mut  c_char, mut pid: pid_t) {
+    let mut t: *mut PROCESS = 0 as *mut PROCESS;
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
 
+
+
+}
 
 
 
