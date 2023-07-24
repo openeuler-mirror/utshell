@@ -654,6 +654,22 @@ pub const INT32_WIDTH: u32 = 32;
 pub const UINT32_WIDTH: u32 = 32;
 pub const INT64_WIDTH: u32 = 64;
 pub const UINT64_WIDTH: u32 = 64;
+pub const CMD_WANT_SUBSHELL: u32 = 1;
+pub const CMD_FORCE_SUBSHELL: u32 = 2;
+pub const CMD_INVERT_RETURN: u32 = 4;
+pub const CMD_IGNORE_RETURN: u32 = 8;
+pub const CMD_NO_FUNCTIONS: u32 = 16;
+pub const CMD_INHIBIT_EXPANSION: u32 = 32;
+pub const CMD_NO_FORK: u32 = 64;
+pub const CMD_TIME_PIPELINE: u32 = 128;
+pub const CMD_TIME_POSIX: u32 = 256;
+pub const CMD_AMPERSAND: u32 = 512;
+pub const CMD_STDIN_REDIR: u32 = 1024;
+pub const CMD_COMMAND_BUILTIN: u32 = 2048;
+pub const CMD_COPROC_SUBSHELL: u32 = 4096;
+pub const CMD_LASTPIPE: u32 = 8192;
+pub const CMD_STDPATH: u32 = 16384;
+pub const CMD_TRY_OPTIMIZING: u32 = 32768;
 pub const PRId8: &'static [u8; 2usize] = b"d\0";
 pub const PRId16: &'static [u8; 2usize] = b"d\0";
 pub const PRId32: &'static [u8; 2usize] = b"d\0";
@@ -3260,6 +3276,9 @@ extern "C" {
 }
 extern "C" {
     pub fn all_digits(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn legal_identifier(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
 }
 extern "C" {
     pub fn importable_function_name(
