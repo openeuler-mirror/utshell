@@ -729,9 +729,22 @@ pub unsafe extern "C" fn print_group_command(group_command:*mut GROUP_COM)
 
 }
 
+
 #[no_mangle]
 pub unsafe extern "C" fn r_print_case_command_head(case_command:*mut CASE_COM)
 {
     let mut str = format!("case {} in \0", CStr::from_ptr((*(*case_command).word).word).to_str().unwrap()); 
     cprintf_1(str.as_mut_ptr() as *mut c_char);
+}
+
+
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_print_case_command_head(case_command:*mut CASE_COM)
+{
+
+    println!("r_xtrace_print_case_command_head");
+    CHECK_XTRACE_FP!();
+    fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(), r_indirection_level_string());
+    fprintf(xtrace_fp,CString::new("case %s in\n").unwrap().as_ptr(), (*(*case_command).word).word);
+
 }

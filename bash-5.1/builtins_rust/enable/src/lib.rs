@@ -349,9 +349,8 @@ unsafe extern "C" fn dyn_load_builtin(
     }
     handle = 0 as *mut libc::c_void;
     if absolute_program(filename) == 0 as libc::c_int {
-        loadables_path = get_string_value(
-            b"BASH_LOADABLES_PATH\0" as *const u8 as *const libc::c_char,
-        );
+        loadables_path =
+            get_string_value(b"BASH_LOADABLES_PATH\0" as *const u8 as *const libc::c_char);
         if !loadables_path.is_null() {
             load_path = find_in_path(
                 filename,
@@ -372,8 +371,7 @@ unsafe extern "C" fn dyn_load_builtin(
         builtin_error(
             dcgettext(
                 0 as *const libc::c_char,
-                b"cannot open shared object %s: %s\0" as *const u8
-                    as *const libc::c_char,
+                b"cannot open shared object %s: %s\0" as *const u8 as *const libc::c_char,
                 5 as libc::c_int,
             ),
             name,
@@ -391,8 +389,7 @@ unsafe extern "C" fn dyn_load_builtin(
         new += 1;
     }
     new_builtins = xmalloc(
-        (new as libc::c_ulong)
-            .wrapping_mul(::std::mem::size_of::<*mut builtin>() as libc::c_ulong),
+        (new as libc::c_ulong).wrapping_mul(::std::mem::size_of::<*mut builtin>() as libc::c_ulong),
     ) as *mut *mut builtin;
     let mut current_block_57: u64;
     new = 0 as libc::c_int;
@@ -413,8 +410,7 @@ unsafe extern "C" fn dyn_load_builtin(
             builtin_error(
                 dcgettext(
                     0 as *const libc::c_char,
-                    b"cannot find %s in shared object %s: %s\0" as *const u8
-                        as *const libc::c_char,
+                    b"cannot find %s in shared object %s: %s\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
                 ),
                 struct_name,
@@ -463,8 +459,8 @@ unsafe extern "C" fn dyn_load_builtin(
                     builtin_error(
                         dcgettext(
                             0 as *const libc::c_char,
-                            b"load function for %s returns failure (%d): not loaded\0"
-                                as *const u8 as *const libc::c_char,
+                            b"load function for %s returns failure (%d): not loaded\0" as *const u8
+                                as *const libc::c_char,
                             5 as libc::c_int,
                         ),
                         name,
@@ -590,7 +586,7 @@ unsafe extern "C" fn dyn_unload_builtin(name: *mut libc::c_char) -> libc::c_int 
     let mut b: *mut builtin = 0 as *mut builtin;
     let mut handle: *mut libc::c_void = 0 as *mut libc::c_void;
     let mut funcname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut unloadfunc: Option::<sh_unload_func_t> = None;
+    let mut unloadfunc: Option<sh_unload_func_t> = None;
     let mut ref_0: libc::c_int = 0;
     let mut i: libc::c_int = 0;
     let mut size: libc::c_int = 0;
