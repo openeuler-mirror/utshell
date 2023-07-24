@@ -1,39 +1,39 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 
 extern crate libc;
 extern crate rread;
-use libc::{c_char,c_int, strchr,free,c_void,strerror,EISDIR};
-use std::ffi::{CStr,CString};
-use std::io::{stdout, Write};
-use rread::{SHELL_VAR};
-use rcommon::{r_builtin_usage};
-use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use libc::{c_char, c_int, c_void, free, strchr, strerror, EISDIR};
+use rcommon::r_builtin_usage;
+use rcommon::{WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
+use rread::SHELL_VAR;
+use std::ffi::{CStr, CString};
 use std::fs;
+use std::io::{stdout, Write};
 use std::os::linux::fs::MetadataExt;
-type PTR_T=c_void;
-#[repr (C)]
-pub struct bucket_contents{
-    pub next:*mut bucket_contents,
-    pub key:*mut c_char,
-    pub data:*mut PTR_T,     //void *  or char *
-    pub khash:u32,
-    pub times_found:i32,
+type PTR_T = c_void;
+#[repr(C)]
+pub struct bucket_contents {
+    pub next: *mut bucket_contents,
+    pub key: *mut c_char,
+    pub data: *mut PTR_T, //void *  or char *
+    pub khash: u32,
+    pub times_found: i32,
 }
-type BUCKET_CONTENTS=bucket_contents;
-#[repr (C)]
-pub struct hash_table{
-    pub bucket_array:*mut *mut BUCKET_CONTENTS,
-    pub nbucjets:i32,
-    pub nentries:i32,
+type BUCKET_CONTENTS = bucket_contents;
+#[repr(C)]
+pub struct hash_table {
+    pub bucket_array: *mut *mut BUCKET_CONTENTS,
+    pub nbucjets: i32,
+    pub nentries: i32,
 }
 type HASH_TABLE = hash_table;
-#[repr (C)]
-pub struct _pathdata{
-    pub path:*mut c_char,
-    pub flags:i32,
+#[repr(C)]
+pub struct _pathdata {
+    pub path: *mut c_char,
+    pub flags: i8,
 }
 type PATH_DATA = _pathdata;
 //enum
