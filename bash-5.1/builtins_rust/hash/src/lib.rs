@@ -132,16 +132,16 @@ static mut common_inode: c_int = 0;
    not empty, then rehash (or hash in the first place) the specified
    commands. */
 #[no_mangle]
-pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
-    let mut expunge_hash_table:i32;
-    let mut list_targets:i32;
-    let mut list_portably:i32;
-    let mut delete:i32;
-    let mut opt:i32;
-    let mut w:*mut c_char;
-    let mut pathname:*mut c_char;
-    unsafe{
-        if hashing_enabled == 0{
+pub extern "C" fn r_hash_builtin(mut list: *mut WordList) -> i32 {
+    let mut expunge_hash_table: i32;
+    let mut list_targets: i32;
+    let mut list_portably: i32;
+    let mut delete: i32;
+    let mut opt: i32;
+    let mut w: *mut c_char;
+    let mut pathname: *mut c_char;
+    unsafe {
+        if hashing_enabled == 0 {
             let c_str = CString::new("hashing disabled").unwrap();
             let c_str_ptr = c_str.as_ptr();
             builtin_error(c_str_ptr);
@@ -230,7 +230,7 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
             free(w as *mut c_void);
         }
         opt = EXECUTION_SUCCESS!();
-        while list != std::ptr::null_mut(){
+        while list != std::ptr::null_mut() {
             /* Add, remove or rehash the specified commands. */
             w = (*(*list).word).word;
             if absolute_program(w as *const c_char) != 0{
@@ -242,28 +242,24 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
                     let c_err_ptr = c_err.as_ptr();
                     builtin_error(c_err_ptr,pathname,strerror(EISDIR));
                     opt = EXECUTION_SUCCESS!();
+                } else {
+                    if legal_hash_rust(w, pathname) == 0 {
+                        phash_insert(w, pathname, 0, 0);
+                    }
                 }
-                else{
-                    if legal_hash_rust(w,pathname) == 0{
-                        phash_insert(w,pathname,0,0);
-                    } 
-                    
-                }
-            }
-            else if delete != 0{
-                if phash_remove(w) != 0{
+            } else if delete != 0 {
+                if phash_remove(w) != 0 {
                     sh_notfound(w);
                     opt = EXECUTION_FAILURE!();
                 }
-            }
-            else if r_add_hashed_command(w,0) != 0{
+            } else if r_add_hashed_command(w, 0) != 0 {
                 opt = EXECUTION_FAILURE!();
             }
             list = (*list).next;
         }
         stdout().flush();
         return opt;
-    }//unsafe
+    } //unsafe
 }
 extern "C" fn r_add_hashed_command(w:*mut c_char,quiet:i32)->i32{
     let mut rv:i32;

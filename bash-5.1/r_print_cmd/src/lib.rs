@@ -813,7 +813,7 @@ pub unsafe extern "C" fn print_until_or_while(while_command:*mut WHILE_COM, whic
 {
     let mut str = format!("{}\0",CStr::from_ptr(which).to_str().unwrap());
     cprintf_1(str.as_mut_ptr() as *mut c_char);
-    
+
     skip_this_indent += 1;
     make_command_string_internal((*while_command).test);
     semicolon();
@@ -825,4 +825,29 @@ pub unsafe extern "C" fn print_until_or_while(while_command:*mut WHILE_COM, whic
     indentation -= indentation_amount;
     semicolon();
     newline(b"done\0" as *const u8 as *const c_char as *mut c_char);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn print_if_command(if_command:*mut IF_COM)
+{
+    
+    cprintf_1(b"if \0" as *const u8 as *const i8);
+    skip_this_indent += 1;
+    make_command_string_internal((*if_command).test);
+
+    cprintf_1(b" then\n\0" as *const u8 as *const i8);
+    indentation += indentation_amount;
+    make_command_string_internal((*if_command).true_case);
+    PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
+    indentation -= indentation_amount;
+    if !(*if_command).false_case.is_null()
+    {
+        newline(b"else\n\0" as *const u8 as *const c_char as *mut c_char);
+        indentation += indentation_amount;
+        make_command_string_internal((*if_command).false_case);
+        PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
+        indentation -= indentation_amount;
+    }
+
+    newline(b"fi\0" as *const u8 as *const c_char as *mut c_char );
 }
