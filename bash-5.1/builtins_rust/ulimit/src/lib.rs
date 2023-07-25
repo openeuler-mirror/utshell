@@ -76,17 +76,17 @@ macro_rules! LIMIT_HARD {
 }
 
 #[macro_export]
-macro_rules!  LIMIT_SOFT{
+macro_rules! LIMIT_SOFT {
     () => {
-        0x02  
-    }
+        0x02
+    };
 }
 
 #[macro_export]
-macro_rules! POSIXBLK{
+macro_rules! POSIXBLK {
     () => {
-      -2
-    }
+        -2
+    };
 }
 
 #[macro_export]
@@ -105,12 +105,11 @@ macro_rules! BLOCKSIZE {
 }
 
 #[macro_export]
-macro_rules! RLIM_SAVED_MAX{
+macro_rules! RLIM_SAVED_MAX {
     () => {
         RLIM_INFINITY!();
-    }
+    };
 }
-
 
 #[deny(missing_fragment_specifier)]
 #[macro_export]
