@@ -1647,8 +1647,36 @@ pub unsafe extern "C"  fn  kill_current_pipeline() {
     start_pipeline();
 }
 
+unsafe extern "C" fn find_pid_in_pipeline(
+    mut pid: pid_t,
+    mut pipeline: *mut PROCESS,
+    mut alive_only: c_int,
+) -> *mut PROCESS {
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    p = pipeline;
+    loop {
+        if (*p).pid == pid
+            && (alive_only == 0 && PRECYCLED!(p) == 0|| PALIVE!(p))
+        {
+            return p;
+        }
+        p = (*p).next;
+        if !(p != pipeline) {
+            break;
+        }
+    }
+    return 0 as *mut PROCESS;
+}
 
-
-
-
-
+unsafe extern "C" fn find_process(
+    mut pid: pid_t,
+    mut alive_only:  c_int,
+    mut jobp: *mut  c_int,
+) -> *mut PROCESS {
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    p = find_pipeline(pid, alive_only, jobp);
+    while !p.is_null() && (*p).pid != pid {
+        p = (*p).next;
+    }
+    return p;
+}
