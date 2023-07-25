@@ -92,20 +92,18 @@ macro_rules! POSIXBLK{
 }
 
 #[macro_export]
-macro_rules! BLOCKSIZE{
+macro_rules! BLOCKSIZE {
     ($s:expr) => {
         if $s == POSIXBLK!() {
-            if unsafe{posixly_correct}!= 0 {
+            if unsafe { posixly_correct } != 0 {
                 512
-            }
-            else {
+            } else {
                 1024
             }
-        }
-        else {
+        } else {
             $s
-        }     
-    }
+        }
+    };
 }
 
 #[macro_export]
