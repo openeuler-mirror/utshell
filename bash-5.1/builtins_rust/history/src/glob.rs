@@ -3802,6 +3802,12 @@ extern "C" {
     pub fn set_return_trap(arg1: *mut ::std::os::raw::c_char);
 }
 extern "C" {
+    pub fn maybe_set_debug_trap(arg1: *mut ::std::os::raw::c_char);
+}
+extern "C" {
+    pub fn maybe_set_error_trap(arg1: *mut ::std::os::raw::c_char);
+}
+extern "C" {
     pub fn maybe_set_return_trap(arg1: *mut ::std::os::raw::c_char);
 }
 extern "C" {
