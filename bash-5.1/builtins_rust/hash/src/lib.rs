@@ -92,38 +92,38 @@ pub struct alias {
 }
 pub type AliasT = alias;
 // type i32 hash_efunc PARAMS(*mut BUCKET_CONTENTS);
-type hash_wfunc = extern  fn(*mut BUCKET_CONTENTS)->i32;
-type sh_builtin_func_t = extern fn (*mut WordList)->i32;
+type hash_wfunc = extern "C" fn(*mut BUCKET_CONTENTS) -> i32;
+type sh_builtin_func_t = extern "C" fn(*mut WordList) -> i32;
 //extern c
-extern "C"{
-    static loptend:*mut WordList;
-    static hashing_enabled:i32;
-    static list_optarg:*mut c_char;
-    static this_command_name:*mut c_char;
-    static posixly_correct:i32;
-    static restricted:i32;
-    static shell_compatibility_level:i32;
-    static hashed_filenames:*mut HASH_TABLE;
-    static dot_found_in_search:i32;
-    fn builtin_error(format:*const c_char,...);
+extern "C" {
+    static loptend: *mut WordList;
+    static hashing_enabled: i32;
+    static list_optarg: *mut c_char;
+    static this_command_name: *mut c_char;
+    static posixly_correct: i32;
+    static restricted: i32;
+    static shell_compatibility_level: i32;
+    static hashed_filenames: *mut HASH_TABLE;
+    static dot_found_in_search: i32;
+    fn builtin_error(format: *const c_char, ...);
     fn reset_internal_getopt();
-    fn internal_getopt(list:*mut WordList,opts:*mut c_char)->i32;
+    fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> i32;
     fn all_aliases() -> *mut *mut AliasT;
-    fn sh_needarg(s:*mut c_char);
+    fn sh_needarg(s: *mut c_char);
     fn phash_flush();
-    fn sh_restricted(s:*mut c_char);
-    fn absolute_program(string:*const c_char)->i32;
-    fn find_user_command(name:*const c_char)->*mut c_char;
-    fn executable_file(file:*const c_char)->i32;
-    fn sh_notfound(s:*mut c_char);
-    fn is_directory(file:*const c_char)->i32;
-    fn phash_insert(filename:*mut c_char,full_path:*mut c_char,check_dot:i32,found:i32);
-    fn phash_remove(filename:*const c_char)->i32;
-    fn find_function(name:*const c_char)->*mut SHELL_VAR;
-    fn find_shell_builtin(name:*mut c_char)->*mut sh_builtin_func_t;
-    fn hash_walk(table:*mut HASH_TABLE,func:*mut hash_wfunc);
-    fn phash_search(filename:*const c_char)->*mut c_char;
-    fn printable_filename(f:*mut c_char,flage:i32)->*mut c_char;
+    fn sh_restricted(s: *mut c_char);
+    fn absolute_program(string: *const c_char) -> i32;
+    fn find_user_command(name: *const c_char) -> *mut c_char;
+    fn executable_file(file: *const c_char) -> i32;
+    fn sh_notfound(s: *mut c_char);
+    fn is_directory(file: *const c_char) -> i32;
+    fn phash_insert(filename: *mut c_char, full_path: *mut c_char, check_dot: i32, found: i32);
+    fn phash_remove(filename: *const c_char) -> i32;
+    fn find_function(name: *const c_char) -> *mut SHELL_VAR;
+    fn find_shell_builtin(name: *mut c_char) -> *mut sh_builtin_func_t;
+    fn hash_walk(table: *mut HASH_TABLE, func: *mut hash_wfunc);
+    fn phash_search(filename: *const c_char) -> *mut c_char;
+    fn printable_filename(f: *mut c_char, flage: i32) -> *mut c_char;
 }
 
 static mut common_inode: c_int = 0;
@@ -178,14 +178,13 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
         list = loptend;
         /* hash -t requires at least one argument. */
         if list == std::ptr::null_mut() && (delete != 0 || list_targets != 0) {
-            let temp:CString;
-            let temp_ptr:*mut c_char;
-            if delete != 0{
+            let temp: CString;
+            let temp_ptr: *mut c_char;
+            if delete != 0 {
                 temp = CString::new("-d").unwrap();
                 temp_ptr = temp.as_ptr() as *mut c_char;
                 sh_needarg(temp_ptr);
-            }
-            else{
+            } else {
                 temp = CString::new("-t").unwrap();
                 temp_ptr = temp.as_ptr() as *mut c_char;
                 sh_needarg(temp_ptr);

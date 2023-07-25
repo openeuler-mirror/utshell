@@ -807,3 +807,19 @@ pub unsafe extern "C" fn print_until_command(while_command:*mut WHILE_COM)
 {
     print_until_or_while(while_command,CString::new("until").unwrap().as_ptr() as *mut c_char);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn print_until_or_while(while_command:*mut WHILE_COM, which:*mut c_char)
+{
+    let mut str = format!("{}\0",CStr::from_ptr(which).to_str().unwrap());
+    cprintf_1(str.as_mut_ptr() as *mut c_char);
+    skip_this_indent += 1;
+    make_command_string_internal((*while_command).test);
+    PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
+    cprintf_1(b"do\n\0" as *const u8 as *const i8);
+    indentation += indentation_amount;
+    make_command_string_internal((*while_command).action);
+    PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
+    indentation -= indentation_amount;
+    newline(b"done\0" as *const u8 as *const c_char as *mut c_char);
+}
