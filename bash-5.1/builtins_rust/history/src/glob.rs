@@ -774,6 +774,10 @@ pub const SCNd8: &'static [u8; 4usize] = b"hhd\0";
 pub const SCNd16: &'static [u8; 3usize] = b"hd\0";
 pub const SCNd32: &'static [u8; 2usize] = b"d\0";
 pub const SCNd64: &'static [u8; 3usize] = b"ld\0";
+pub const SCNdLEAST8: &'static [u8; 4usize] = b"hhd\0";
+pub const SCNdLEAST16: &'static [u8; 3usize] = b"hd\0";
+pub const SCNdLEAST32: &'static [u8; 2usize] = b"d\0";
+pub const SCNdLEAST64: &'static [u8; 3usize] = b"ld\0";
 pub const SCNuFAST8: &'static [u8; 4usize] = b"hhu\0";
 pub const SCNuFAST16: &'static [u8; 3usize] = b"lu\0";
 pub const SCNuFAST32: &'static [u8; 3usize] = b"lu\0";
@@ -3748,6 +3752,9 @@ extern "C" {
 }
 extern "C" {
     pub fn set_debug_trap(arg1: *mut ::std::os::raw::c_char);
+}
+extern "C" {
+    pub fn set_error_trap(arg1: *mut ::std::os::raw::c_char);
 }
 extern "C" {
     pub fn maybe_set_return_trap(arg1: *mut ::std::os::raw::c_char);

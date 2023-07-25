@@ -1,15 +1,13 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-extern crate  libc;
+extern crate libc;
 extern crate nix;
 
 use std::ffi::CStr;
 use std::ffi::CString;
 
-
-
-use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
 
 #[derive(Copy, Clone)]
@@ -58,10 +56,10 @@ macro_rules!  SIZEOFLIMIT{
 }
 
 #[macro_export]
-macro_rules!  SIZEOFLIMITS{
+macro_rules! SIZEOFLIMITS {
     () => {
-        SIZEOFLIMIT!() *18
-    }  
+        SIZEOFLIMIT!() * 18
+    };
 }
 
 #[macro_export]
