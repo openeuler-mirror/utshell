@@ -191,16 +191,16 @@ pub struct arith_for_com {
 
 #[repr(C)]
 pub struct subshell_com {
-    flags:i32,
-    line:i32,
-    command:*mut COMMAND    
+    flags: i32,
+    line: i32,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct coproc_com {
-    flags:i32,
-    name:*mut c_char,
-    command:*mut COMMAND  
+    flags: i32,
+    name: *mut c_char,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
@@ -314,8 +314,9 @@ macro_rules! get_job_by_jid {
 
 #[macro_export]
 macro_rules! J_JOBCONTROL {
-   () => 4
-   };
+    () => {
+        0x04
+    };
 }
 
 #[macro_export]

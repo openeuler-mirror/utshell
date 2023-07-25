@@ -840,7 +840,7 @@ pub unsafe extern "C" fn print_if_command(if_command:*mut IF_COM)
     make_command_string_internal((*if_command).true_case);
     PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
     indentation -= indentation_amount;
-    
+
     if !(*if_command).false_case.is_null()
     {
         semicolon();
@@ -853,4 +853,12 @@ pub unsafe extern "C" fn print_if_command(if_command:*mut IF_COM)
 
     semicolon();
     newline(b"fi\0" as *const u8 as *const c_char as *mut c_char );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn r_print_arith_command(arith_cmd_list:*mut WORD_LIST)
+{
+    cprintf_1(b"((\0" as *const u8 as *const i8);
+    command_print_word_list(arith_cmd_list, CString::new(" ").unwrap().as_ptr() as *mut c_char);
+    cprintf_1(b"))\0" as *const u8 as *const i8);
 }
