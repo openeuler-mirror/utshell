@@ -907,3 +907,10 @@ pub unsafe extern "C" fn print_cond_node(cond:*mut COND_COM)
         cprintf_1((*(*cond).op).word);
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn r_print_cond_command(cond:*mut COND_COM)
+{
+    println!("r_print_cond_command");
+    print_cond_node(cond);
+}

@@ -345,12 +345,15 @@ macro_rules! ISHELP {
 
 #[macro_export]
 macro_rules! CHECK_HELPOPT {
-  ($l:expr) => {
-    if $l  !=std::ptr::null_mut() && (*$l).word !=std::ptr::null_mut() && ISHELP!((*(*$l).word).word) == 0 {
-      r_builtin_help ();
-      return EX_USAGE;
-    }
-  }
+    ($l:expr) => {
+        if $l != std::ptr::null_mut()
+            && (*$l).word != std::ptr::null_mut()
+            && ISHELP!((*(*$l).word).word) == 0
+        {
+            r_builtin_help();
+            return EX_USAGE;
+        }
+    };
 }
 
 extern "C" {
@@ -420,23 +423,16 @@ pub extern "C" fn  r_bg_builtin (list:*mut WordList)->i32 {
       return EXECUTION_FAILURE!();
   }
 
-  if no_options (list) !=0 {
-    return EX_USAGE;
-  }
-    
-  /* This relies on the fact that fg_bg() takes a WordList *, but only acts
-     on the first member (if any) of that list. */
-  r = EXECUTION_SUCCESS!();
+        if no_options(list) != 0 {
+            return EX_USAGE;
+        }
 
-  if r_fg_bg(loptend,0) == EXECUTION_FAILURE!() {
-    r = EXECUTION_FAILURE!();
-  }
-  
-  if loptend  !=std::ptr::null_mut() {
-      let mut t:WordList=*loptend;
-      while t.next !=std::ptr::null_mut() {
-        if r_fg_bg (&mut t, 0) == EXECUTION_FAILURE!() {
-          r = EXECUTION_FAILURE!();
+        /* This relies on the fact that fg_bg() takes a WordList *, but only acts
+        on the first member (if any) of that list. */
+        r = EXECUTION_SUCCESS!();
+
+        if r_fg_bg(loptend, 0) == EXECUTION_FAILURE!() {
+            r = EXECUTION_FAILURE();
         }
         t = *(t.next);
       }
