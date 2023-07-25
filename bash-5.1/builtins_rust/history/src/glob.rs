@@ -1245,6 +1245,13 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn vfwprintf(
+        __s: *mut __FILE,
+        __format: *const wchar_t,
+        __arg: *mut __va_list_tag,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn vwprintf(__format: *const wchar_t, __arg: *mut __va_list_tag) -> ::std::os::raw::c_int;
 }
 extern "C" {
