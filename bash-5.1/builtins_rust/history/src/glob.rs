@@ -3847,6 +3847,21 @@ pub struct DIR {
     pub dd_buf: [::std::os::raw::c_char; 512usize],
 }
 extern "C" {
+    pub fn opendir() -> *mut DIR;
+}
+extern "C" {
+    pub fn readdir() -> *mut direct;
+}
+extern "C" {
+    pub fn telldir() -> ::std::os::raw::c_long;
+}
+extern "C" {
+    pub fn seekdir();
+}
+extern "C" {
+    pub fn closedir();
+}
+extern "C" {
     pub fn glob_pattern_p(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
 }
 extern "C" {
