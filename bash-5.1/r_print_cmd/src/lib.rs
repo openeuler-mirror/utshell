@@ -912,5 +912,7 @@ pub unsafe extern "C" fn print_cond_node(cond:*mut COND_COM)
 pub unsafe extern "C" fn r_print_cond_command(cond:*mut COND_COM)
 {
     println!("r_print_cond_command");
+    cprintf_1(b"[[ \0" as *const u8 as *const i8);
     print_cond_node(cond);
+    cprintf_1(b"  ]]\0" as *const u8 as *const i8);
 }
