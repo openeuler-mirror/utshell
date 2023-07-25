@@ -435,13 +435,20 @@ pub extern "C" fn r_bg_builtin(list: *mut WordList) -> i32 {
         if r_fg_bg(loptend, 0) == EXECUTION_FAILURE!() {
             r = EXECUTION_FAILURE();
         }
-        t = *(t.next);
-      }
-      return r;
-  } else {
-    return r;
-  }	
-  }
+
+        if loptend != std::ptr::null_mut() {
+            let mut t: WordList = *loptend;
+            while t.next != std::ptr::null_mut() {
+                if r_fg_bg(&mut t, 0) == EXECUTION_FAILURE!() {
+                    r = EXECUTION_FAILURE!();
+                }
+                t = *(t.next);
+            }
+            return r;
+        } else {
+            return r;
+        }
+    }
 }
 
 /* How to put a job into the foreground/background. */
@@ -487,23 +494,29 @@ pub extern "C" fn r_fg_bg (list:*mut WordList, foreground:i32)->i32{
       last_asynchronous_pid = i32::from((*j).pgrp);	/* As per Posix.2 5.4.2 */
   }
 
-  status = start_job (job, foreground);
+        if foreground == 0 {
+            old_async_pid = i32::from(last_asynchronous_pid);
+            last_asynchronous_pid = i32::from((*j).pgrp); /* As per Posix.2 5.4.2 */
+        }
 
-  if status >= 0 {
-    /* win: */
-      UNBLOCK_CHILD !(Some(&oset));
-      if foreground !=0 {
-        return status;
-      } else {
-        return  EXECUTION_SUCCESS!();
-      }
-    } else {
-      if foreground == 0 {
-        last_asynchronous_pid = i32::from(old_async_pid);
-      }
+        status = start_job(job, foreground);
 
-      UNBLOCK_CHILD !(Some(&oset));
-      return EXECUTION_FAILURE!();
+        if status >= 0 {
+            /* win: */
+            UNBLOCK_CHILD!(Some(&oset));
+            if foreground != 0 {
+                return status;
+            } else {
+                return EXECUTION_SUCCESS!();
+            }
+        } else {
+            if foreground == 0 {
+                last_asynchronous_pid = i32::from(old_async_pid);
+            }
+
+            UNBLOCK_CHILD!(Some(&oset));
+            return EXECUTION_FAILURE!();
+        }
     }
   }
 }

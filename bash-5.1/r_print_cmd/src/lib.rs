@@ -916,3 +916,14 @@ pub unsafe extern "C" fn r_print_cond_command(cond:*mut COND_COM)
     print_cond_node(cond);
     cprintf_1(b"  ]]\0" as *const u8 as *const i8);
 }
+
+/ifdef debug中没有内容
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_print_cond_term(type_0:c_int, invert:c_int, op:*mut WORD_DESC, arg1:*mut c_char, arg2:*mut c_char)
+{
+    println!("r_xtrace_print_cond_term");
+    CHECK_XTRACE_FP!();
+    command_string_index = 0;
+    fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(), r_indirection_level_string());
+    fprintf(xtrace_fp, CString::new("[[ ").unwrap().as_ptr());
+}
