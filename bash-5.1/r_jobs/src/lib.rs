@@ -1481,5 +1481,15 @@ pub unsafe extern "C"  fn  delete_job(
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  nohup_job(mut job_index: c_int) {
+    let mut temp: *mut JOB = 0 as *mut JOB;
 
-
+    if js.j_jobslots == 0 {
+        return;
+    }
+    temp = *jobs.offset(job_index as isize);
+    if !temp.is_null() {
+        (*temp).flags |= J_NOHUP as c_int;
+    }
+}
