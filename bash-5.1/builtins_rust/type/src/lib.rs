@@ -767,23 +767,6 @@ fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
             return 1;
         }
     }
-    else if dflags & CDESC_SHORTDESC!() != 0{
-        unsafe{
-            let name = String::from("hashed");
-            translation_fn(&name,command,full_path);
-        }
-    }
-    else if (dflags & (CDESC_REUSABLE!()|CDESC_PATH_ONLY!())) != 0{
-        unsafe{
-            println! ("{:?} ",CStr::from_ptr(full_path));
-        }
-    }
-    unsafe{
-        libc::free (full_path as *mut c_void);
-    }
-    return 1;
-    }
-  }
 
     /* Now search through $PATH. */
     #[warn(while_true)]
