@@ -2589,6 +2589,10 @@ extern "C" {
 extern "C" {
     pub fn adjtime(__delta: *const timeval, __olddelta: *mut timeval) -> ::std::os::raw::c_int;
 }
+pub const __itimer_which_ITIMER_REAL: __itimer_which = 0;
+pub const __itimer_which_ITIMER_VIRTUAL: __itimer_which = 1;
+pub const __itimer_which_ITIMER_PROF: __itimer_which = 2;
+pub type __itimer_which = u32;
 pub const __rlimit_resource_RLIMIT_CPU: __rlimit_resource = 0;
 pub const __rlimit_resource_RLIMIT_FSIZE: __rlimit_resource = 1;
 pub const __rlimit_resource_RLIMIT_DATA: __rlimit_resource = 2;
