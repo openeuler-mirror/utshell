@@ -48,10 +48,10 @@ pub struct user_info {
 }
 
 #[macro_export]
-macro_rules!  SIZEOFLIMIT{
+macro_rules! SIZEOFLIMIT {
     () => {
-    std::mem::size_of::<RESOURCE_LIMITS>() as usize
-    }  
+        std::mem::size_of::<RESOURCE_LIMITS>() as usize
+    };
 }
 
 #[macro_export]
@@ -62,17 +62,17 @@ macro_rules! SIZEOFLIMITS {
 }
 
 #[macro_export]
-macro_rules! SIZEOFULCMD{
+macro_rules! SIZEOFULCMD {
     () => {
         std::mem::size_of::<cmdlist>()
-    }
+    };
 }
 
 #[macro_export]
-macro_rules!  LIMIT_HARD{
+macro_rules! LIMIT_HARD {
     () => {
-        0x01  
-    }
+        0x01
+    };
 }
 
 #[macro_export]
@@ -81,7 +81,6 @@ macro_rules!  LIMIT_SOFT{
         0x02  
     }
 }
-
 
 #[macro_export]
 macro_rules! POSIXBLK{
