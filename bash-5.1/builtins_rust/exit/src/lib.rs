@@ -263,7 +263,7 @@ pub fn r_exit_or_logout(list: *mut WordList) -> i32 {
 
         jump_to_top_level(EXITPROG!());
 
-        1
+        0
     }
 }
 

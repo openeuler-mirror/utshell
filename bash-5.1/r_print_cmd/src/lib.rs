@@ -862,3 +862,12 @@ pub unsafe extern "C" fn r_print_arith_command(arith_cmd_list:*mut WORD_LIST)
     command_print_word_list(arith_cmd_list, CString::new(" ").unwrap().as_ptr() as *mut c_char);
     cprintf_1(b"))\0" as *const u8 as *const i8);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn print_cond_node(cond:*mut COND_COM)
+{
+    if (*cond).flags & CMD_INVERT_RETURN as i32 != 0
+    {
+        cprintf_1(b"! \0" as *const u8 as *const i8);
+    }
+}
