@@ -1557,6 +1557,15 @@ pub unsafe extern "C"  fn  append_process(
     (*t).status = (status & 0xff as  c_int) << WEXITSTATUS_OFFSET as c_int;
     (*t).running = PS_DONE as c_int;
     (*t).command = name;
+
+    js.c_reaped += 1;
+    p = (**jobs.offset(jid as isize)).pipe;
+    while (*p).next != (**jobs.offset(jid as isize)).pipe {
+        p = (*p).next;
+    }
+
+    (*p).next = t;
+    (*t).next = (**jobs.offset(jid as isize)).pipe;
 }
 
 
