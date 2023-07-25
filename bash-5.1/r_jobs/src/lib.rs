@@ -1540,6 +1540,18 @@ unsafe extern "C" fn add_process(mut name: *mut  c_char, mut pid: pid_t) {
     };
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  append_process(
+    mut name: *mut  c_char,
+    mut pid: pid_t,
+    mut status:  c_int,
+    mut jid:  c_int,
+) {
+    // println!("append_process");
+    let mut t: *mut PROCESS = 0 as *mut PROCESS;
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+
+}
 
 
 
