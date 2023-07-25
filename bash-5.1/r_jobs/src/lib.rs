@@ -1521,8 +1521,13 @@ unsafe extern "C" fn add_process(mut name: *mut  c_char, mut pid: pid_t) {
     let mut t: *mut PROCESS = 0 as *mut PROCESS;
     let mut p: *mut PROCESS = 0 as *mut PROCESS;
 
-
-
+    t = xmalloc(::std::mem::size_of::<PROCESS>() as usize) as *mut PROCESS;
+    (*t).next = the_pipeline;
+    (*t).pid = pid;
+    (*t).status = 0 ;
+    (*t).running = PS_RUNNING as c_int;
+    (*t).command = name;
+    the_pipeline = t;
 }
 
 
