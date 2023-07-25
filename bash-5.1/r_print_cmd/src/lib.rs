@@ -870,4 +870,40 @@ pub unsafe extern "C" fn print_cond_node(cond:*mut COND_COM)
     {
         cprintf_1(b"! \0" as *const u8 as *const i8);
     }
+
+    if (*cond).type_ == COND_EXPR as i32{
+        cprintf_1(b"( \0" as *const u8 as *const i8);
+        print_cond_node((*cond).left);
+        cprintf_1(b" )\0" as *const u8 as *const i8);
+    }
+    else if (*cond).type_ == COND_AND as i32
+    {
+        print_cond_node((*cond).left);
+        cprintf_1(b" && \0" as *const u8 as *const i8);
+        print_cond_node((*cond).right);
+    }
+    else if (*cond).type_ == COND_OR as i32
+    {
+        print_cond_node((*cond).left);
+        cprintf_1(b" || \0" as *const u8 as *const i8);
+        print_cond_node((*cond).right);
+    }
+    else if (*cond).type_ == COND_UNARY as i32
+    {
+        cprintf_1((*(*cond).op).word);
+        cprintf_1(b" \0" as *const u8 as *const i8);
+        print_cond_node((*cond).left);
+    }
+    else if (*cond).type_ == COND_BINARY as i32
+    {
+        print_cond_node((*cond).left);
+        cprintf_1(b" \0" as *const u8 as *const i8);
+        cprintf_1((*(*cond).op).word);
+        cprintf_1(b" \0" as *const u8 as *const i8);
+        print_cond_node((*cond).right);
+    }
+    else if(*cond).type_ == COND_TERM as i32
+    {
+        cprintf_1((*(*cond).op).word);
+    }
 }

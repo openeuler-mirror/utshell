@@ -321,23 +321,26 @@ macro_rules! J_JOBCONTROL {
 
 #[macro_export]
 macro_rules! IS_JOBCONTROL {
-   ($j:expr) => {
-      ((*get_job_by_jid!($j)).flags & J_JOBCONTROL!()) != 0
-    }
+    ($j:expr) => {
+        ((*get_job_by_jid!($j)).flags & J_JOBCONTROL!()) != 0
+    };
 }
 
 #[macro_export]
 macro_rules! INVALID_JOB {
-   ($j:expr) => {
-         $j <0 || $j >=  js.j_jobslots || get_job_by_jid !($j) == std::ptr::null_mut()
-    }
+    ($j:expr) => {
+        $j < 0 || $j >= js.j_jobslots || get_job_by_jid!($j) == std::ptr::null_mut()
+    };
 }
 
 #[macro_export]
 macro_rules! ISHELP {
-   ($s:expr) => {
-    libc::strcmp($s as *const c_char,CString::new("--help").unwrap().as_ptr())
-    }
+    ($s:expr) => {
+        libc::strcmp(
+            $s as *const c_char,
+            CString::new("--help").unwrap().as_ptr()
+        )
+    };
 }
 
 #[macro_export]
