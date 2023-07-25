@@ -735,6 +735,10 @@ pub const PRIoFAST8: &'static [u8; 2usize] = b"o\0";
 pub const PRIoFAST16: &'static [u8; 3usize] = b"lo\0";
 pub const PRIoFAST32: &'static [u8; 3usize] = b"lo\0";
 pub const PRIoFAST64: &'static [u8; 3usize] = b"lo\0";
+pub const PRIXFAST8: &'static [u8; 2usize] = b"X\0";
+pub const PRIXFAST16: &'static [u8; 3usize] = b"lX\0";
+pub const PRIXFAST32: &'static [u8; 3usize] = b"lX\0";
+pub const PRIXFAST64: &'static [u8; 3usize] = b"lX\0";
 pub const PRIdMAX: &'static [u8; 3usize] = b"ld\0";
 pub const PRIiMAX: &'static [u8; 3usize] = b"li\0";
 pub const PRIoMAX: &'static [u8; 3usize] = b"lo\0";
@@ -3312,6 +3316,25 @@ pub type sh_icppfunc_t = ::core::option::Option<
 >;
 pub type sh_iptrfunc_t = ::core::option::Option<
     unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_void) -> ::std::os::raw::c_int,
+>;
+pub type sh_wassign_func_t = ::core::option::Option<
+    unsafe extern "C" fn(
+        arg1: *mut WORD_DESC,
+        arg2: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int,
+>;
+pub type sh_load_func_t = ::core::option::Option<
+    unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_char) -> ::std::os::raw::c_int,
+>;
+pub type sh_unload_func_t =
+    ::core::option::Option<unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_char)>;
+pub type sh_builtin_func_t =
+    ::core::option::Option<unsafe extern "C" fn(arg1: *mut WORD_LIST) -> ::std::os::raw::c_int>;
+pub type QSFUNC = ::core::option::Option<
+    unsafe extern "C" fn(
+        arg1: *const ::std::os::raw::c_void,
+        arg2: *const ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int,
 >;
 extern "C" {
     pub fn posix_initialize(arg1: ::std::os::raw::c_int);
