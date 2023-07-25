@@ -1845,11 +1845,33 @@ macro_rules! WIFSIGNALED {
     };
 }
 
+#[macro_export]
+macro_rules! WTERMSIG {
+    ($status:expr) => {
+        ($status) & 0x7f
+    };
+}
 
+#[macro_export]
+macro_rules! WIFEXITED {
+    ($status:expr) => {
+        ($status) & 0x7f == 0
+    };
+}
 
+#[macro_export]
+macro_rules! WEXITSTATUS {
+    ($status:expr) => {
+        (($status) & 0xff00) >> 8
+    };
+}
 
-
-
+#[macro_export]
+macro_rules!  WSTATUS{
+    ($t:expr) => {
+        $t
+    };
+}
 
 
 
