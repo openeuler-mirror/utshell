@@ -3847,6 +3847,9 @@ pub struct DIR {
     pub dd_buf: [::std::os::raw::c_char; 512usize],
 }
 extern "C" {
+    pub fn glob_pattern_p(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn glob_vector(
         arg1: *mut ::std::os::raw::c_char,
         arg2: *mut ::std::os::raw::c_char,

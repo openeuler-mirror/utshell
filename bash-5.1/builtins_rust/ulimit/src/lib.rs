@@ -17,15 +17,14 @@ pub struct rlimit {
     pub rlim_max: rlim_t,
 }
 
-
-#[repr (C)]
-#[derive(Copy,Clone)]
-pub struct RESOURCE_LIMITS{
-     option : i32,           	/* The ulimit option for this limit. */
-     parameter : i32,            /* Parameter to pass to get_limit (). */
-     block_factor :  i32,         /* Blocking factor for specific limit. */
-     description : *const libc::c_char,    /* Descriptive string to output. */
-     units : *const libc::c_char           /* scale */
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct RESOURCE_LIMITS {
+    option: i32,                      /* The ulimit option for this limit. */
+    parameter: i32,                   /* Parameter to pass to get_limit (). */
+    block_factor: i32,                /* Blocking factor for specific limit. */
+    description: *const libc::c_char, /* Descriptive string to output. */
+    units: *const libc::c_char,       /* scale */
 }
 
 #[repr (C)]
