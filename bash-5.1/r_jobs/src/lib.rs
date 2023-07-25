@@ -1810,8 +1810,40 @@ pub unsafe extern "C"  fn  describe_pid(mut pid: pid_t) {
 }
 
 
+unsafe extern "C" fn j_strsignal(mut s: c_int) -> *mut c_char 
+{
+    let mut x: *mut c_char = 0 as *mut c_char;
+    x = strsignal(s);
+    if x.is_null() {
+        x = retcode_name_buffer.as_mut_ptr();
+        libc::snprintf(x,::std::mem::size_of::<[ c_char; 64]>() as usize,
+            b"Signal %d\0" as *const u8 as *const  c_char,
+            s,
+        );
+    }
+    return x;
+}
 
+#[macro_export]
+macro_rules! WSTOPSIG {
+    ($status:expr) => {
+        ($status & 0xff00) >> 8
+    };
+}
 
+#[macro_export]
+macro_rules! RUNNING {
+    ($j:expr) => {
+        (**jobs.offset($j as isize)).state as c_int == JRUNNING
+    };
+}
+
+#[macro_export]
+macro_rules! WIFSIGNALED {
+    ($status:expr) => {
+        ((($status) & 0x7f) + 1) >> 1 > 0
+    };
+}
 
 
 
