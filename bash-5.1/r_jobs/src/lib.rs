@@ -1622,8 +1622,30 @@ pub unsafe extern "C"  fn  terminate_stopped_jobs() {
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  hangup_all_jobs() {
+    let mut i: c_int = 0;
+    i = 0 ;
+    while i < js.j_jobslots {
+        if !(*jobs.offset(i as isize)).is_null() {
+            if !((**jobs.offset(i as isize)).flags & J_NOHUP as c_int != 0) {
+                continue;
+            }
+                killpg((**jobs.offset(i as isize)).pgrp, SIGHUP  as c_int);
+                if STOPPED!(i)
+                {
+                    killpg((**jobs.offset(i as isize)).pgrp, SIGCONT as c_int);
+                } 
+        }
+        i += 1;
+    }
+}
 
-
+#[no_mangle]
+pub unsafe extern "C"  fn  kill_current_pipeline() {
+    stop_making_children();
+    start_pipeline();
+}
 
 
 
