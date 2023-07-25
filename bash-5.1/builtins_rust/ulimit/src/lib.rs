@@ -155,24 +155,24 @@ macro_rules! PIPE_BUF {
 }
 
 #[macro_export]
-macro_rules! RLIMIT_OPENFILES{
+macro_rules! RLIMIT_OPENFILES {
     () => {
         7
-    }
+    };
 }
 
 #[macro_export]
-macro_rules!  RLIMIT_VIRTMEM{
+macro_rules! RLIMIT_VIRTMEM {
     () => {
         9
-    }
+    };
 }
 
 #[macro_export]
-macro_rules! RLIMIT_MAXUPROC{
+macro_rules! RLIMIT_MAXUPROC {
     () => {
         6
-    }
+    };
 }
 
 #[macro_export]
@@ -180,14 +180,14 @@ macro_rules! RLIM_INFINITY {
     () => {
         -1
         //0x7fffffff
-    }
+    };
 }
 
 #[macro_export]
-macro_rules!  RLIM_SAVED_CUR{
+macro_rules! RLIM_SAVED_CUR {
     () => {
         RLIM_INFINITY!()
-    }
+    };
 }
 
 type  RLIMTYPE = i64;
