@@ -1773,7 +1773,41 @@ unsafe extern "C" fn find_job(
     return -(1 as c_int);
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  get_job_by_pid( mut pid: pid_t, mut block: c_int, mut procp: *mut *mut PROCESS,) ->  c_int {
+    // println!("get_job_by_pid");
+    let mut job:  c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
+    if block != 0 {
+        BLOCK_CHILD (&mut set, &mut oset);
+    }
+    job = find_job(pid, 0 as  c_int, procp);
+    if block != 0 {
+        UNBLOCK_CHILD (&mut oset);
+    }
+    return job;
+}
+
+#[no_mangle]
+pub unsafe extern "C"  fn  describe_pid(mut pid: pid_t) {
+    let mut job: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+    BLOCK_CHILD (&mut set, &mut oset);
+    job = find_job(pid, 0, 0 as *mut *mut PROCESS);
+
+    if job != NO_JOB {
+            libc::fprintf(stderr,b"[%d] %ld\n\0" as *const u8 as *const  c_char,job + 1 as  c_int,pid as libc::c_long,
+        );
+    } else {
+        programming_error(b"describe_pid: %ld: no such pid\0" as *const u8 as *const  c_char, pid as  c_long,
+        );
+    }
+    UNBLOCK_CHILD (&mut oset);
+}
 
 
 
