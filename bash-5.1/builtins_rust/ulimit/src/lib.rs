@@ -127,31 +127,31 @@ macro_rules! NCMDS {
 }
 
 #[macro_export]
-macro_rules!  RLIMIT_FILESIZE {
+macro_rules! RLIMIT_FILESIZE {
     () => {
         1
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! RLIMIT_PIPESIZE {
-    () =>  {
+    () => {
         257
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! PIPESIZE {
-    () =>  {
+    () => {
         4096
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! PIPE_BUF {
-    () =>  {
+    () => {
         PIPESIZE!()
-    }
+    };
 }
 
 #[macro_export]

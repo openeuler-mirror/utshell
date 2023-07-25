@@ -311,6 +311,15 @@ pub const HAVE_STRDUP: u32 = 1;
 pub const HAVE___ARGZ_COUNT: u32 = 1;
 pub const HAVE___ARGZ_NEXT: u32 = 1;
 pub const HAVE___ARGZ_STRINGIFY: u32 = 1;
+pub const RESTRICTED_SHELL_NAME: &'static [u8; 6usize] = b"rbash\0";
+pub const _WCHAR_H: u32 = 1;
+pub const _FEATURES_H: u32 = 1;
+pub const _ISOC95_SOURCE: u32 = 1;
+pub const _ISOC99_SOURCE: u32 = 1;
+pub const _ISOC11_SOURCE: u32 = 1;
+pub const _POSIX_SOURCE: u32 = 1;
+pub const _POSIX_C_SOURCE: u32 = 200809;
+pub const _XOPEN_SOURCE: u32 = 700;
 pub const _XOPEN_SOURCE_EXTENDED: u32 = 1;
 pub const _LARGEFILE64_SOURCE: u32 = 1;
 pub const _DEFAULT_SOURCE: u32 = 1;
@@ -2220,6 +2229,12 @@ pub struct _fpx_sw_bytes {
     pub xstate_bv: __uint64_t,
     pub xstate_size: __uint32_t,
     pub __glibc_reserved1: [__uint32_t; 7usize],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _fpreg {
+    pub significand: [::std::os::raw::c_ushort; 4usize],
+    pub exponent: ::std::os::raw::c_ushort,
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
