@@ -190,9 +190,9 @@ macro_rules! RLIM_SAVED_CUR {
     };
 }
 
-type  RLIMTYPE = i64;
-type  RESOURCE_LIMITS_T= RESOURCE_LIMITS;
-type  ULCMD =  _cmd;
+type RLIMTYPE = i64;
+type RESOURCE_LIMITS_T = RESOURCE_LIMITS;
+type ULCMD = _cmd;
 pub type __rlimit_resource = libc::c_uint;
 pub const __RLIM_NLIMITS: __rlimit_resource = 16;
 pub const __RLIMIT_NLIMITS: __rlimit_resource = 16;
@@ -221,51 +221,54 @@ pub type __gid_t = i32;
 pub type gid_t = __gid_t;
 pub type uid_t = __uid_t;
 
-static mut cmdlistsz : i32  = 0;
+static mut cmdlistsz: i32 = 0;
 
-const  limits: [ RESOURCE_LIMITS_T;18] =[
-
-    {   RESOURCE_LIMITS {
-        option: 'R' as i32,
-        parameter: __RLIMIT_RTTIME as i32,
-        block_factor: 1 as i32,
-        description: b"real-time non-blocking time\0" as *const u8
-            as *const libc::c_char,
-        units: b"microseconds\0" as *const u8 as *const libc::c_char,
-    }},
-   
-    {   RESOURCE_LIMITS {
-        option: 'c' as i32,
-        parameter: RLIMIT_CORE as i32,
-        block_factor: -(2 as i32),
-        description: b"core file size\0" as *const u8 as *const libc::c_char,
-        units: b"blocks\0" as *const u8 as *const libc::c_char,
-    }},
-   
-    {   RESOURCE_LIMITS {
-        option: 'd' as i32,
-        parameter: RLIMIT_DATA as i32,
-        block_factor: 1024 as i32,
-        description: b"data seg size\0" as *const u8 as *const libc::c_char,
-        units: b"kbytes\0" as *const u8 as *const libc::c_char,
-    }},
-
-    {   RESOURCE_LIMITS {
-        option: 'e' as i32,
-        parameter: __RLIMIT_NICE as i32,
-        block_factor: 1 as i32,
-        description: b"scheduling priority\0" as *const u8 as *const libc::c_char,
-        units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
-    }},
-
-    {   RESOURCE_LIMITS {
-        option: 'f' as i32,
-        parameter: RLIMIT_FSIZE as i32,
-        block_factor: -(2 as i32),
-        description: b"file size\0" as *const u8 as *const libc::c_char,
-        units: b"blocks\0" as *const u8 as *const libc::c_char,
-    }},
-    
+const limits: [RESOURCE_LIMITS_T; 18] = [
+    {
+        RESOURCE_LIMITS {
+            option: 'R' as i32,
+            parameter: __RLIMIT_RTTIME as i32,
+            block_factor: 1 as i32,
+            description: b"real-time non-blocking time\0" as *const u8 as *const libc::c_char,
+            units: b"microseconds\0" as *const u8 as *const libc::c_char,
+        }
+    },
+    {
+        RESOURCE_LIMITS {
+            option: 'c' as i32,
+            parameter: RLIMIT_CORE as i32,
+            block_factor: -(2 as i32),
+            description: b"core file size\0" as *const u8 as *const libc::c_char,
+            units: b"blocks\0" as *const u8 as *const libc::c_char,
+        }
+    },
+    {
+        RESOURCE_LIMITS {
+            option: 'd' as i32,
+            parameter: RLIMIT_DATA as i32,
+            block_factor: 1024 as i32,
+            description: b"data seg size\0" as *const u8 as *const libc::c_char,
+            units: b"kbytes\0" as *const u8 as *const libc::c_char,
+        }
+    },
+    {
+        RESOURCE_LIMITS {
+            option: 'e' as i32,
+            parameter: __RLIMIT_NICE as i32,
+            block_factor: 1 as i32,
+            description: b"scheduling priority\0" as *const u8 as *const libc::c_char,
+            units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+        }
+    },
+    {
+        RESOURCE_LIMITS {
+            option: 'f' as i32,
+            parameter: RLIMIT_FSIZE as i32,
+            block_factor: -(2 as i32),
+            description: b"file size\0" as *const u8 as *const libc::c_char,
+            units: b"blocks\0" as *const u8 as *const libc::c_char,
+        }
+    },
     {
         RESOURCE_LIMITS {
             option: 'i' as i32,
