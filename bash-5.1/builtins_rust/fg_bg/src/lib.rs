@@ -383,45 +383,46 @@ pub extern "C" fn  r_fg_builtin (list:*mut WordList)->i32 {
         return EXECUTION_FAILURE!();
     }
 
-    if no_options (list) !=0 {
-      return EX_USAGE;
-    } 
-    
-    /* If the last arg on the line is '&', then start this job in the
-      background.  Else, fg the job. */
-    
-    if loptend  == std::ptr::null_mut() {
-      return r_fg_bg (loptend, 1);
-    } else {
-      let mut t:WordList=*loptend;
-      while  t.next !=std::ptr::null_mut() {
-        t=*(t.next);
-      }
-      let cstr:&std::ffi::CStr=std::ffi::CStr::from_ptr((*(t.word)).word );
-      let mut isfg:bool=char::from( cstr.to_bytes()[0] ) == '&';
-      isfg =isfg && char::from( cstr.to_bytes()[1])  == '\0';
-      isfg = isfg ==false;
-      if isfg {
-        fg_bit=1;
-      } else {
-        fg_bit=0;
-      }    
-      return r_fg_bg (loptend, fg_bit);
+        if no_options(list) != 0 {
+            return EX_USAGE;
+        }
+
+        /* If the last arg on the line is '&', then start this job in the
+        background.  Else, fg the job. */
+
+        if loptend == std::ptr::null_mut() {
+            return r_fg_bg(loptend, 1);
+        } else {
+            let mut t: WordList = *loptend;
+            while t.next != std::ptr::null_mut() {
+                t = *(t.next);
+            }
+            let cstr: &std::ffi::CStr = std::ffi::CStr::from_ptr((*(t.word)).word);
+            let mut isfg: bool = char::from(cstr.to_bytes()[0]) == '&';
+            isfg = isfg && char::from(cstr.to_bytes()[1]) == '\0';
+            isfg = isfg == false;
+            if isfg {
+                fg_bit = 0;
+            } else {
+                fg_bit = 1;
+            }
+            return r_fg_bg(loptend, fg_bit);
+        }
     }
   }
 }
 
 /* How to put a job into the background. */
 #[no_mangle]
-pub extern "C" fn  r_bg_builtin (list:*mut WordList)->i32 {
-  let mut r:i32;
-  unsafe {
-  CHECK_HELPOPT !(list);
+pub extern "C" fn r_bg_builtin(list: *mut WordList) -> i32 {
+    let mut r: i32;
+    unsafe {
+        CHECK_HELPOPT!(list);
 
-  if job_control == 0  {
-      sh_nojobs (0 as *mut c_char);
-      return EXECUTION_FAILURE!();
-  }
+        if job_control == 0 {
+            sh_nojobs(0 as *mut c_char);
+            return EXECUTION_FAILURE!();
+        }
 
         if no_options(list) != 0 {
             return EX_USAGE;
