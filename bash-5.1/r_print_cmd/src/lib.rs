@@ -834,14 +834,16 @@ pub unsafe extern "C" fn print_if_command(if_command:*mut IF_COM)
     cprintf_1(b"if \0" as *const u8 as *const i8);
     skip_this_indent += 1;
     make_command_string_internal((*if_command).test);
-
+    semicolon();
     cprintf_1(b" then\n\0" as *const u8 as *const i8);
     indentation += indentation_amount;
     make_command_string_internal((*if_command).true_case);
     PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
     indentation -= indentation_amount;
+    
     if !(*if_command).false_case.is_null()
     {
+        semicolon();
         newline(b"else\n\0" as *const u8 as *const c_char as *mut c_char);
         indentation += indentation_amount;
         make_command_string_internal((*if_command).false_case);
@@ -849,5 +851,6 @@ pub unsafe extern "C" fn print_if_command(if_command:*mut IF_COM)
         indentation -= indentation_amount;
     }
 
+    semicolon();
     newline(b"fi\0" as *const u8 as *const c_char as *mut c_char );
 }

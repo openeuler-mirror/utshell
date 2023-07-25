@@ -33,7 +33,7 @@ type HASH_TABLE = hash_table;
 #[repr(C)]
 pub struct _pathdata {
     pub path: *mut c_char,
-    pub flags: i8,
+    pub flags: i32,
 }
 type PATH_DATA = _pathdata;
 //enum
@@ -65,7 +65,7 @@ fn HASH_ENTRIES(ht: *mut HASH_TABLE) -> i32 {
         if ht != std::ptr::null_mut() {
             return (*ht).nentries;
         } else {
-            return 1;
+            return 0;
         }
     }
 }
@@ -78,7 +78,7 @@ macro_rules! pathdata {
 #[macro_export]
 macro_rules! FREE {
     ($s:expr) => {
-        if $s != std::ptr::null_mut(){
+        if $s != std::ptr::null_mut() {
             free($s as *mut c_void);
         }
     };
@@ -129,8 +129,8 @@ extern "C" {
 static mut common_inode: c_int = 0;
 //rust
 /* Print statistics on the current state of hashed commands.  If LIST is
-   not empty, then rehash (or hash in the first place) the specified
-   commands. */
+not empty, then rehash (or hash in the first place) the specified
+commands. */
 #[no_mangle]
 pub extern "C" fn r_hash_builtin(mut list: *mut WordList) -> i32 {
     let mut expunge_hash_table: i32;
