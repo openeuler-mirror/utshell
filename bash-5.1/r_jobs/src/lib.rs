@@ -1873,7 +1873,58 @@ macro_rules!  WSTATUS{
     };
 }
 
-
-
+unsafe extern "C" fn printable_job_status(mut j: c_int, mut p: *mut PROCESS, mut format: c_int,) -> *mut c_char 
+{
+    static mut temp: *mut c_char = 0 as *const c_char as *mut c_char;
+    let mut es: c_int = 0;
+    temp = b"Done\0" as *const u8 as *const c_char as *mut c_char;
+    
+    if STOPPED!(j) && format == 0
+    {
+        if posixly_correct == 0 as  c_int || p.is_null() || (WIFSTOPPED!((*p).status)) {
+            temp = b"Stopped\0" as *const u8 as *mut c_char;
+        } else {
+            temp = retcode_name_buffer.as_mut_ptr();
+            libc::snprintf(temp,::std::mem::size_of::<[ c_char; 64]>() as usize,
+                    b"Stopped(%s)\0" as *const u8 as *const  c_char,
+                signal_name(WSTOPSIG!((*p).status)),
+            );
+        }
+    } else if RUNNING!(j)
+        {
+        temp = b"Running\0" as *const u8 as *mut c_char;
+    } else {
+        if WIFSTOPPED!((*p).status) {
+            temp = j_strsignal(WSTOPSIG!((*p).status));
+        } else if WIFSIGNALED!((*p).status) {
+            temp = j_strsignal(WTERMSIG!((*p).status));
+        } else if WIFEXITED!((*p).status){
+            temp = retcode_name_buffer.as_mut_ptr();
+	        es = WEXITSTATUS!((*p).status);
+            if es == 0 {
+                libc::strncpy (temp, b"Done\0" as *const u8 as *mut c_char, std::mem::size_of::<[ c_char; 64]>() - 1);
+	            *temp.offset(
+                    (::std::mem::size_of::<[ c_char; 64]>() as  c_ulong)
+                        .wrapping_sub(1 as  c_int as  c_ulong) as isize,
+                ) = '\u{0}' as i32 as  c_char;
+            } else if posixly_correct != 0 {
+                libc::snprintf(temp,::std::mem::size_of::<[ c_char; 64]>() as usize,
+                    b"Done(%d)\0" as *const u8 as *const  c_char,
+                    es
+                );
+            } else {
+                libc::snprintf(temp,::std::mem::size_of::<[ c_char; 64]>() as usize,
+                    b"Exit(%d)\0" as *const u8 as *const  c_char,
+                    es
+                );
+            }
+        }
+        else {
+            temp = b"Unknown status\0" as *const u8 as *mut c_char;
+        } 
+    } 
+    
+    return temp;
+}
 
 
