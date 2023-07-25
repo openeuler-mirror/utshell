@@ -1668,6 +1668,63 @@ unsafe extern "C" fn find_pid_in_pipeline(
     return 0 as *mut PROCESS;
 }
 
+
+unsafe extern "C" fn find_pipeline(
+    mut pid: pid_t,
+    mut alive_only: c_int,
+    mut jobp: *mut c_int,
+) -> *mut PROCESS {
+    // println!("find_pipeline");
+    let mut job: c_int = 0;
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut save: *mut pipeline_saver = 0 as *mut pipeline_saver;
+    p = 0 as *mut libc::c_void as *mut PROCESS;
+    if !jobp.is_null() {
+        *jobp = -(1 as c_int);
+    }
+    if !the_pipeline.is_null()
+        && {
+            p = find_pid_in_pipeline(pid, the_pipeline, alive_only);
+            !p.is_null()
+        }
+    {
+        return p;
+    }
+    save = saved_pipeline;
+    while !save.is_null() {
+        if !((*save).pipeline).is_null()
+            && {
+                p = find_pid_in_pipeline(pid, (*save).pipeline, alive_only);
+                !p.is_null()
+            }
+        {
+            return p;
+        }
+        save = (*save).next;
+    }
+    if procsubs.nproc > 0 as c_int
+        && {
+            p = procsub_search(pid);
+            !p.is_null()
+        }
+        && (alive_only == 0 as c_int && 0 as c_int == 0 as c_int
+            || ((*p).running == 1 as c_int
+                || (*p).status & 0xff as c_int == 0x7f as c_int))
+    {
+        return p;
+    }
+    job = find_job(pid, alive_only, &mut p);
+    if !jobp.is_null() {
+        *jobp = job;
+    }
+    return if job == -(1 as c_int) {
+        0 as *mut libc::c_void as *mut PROCESS
+    } else {
+        (**jobs.offset(job as isize)).pipe
+    };
+}
+
+
 unsafe extern "C" fn find_process(
     mut pid: pid_t,
     mut alive_only:  c_int,
