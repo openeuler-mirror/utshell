@@ -1737,3 +1737,55 @@ unsafe extern "C" fn find_process(
     }
     return p;
 }
+
+unsafe extern "C" fn find_job(
+    mut pid: pid_t,
+    mut alive_only: c_int,
+    mut procp: *mut *mut PROCESS,
+) -> c_int {
+    let mut i: c_int = 0;
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    i = 0 as c_int;
+    // println!("j_jobslots {}",js.j_jobslots);
+    while i < js.j_jobslots {
+        if !(*jobs.offset(i as isize)).is_null() {
+            p = (**jobs.offset(i as isize)).pipe;
+            loop {
+                if (*p).pid == pid
+                    && (alive_only == 0 as c_int
+                        && 0 as c_int == 0 as c_int
+                        || ((*p).running == 1 as c_int
+                            || (*p).status & 0xff as c_int == 0x7f as c_int))
+                {
+                    if !procp.is_null() {
+                        *procp = p;
+                    }
+                    return i;
+                }
+                p = (*p).next;
+                if !(p != (**jobs.offset(i as isize)).pipe) {
+                    break;
+                }
+            }
+        }
+        i += 1;
+    }
+    return -(1 as c_int);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
