@@ -91,6 +91,11 @@ pub extern "C" fn r_trap_builtin(mut list: *mut WordList) -> i32 {
                     result = EXECUTION_FAILURE;
                 } else {
                     match operation {
+                        SET => set_signal(sig, first_arg),
+                        IGNORE => ignore_signal(sig),
+                        REVERT => {
+                            restore_default_signal(sig);
+                            match sig {
                                 libc::SIGINT => {
                                     if interactive != 0 {
                                         set_signal_handler(
