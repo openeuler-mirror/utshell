@@ -1568,8 +1568,36 @@ pub unsafe extern "C"  fn  append_process(
     (*t).next = (**jobs.offset(jid as isize)).pipe;
 }
 
-
-
+unsafe extern "C" fn map_over_jobs(
+    mut func: Option::<sh_job_map_func_t>,
+    mut arg1: c_int,
+    mut arg2: c_int,
+) -> c_int {
+    let mut i: c_int = 0;
+    let mut result: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    if js.j_jobslots == 0  {
+        return 0 ;
+    }
+    BLOCK_CHILD (&mut set, &mut oset);
+    result = 0 ;
+    i = result;
+    while i < js.j_jobslots {
+        if !(*jobs.offset(i as isize)).is_null() {
+            result = (Some(func.expect("non-null function pointer")))
+                .expect(
+                    "non-null function pointer",
+                )(*jobs.offset(i as isize), arg1, arg2, i);
+            if result != 0 {
+                break;
+            }
+        }
+        i += 1;
+    }
+    UNBLOCK_CHILD (&mut oset);
+    return result;
+}
 
 
 
