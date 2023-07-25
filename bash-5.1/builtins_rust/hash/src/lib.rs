@@ -154,26 +154,26 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
         pathname = std::ptr::null_mut();
         reset_internal_getopt();
         let opts = CString::new("dlp:rt").unwrap();
-        opt = internal_getopt(list,opts.as_ptr() as *mut c_char);
-        while opt != -1{
+        opt = internal_getopt(list, opts.as_ptr() as *mut c_char);
+        while opt != -1 {
             let optu8 = opt as u8;
             let opt_char = char::from(optu8);
-            match opt_char{
+            match opt_char {
                 'd' => delete = 1,
                 'l' => list_portably = 1,
                 'p' => pathname = list_optarg,
                 'r' => expunge_hash_table = 1,
                 't' => list_targets = 1,
-                 _  => {
+                _ => {
                     if opt == -99 {
                         r_builtin_help();
                         return EX_USAGE;
                     }
-                     r_builtin_usage();
-                     return EX_USAGE;
-                 }
+                    r_builtin_usage();
+                    return EX_USAGE;
+                }
             }
-            opt = internal_getopt(list,opts.as_ptr() as *mut c_char);
+            opt = internal_getopt(list, opts.as_ptr() as *mut c_char);
         }
         list = loptend;
         /* hash -t requires at least one argument. */
@@ -196,15 +196,18 @@ pub extern "C" fn r_hash_builtin(mut list:*mut WordList)->i32{
          we test expunge_hash_table. */
         if list==std::ptr::null_mut() && expunge_hash_table == 0{
             opt = r_print_hashed_commands(list_portably);
-            if opt==0 && posixly_correct==0 && (list_portably==0 || shell_compatibility_level<=50){
+            if opt == 0
+                && posixly_correct == 0
+                && (list_portably == 0 || shell_compatibility_level <= 50)
+            {
                 let s_cstr = CStr::from_ptr(this_command_name);
                 let s_str = s_cstr.to_str().unwrap();
                 let s_string = s_str.to_owned();
-                println!("{}:hash table empty",s_string);
+                println!("{}:hash table empty", s_string);
             }
             return EXECUTION_SUCCESS!();
         }
-        if expunge_hash_table != 0{
+        if expunge_hash_table != 0 {
             phash_flush();
         }
         /* If someone runs `hash -r -t xyz' he will be disappointed. */
