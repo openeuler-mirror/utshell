@@ -27,24 +27,24 @@ pub struct RESOURCE_LIMITS {
     units: *const libc::c_char,       /* scale */
 }
 
-#[repr (C)]
-#[derive(Copy,Clone)]
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct _cmd {
-     cmd :  i32,
-    arg : *mut libc::c_char
-} 
+    cmd: i32,
+    arg: *mut libc::c_char,
+}
 
-#[repr (C)]
-#[derive(Copy,Clone)]
+#[repr(C)]
+#[derive(Copy, Clone)]
 /* Information about the current user. */
 pub struct user_info {
-    uid : uid_t,
-    euid : uid_t,
-    gid : gid_t,
-    egid : gid_t,
-    user_name : *mut libc::c_char,
-    shell :*mut libc::c_char,
-    home_dir : *mut  libc::c_char
+    uid: uid_t,
+    euid: uid_t,
+    gid: gid_t,
+    egid: gid_t,
+    user_name: *mut libc::c_char,
+    shell: *mut libc::c_char,
+    home_dir: *mut libc::c_char,
 }
 
 #[macro_export]
