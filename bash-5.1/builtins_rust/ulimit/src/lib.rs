@@ -113,17 +113,17 @@ macro_rules! RLIM_SAVED_MAX {
 
 #[deny(missing_fragment_specifier)]
 #[macro_export]
-macro_rules!  STREQ{
-   ($a:expr,$b:expr) =>{
-       $a==$b && libc::strcmp($a,$b)==0
-    }
+macro_rules! STREQ {
+    ($a:expr,$b:expr) => {
+        $a == $b && libc::strcmp($a, $b) == 0
+    };
 }
 
 #[macro_export]
-macro_rules!  NCMDS {
+macro_rules! NCMDS {
     () => {
-        SIZEOFLIMITS!() / SIZEOFLIMIT!() 
-    }
+        SIZEOFLIMITS!() / SIZEOFLIMIT!()
+    };
 }
 
 #[macro_export]
