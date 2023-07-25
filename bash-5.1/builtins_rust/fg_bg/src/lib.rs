@@ -191,16 +191,16 @@ pub struct arith_for_com {
 
 #[repr(C)]
 pub struct subshell_com {
-    flags:i32,
-    line:i32,
-    command:*mut COMMAND    
+    flags: i32,
+    line: i32,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct coproc_com {
-    flags:i32,
-    name:*mut c_char,
-    command:*mut COMMAND  
+    flags: i32,
+    name: *mut c_char,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
@@ -314,29 +314,33 @@ macro_rules! get_job_by_jid {
 
 #[macro_export]
 macro_rules! J_JOBCONTROL {
-   () => 4
-   };
+    () => {
+        0x04
+    };
 }
 
 #[macro_export]
 macro_rules! IS_JOBCONTROL {
-   ($j:expr) => {
-      ((*get_job_by_jid!($j)).flags & J_JOBCONTROL!()) != 0
-    }
+    ($j:expr) => {
+        ((*get_job_by_jid!($j)).flags & J_JOBCONTROL!()) != 0
+    };
 }
 
 #[macro_export]
 macro_rules! INVALID_JOB {
-   ($j:expr) => {
-         $j <0 || $j >=  js.j_jobslots || get_job_by_jid !($j) == std::ptr::null_mut()
-    }
+    ($j:expr) => {
+        $j < 0 || $j >= js.j_jobslots || get_job_by_jid!($j) == std::ptr::null_mut()
+    };
 }
 
 #[macro_export]
 macro_rules! ISHELP {
-   ($s:expr) => {
-    libc::strcmp($s as *const c_char,CString::new("--help").unwrap().as_ptr())
-    }
+    ($s:expr) => {
+        libc::strcmp(
+            $s as *const c_char,
+            CString::new("--help").unwrap().as_ptr()
+        )
+    };
 }
 
 #[macro_export]
