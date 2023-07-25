@@ -916,11 +916,10 @@ fn  print_rlimtype(num : u64, nl : i32)
     }
 }
 
+fn set_all_limits(mut mode: i32, newlim: RLIMTYPE) -> i32 {
+    let mut i: i32;
+    let mut retval: i32 = 0;
 
-fn  set_all_limits (mut mode : i32 , newlim : RLIMTYPE) -> i32 {
-    let mut  i : i32 ;
-    let mut retval : i32  = 0;
-  
     if newlim != RLIM_INFINITY!() {
         unsafe {
             *__errno_location() = libc::EINVAL;
