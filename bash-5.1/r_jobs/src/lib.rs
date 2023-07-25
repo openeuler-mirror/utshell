@@ -1599,8 +1599,28 @@ unsafe extern "C" fn map_over_jobs(
     return result;
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  terminate_current_pipeline() {
+    if pipeline_pgrp != 0 && pipeline_pgrp != shell_pgrp {
+        killpg(pipeline_pgrp, SIGTERM as c_int);
+        killpg(pipeline_pgrp, SIGCONT as c_int);
+    }
+}
 
-
+#[no_mangle]
+pub unsafe extern "C"  fn  terminate_stopped_jobs() {
+    let mut i:c_int = 0;
+    i = 0 as c_int;
+    while i < js.j_jobslots {
+        if !(*jobs.offset(i as isize)).is_null()
+            && STOPPED!(i) 
+        {
+            killpg((**jobs.offset(i as isize)).pgrp, SIGTERM as c_int);
+            killpg((**jobs.offset(i as isize)).pgrp, SIGCONT as c_int);
+        }
+        i += 1;
+    }
+}
 
 
 
