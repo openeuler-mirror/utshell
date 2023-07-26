@@ -305,14 +305,15 @@ const limits: [RESOURCE_LIMITS_T; 18] = [
             units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
         }
     },
-    {   RESOURCE_LIMITS {
-        option: 'p' as i32,
-        parameter: 257 as i32,
-        block_factor: 512 as i32,
-        description: b"pipe size\0" as *const u8 as *const libc::c_char,
-        units: b"512 bytes\0" as *const u8 as *const libc::c_char,
-    }},
-
+    {
+        RESOURCE_LIMITS {
+            option: 'p' as i32,
+            parameter: 257 as i32,
+            block_factor: 512 as i32,
+            description: b"pipe size\0" as *const u8 as *const libc::c_char,
+            units: b"512 bytes\0" as *const u8 as *const libc::c_char,
+        }
+    },
     {   RESOURCE_LIMITS {
         option: 'q' as i32,
         parameter: __RLIMIT_MSGQUEUE as i32,
