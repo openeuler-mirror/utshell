@@ -1997,6 +1997,95 @@ unsafe extern "C" fn print_pipeline(
     while (*last).next != first {
         last = (*last).next;
     }
+
+    loop {
+        if p != first {
+            libc::fprintf(
+                stream,
+                if format != 0 {
+                    b"     \0" as *const u8 as *const c_char
+                } else {
+                    b" |\0" as *const u8 as *const c_char
+                },
+            );
+        }
+        if format != 0  {
+            libc::fprintf(
+                stream,
+                b"%5ld\0" as *const u8 as *const c_char,
+                (*p).pid as libc::c_long,
+            );
+        }
+        libc::fprintf(stream, b" \0" as *const u8 as *const c_char);
+
+        if format > -1 && job_index >= 0  {
+            show = if format != 0 { p } else { last };
+            temp = printable_job_status(job_index, show, format);
+
+            if p != first {
+                if format != 0 {
+                    if (*show).running == (*first).running
+                        && WSTATUS!((*show).status) == WSTATUS!((*first).status) 
+                    {
+                        temp = b"\0" as *const u8 as *mut c_char;
+                            
+                    }
+                } else {
+                    temp = 0 as *mut c_char;
+                }
+            }
+
+            if !temp.is_null() {
+                libc::fprintf(stream, b"%s\0" as *const u8 as *const c_char, temp);
+                es = STRLEN!(temp) as c_int;
+
+                if es == 0 {
+                    es = 2 ;
+                }
+                name_padding = LONGEST_SIGNAL_DESC as c_int - es;
+                libc::fprintf(
+                    stream,
+                    b"%*s\0" as *const u8 as *const c_char,
+                    name_padding,
+                    b"\0" as *const u8 as *const c_char,
+                );
+                if (WIFSTOPPED!((*show).status)) as c_int == 0
+                    && (WIFCONTINUED!((*show).status)) as c_int == 0 && WIFCORED!((*show).status) as c_int != 0
+                {
+                    libc::fprintf(stream, b"(core dumped) \0" as *const u8 as *const c_char );
+                }
+            }
+        }
+        if p != first && format != 0 {
+            libc::fprintf(stream, b"| \0" as *const u8 as *const c_char);
+        }
+        if !((*p).command).is_null() {
+            fprintf(stream, b"%s\0" as *const u8 as *const c_char, (*p).command);
+        }
+        if p == last && job_index >= 0 {
+            temp = current_working_directory();
+            if RUNNING!(job_index) && IS_FOREGROUND!(job_index) as c_int == 0
+            {
+                fprintf(stream, b" &\0" as *const u8 as *const c_char);
+            }
+            if libc::strcmp(temp, (**jobs.offset(job_index as isize)).wd) != 0 as c_int {
+                fprintf(stream,b"  (wd: %s)\0" as *const u8 as *const c_char,
+                    polite_directory_format((**jobs.offset(job_index as isize)).wd),
+                );
+            }
+        }
+        if format != 0 || p == last {
+            if asynchronous_notification != 0 && interactive != 0 {
+                libc::fputc('\r' as i32, stream);
+            }
+            fprintf(stream, b"\n\0" as *const u8 as *const c_char);
+        }
+        if p == last {
+            break;
+        }
+        p = (*p).next;
+    }
+    libc::fflush(stream);
 }
 
 
