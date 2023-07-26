@@ -1018,7 +1018,7 @@ pub unsafe extern "C" fn r_xtrace_print_arith_cmd(list:*mut WORD_LIST)
         else{
             str = b"\0" as *const u8 as *const c_char;
         }
-        
+
         str = b" \0" as *const u8 as *const c_char;
         fprintf(xtrace_fp, CString::new("%s%s").unwrap().as_ptr(), (*(*w).word).word, str);
         w = (*w).next;
@@ -1026,4 +1026,15 @@ pub unsafe extern "C" fn r_xtrace_print_arith_cmd(list:*mut WORD_LIST)
 
     fprintf(xtrace_fp, CString::new(" ))\n").unwrap().as_ptr());
     libc::fflush(xtrace_fp);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn r_print_simple_command(simple_command:*mut SIMPLE_COM)
+{
+    command_print_word_list((*simple_command).words, b" \0" as *const u8 as *const i8 as *mut i8);
+    if !(*simple_command).redirects.is_null()
+    {
+        cprintf_1(b" \0" as *const u8 as *const i8);
+        print_redirection_list((*simple_command).redirects);
+    }
 }
