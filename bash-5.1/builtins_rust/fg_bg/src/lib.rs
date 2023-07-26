@@ -373,15 +373,15 @@ extern "C" {
 
 /* How to bring a job into the foreground. */
 #[no_mangle]
-pub extern "C" fn  r_fg_builtin (list:*mut WordList)->i32 {
-  let fg_bit:i32;
-  unsafe {
-    CHECK_HELPOPT! (list);
+pub extern "C" fn r_fg_builtin(list: *mut WordList) -> i32 {
+    let fg_bit: i32;
+    unsafe {
+        CHECK_HELPOPT!(list);
 
-    if job_control == 0 {
-        sh_nojobs (0 as *mut c_char);
-        return EXECUTION_FAILURE!();
-    }
+        if job_control == 0 {
+            sh_nojobs(0 as *mut c_char);
+            return EXECUTION_FAILURE!();
+        }
 
         if no_options(list) != 0 {
             return EX_USAGE;
@@ -402,14 +402,13 @@ pub extern "C" fn  r_fg_builtin (list:*mut WordList)->i32 {
             isfg = isfg && char::from(cstr.to_bytes()[1]) == '\0';
             isfg = isfg == false;
             if isfg {
-                fg_bit = 0;
-            } else {
                 fg_bit = 1;
+            } else {
+                fg_bit = 0;
             }
             return r_fg_bg(loptend, fg_bit);
         }
     }
-  }
 }
 
 /* How to put a job into the background. */
@@ -433,7 +432,7 @@ pub extern "C" fn r_bg_builtin(list: *mut WordList) -> i32 {
         r = EXECUTION_SUCCESS!();
 
         if r_fg_bg(loptend, 0) == EXECUTION_FAILURE!() {
-            r = EXECUTION_FAILURE();
+            r = EXECUTION_FAILURE!();
         }
 
         if loptend != std::ptr::null_mut() {
@@ -453,32 +452,27 @@ pub extern "C" fn r_bg_builtin(list: *mut WordList) -> i32 {
 
 /* How to put a job into the foreground/background. */
 #[no_mangle]
-pub extern "C" fn r_fg_bg (list:*mut WordList, foreground:i32)->i32{
-  
-  let mut set:nix::sys::signal::SigSet=nix::sys::signal::SigSet::empty();
-  let mut oset:nix::sys::signal::SigSet =nix::sys::signal::SigSet::empty();
-  let job:i32;
-  let status:i32;
-  let mut old_async_pid:i32=0;
-  let j:*mut JOB;
-  
-  unsafe {
-  BLOCK_CHILD !(Some(&mut set), Some(&mut oset));      
-  job = get_job_spec (list);
+pub extern "C" fn r_fg_bg(list: *mut WordList, foreground: i32) -> i32 {
+    let mut set: nix::sys::signal::SigSet = nix::sys::signal::SigSet::empty();
+    let mut oset: nix::sys::signal::SigSet = nix::sys::signal::SigSet::empty();
+    let job: i32;
+    let status: i32;
+    let mut old_async_pid: i32 = 0;
+    let j: *mut JOB;
 
-  if INVALID_JOB !(job) {
-    if job != DUP_JOB!() {
-      if list != std::ptr::null_mut() {
-        sh_badjob ( (*(*list).word).word );
-      } else {
-        let c_str_current = CString::new("current").unwrap(); // from a &str, creates a new allocation
-        sh_badjob (c_str_current.as_ptr() as * mut c_char);
-      }
-    }
+    unsafe {
+        BLOCK_CHILD!(Some(&mut set), Some(&mut oset));
+        job = get_job_spec(list);
 
-    UNBLOCK_CHILD !(Some(&oset));
-    return EXECUTION_FAILURE!();
-  }
+        if INVALID_JOB!(job) {
+            if job != DUP_JOB!() {
+                if list != std::ptr::null_mut() {
+                    sh_badjob((*(*list).word).word);
+                } else {
+                    let c_str_current = CString::new("current").unwrap(); // from a &str, creates a new allocation
+                    sh_badjob(c_str_current.as_ptr() as *mut c_char);
+                }
+            }
 
   j = get_job_by_jid !(job);
   /* Or if j->pgrp == shell_pgrp. */

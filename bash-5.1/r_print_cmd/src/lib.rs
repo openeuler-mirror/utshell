@@ -926,4 +926,23 @@ pub unsafe extern "C" fn r_xtrace_print_cond_term(type_0:c_int, invert:c_int, op
     command_string_index = 0;
     fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(), r_indirection_level_string());
     fprintf(xtrace_fp, CString::new("[[ ").unwrap().as_ptr());
+
+    if invert != 0
+    {
+        fprintf(xtrace_fp, CString::new("! ").unwrap().as_ptr());
+    }
+    if type_0 == COND_UNARY as i32
+    { 
+        let str:*mut c_char;
+        if !arg1.is_null() && *arg1 as c_int != 0
+        {
+            str = arg1;
+        }
+        else{
+            str = CString::new("''").unwrap().as_ptr() as *mut c_char;
+        }
+        fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), (*op).word);
+        fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), str);
+    }
+
 }
