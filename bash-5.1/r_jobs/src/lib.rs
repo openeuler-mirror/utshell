@@ -2199,8 +2199,44 @@ pub unsafe extern "C"  fn  list_running_jobs(mut format: c_int) {
     );
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  list_all_jobs(mut format: c_int) {
+    cleanup_dead_jobs();
+    map_over_jobs(
+        ::std::mem::transmute::<
+            Option::<unsafe extern "C" fn() -> c_int>,
+            Option::<sh_job_map_func_t>,
+        >(
+            Some(
+                ::std::mem::transmute::<
+                    unsafe extern "C" fn(
+                        *mut JOB,
+                        c_int,
+                        c_int,
+                        c_int,
+                    ) -> c_int,
+                    unsafe extern "C" fn() -> c_int,
+                >(print_job),
+            ),
+        ),
+        format,
+        -(1 as c_int),
+    );
+}
 
+#[macro_export]
+macro_rules! errno {
+    () => {
+        *__errno_location()
+    };
+}
 
+#[macro_export]
+macro_rules! CLRINTERRUPT {
+    () => {
+        interrupt_state = 0
+    };
+}
 
 
 
