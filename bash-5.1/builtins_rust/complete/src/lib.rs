@@ -1007,17 +1007,15 @@ pub extern "C" fn r_build_actions(
                     .as_ptr() as *mut c_char,
             );
         }
-        opt=internal_getopt(list, CString::new("abcdefgjko:prsuvA:G:W:P:S:X:F:C:DEI").unwrap().as_ptr() as * mut c_char);
-      }
-      *actp = acts;
-      *optp = copts;
-    list = loptend.clone();
-      if opt_given !=0 {
-        return EXECUTION_SUCCESS!();
-      } else {
-        return EXECUTION_FAILURE!();
-      }
-  }
+        *actp = acts;
+        *optp = copts;
+        list = loptend.clone();
+        if opt_given != 0 {
+            return EXECUTION_SUCCESS!();
+        } else {
+            return EXECUTION_FAILURE!();
+        }
+    }
 }
 
 /* Add, remove, and display completion specifiers. */
