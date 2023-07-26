@@ -996,3 +996,25 @@ pub unsafe extern "C" fn r_xtrace_print_cond_term(type_0:c_int, invert:c_int, op
     libc::fflush(xtrace_fp);
 
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn r_xtrace_print_arith_cmd(list:*mut WORD_LIST)
+{
+    let mut w:*mut WORD_LIST;
+    
+    CHECK_XTRACE_FP!();
+    fprintf(xtrace_fp, CString::new("%s").unwrap().as_ptr(), r_indirection_level_string());
+    fprintf(xtrace_fp, CString::new("(( ").unwrap().as_ptr());
+    w = list;
+    while !w.is_null()
+    {
+        let str:*const c_char;
+        str = b" \0" as *const u8 as *const c_char;
+        fprintf(xtrace_fp, CString::new("%s%s").unwrap().as_ptr(), (*(*w).word).word, str);
+        w = (*w).next;
+    }
+
+    fprintf(xtrace_fp, CString::new(" ))\n").unwrap().as_ptr());
+    libc::fflush(xtrace_fp);
+}

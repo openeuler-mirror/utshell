@@ -180,34 +180,34 @@ pub struct arith_for_com {
 
 #[repr(C)]
 pub struct subshell_com {
-    flags:i32,
-    line:i32,
-    command:*mut COMMAND
+    flags: i32,
+    line: i32,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
 pub struct coproc_com {
-    flags:i32,
-    name:*mut c_char,
-    command:*mut COMMAND
+    flags: i32,
+    name: *mut c_char,
+    command: *mut COMMAND,
 }
 
 #[repr(C)]
 pub union VALUE_COMMAND {
-    For:*mut for_com,
-    Case:*mut case_com,
-    While:*mut while_com,
-    If:*mut if_com,
-    Connection:*mut connection,
-    Simple:*mut simple_com,
-    Function_def:*mut function_def,
-    Group:*mut group_com,
-    Select:*mut select_com,
-    Arith:*mut arith_com,
-    Cond:*mut cond_com,
-    ArithFor:*mut arith_for_com,
-    Subshell:*mut subshell_com,
-    Coproc:*mut coproc_com
+    For: *mut for_com,
+    Case: *mut case_com,
+    While: *mut while_com,
+    If: *mut if_com,
+    Connection: *mut connection,
+    Simple: *mut simple_com,
+    Function_def: *mut function_def,
+    Group: *mut group_com,
+    Select: *mut select_com,
+    Arith: *mut arith_com,
+    Cond: *mut cond_com,
+    ArithFor: *mut arith_for_com,
+    Subshell: *mut subshell_com,
+    Coproc: *mut coproc_com,
 }
 
 #[repr(C)]
