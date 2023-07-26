@@ -1010,6 +1010,15 @@ pub unsafe extern "C" fn r_xtrace_print_arith_cmd(list:*mut WORD_LIST)
     while !w.is_null()
     {
         let str:*const c_char;
+
+        if !((*w).next).is_null()
+        {
+            str = b" \0" as *const u8 as *const c_char;
+        }
+        else{
+            str = b"\0" as *const u8 as *const c_char;
+        }
+        
         str = b" \0" as *const u8 as *const c_char;
         fprintf(xtrace_fp, CString::new("%s%s").unwrap().as_ptr(), (*(*w).word).word, str);
         w = (*w).next;
