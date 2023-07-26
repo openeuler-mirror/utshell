@@ -332,14 +332,15 @@ const limits: [RESOURCE_LIMITS_T; 18] = [
             units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
         }
     },
-    {   RESOURCE_LIMITS {
-        option: 's' as i32,
-        parameter: RLIMIT_STACK as i32,
-        block_factor: 1024 as i32,
-        description: b"stack size\0" as *const u8 as *const libc::c_char,
-        units: b"kbytes\0" as *const u8 as *const libc::c_char,
-    }},
-
+    {
+        RESOURCE_LIMITS {
+            option: 's' as i32,
+            parameter: RLIMIT_STACK as i32,
+            block_factor: 1024 as i32,
+            description: b"stack size\0" as *const u8 as *const libc::c_char,
+            units: b"kbytes\0" as *const u8 as *const libc::c_char,
+        }
+    },
     {   RESOURCE_LIMITS {
         option: 't' as i32,
         parameter: RLIMIT_CPU as i32,
@@ -933,9 +934,9 @@ fn set_all_limits(mut mode: i32, newlim: RLIMTYPE) -> i32 {
     }
 
     if mode == 0 {
-        mode = LIMIT_SOFT!()|LIMIT_HARD!();
+        mode = LIMIT_SOFT!() | LIMIT_HARD!();
     }
-    retval = 0 ;
+    retval = 0;
     i = 0;
 
     while limits[i as usize].option > 0 {
