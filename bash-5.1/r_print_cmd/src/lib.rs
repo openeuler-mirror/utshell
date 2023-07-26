@@ -1069,3 +1069,24 @@ pub unsafe extern "C" fn print_heredoc_bodies(heredocs:*mut REDIRECT)
     }
     was_heredoc = 1;
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn print_deferred_heredocs(cstring:*const c_char)
+{
+    if *cstring.offset(0) != 0 && (*cstring.offset(0) != ';' as i8|| *cstring.offset(1) != 0)
+    {
+        cprintf_1( cstring as *const i8);
+    }
+    if !deferred_heredocs.is_null()
+    {
+        print_heredoc_bodies(deferred_heredocs);
+        if *cstring.offset(0) != 0 && (*cstring.offset(0) != ';' as i8|| *cstring.offset(1) != 0)
+        {
+            cprintf_1(b" \0" as *const u8 as *const i8);
+        }
+        dispose_redirects(deferred_heredocs);
+        was_heredoc = 1;
+    }
+    deferred_heredocs = std::ptr::null_mut() as *mut REDIRECT; 
+}
