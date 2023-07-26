@@ -474,19 +474,23 @@ pub extern "C" fn r_fg_bg(list: *mut WordList, foreground: i32) -> i32 {
                 }
             }
 
-  j = get_job_by_jid !(job);
-  /* Or if j->pgrp == shell_pgrp. */
-  if ! IS_JOBCONTROL !(job) {       
-      let jobNum:i32=job + 1;
-      builtin_error ( String::from("job ").add(&jobNum.to_string()).add(&String::from("started without job control").to_string()).as_ptr() as * const c_char);
-      UNBLOCK_CHILD !(Some(&oset));
-      return EXECUTION_FAILURE!();
-  }
+            UNBLOCK_CHILD!(Some(&oset));
+            return EXECUTION_FAILURE!();
+        }
 
-  if foreground == 0 {
-      old_async_pid = i32::from(last_asynchronous_pid);
-      last_asynchronous_pid = i32::from((*j).pgrp);	/* As per Posix.2 5.4.2 */
-  }
+        j = get_job_by_jid!(job);
+        /* Or if j->pgrp == shell_pgrp. */
+        if !IS_JOBCONTROL!(job) {
+            let jobNum: i32 = job + 1;
+            builtin_error(
+                String::from("job ")
+                    .add(&jobNum.to_string())
+                    .add(&String::from("started without job control").to_string())
+                    .as_ptr() as *const c_char,
+            );
+            UNBLOCK_CHILD!(Some(&oset));
+            return EXECUTION_FAILURE!();
+        }
 
         if foreground == 0 {
             old_async_pid = i32::from(last_asynchronous_pid);
@@ -512,7 +516,6 @@ pub extern "C" fn r_fg_bg(list: *mut WordList, foreground: i32) -> i32 {
             return EXECUTION_FAILURE!();
         }
     }
-  }
 }
 
 /*
