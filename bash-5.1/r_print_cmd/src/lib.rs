@@ -945,4 +945,50 @@ pub unsafe extern "C" fn r_xtrace_print_cond_term(type_0:c_int, invert:c_int, op
         fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), str);
     }
 
+    else if type_0 == COND_BINARY as i32
+    {
+        let str1:*mut c_char;
+        let str2:*mut c_char;
+        if !arg1.is_null() && *arg1 as c_int != 0
+        {
+            str1 = arg1;
+        }
+        else{
+            str1 = CString::new("''").unwrap().as_ptr() as *mut c_char;
+        }
+        if !arg2.is_null() && *arg2 as c_int != 0
+        {
+            str2 = arg2;
+        }
+        else{
+            str2 = CString::new("''").unwrap().as_ptr() as *mut c_char;
+        }
+        fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), str1);
+        fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), (*op).word);
+        fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), str2);
+    }
+    
+    else if type_0 == COND_BINARY as i32
+    {
+        let str1:*mut c_char;
+        let str2:*mut c_char;
+        if !arg1.is_null() && *arg1 as c_int != 0
+        {
+            str1 = arg1;
+        }
+        else{
+            str1 = CString::new("''").unwrap().as_ptr() as *mut c_char;
+        }
+        if !arg2.is_null() && *arg2 as c_int != 0
+        {
+            str2 = arg2;
+        }
+        else{
+            str2 = CString::new("''").unwrap().as_ptr() as *mut c_char;
+        }
+        fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), str1);
+        fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), (*op).word);
+        fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), str2);
+    }
+
 }
