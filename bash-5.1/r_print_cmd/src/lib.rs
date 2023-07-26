@@ -991,4 +991,8 @@ pub unsafe extern "C" fn r_xtrace_print_cond_term(type_0:c_int, invert:c_int, op
         fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), str2);
     }
 
+
+    fprintf(xtrace_fp, CString::new(" ]]\n").unwrap().as_ptr());
+    libc::fflush(xtrace_fp);
+
 }

@@ -162,20 +162,20 @@ pub struct arith_com {
 
 #[repr(C)]
 pub struct cond_com {
-    flags:c_int,
-    line:c_int,
-    type_c:c_int,
-    exp:*mut WordList
+    flags: c_int,
+    line: c_int,
+    type_c: c_int,
+    exp: *mut WordList,
 }
 
 #[repr(C)]
 pub struct arith_for_com {
-    flags:c_int,
-    line:c_int,
-    init:*mut WordList,
-    test:*mut WordList,
-    step:*mut WordList,
-    action:*mut COMMAND
+    flags: c_int,
+    line: c_int,
+    init: *mut WordList,
+    test: *mut WordList,
+    step: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
@@ -360,7 +360,7 @@ impl CompactsArray {
                 _compacts {
                     actname: b"user\0".as_ptr() as *const c_char,
                     actflag: CA_USER!(),
-                    actopt: 0 as c_int,
+                    actopt: 'u' as c_int,
                 },
                 _compacts {
                     actname: b"variable\0".as_ptr() as *const c_char,
