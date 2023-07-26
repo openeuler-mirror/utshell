@@ -2238,8 +2238,36 @@ macro_rules! CLRINTERRUPT {
     };
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn make_child(
+    mut command: *mut c_char,
+    mut flags: c_int,
+) -> pid_t {
+    // println!("make_child");
+    let mut async_p: c_int = 0;
+    let mut forksleep: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut termset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut chldset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset_copy: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut pid: pid_t = 0;
+    let mut oterm:*mut SigHandler = 0 as *mut SigHandler;
+    sigemptyset(&mut oset_copy);
+    sigprocmask(
+        0 as c_int,
+        0 as *mut libc::c_void as *mut sigset_t,
+        &mut oset_copy,
+    );
+    sigaddset(&mut oset_copy, 15 as c_int);
+    sigemptyset(&mut set);
+    sigaddset(&mut set, 17 as c_int);
+    sigaddset(&mut set, 2 as c_int);
+    sigaddset(&mut set, 15 as c_int);
+    sigemptyset(&mut oset);
+    sigprocmask(0 as c_int, &mut set, &mut oset);
 
-
+}
 
 
 
