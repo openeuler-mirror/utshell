@@ -535,9 +535,9 @@ macro_rules! CA_FILE {
 
 #[macro_export]
 macro_rules! CA_FUNCTION {
-  () => {
-    1<<10
-  }
+    () => {
+        1 << 10
+    };
 }
 
 #[macro_export]
@@ -556,30 +556,30 @@ macro_rules! CA_HELPTOPIC {
 
 #[macro_export]
 macro_rules! CA_HOSTNAME {
-  () => {
-    1<<13
-  }
+    () => {
+        1 << 13
+    };
 }
 
 #[macro_export]
 macro_rules! CA_JOB {
-  () => {
-    1<<14
-  }
+    () => {
+        1 << 14
+    };
 }
 
 #[macro_export]
 macro_rules! CA_KEYWORD {
-  () => {
-    1<<15
-  }
+    () => {
+        1 << 15
+    };
 }
 
 #[macro_export]
 macro_rules! CA_RUNNING {
-  () => {
-    1<<16
-  }
+    () => {
+        1 << 16
+    };
 }
 
 #[macro_export]
@@ -598,107 +598,107 @@ macro_rules! CA_SETOPT {
 
 #[macro_export]
 macro_rules! CA_SHOPT {
-  () => {
-    1<<19
-  }
+    () => {
+        1 << 19
+    };
 }
 
 #[macro_export]
 macro_rules! CA_SIGNAL {
-  () => {
-    1<<20
-  }
+    () => {
+        1 << 20
+    };
 }
 
 #[macro_export]
 macro_rules! CA_STOPPED {
-  () => {
-    1<<21
-  }
+    () => {
+        1 << 21
+    };
 }
 
 #[macro_export]
 macro_rules! CA_USER {
-  () => {
-    1<<22
-  }
+    () => {
+        1 << 22
+    };
 }
 
 #[macro_export]
 macro_rules! CA_VARIABLE {
-  () => {
-    1<<23
-  }
+    () => {
+        1 << 23
+    };
 }
 
 #[macro_export]
 macro_rules! COPT_RESERVED {
-  () => {
-    1<<0
-  }
+    () => {
+        1 << 0
+    };
 }
 
 #[macro_export]
 macro_rules! COPT_DEFAULT {
-  () => {
-    1<<1
-  }
+    () => {
+        1 << 1
+    };
 }
 
 #[macro_export]
 macro_rules! COPT_FILENAMES {
-  () => {
-    1<<2
-  }
+    () => {
+        1 << 2
+    };
 }
 
 #[macro_export]
 macro_rules! COPT_DIRNAMES {
-  () => {
-    1<<3
-  }
+    () => {
+        1 << 3
+    };
 }
 
 #[macro_export]
 macro_rules! COPT_NOQUOTE {
-  () => {
-    1<<4
-  }
+    () => {
+        1 << 4
+    };
 }
 
 #[macro_export]
 macro_rules! COPT_NOSPACE {
-  () => {
-    1<<5
-  }
+    () => {
+        1 << 5
+    };
 }
 
 #[macro_export]
 macro_rules! COPT_BASHDEFAULT {
-  () => {
-    1<<6
-  }
+    () => {
+        1 << 6
+    };
 }
 
 #[macro_export]
 macro_rules! COPT_PLUSDIRS {
-  () => {
-    1<<7
-  }
+    () => {
+        1 << 7
+    };
 }
 
 #[macro_export]
 macro_rules! COPT_NOSORT {
-  () => {
-    1<<8
-  }
+    () => {
+        1 << 8
+    };
 }
 
 #[macro_export]
 macro_rules! RL_STATE_COMPLETING {
-  () => {
-    0x0004000	/* doing completion */
-  }
+    () => {
+        0x0004000 /* doing completion */
+    };
 }
 
 extern "C" {
