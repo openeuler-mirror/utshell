@@ -938,16 +938,17 @@ fn set_all_limits(mut mode: i32, newlim: RLIMTYPE) -> i32 {
     i = 0;
 
     while limits[i as usize].option > 0 {
-        if set_limit (i, newlim, mode) < 0 {
+        if set_limit(i, newlim, mode) < 0 {
             unsafe {
-                builtin_error(b"%s: cannot modify limit : %s\0" as *const u8 as  *const libc::c_char,  limits[i as usize].description, 
-                 strerror(*__errno_location()) as *const libc::c_char);
+                builtin_error(
+                    b"%s: cannot modify limit : %s\0" as *const u8 as *const libc::c_char,
+                    limits[i as usize].description,
+                    strerror(*__errno_location()) as *const libc::c_char,
+                );
             }
-	        retval = 1;
-            i = i +1;
+            retval = 1;
+            i = i + 1;
         }
     }
-  return retval;
+    return retval;
 }
-
-
