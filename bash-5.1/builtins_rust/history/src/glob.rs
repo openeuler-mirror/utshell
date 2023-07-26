@@ -3862,6 +3862,9 @@ extern "C" {
     pub fn restore_original_signals();
 }
 extern "C" {
+    pub fn get_original_signal(arg1: ::std::os::raw::c_int);
+}
+extern "C" {
     pub fn run_interrupt_trap(arg1: ::std::os::raw::c_int);
 }
 extern "C" {
