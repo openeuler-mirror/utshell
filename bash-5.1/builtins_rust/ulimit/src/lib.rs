@@ -350,14 +350,15 @@ const limits: [RESOURCE_LIMITS_T; 18] = [
             units: b"seconds\0" as *const u8 as *const libc::c_char,
         }
     },
-    {   RESOURCE_LIMITS {
-        option: 'u' as i32,
-        parameter: __RLIMIT_NPROC as i32,
-        block_factor: 1 as i32,
-        description: b"max user processes\0" as *const u8 as *const libc::c_char,
-        units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
-    }},
-
+    {
+        RESOURCE_LIMITS {
+            option: 'u' as i32,
+            parameter: __RLIMIT_NPROC as i32,
+            block_factor: 1 as i32,
+            description: b"max user processes\0" as *const u8 as *const libc::c_char,
+            units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+        }
+    },
     {   RESOURCE_LIMITS {
         option: 'v' as i32,
         parameter: RLIMIT_AS as i32,
