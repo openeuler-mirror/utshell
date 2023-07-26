@@ -1960,3 +1960,70 @@ macro_rules!  WIFCORED{
         $status == 0x80
     };
 }
+
+#[macro_export]
+macro_rules!  J_FOREGROUND{
+    () => {
+        0x01
+    };
+}
+
+#[macro_export]
+macro_rules!  IS_FOREGROUND{
+    ($j:expr) => {
+        (**jobs.offset($j as isize)).flags & J_FOREGROUND!() != 0
+    };
+}
+
+unsafe extern "C" fn print_pipeline(
+    mut p: *mut PROCESS,
+    mut job_index: c_int,
+    mut format: c_int,
+    mut stream: *mut libc::FILE,
+) {
+    let mut first: *mut PROCESS = 0 as *mut PROCESS;
+    let mut last: *mut PROCESS = 0 as *mut PROCESS;
+    let mut show: *mut PROCESS = 0 as *mut PROCESS;
+    let mut es: c_int = 0;
+    let mut name_padding: c_int = 0;
+    let mut temp: *mut c_char = 0 as *mut c_char;
+
+    if p.is_null() {
+        return;
+    }
+
+    last = p;
+    first = last;
+    while (*last).next != first {
+        last = (*last).next;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
