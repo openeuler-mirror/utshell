@@ -2133,8 +2133,22 @@ unsafe extern "C" fn pretty_print_job(
 }
 
 
+unsafe extern "C" fn print_job(mut job: *mut JOB, mut format: c_int, mut state: c_int, mut job_index: c_int) -> c_int 
+{
+    if state == -(1 as c_int)
+        || state as JOB_STATE as c_int == (*job).state as c_int
+    {
+        pretty_print_job(job_index, format, stdout);
+    }
+    return 0 as c_int;
+}
 
-
+#[no_mangle]
+pub unsafe extern "C"  fn  list_one_job(mut job: *mut JOB, mut format: c_int, mut ignore: c_int,mut job_index: c_int,)
+{
+    pretty_print_job(job_index, format, stdout);
+    cleanup_dead_jobs();
+}
 
 
 
