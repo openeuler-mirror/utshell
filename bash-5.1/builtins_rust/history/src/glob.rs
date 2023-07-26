@@ -1304,6 +1304,12 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn fgetwc(__stream: *mut __FILE) -> wint_t;
+}
+extern "C" {
+    pub fn getwc(__stream: *mut __FILE) -> wint_t;
+}
+extern "C" {
     pub fn fputwc(__wc: wchar_t, __stream: *mut __FILE) -> wint_t;
 }
 extern "C" {

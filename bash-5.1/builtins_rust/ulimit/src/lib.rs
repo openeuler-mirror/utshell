@@ -323,14 +323,15 @@ const limits: [RESOURCE_LIMITS_T; 18] = [
             units: b"bytes\0" as *const u8 as *const libc::c_char,
         }
     },
-    {   RESOURCE_LIMITS {
-        option: 'r' as i32,
-        parameter: __RLIMIT_RTPRIO as i32,
-        block_factor: 1 as i32,
-        description: b"real-time priority\0" as *const u8 as *const libc::c_char,
-        units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
-    }},
-
+    {
+        RESOURCE_LIMITS {
+            option: 'r' as i32,
+            parameter: __RLIMIT_RTPRIO as i32,
+            block_factor: 1 as i32,
+            description: b"real-time priority\0" as *const u8 as *const libc::c_char,
+            units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+        }
+    },
     {   RESOURCE_LIMITS {
         option: 's' as i32,
         parameter: RLIMIT_STACK as i32,
