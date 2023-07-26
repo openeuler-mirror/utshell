@@ -341,14 +341,15 @@ const limits: [RESOURCE_LIMITS_T; 18] = [
             units: b"kbytes\0" as *const u8 as *const libc::c_char,
         }
     },
-    {   RESOURCE_LIMITS {
-        option: 't' as i32,
-        parameter: RLIMIT_CPU as i32,
-        block_factor: 1 as i32,
-        description: b"cpu time\0" as *const u8 as *const libc::c_char,
-        units: b"seconds\0" as *const u8 as *const libc::c_char,
-    }},
-
+    {
+        RESOURCE_LIMITS {
+            option: 't' as i32,
+            parameter: RLIMIT_CPU as i32,
+            block_factor: 1 as i32,
+            description: b"cpu time\0" as *const u8 as *const libc::c_char,
+            units: b"seconds\0" as *const u8 as *const libc::c_char,
+        }
+    },
     {   RESOURCE_LIMITS {
         option: 'u' as i32,
         parameter: __RLIMIT_NPROC as i32,

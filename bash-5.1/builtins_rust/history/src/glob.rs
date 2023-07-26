@@ -3156,6 +3156,12 @@ extern "C" {
     pub fn a64l(__s: *const ::std::os::raw::c_char) -> ::std::os::raw::c_long;
 }
 extern "C" {
+    pub fn random() -> ::std::os::raw::c_long;
+}
+extern "C" {
+    pub fn srandom(__seed: ::std::os::raw::c_uint);
+}
+extern "C" {
     pub fn initstate_r(
         __seed: ::std::os::raw::c_uint,
         __statebuf: *mut ::std::os::raw::c_char,
