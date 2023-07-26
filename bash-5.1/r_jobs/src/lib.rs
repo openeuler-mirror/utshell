@@ -2266,6 +2266,41 @@ pub unsafe extern "C" fn make_child(
     sigaddset(&mut set, 15 as c_int);
     sigemptyset(&mut oset);
     sigprocmask(0 as c_int, &mut set, &mut oset);
+    if interactive_shell != 0 {
+        oterm = set_signal_handler(15 as c_int,  &mut None);
+    }
+    making_children();
+    async_p = flags & 1 as c_int;
+    forksleep = 1 as c_int;
+    if default_buffered_input != -(1 as c_int)
+        && (async_p == 0 || default_buffered_input > 0 as c_int)
+    {
+        sync_buffered_stream(default_buffered_input);
+    }
+    loop {
+        pid = fork();
+        if !(pid < 0 as c_int && *__errno_location() == 11 as c_int
+            && forksleep < 16 as c_int)
+        {
+            break;
+        }
+        sigprocmask(
+            2 as c_int,
+            &mut oset_copy,
+            0 as *mut libc::c_void as *mut sigset_t,
+        );
+        waitchld(-(1 as c_int), 0 as c_int);
+        *__errno_location() = 11 as c_int;
+        sys_error(b"fork: retry\0" as *const u8 as *const c_char);
+        if sleep(forksleep as libc::c_uint) != 0 as c_int as libc::c_uint {
+            break;
+        }
+        forksleep <<= 1 as c_int;
+        if interrupt_state != 0 {
+            break;
+        }
+        sigprocmask(2 as c_int, &mut set, 0 as *mut libc::c_void as *mut sigset_t);
+    }
 
 }
 
