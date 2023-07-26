@@ -856,7 +856,14 @@ pub const FNM_CASEFOLD: u32 = 16;
 pub const FNM_EXTMATCH: u32 = 32;
 pub const FNM_FIRSTCHAR: u32 = 64;
 pub const FNM_NOMATCH: u32 = 1;
-
+pub type _Float32 = f32;
+pub type _Float64 = f64;
+pub type _Float32x = f64;
+pub type _Float64x = f64;
+pub type wchar_t = ::std::os::raw::c_int;
+pub type va_list = __builtin_va_list;
+pub type __gnuc_va_list = __builtin_va_list;
+pub type wint_t = ::std::os::raw::c_uint;
 fn histtime(hlist: *mut HIST_ENTRY, histtimefmt: *const c_char) -> *mut c_char
 {
 unsafe {
@@ -1389,7 +1396,6 @@ pub type __nlink_t = ::std::os::raw::c_ulong;
 pub type __off_t = ::std::os::raw::c_long;
 pub type __off64_t = ::std::os::raw::c_long;
 pub type __pid_t = ::std::os::raw::c_int;
-
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct __fsid_t {

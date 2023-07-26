@@ -314,14 +314,15 @@ const limits: [RESOURCE_LIMITS_T; 18] = [
             units: b"512 bytes\0" as *const u8 as *const libc::c_char,
         }
     },
-    {   RESOURCE_LIMITS {
-        option: 'q' as i32,
-        parameter: __RLIMIT_MSGQUEUE as i32,
-        block_factor: 1 as i32,
-        description: b"POSIX message queues\0" as *const u8 as *const libc::c_char,
-        units: b"bytes\0" as *const u8 as *const libc::c_char,
-    }},
-
+    {
+        RESOURCE_LIMITS {
+            option: 'q' as i32,
+            parameter: __RLIMIT_MSGQUEUE as i32,
+            block_factor: 1 as i32,
+            description: b"POSIX message queues\0" as *const u8 as *const libc::c_char,
+            units: b"bytes\0" as *const u8 as *const libc::c_char,
+        }
+    },
     {   RESOURCE_LIMITS {
         option: 'r' as i32,
         parameter: __RLIMIT_RTPRIO as i32,
