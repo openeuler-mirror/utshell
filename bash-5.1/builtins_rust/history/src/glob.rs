@@ -1270,6 +1270,14 @@ extern "C" {
     pub fn vwprintf(__format: *const wchar_t, __arg: *mut __va_list_tag) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn vswprintf(
+        __s: *mut wchar_t,
+        __n: usize,
+        __format: *const wchar_t,
+        __arg: *mut __va_list_tag,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn fwscanf(__stream: *mut __FILE, __format: *const wchar_t, ...) -> ::std::os::raw::c_int;
 }
 extern "C" {
