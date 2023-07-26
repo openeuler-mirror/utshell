@@ -871,7 +871,7 @@ pub extern "C" fn r_build_actions(
                 }
                 'p' => {
                     if flagp != std::ptr::null_mut() {
-                        (*flagp).pflag = 0;
+                        (*flagp).pflag = 1;
                     } else {
                         sh_invalidopt(CString::new("-p").unwrap().as_ptr() as *mut c_char);
                         builtin_usage();
@@ -1040,21 +1040,21 @@ pub extern "C" fn r_complete_builtin (listt: *mut WordList)->i32
         return EXECUTION_SUCCESS!();
     }
 
-    oflags.pflag=0;
-    oflags.rflag=0;
-    oflags.Dflag=0;
-    oflags.Eflag=0;
-    oflags.Iflag=0;
+        oflags.pflag = 0;
+        oflags.rflag = 0;
+        oflags.Dflag = 0;
+        oflags.Eflag = 0;
+        oflags.Iflag = 0;
 
-    Garg=std::ptr::null_mut();
-    Warg=std::ptr::null_mut();
-    Parg=std::ptr::null_mut();
-    Sarg=std::ptr::null_mut();
-    Xarg=std::ptr::null_mut();
-    Farg=std::ptr::null_mut();
-    Carg=std::ptr::null_mut();
+        Garg = std::ptr::null_mut();
+        Warg = std::ptr::null_mut();
+        Parg = std::ptr::null_mut();
+        Sarg = std::ptr::null_mut();
+        Xarg = std::ptr::null_mut();
+        Farg = std::ptr::null_mut();
+        Carg = std::ptr::null_mut();
 
-    cs=std::ptr::null_mut();
+        cs = std::ptr::null_mut();
 
     /* Build the actions from the arguments.  Also sets the [A-Z]arg variables
       as a side effect if they are supplied as options. */
