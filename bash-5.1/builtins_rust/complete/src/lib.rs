@@ -783,19 +783,16 @@ unsafe fn shell_break_chars() -> *const c_char {
     return b"()<>;&| \t\n\0".as_ptr() as *const c_char;
 }
 
-unsafe fn EMPTYCMD()->* const c_char
-{
-  return b"_EmptycmD_\0".as_ptr() as *const c_char;
+unsafe fn EMPTYCMD() -> *const c_char {
+    return b"_EmptycmD_\0".as_ptr() as *const c_char;
 }
 
-unsafe fn DEFAULTCMD()->* const c_char
-{
-  return b"_DefaultCmD_\0".as_ptr() as *const c_char;
+unsafe fn DEFAULTCMD() -> *const c_char {
+    return b"_DefaultCmD_\0".as_ptr() as *const c_char;
 }
 
-unsafe fn INITIALWORD()->* const c_char
-{
-  return b"_InitialWorD_\0".as_ptr() as *const c_char;
+unsafe fn INITIALWORD() -> *const c_char {
+    return b"_InitialWorD_\0".as_ptr() as *const c_char;
 }
 
 unsafe fn RL_ISSTATE(x: c_ulong) -> c_ulong {

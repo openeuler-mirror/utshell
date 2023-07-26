@@ -1053,3 +1053,19 @@ pub unsafe extern "C" fn print_heredocs(heredocs:*mut REDIRECT)
     }
     was_heredoc = 1;
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn print_heredoc_bodies(heredocs:*mut REDIRECT)
+{
+    let mut hdtail:*mut REDIRECT;
+    cprintf_1(b"\n\0" as *const u8 as *const i8);
+    hdtail = heredocs;
+    while !hdtail.is_null()
+    {
+        print_heredoc_body(hdtail);
+        cprintf_1(b"\n\0" as *const u8 as *const i8);
+        hdtail = (*hdtail).next;
+    }
+    was_heredoc = 1;
+}
