@@ -377,16 +377,16 @@ const limits: [RESOURCE_LIMITS_T; 18] = [
             units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
         }
     },
-
-    {   RESOURCE_LIMITS {
-        option: -1 ,
-        parameter: -1,
-        block_factor:-1,
-        description: 0 as *const libc::c_void as *mut libc::c_void
-            as *mut libc::c_char,
-        units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
-    }}
-    ];
+    {
+        RESOURCE_LIMITS {
+            option: -1,
+            parameter: -1,
+            block_factor: -1,
+            description: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+            units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+        }
+    },
+];
 
 extern "C" {
     fn reset_internal_getopt();
