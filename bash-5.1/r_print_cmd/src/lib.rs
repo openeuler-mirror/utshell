@@ -1038,3 +1038,18 @@ pub unsafe extern "C" fn r_print_simple_command(simple_command:*mut SIMPLE_COM)
         print_redirection_list((*simple_command).redirects);
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn print_heredocs(heredocs:*mut REDIRECT)
+{
+    let mut hdtail:*mut REDIRECT;
+    cprintf_1(b" \0" as *const u8 as *const i8);
+    hdtail = heredocs;
+    while !hdtail.is_null()
+    {
+        print_redirection(hdtail);
+        cprintf_1(b"\n\0" as *const u8 as *const i8);
+        hdtail = (*hdtail).next;
+    }
+    was_heredoc = 1;
+}
