@@ -1927,4 +1927,36 @@ unsafe extern "C" fn printable_job_status(mut j: c_int, mut p: *mut PROCESS, mut
     return temp;
 }
 
+#[macro_export]
+macro_rules!  STRLEN{
+    ($s:expr) => {
+        if !$s.is_null() && *$s.offset(0 as isize) as c_int != 0
+            {
+                if *$s.offset(1 as isize) as c_int != 0 {
+                    if *$s.offset(2 as isize) as c_int != 0 {
+                        libc::strlen($s)
+                    } else {
+                        2 
+                    }
+                } else {
+                    1 
+                }
+            } else {
+                0 
+            }
+    };
+}
 
+#[macro_export]
+macro_rules!  WIFCONTINUED{
+    ($status:expr) => {
+        $status == 0xffff
+    };
+}
+
+#[macro_export]
+macro_rules!  WIFCORED{
+    ($status:expr) => {
+        $status == 0x80
+    };
+}
