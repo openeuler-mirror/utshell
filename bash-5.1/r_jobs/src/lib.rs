@@ -2150,8 +2150,30 @@ pub unsafe extern "C"  fn  list_one_job(mut job: *mut JOB, mut format: c_int, mu
     cleanup_dead_jobs();
 }
 
-
-
+#[no_mangle]
+pub unsafe extern "C"  fn  list_stopped_jobs(mut format: c_int) {
+    cleanup_dead_jobs();
+    map_over_jobs(
+        ::std::mem::transmute::<
+            Option::<unsafe extern "C" fn() -> c_int>,
+            Option::<sh_job_map_func_t>,
+        >(
+            Some(
+                ::std::mem::transmute::<
+                    unsafe extern "C" fn(
+                        *mut JOB,
+                        c_int,
+                        c_int,
+                        c_int,
+                    ) -> c_int,
+                    unsafe extern "C" fn() -> c_int,
+                >(print_job),
+            ),
+        ),
+        format,
+        JSTOPPED as c_int,
+    );
+}
 
 
 
