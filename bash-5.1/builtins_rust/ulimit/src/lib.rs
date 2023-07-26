@@ -296,14 +296,15 @@ const limits: [RESOURCE_LIMITS_T; 18] = [
             units: b"kbytes\0" as *const u8 as *const libc::c_char,
         }
     },
-    {   RESOURCE_LIMITS {
-        option: 'n' as i32,
-        parameter: RLIMIT_NOFILE as i32,
-        block_factor: 1 as i32,
-        description: b"open files\0" as *const u8 as *const libc::c_char,
-        units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
-    }},
-
+    {
+        RESOURCE_LIMITS {
+            option: 'n' as i32,
+            parameter: RLIMIT_NOFILE as i32,
+            block_factor: 1 as i32,
+            description: b"open files\0" as *const u8 as *const libc::c_char,
+            units: 0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
+        }
+    },
     {   RESOURCE_LIMITS {
         option: 'p' as i32,
         parameter: 257 as i32,
