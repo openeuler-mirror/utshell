@@ -767,23 +767,20 @@ pub static mut Xarg: *mut c_char = std::ptr::null_mut();
 pub static mut Farg: *mut c_char = std::ptr::null_mut();
 pub static mut Carg: *mut c_char = std::ptr::null_mut();
 
-unsafe fn STRDUP(x:* const c_char)->* mut c_char
-{
-  if x !=std::ptr::null_mut() {
-      return r_savestring (x);
-  } else {
-      return std::ptr::null_mut();
-  }
+unsafe fn STRDUP(x: *const c_char) -> *mut c_char {
+    if x != std::ptr::null_mut() {
+        return r_savestring(x);
+    } else {
+        return std::ptr::null_mut();
+    }
 }
 
-unsafe fn STREQ( a:* const c_char, b:* const c_char)->bool
-{
-	return *a ==*b  && libc::strcmp(a, b) == 0;
+unsafe fn STREQ(a: *const c_char, b: *const c_char) -> bool {
+    return *a == *b && libc::strcmp(a, b) == 0;
 }
 
-unsafe fn shell_break_chars()->* const c_char
-{
-  return b"()<>;&| \t\n\0".as_ptr() as *const c_char;
+unsafe fn shell_break_chars() -> *const c_char {
+    return b"()<>;&| \t\n\0".as_ptr() as *const c_char;
 }
 
 unsafe fn EMPTYCMD()->* const c_char
