@@ -702,54 +702,70 @@ macro_rules! RL_STATE_COMPLETING {
 }
 
 extern "C" {
-  fn reset_internal_getopt();
-  fn internal_getopt (list:*mut WordList , opts:*mut c_char)->i32;
-  fn sh_invalidopt (value:* mut c_char);
-  fn sh_invalidid (value:* mut c_char);
-  fn sh_invalidoptname (value:* mut c_char);
-  fn builtin_usage();
-  static list_optarg:* mut c_char;
-  fn builtin_error(err:*const c_char,...);
-  fn check_identifier (w:* mut WordDesc, f:i32)->i32;
-  static mut posixly_correct:i32;
-  static mut loptend:*mut WordList;
-  fn make_word_list (w:* mut WordDesc, list:*mut WordList)->*mut WordList;
-  fn make_bare_word (w:*const c_char)->* mut WordDesc;
-  fn dispose_words (list:*mut WordList);
-  fn progcomp_flush ();
-  fn compspec_create ()->* mut COMPSPEC;
-  fn progcomp_insert (str:* mut c_char, c:* mut COMPSPEC)->i32;
-  fn progcomp_remove (str:* mut c_char)->i32;
-  fn sh_single_quote (str:* mut c_char)->* mut c_char;
-  fn progcomp_walk (func: unsafe extern "C" fn (item:* mut BUCKET_CONTENTS)->i32);
-  fn sh_chkwrite (i:i32)->i32;
-  fn progcomp_search (w:*const c_char)->* mut COMPSPEC;
-  static mut pcomp_line:* mut c_char;
-  static mut pcomp_ind:c_int;
-  fn gen_compspec_completions (cs:* mut COMPSPEC, cmd:*const c_char, word:*const c_char, start:i32, end:i32, foundp:* mut i32)->* mut STRINGLIST;
-  fn bash_default_completion (text:* const c_char, start:i32, end:i32, qc:i32, compflags:i32)->* mut * mut c_char;
-  fn rl_filename_completion_function (text:* const c_char, state:i32)-> * mut c_char;
-  fn rl_completion_matches (text:* const c_char, entry_function:unsafe extern "C" fn (text:* const c_char, state:i32)-> * mut c_char)->* mut * mut c_char;
-  fn completions_to_stringlist (matches:* mut * mut c_char)->* mut STRINGLIST;
-  fn strvec_dispose (matches:* mut * mut c_char);
-  fn strlist_dispose (strlist:* mut STRINGLIST);
-  fn strlist_print (strlist:* mut STRINGLIST, text:* mut c_char);
-  fn compspec_dispose (com:* mut COMPSPEC);
-  static mut list_opttype:i32;
-  static mut rl_readline_state:c_ulong;
-  static mut pcomp_curcs:* mut COMPSPEC;
-  static pcomp_curcmd:* mut c_char;
-  fn pcomp_set_compspec_options (cs:* mut COMPSPEC, flags:i32, set_or_unset:i32);
-  fn pcomp_set_readline_variables (flags:i32, nval:i32);
+    fn reset_internal_getopt();
+    fn internal_getopt(list: *mut WordList, opts: *mut c_char) -> i32;
+    fn sh_invalidopt(value: *mut c_char);
+    fn sh_invalidid(value: *mut c_char);
+    fn sh_invalidoptname(value: *mut c_char);
+    fn builtin_usage();
+    static list_optarg: *mut c_char;
+    fn builtin_error(err: *const c_char, ...);
+    fn check_identifier(w: *mut WordDesc, f: i32) -> i32;
+    static mut posixly_correct: i32;
+    static mut loptend: *mut WordList;
+    fn make_word_list(w: *mut WordDesc, list: *mut WordList) -> *mut WordList;
+    fn make_bare_word(w: *const c_char) -> *mut WordDesc;
+    fn dispose_words(list: *mut WordList);
+    fn progcomp_flush();
+    fn compspec_create() -> *mut COMPSPEC;
+    fn progcomp_insert(str: *mut c_char, c: *mut COMPSPEC) -> i32;
+    fn progcomp_remove(str: *mut c_char) -> i32;
+    fn sh_single_quote(str: *mut c_char) -> *mut c_char;
+    fn progcomp_walk(func: unsafe extern "C" fn(item: *mut BUCKET_CONTENTS) -> i32);
+    fn sh_chkwrite(i: i32) -> i32;
+    fn progcomp_search(w: *const c_char) -> *mut COMPSPEC;
+    static mut pcomp_line: *mut c_char;
+    static mut pcomp_ind: c_int;
+    fn gen_compspec_completions(
+        cs: *mut COMPSPEC,
+        cmd: *const c_char,
+        word: *const c_char,
+        start: i32,
+        end: i32,
+        foundp: *mut i32,
+    ) -> *mut STRINGLIST;
+    fn bash_default_completion(
+        text: *const c_char,
+        start: i32,
+        end: i32,
+        qc: i32,
+        compflags: i32,
+    ) -> *mut *mut c_char;
+    fn rl_filename_completion_function(text: *const c_char, state: i32) -> *mut c_char;
+    fn rl_completion_matches(
+        text: *const c_char,
+        entry_function: unsafe extern "C" fn(text: *const c_char, state: i32) -> *mut c_char,
+    ) -> *mut *mut c_char;
+    fn completions_to_stringlist(matches: *mut *mut c_char) -> *mut STRINGLIST;
+    fn strvec_dispose(matches: *mut *mut c_char);
+    fn strlist_dispose(strlist: *mut STRINGLIST);
+    fn strlist_print(strlist: *mut STRINGLIST, text: *mut c_char);
+    fn compspec_dispose(com: *mut COMPSPEC);
+    static mut list_opttype: i32;
+    static mut rl_readline_state: c_ulong;
+    static mut pcomp_curcs: *mut COMPSPEC;
+    static pcomp_curcmd: *mut c_char;
+    fn pcomp_set_compspec_options(cs: *mut COMPSPEC, flags: i32, set_or_unset: i32);
+    fn pcomp_set_readline_variables(flags: i32, nval: i32);
 }
 
-pub static mut Garg:* mut c_char=std::ptr::null_mut();
-pub static mut Warg:* mut c_char=std::ptr::null_mut();
-pub static mut Parg:* mut c_char=std::ptr::null_mut();
-pub static mut Sarg:* mut c_char=std::ptr::null_mut();
-pub static mut Xarg:* mut c_char=std::ptr::null_mut();
-pub static mut Farg:* mut c_char=std::ptr::null_mut();
-pub static mut Carg:* mut c_char=std::ptr::null_mut();
+pub static mut Garg: *mut c_char = std::ptr::null_mut();
+pub static mut Warg: *mut c_char = std::ptr::null_mut();
+pub static mut Parg: *mut c_char = std::ptr::null_mut();
+pub static mut Sarg: *mut c_char = std::ptr::null_mut();
+pub static mut Xarg: *mut c_char = std::ptr::null_mut();
+pub static mut Farg: *mut c_char = std::ptr::null_mut();
+pub static mut Carg: *mut c_char = std::ptr::null_mut();
 
 unsafe fn STRDUP(x:* const c_char)->* mut c_char
 {
