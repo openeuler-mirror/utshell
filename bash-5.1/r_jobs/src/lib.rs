@@ -2088,8 +2088,49 @@ unsafe extern "C" fn print_pipeline(
     libc::fflush(stream);
 }
 
+unsafe extern "C" fn pretty_print_job(
+    mut job_index: c_int,
+    mut format: c_int,
+    mut stream: *mut libc::FILE,
+) {
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
 
-
+    if format == JLIST_PID_ONLY as c_int {
+        fprintf(
+            stream,
+            b"%ld\n\0" as *const u8 as *const c_char,
+            (*(**jobs.offset(job_index as isize)).pipe).pid as libc::c_long,
+        );
+        return;
+    }
+    if format == JLIST_CHANGED_ONLY as c_int{
+        if IS_NOTIFIED! (job_index)
+        {
+            return;
+        }
+        format = JLIST_STANDARD as c_int;
+    }
+    if format != JLIST_NONINTERACTIVE as c_int{
+        fprintf(
+            stream,
+            b"[%d]%c \0" as *const u8 as *const c_char,
+            job_index + 1 as c_int,
+            if job_index == js.j_current {
+                '+' as i32
+            } else if job_index == js.j_previous {
+                '-' as i32
+            } else {
+                ' ' as i32
+            },
+        );
+    }
+    if format == JLIST_NONINTERACTIVE as c_int{
+        format = JLIST_LONG as c_int;
+    }
+    p = (**jobs.offset(job_index as isize)).pipe;
+    print_pipeline(p, job_index, format, stream);
+    (**jobs.offset(job_index as isize)).flags |= J_NOTIFIED as c_int;
+}
 
 
 
