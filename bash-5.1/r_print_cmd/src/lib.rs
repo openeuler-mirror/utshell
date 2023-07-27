@@ -1104,4 +1104,23 @@ pub unsafe extern "C" fn print_redirection_list(mut redirects:*mut REDIRECT)
 
     was_heredoc = 0;
 
+    while !redirects.is_null()
+    {
+        if (*redirects).instruction == r_instruction_r_reading_until || (*redirects).instruction == r_instruction_r_deblank_reading_until
+        {
+            newredir = copy_redirect(redirects);
+            (*newredir).next = std::ptr::null_mut();
+            print_heredoc_header(newredir);
+            if !heredocs.is_null()
+            {
+                (*hdtail).next = newredir;
+                hdtail = newredir;
+            }
+            else{
+                hdtail = newredir;
+                heredocs = newredir;
+            }
+        }
+    }
+
 }
