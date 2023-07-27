@@ -515,26 +515,24 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32 {
                     // as *mut ULCMD) as ULCMD).cmd = opt ;
                     //  (*((cmdlist as usize + (ncmd as usize) * std::mem::size_of::<ULCMD>())
                     //  as *mut ULCMD) as ULCMD).arg = list_optarg;
-                    ncmd = ncmd+1;
-                }   
-
+                    ncmd = ncmd + 1;
+                }
             }
         }
-        opt = internal_getopt (list, optstring.as_ptr() as * mut libc::c_char);
-  }
+        opt = internal_getopt(list, optstring.as_ptr() as *mut libc::c_char);
+    }
 
     //  as *mut ULCMD) as ULCMD).cmd );
     list = loptend;
 
-   if  all_limits != 0 {
-      if mode == 0  {
-        print_all_limits (LIMIT_SOFT!());
-      }
-      else {
-        print_all_limits (mode);
-      }
-    return sh_chkwrite(EXECUTION_SUCCESS!());
-  }
+    if all_limits != 0 {
+        if mode == 0 {
+            print_all_limits(LIMIT_SOFT!());
+        } else {
+            print_all_limits(mode);
+        }
+        return sh_chkwrite(EXECUTION_SUCCESS!());
+    }
  
    if ncmd == 0 {
       unsafe {
