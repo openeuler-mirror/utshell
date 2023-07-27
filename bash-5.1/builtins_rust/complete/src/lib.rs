@@ -1059,16 +1059,16 @@ pub extern "C" fn r_complete_builtin(listt: *mut WordList) -> i32 {
 
         cs = std::ptr::null_mut();
 
-    /* Build the actions from the arguments.  Also sets the [A-Z]arg variables
-      as a side effect if they are supplied as options. */
-    rval = r_build_actions (list, &mut oflags, &mut acts, &mut copts);
-    if rval == EX_USAGE {
-      return rval;
-    }
+        /* Build the actions from the arguments.  Also sets the [A-Z]arg variables
+        as a side effect if they are supplied as options. */
+        rval = r_build_actions(list, &mut oflags, &mut acts, &mut copts);
+        if rval == EX_USAGE {
+            return rval;
+        }
 
-    opt_given = (rval != EXECUTION_FAILURE!()) as i32;
+        opt_given = (rval != EXECUTION_FAILURE!()) as i32;
 
-    list = loptend.clone();
+        list = loptend.clone();
 
     if oflags.Dflag !=0 {
         wl = make_word_list (make_bare_word (DEFAULTCMD()), std::ptr::null_mut());
@@ -1091,8 +1091,6 @@ pub extern "C" fn r_complete_builtin(listt: *mut WordList) -> i32 {
           r_print_all_completions ();
           return EXECUTION_SUCCESS!();
         }
-        return r_print_cmd_completions (list);
-    }
 
     /* next, -r overrides everything else. */
     if oflags.rflag !=0 {
@@ -1104,8 +1102,6 @@ pub extern "C" fn r_complete_builtin(listt: *mut WordList) -> i32 {
             progcomp_flush ();
             return EXECUTION_SUCCESS!();
         }
-        return r_remove_cmd_completions (list);
-    }
 
     if wl == std::ptr::null_mut() && list == std::ptr::null_mut() && opt_given !=0 {
         builtin_usage ();
@@ -1162,8 +1158,6 @@ pub extern "C" fn r_remove_cmd_completions (list: * mut WordList)->i32
       }
       l = (*l).next;
     }
-    return ret;
-  }
 }
 
 #[no_mangle]
@@ -1178,7 +1172,6 @@ pub extern "C" fn r_print_compoptions (copts:c_ulong, full:i32)
         libc::printf (CString::new("+o %s ").unwrap().as_ptr(), compopts.compoptArr[i].optname);
       }
     }
-  }
 }
 
 #[no_mangle]
