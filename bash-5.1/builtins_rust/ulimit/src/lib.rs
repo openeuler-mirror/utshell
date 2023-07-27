@@ -408,25 +408,25 @@ extern "C" {
 
     fn builtin_error(_: *const libc::c_char, _: ...);
     fn getmaxchild() -> i64;
-    
+
     static mut loptend: *mut WordList;
     static mut list_optarg: *mut libc::c_char;
-    static mut posixly_correct:i32 ;
+    static mut posixly_correct: i32;
     static mut current_user: user_info;
 }
 
-static mut optstring:[ libc::c_char;4 + 2 * NCMDS!() as usize] = [0;4 + 2 * NCMDS!() as usize];
-static mut cmdlist : *mut ULCMD = 0 as *const ULCMD as *mut ULCMD;
-static mut ncmd : i32  = 0;
+static mut optstring: [libc::c_char; 4 + 2 * NCMDS!() as usize] = [0; 4 + 2 * NCMDS!() as usize];
+static mut cmdlist: *mut ULCMD = 0 as *const ULCMD as *mut ULCMD;
+static mut ncmd: i32 = 0;
 
-fn _findlim (opt:i32) -> i32{
-  //  let mut register : i32;
+fn _findlim(opt: i32) -> i32 {
+    //  let mut register : i32;
     //let i : i32 = 0;
 
     for i in 0..17 {
-        if limits[i].option > 0{
-            if limits[i].option  == opt {
-                return i  as i32;
+        if limits[i].option > 0 {
+            if limits[i].option == opt {
+                return i as i32;
             }
         }
     }
