@@ -397,17 +397,14 @@ extern "C" {
     fn internal_getopt(_: *mut WordList, _: *mut libc::c_char) -> i32;
     fn strerror(_: i32) -> *mut libc::c_char;
     fn sprintf(_: *mut libc::c_char, _: *const libc::c_char, _: ...) -> i32;
-    fn string_to_rlimtype(_: *mut libc::c_char ) -> rlim_t;
+    fn string_to_rlimtype(_: *mut libc::c_char) -> rlim_t;
     fn getdtablesize() -> i32;
     fn builtin_usage();
-    fn sh_erange (s:* mut libc::c_char, desc:* mut libc::c_char);
+    fn sh_erange(s: *mut libc::c_char, desc: *mut libc::c_char);
     fn sh_invalidnum(arg1: *mut libc::c_char);
     fn __errno_location() -> *mut i32;
     fn getrlimit(__resource: __rlimit_resource_t, __rlimits: *mut rlimit) -> i32;
-    fn setrlimit(
-        __resource: __rlimit_resource_t,
-        __rlimits: *const rlimit,
-    ) -> i32;
+    fn setrlimit(__resource: __rlimit_resource_t, __rlimits: *const rlimit) -> i32;
 
     fn builtin_error(_: *const libc::c_char, _: ...);
     fn getmaxchild() -> i64;
