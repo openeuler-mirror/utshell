@@ -1094,27 +1094,29 @@ pub extern "C" fn r_complete_builtin(listt: *mut WordList) -> i32 {
             return r_print_cmd_completions(list);
         }
 
-    /* next, -r overrides everything else. */
-    if oflags.rflag !=0 {
-        if wl != std::ptr::null_mut() {
-            rval = r_remove_cmd_completions (wl);
-            dispose_words (wl);
-            return rval;
-        } else if list == std::ptr::null_mut() {
-            progcomp_flush ();
-            return EXECUTION_SUCCESS!();
+        /* next, -r overrides everything else. */
+        if oflags.rflag == 0 {
+            if wl != std::ptr::null_mut() {
+                rval = r_remove_cmd_completions(wl);
+                dispose_words(wl);
+                return rval;
+            } else if list == std::ptr::null_mut() {
+                progcomp_flush();
+                return EXECUTION_SUCCESS!();
+            }
+            return r_remove_cmd_completions(list);
         }
 
-    if wl == std::ptr::null_mut() && list == std::ptr::null_mut() && opt_given !=0 {
-        builtin_usage ();
-        return EX_USAGE;
-    }
+        if wl == std::ptr::null_mut() && list == std::ptr::null_mut() && opt_given != 0 {
+            builtin_usage();
+            return EX_USAGE;
+        }
 
-    /* If we get here, we need to build a compspec and add it for each
-      remaining argument. */
-    cs = compspec_create ();
-    (*cs).actions = acts;
-    (*cs).options = copts;
+        /* If we get here, we need to build a compspec and add it for each
+        remaining argument. */
+        cs = compspec_create();
+        (*cs).actions = acts;
+        (*cs).options = copts;
 
     (*cs).globpat = STRDUP (Garg);
     (*cs).words = STRDUP (Warg);
