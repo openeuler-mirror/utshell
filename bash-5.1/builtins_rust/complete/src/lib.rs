@@ -1210,23 +1210,22 @@ pub extern "C" fn r_print_compactions (acts:c_ulong)
 }
 
 #[no_mangle]
-pub extern "C" fn r_print_arg (arg:* const c_char, flag:* const c_char, quote:i32)
-{
-  let x:* mut c_char;
-  unsafe {
-    if arg != std::ptr::null_mut() {
-        if quote !=0 {
-            // 复制arg 增加单引号返给x
-            x = sh_single_quote (arg as * mut c_char);
-        } else {
-            x= arg as * mut c_char;
-        }
-        libc::printf (CString::new("%s %s ").unwrap().as_ptr(), flag, x);
-        if x != arg as * mut c_char {
-          libc::free (x as * mut c_void);
+pub extern "C" fn r_print_arg(arg: *const c_char, flag: *const c_char, quote: i32) {
+    let x: *mut c_char;
+    unsafe {
+        if arg != std::ptr::null_mut() {
+            if quote != 0 {
+                // 复制arg 增加单引号返给x
+                x = sh_single_quote(arg as *mut c_char);
+            } else {
+                x = arg as *mut c_char;
+            }
+            libc::printf(CString::new("%s %s ").unwrap().as_ptr(), flag, x);
+            if x != arg as *mut c_char {
+                libc::free(x as *mut c_void);
+            }
         }
     }
-  }
 }
 
 #[no_mangle]
@@ -1244,7 +1243,6 @@ pub extern "C" fn r_print_cmd_name (cmd:* const c_char)
     }	else {
       libc::printf (CString::new("%s").unwrap().as_ptr(),cmd);
     }
-  }
 }
 
 #[no_mangle]
@@ -1391,19 +1389,19 @@ pub extern "C" fn r_compgen_builtin (listt:* mut WordList)->i32
       builtin_error (CString::new("warning: -C option may not work as you expect").unwrap().as_ptr());
     }
 
-    /* If we get here, we need to build a compspec and evaluate it. */
-    cs = compspec_create ();
-    (*cs).actions = acts;
-    (*cs).options = copts;
-    (*cs).refcount = 1;
+        /* If we get here, we need to build a compspec and evaluate it. */
+        cs = compspec_create();
+        (*cs).actions = acts;
+        (*cs).options = copts;
+        (*cs).refcount = 1;
 
-    (*cs).globpat = STRDUP (Garg);
-    (*cs).words = STRDUP (Warg);
-    (*cs).prefix = STRDUP (Parg);
-    (*cs).suffix = STRDUP (Sarg);
-    (*cs).funcname = STRDUP (Farg);
-    (*cs).command = STRDUP (Carg);
-    (*cs).filterpat = STRDUP (Xarg);
+        (*cs).globpat = STRDUP(Garg);
+        (*cs).words = STRDUP(Warg);
+        (*cs).prefix = STRDUP(Parg);
+        (*cs).suffix = STRDUP(Sarg);
+        (*cs).funcname = STRDUP(Farg);
+        (*cs).command = STRDUP(Carg);
+        (*cs).filterpat = STRDUP(Xarg);
 
     rval = EXECUTION_FAILURE!();
 
