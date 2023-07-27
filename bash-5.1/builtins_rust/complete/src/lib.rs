@@ -1134,47 +1134,59 @@ pub extern "C" fn r_complete_builtin(listt: *mut WordList) -> i32 {
             l = list.clone();
         }
 
-    while l != std::ptr::null_mut() {
-      /* Add CS as the compspec for the specified commands. */
-      if progcomp_insert ((*(*l).word).word, cs) == 0 {
-          rval = EXECUTION_FAILURE!();
-      }
-      l = (*l).next;
-    }
+        while l != std::ptr::null_mut() {
+            /* Add CS as the compspec for the specified commands. */
+            if progcomp_insert((*(*l).word).word, cs) == 0 {
+                rval = EXECUTION_FAILURE!();
+            }
+            l = (*l).next;
+        }
 
-    dispose_words (wl);
-    return rval;
-  }
-}
-
-#[no_mangle]
-pub extern "C" fn r_remove_cmd_completions (list: * mut WordList)->i32
-{
-  let mut l:* mut WordList;
-  let mut ret:i32;
-  unsafe {
-    ret = EXECUTION_SUCCESS!();
-    l = list.clone();
-    while l!=std::ptr::null_mut() {
-      if progcomp_remove ((*(*l).word).word) == 0	{
-          builtin_error (CString::new("%s: no completion specification").unwrap().as_ptr(), (*(*l).word).word);
-          ret = EXECUTION_FAILURE!();
-      }
-      l = (*l).next;
+        dispose_words(wl);
+        return rval;
     }
 }
 
 #[no_mangle]
-pub extern "C" fn r_print_compoptions (copts:c_ulong, full:i32)
-{
-  unsafe {
-    let compopts:CompoptArray=CompoptArray::new();
-    for i in 0..compopts.compoptArr.len() {
-      if (copts & compopts.compoptArr[i].optflag) !=0 {
-        libc::printf (CString::new("-o %s ").unwrap().as_ptr(), compopts.compoptArr[i].optname);
-      } else if full !=0 {
-        libc::printf (CString::new("+o %s ").unwrap().as_ptr(), compopts.compoptArr[i].optname);
-      }
+pub extern "C" fn r_remove_cmd_completions(list: *mut WordList) -> i32 {
+    let mut l: *mut WordList;
+    let mut ret: i32;
+    unsafe {
+        ret = EXECUTION_SUCCESS!();
+        l = list.clone();
+        while l != std::ptr::null_mut() {
+            if progcomp_remove((*(*l).word).word) == 0 {
+                builtin_error(
+                    CString::new("%s: no completion specification")
+                        .unwrap()
+                        .as_ptr(),
+                    (*(*l).word).word,
+                );
+                ret = EXECUTION_FAILURE!();
+            }
+            l = (*l).next;
+        }
+        return ret;
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn r_print_compoptions(copts: c_ulong, full: i32) {
+    unsafe {
+        let compopts: CompoptArray = CompoptArray::new();
+        for i in 0..compopts.compoptArr.len() {
+            if (copts & compopts.compoptArr[i].optflag) != 0 {
+                libc::printf(
+                    CString::new("-o %s ").unwrap().as_ptr(),
+                    compopts.compoptArr[i].optname,
+                );
+            } else if full != 0 {
+                libc::printf(
+                    CString::new("+o %s ").unwrap().as_ptr(),
+                    compopts.compoptArr[i].optname,
+                );
+            }
+        }
     }
 }
 

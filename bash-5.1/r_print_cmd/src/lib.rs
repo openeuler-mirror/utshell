@@ -1153,3 +1153,23 @@ pub unsafe extern "C" fn print_redirection_list(mut redirects:*mut REDIRECT)
     }
 
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn print_heredoc_header(redirect:*mut REDIRECT)
+{    
+    let kill_leading:c_int;
+    let x:*mut c_char;
+    kill_leading = (r_instruction_r_deblank_reading_until == (*redirect).instruction) as c_int;
+    
+    if (*redirect).rflags & REDIR_VARASSIGN as i32 != 0
+    {
+        cprintf_1( (*(*redirect).redirector.filename).word);
+    }
+    else if (*redirect).redirector.dest != 0
+    {
+        let mut str = format!("{}\0",(*redirect).redirector.dest);
+        cprintf_1(str.as_mut_ptr() as *mut c_char)
+    }
+
+}
