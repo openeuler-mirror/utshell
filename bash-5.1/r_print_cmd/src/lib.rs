@@ -1090,3 +1090,18 @@ pub unsafe extern "C" fn print_deferred_heredocs(cstring:*const c_char)
     }
     deferred_heredocs = std::ptr::null_mut() as *mut REDIRECT; 
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn print_redirection_list(mut redirects:*mut REDIRECT)
+{
+    // println!("print_redirection_list");
+    let mut heredocs:*mut REDIRECT;
+    let mut hdtail:*mut REDIRECT;
+    let mut newredir:*mut REDIRECT;
+    let mut rw:*mut c_char;
+    heredocs = std::ptr::null_mut();
+    hdtail = heredocs;
+
+    was_heredoc = 0;
+
+}
