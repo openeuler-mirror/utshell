@@ -1208,3 +1208,18 @@ pub unsafe extern "C" fn print_heredoc_body(redirect:*mut REDIRECT)
                                             CStr::from_ptr((*redirect).here_doc_eof).to_str().unwrap());
     cprintf_1(str.as_mut_ptr() as *mut c_char);
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn print_redirection(redirect:*mut REDIRECT)
+{
+    let redirector:c_int;
+    let redir_fd:c_int;
+    let redirectee:*mut WORD_DESC;
+    let redir_word:*mut WORD_DESC;
+    redirectee = (*redirect).redirectee.filename;
+    redir_fd = (*redirect).redirectee.dest;
+    redir_word = (*redirect).redirector.filename;
+    redirector = (*redirect).redirector.dest;
+
+}
