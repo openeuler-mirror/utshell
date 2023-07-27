@@ -1270,7 +1270,7 @@ pub extern "C" fn r_print_one_completion(cmd: *mut c_char, cs: *mut COMPSPEC) ->
         r_print_arg((*cs).suffix, CString::new("-S").unwrap().as_ptr(), 1);
         r_print_arg((*cs).filterpat, CString::new("-X").unwrap().as_ptr(), 1);
 
-    r_print_arg ((*cs).command, CString::new("-C").unwrap().as_ptr(), 1);
+        r_print_arg((*cs).command, CString::new("-C").unwrap().as_ptr(), 1);
 
         /* simple arguments that don't require quoting */
         r_print_arg((*cs).funcname, CString::new("-F").unwrap().as_ptr(), 0);
@@ -1278,18 +1278,17 @@ pub extern "C" fn r_print_one_completion(cmd: *mut c_char, cs: *mut COMPSPEC) ->
         r_print_cmd_name(cmd);
         libc::printf(CString::new("\n").unwrap().as_ptr());
 
-    return 0;
-  }
+        return 1;
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn r_print_compopts (cmd:* mut c_char, cs:* mut COMPSPEC, full:i32)
-{
-  unsafe {
-    libc::printf (CString::new("compopt ").unwrap().as_ptr());
+pub extern "C" fn r_print_compopts(cmd: *mut c_char, cs: *mut COMPSPEC, full: i32) {
+    unsafe {
+        libc::printf(CString::new("compopt ").unwrap().as_ptr());
 
-    r_print_compoptions ((*cs).options, full);
-    r_print_cmd_name (cmd);
+        r_print_compoptions((*cs).options, full);
+        r_print_cmd_name(cmd);
 
     libc::printf (CString::new("\n").unwrap().as_ptr());
   }
