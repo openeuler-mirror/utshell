@@ -462,15 +462,15 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32 {
         *s = '\0' as libc::c_char;
     }
 
-    if cmdlistsz == 0{
-       cmdlistsz = 16;
+    if cmdlistsz == 0 {
+        cmdlistsz = 16;
         unsafe {
-            cmdlist = 
-             xmalloc ((cmdlistsz as u64)*(std::mem::size_of::<ULCMD>() as libc::c_ulong) ) as *mut ULCMD;
+            cmdlist = xmalloc((cmdlistsz as u64) * (std::mem::size_of::<ULCMD>() as libc::c_ulong))
+                as *mut ULCMD;
         }
     }
     ncmd = 0;
-    reset_internal_getopt ();
+    reset_internal_getopt();
     opt = internal_getopt(list, optstring.as_ptr() as *mut libc::c_char);
     while opt != -1 {
         let optu8:u8= opt as u8;
