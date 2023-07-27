@@ -1236,47 +1236,47 @@ pub extern "C" fn r_print_arg(arg: *const c_char, flag: *const c_char, quote: i3
 }
 
 #[no_mangle]
-pub extern "C" fn r_print_cmd_name (cmd:* const c_char)
-{
-  unsafe {
-    if STREQ (cmd, DEFAULTCMD()) {
-      libc::printf (CString::new("-D").unwrap().as_ptr());
-    } else if STREQ (cmd, EMPTYCMD()) {
-      libc::printf (CString::new("-E").unwrap().as_ptr());
-    } else if STREQ (cmd, INITIALWORD()) {
-      libc::printf (CString::new("-I").unwrap().as_ptr());
-    } else if *cmd == 0	{ /* XXX - can this happen? */
-      libc::printf (CString::new("''").unwrap().as_ptr());
-    }	else {
-      libc::printf (CString::new("%s").unwrap().as_ptr(),cmd);
+pub extern "C" fn r_print_cmd_name(cmd: *const c_char) {
+    unsafe {
+        if STREQ(cmd, DEFAULTCMD()) {
+            libc::printf(CString::new("-D").unwrap().as_ptr());
+        } else if STREQ(cmd, EMPTYCMD()) {
+            libc::printf(CString::new("-E").unwrap().as_ptr());
+        } else if STREQ(cmd, INITIALWORD()) {
+            libc::printf(CString::new("-I").unwrap().as_ptr());
+        } else if *cmd == 0 {
+            /* XXX - can this happen? */
+            libc::printf(CString::new("''").unwrap().as_ptr());
+        } else {
+            libc::printf(CString::new("%s").unwrap().as_ptr(), cmd);
+        }
     }
 }
 
 #[no_mangle]
-pub extern "C" fn r_print_one_completion (cmd: * mut c_char, cs:* mut COMPSPEC)->i32
-{
-  unsafe {
-    libc::printf (CString::new("complete ").unwrap().as_ptr());
+pub extern "C" fn r_print_one_completion(cmd: *mut c_char, cs: *mut COMPSPEC) -> i32 {
+    unsafe {
+        libc::printf(CString::new("complete ").unwrap().as_ptr());
 
-    r_print_compoptions ((*cs).options, 0);
-    r_print_compactions ((*cs).actions);
+        r_print_compoptions((*cs).options, 0);
+        r_print_compactions((*cs).actions);
 
-    /* now the rest of the arguments */
+        /* now the rest of the arguments */
 
-    /* arguments that require quoting */
-    r_print_arg ((*cs).globpat, CString::new("-G").unwrap().as_ptr(), 1);
-    r_print_arg ((*cs).words, CString::new("-W").unwrap().as_ptr(), 1);
-    r_print_arg ((*cs).prefix, CString::new("-P").unwrap().as_ptr(), 1);
-    r_print_arg ((*cs).suffix, CString::new("-S").unwrap().as_ptr(), 1);
-    r_print_arg ((*cs).filterpat, CString::new("-X").unwrap().as_ptr(), 1);
+        /* arguments that require quoting */
+        r_print_arg((*cs).globpat, CString::new("-G").unwrap().as_ptr(), 1);
+        r_print_arg((*cs).words, CString::new("-W").unwrap().as_ptr(), 1);
+        r_print_arg((*cs).prefix, CString::new("-P").unwrap().as_ptr(), 1);
+        r_print_arg((*cs).suffix, CString::new("-S").unwrap().as_ptr(), 1);
+        r_print_arg((*cs).filterpat, CString::new("-X").unwrap().as_ptr(), 1);
 
     r_print_arg ((*cs).command, CString::new("-C").unwrap().as_ptr(), 1);
 
-    /* simple arguments that don't require quoting */
-    r_print_arg ((*cs).funcname, CString::new("-F").unwrap().as_ptr(), 0);
+        /* simple arguments that don't require quoting */
+        r_print_arg((*cs).funcname, CString::new("-F").unwrap().as_ptr(), 0);
 
-    r_print_cmd_name (cmd);
-    libc::printf (CString::new("\n").unwrap().as_ptr());
+        r_print_cmd_name(cmd);
+        libc::printf(CString::new("\n").unwrap().as_ptr());
 
     return 0;
   }
