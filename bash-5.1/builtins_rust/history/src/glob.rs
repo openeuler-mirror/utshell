@@ -1588,6 +1588,24 @@ extern "C" {
     pub fn iswalpha(__wc: wint_t) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn iswcntrl(__wc: wint_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswdigit(__wc: wint_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswgraph(__wc: wint_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswlower(__wc: wint_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswprint(__wc: wint_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswpunct(__wc: wint_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
     pub fn iswalnum_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
 }
 extern "C" {
