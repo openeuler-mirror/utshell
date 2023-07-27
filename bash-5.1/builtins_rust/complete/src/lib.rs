@@ -1095,7 +1095,7 @@ pub extern "C" fn r_complete_builtin(listt: *mut WordList) -> i32 {
         }
 
         /* next, -r overrides everything else. */
-        if oflags.rflag == 0 {
+        if oflags.rflag != 0 {
             if wl != std::ptr::null_mut() {
                 rval = r_remove_cmd_completions(wl);
                 dispose_words(wl);
@@ -1139,7 +1139,7 @@ pub extern "C" fn r_complete_builtin(listt: *mut WordList) -> i32 {
             if progcomp_insert((*(*l).word).word, cs) == 0 {
                 rval = EXECUTION_FAILURE!();
             }
-            l = (*l).next;
+            l = l.next;
         }
 
         dispose_words(wl);
@@ -1191,22 +1191,29 @@ pub extern "C" fn r_print_compoptions(copts: c_ulong, full: i32) {
 }
 
 #[no_mangle]
-pub extern "C" fn r_print_compactions (acts:c_ulong)
-{
-  unsafe {
-    let compacts:CompactsArray=CompactsArray::new();
-    for i in 0..compacts.compactsArr.len() {
-      if compacts.compactsArr[i].actopt !=0 && (acts & compacts.compactsArr[i].actflag) !=0 {
-        libc::printf (CString::new("-%c ").unwrap().as_ptr(), compacts.compactsArr[i].actopt);
-      }
-    }
+pub extern "C" fn r_print_compactions(acts: c_ulong) {
+    unsafe {
+        let compacts: CompactsArray = CompactsArray::new();
+        for i in 0..compacts.compactsArr.len() {
+            if compacts.compactsArr[i].actopt != 0 && (acts & compacts.compactsArr[i].actflag) != 0
+            {
+                libc::printf(
+                    CString::new("-%c ").unwrap().as_ptr(),
+                    compacts.compactsArr[i].actopt,
+                );
+            }
+        }
 
-    for i in 0..compacts.compactsArr.len() {
-      if compacts.compactsArr[i].actopt ==0 && (acts & compacts.compactsArr[i].actflag) !=0 {
-        libc::printf (CString::new("-A %s ").unwrap().as_ptr(), compacts.compactsArr[i].actname);
-      }
+        for i in 0..compacts.compactsArr.len() {
+            if compacts.compactsArr[i].actopt == 0 && (acts & compacts.compactsArr[i].actflag) != 0
+            {
+                libc::printf(
+                    CString::new("-A %s ").unwrap().as_ptr(),
+                    compacts.compactsArr[i].actname,
+                );
+            }
+        }
     }
-  }
 }
 
 #[no_mangle]

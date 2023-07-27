@@ -1172,17 +1172,31 @@ pub unsafe extern "C" fn print_heredoc_header(redirect:*mut REDIRECT)
         cprintf_1(str.as_mut_ptr() as *mut c_char)
     }
 
-    x = sh_single_quote((*redirect).here_doc_eof);
-    let str1 = if kill_leading !=0 {
-        "-"
+    if (*(*redirect).redirectee.filename).flags & W_QUOTED as i32 !=0
+    {
+        x = sh_single_quote((*redirect).here_doc_eof);
+        let str1 = if kill_leading !=0 {
+            "-"
+        }
+        else{
+            ""
+        };
+        let str2 = "<<";
+        let str3 = CStr::from_ptr(x).to_str().unwrap();
+        let mut str = format!("{}{}{}\0",str2,str1,str3);
+        cprintf_1(str.as_mut_ptr() as *mut c_char);
+        libc::free(x as *mut c_void);
     }
     else{
-        ""
-    };
-    let str2 = "<<";
-    let str3 = CStr::from_ptr(x).to_str().unwrap();
-    let mut str = format!("{}{}{}\0",str2,str1,str3);
-    cprintf_1(str.as_mut_ptr() as *mut c_char);
-    libc::free(x as *mut c_void);
-
+        let str1 = if kill_leading !=0 {
+            "-"
+        }
+        else{
+            ""
+        };
+        let str2 = "<<";
+        let str3 = CStr::from_ptr((*redirect).here_doc_eof).to_str().unwrap();
+        let mut str = format!("{}{}{}\0",str2,str1,str3);
+        cprintf_1(str.as_mut_ptr() as *mut c_char);
+    }
 }
