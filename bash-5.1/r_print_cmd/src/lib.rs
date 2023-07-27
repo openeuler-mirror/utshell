@@ -1200,3 +1200,11 @@ pub unsafe extern "C" fn print_heredoc_header(redirect:*mut REDIRECT)
         cprintf_1(str.as_mut_ptr() as *mut c_char);
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn print_heredoc_body(redirect:*mut REDIRECT)
+{
+    let mut str = format!("{}{}\0",  CStr::from_ptr((*(*redirect).redirectee.filename).word).to_str().unwrap(),
+                                            CStr::from_ptr((*redirect).here_doc_eof).to_str().unwrap());
+    cprintf_1(str.as_mut_ptr() as *mut c_char);
+}
