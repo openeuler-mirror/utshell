@@ -1132,6 +1132,24 @@ pub unsafe extern "C" fn print_redirection_list(mut redirects:*mut REDIRECT)
             print_redirection(redirects);
             (*redirects).instruction = r_instruction_r_duplicating_output_word;
         }
+        else{
+            print_redirection(redirects);
+        }
+        redirects = (*redirects).next;
+
+        if !redirects.is_null()
+        {
+            cprintf_1(b" \0" as *const u8 as *const i8);
+        }
+    }
+
+    if !heredocs.is_null() && printing_connection != 0
+    {
+        deferred_heredocs = heredocs;
+    }
+    else if !heredocs.is_null() {
+        print_heredoc_bodies(heredocs);
+        dispose_redirects(heredocs);
     }
 
 }
