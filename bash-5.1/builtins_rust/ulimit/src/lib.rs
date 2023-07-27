@@ -533,23 +533,15 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32 {
         }
         return sh_chkwrite(EXECUTION_SUCCESS!());
     }
- 
-   if ncmd == 0 {
-      unsafe {
-        (*cmdlist.offset(ncmd as isize)).cmd = 'f' as i32;
-        //   let mut cmm =  *((cmdlist as usize + (ncmd as usize )*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD;
-        //   cmm.cmd = 'f' as i32;
-      }
-    /* `ulimit something' is same as `ulimit -f something' */
-      if !list.is_null() {
-          unsafe { 
-            (*cmdlist.offset(ncmd as isize)).arg =  (*(*list).word).word;
-            // let mut cmm =  *((cmdlist as usize + (ncmd as usize )*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD;
-            // cmm.arg =  (*(*list).word).word;
-            ncmd = ncmd+1;
-          }
+
+    if ncmd == 0 {
+        unsafe {
+            (*cmdlist.offset(ncmd as isize)).cmd = 'f' as i32;
+            //   let mut cmm =  *((cmdlist as usize + (ncmd as usize )*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD;
+            //   cmm.cmd = 'f' as i32;
         }
-       else {
+        /* `ulimit something' is same as `ulimit -f something' */
+        if !list.is_null() {
             unsafe {
             (*cmdlist.offset(ncmd as isize)).arg =  std::ptr::null_mut();  
             // let mut cmm = *((cmdlist as usize + (ncmd as usize )*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD;
