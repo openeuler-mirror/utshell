@@ -1118,21 +1118,21 @@ pub extern "C" fn r_complete_builtin(listt: *mut WordList) -> i32 {
         (*cs).actions = acts;
         (*cs).options = copts;
 
-    (*cs).globpat = STRDUP (Garg);
-    (*cs).words = STRDUP (Warg);
-    (*cs).prefix = STRDUP (Parg);
-    (*cs).suffix = STRDUP (Sarg);
-    (*cs).funcname = STRDUP (Farg);
-    (*cs).command = STRDUP (Carg);
-    (*cs).filterpat = STRDUP (Xarg);
+        (*cs).globpat = STRDUP(Garg);
+        (*cs).words = STRDUP(Warg);
+        (*cs).prefix = STRDUP(Parg);
+        (*cs).suffix = STRDUP(Sarg);
+        (*cs).funcname = STRDUP(Farg);
+        (*cs).command = STRDUP(Carg);
+        (*cs).filterpat = STRDUP(Xarg);
 
-    rval = EXECUTION_SUCCESS!();
+        rval = EXECUTION_SUCCESS!();
 
-    if wl != std::ptr::null_mut() {
-      l= wl.clone();
-    } else {
-      l= list.clone();
-    }
+        if wl != std::ptr::null_mut() {
+            l = wl.clone();
+        } else {
+            l = list.clone();
+        }
 
     while l != std::ptr::null_mut() {
       /* Add CS as the compspec for the specified commands. */
