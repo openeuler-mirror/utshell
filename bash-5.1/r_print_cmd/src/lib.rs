@@ -1121,6 +1121,17 @@ pub unsafe extern "C" fn print_redirection_list(mut redirects:*mut REDIRECT)
                 heredocs = newredir;
             }
         }
+
+        else if (*redirects).instruction == r_instruction_r_duplicating_output_word && ((*redirects).flags & REDIR_VARASSIGN as i32)  == 0 && (*redirects).redirector.dest == 1
+        {
+            rw = (*(*redirects).redirectee.filename).word;
+            if !rw.is_null() && *rw as c_int != '-' as i32 && DIGIT(*rw) == false && EXPCHAR!(*rw) == 0
+            {
+                (*redirects).instruction = r_instruction_r_err_and_out;
+            }
+            print_redirection(redirects);
+            (*redirects).instruction = r_instruction_r_duplicating_output_word;
+        }
     }
 
 }
