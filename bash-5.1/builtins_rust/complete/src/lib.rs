@@ -1070,26 +1070,28 @@ pub extern "C" fn r_complete_builtin(listt: *mut WordList) -> i32 {
 
         list = loptend.clone();
 
-    if oflags.Dflag !=0 {
-        wl = make_word_list (make_bare_word (DEFAULTCMD()), std::ptr::null_mut());
-    } else if oflags.Eflag !=0 {
-        wl = make_word_list (make_bare_word (EMPTYCMD()), std::ptr::null_mut());
-    } else if oflags.Iflag !=0 {
-        wl = make_word_list (make_bare_word (INITIALWORD()), std::ptr::null_mut());
-    } else {
-        wl = std::ptr::null_mut();
-    }
+        if oflags.Dflag != 0 {
+            wl = make_word_list(make_bare_word(DEFAULTCMD()), std::ptr::null_mut());
+        } else if oflags.Eflag != 0 {
+            wl = make_word_list(make_bare_word(EMPTYCMD()), std::ptr::null_mut());
+        } else if oflags.Iflag != 0 {
+            wl = make_word_list(make_bare_word(INITIALWORD()), std::ptr::null_mut());
+        } else {
+            wl = std::ptr::null_mut();
+        }
 
-    /* -p overrides everything else */
-    if oflags.pflag !=0 || (list == std::ptr::null_mut() && opt_given == 0) {
-        if wl != std::ptr::null_mut() {
-          rval = r_print_cmd_completions (wl);
-          dispose_words (wl);
-          return rval;
-        } else if list == std::ptr::null_mut() {
-            //给了P,但没给参数，直接打印全部并退出
-          r_print_all_completions ();
-          return EXECUTION_SUCCESS!();
+        /* -p overrides everything else */
+        if oflags.pflag != 0 || (list == std::ptr::null_mut() && opt_given == 0) {
+            if wl != std::ptr::null_mut() {
+                rval = r_print_cmd_completions(wl);
+                dispose_words(wl);
+                return rval;
+            } else if list == std::ptr::null_mut() {
+                //给了P,但没给参数，直接打印全部并退出
+                r_print_all_completions();
+                return EXECUTION_SUCCESS!();
+            }
+            return r_print_cmd_completions(list);
         }
 
     /* next, -r overrides everything else. */
