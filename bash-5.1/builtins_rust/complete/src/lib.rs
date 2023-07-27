@@ -1020,23 +1020,28 @@ pub extern "C" fn r_build_actions(
 
 /* Add, remove, and display completion specifiers. */
 #[no_mangle]
-pub extern "C" fn r_complete_builtin (listt: *mut WordList)->i32
-{
-  let mut opt_given:i32=0;
-  let mut rval:i32;
-  let mut acts:c_ulong=0;
-  let mut copts:c_ulong=0;
-  let mut cs:* mut COMPSPEC;
-  let mut oflags:_optflags=_optflags{pflag:0,rflag:0,Dflag:0,Eflag:0,Iflag:0};
-  let mut l: *mut WordList;
-  let wl: *mut WordList;
+pub extern "C" fn r_complete_builtin(listt: *mut WordList) -> i32 {
+    let mut opt_given: i32 = 0;
+    let mut rval: i32;
+    let mut acts: c_ulong = 0;
+    let mut copts: c_ulong = 0;
+    let mut cs: *mut COMPSPEC;
+    let mut oflags: _optflags = _optflags {
+        pflag: 0,
+        rflag: 0,
+        Dflag: 0,
+        Eflag: 0,
+        Iflag: 0,
+    };
+    let mut l: *mut WordList;
+    let mut wl: *mut WordList;
 
-  unsafe {
-    let mut list:* mut WordList=listt.clone();
-    if list == std::ptr::null_mut() {
-        r_print_all_completions ();
-        return EXECUTION_SUCCESS!();
-    }
+    unsafe {
+        let mut list: *mut WordList = listt.clone();
+        if list == std::ptr::null_mut() {
+            r_print_all_completions();
+            return EXECUTION_SUCCESS!();
+        }
 
         oflags.pflag = 0;
         oflags.rflag = 0;
