@@ -473,15 +473,21 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32 {
     reset_internal_getopt();
     opt = internal_getopt(list, optstring.as_ptr() as *mut libc::c_char);
     while opt != -1 {
-        let optu8:u8= opt as u8;
-        let optChar:char=char::from(optu8);
+        let optu8: u8 = opt as u8;
+        let optChar: char = char::from(optu8);
         match optChar {
-            'a' => { all_limits  = all_limits + 1 ;}
-            'S' => { mode = mode | LIMIT_SOFT!() ; }
-            'H' => { mode = mode | LIMIT_HARD!();}
-            '?'=> {   
-                 builtin_usage();
-                 return  EX_USAGE;
+            'a' => {
+                all_limits = all_limits + 1;
+            }
+            'S' => {
+                mode = mode | LIMIT_SOFT!();
+            }
+            'H' => {
+                mode = mode | LIMIT_HARD!();
+            }
+            '?' => {
+                builtin_usage();
+                return EX_USAGE;
             }
             _ => {
                 if opt == -99 {
@@ -489,9 +495,11 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32 {
                     return EX_USAGE;
                 }
                 if ncmd >= cmdlistsz {
-                    cmdlistsz = cmdlistsz * 2 ;
+                    cmdlistsz = cmdlistsz * 2;
                     cmdlist = xrealloc(
-                        cmdlist as *mut libc::c_void,(cmdlistsz as u64) * std::mem::size_of::<ULCMD>() as u64 ) as *mut ULCMD;
+                        cmdlist as *mut libc::c_void,
+                        (cmdlistsz as u64) * std::mem::size_of::<ULCMD>() as u64,
+                    ) as *mut ULCMD;
                 }
                 unsafe {
                     (*cmdlist.offset(ncmd as isize)).cmd = opt;
@@ -499,7 +507,7 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32 {
                     //ncmd = ncmd + 1;
                     let ref mut fresh6 = (*cmdlist.offset(fresh5 as isize)).arg;
                     *fresh6 = list_optarg;
-                    // let mut cmm =&mut  (*((cmdlist as usize + 
+                    // let mut cmm =&mut  (*((cmdlist as usize +
                     //                     (ncmd as usize)*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD);
                     // cmm.cmd = opt;
                     // cmm.arg = list_optarg;
