@@ -442,22 +442,22 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32 {
     let mut opt: i32 = 0;
     let mut all_limits: i32 = 0;
     if optstring[0] == 0 {
-         s = optstring.as_mut_ptr();
-         s = s.offset(0);
-        *s = 'a' as libc::c_char;  
-         s = s.offset(1);
-        *s  = 'S' as libc::c_char;
-         s =  s.offset(1);
-        *s   = 'H' as libc::c_char;
-         s =  s.offset(1);
-         c = 0 ;
+        s = optstring.as_mut_ptr();
+        s = s.offset(0);
+        *s = 'a' as libc::c_char;
+        s = s.offset(1);
+        *s = 'S' as libc::c_char;
+        s = s.offset(1);
+        *s = 'H' as libc::c_char;
+        s = s.offset(1);
+        c = 0;
         for i in 0..17 {
             if limits[i].option > 0 {
                 *s = limits[i].option as libc::c_char;
-                 s =  s.offset(1);
-                *s = ';' as  libc::c_char;
-                 s =  s.offset(1);
-            } 
+                s = s.offset(1);
+                *s = ';' as libc::c_char;
+                s = s.offset(1);
+            }
         }
         *s = '\0' as libc::c_char;
     }
