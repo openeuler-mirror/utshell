@@ -1476,28 +1476,47 @@ pub extern "C" fn r_compopt_builtin(listt: *mut WordList) -> i32 {
     let mut wl: *mut WordList;
     let mut cs: *mut COMPSPEC;
 
-  ret = EXECUTION_SUCCESS!();
-  unsafe {
-    let mut list:* mut WordList=listt.clone();
-    reset_internal_getopt ();
+    ret = EXECUTION_SUCCESS();
+    unsafe {
+        let mut list: *mut WordList = listt.clone();
+        reset_internal_getopt();
 
-    opt = internal_getopt (list, CString::new("+o:DEI").unwrap().as_ptr() as * mut c_char);
+        opt = internal_getopt(
+            list,
+            CString::new("+o:DEI").unwrap().as_ptr() as *mut c_char,
+        );
 
-    while opt != -1 {
-        if list_opttype == '-' as i32 {
-          opts = &mut opts_on;
-        } else {
-          opts = &mut opts_off;
-        }
+        while opt != -1 {
+            if list_opttype == '-' as i32 {
+                opts = &mut opts_on;
+            } else {
+                opts = &mut opts_off;
+            }
 
-        let optu8:u8= opt as u8;
-        let optChar:char=char::from(optu8);
+            let optu8: u8 = opt as u8;
+            let optChar: char = char::from(optu8);
 
-        match optChar {
-           'o'=>{
-                oind = r_find_compopt (list_optarg);
-                if oind < 0 {
-                    sh_invalidoptname (list_optarg);
+            match optChar {
+                'o' => {
+                    oind = r_find_compopt(list_optarg);
+                    if oind < 0 {
+                        sh_invalidoptname(list_optarg);
+                        return EX_USAGE!();
+                    }
+                    let compopts: CompoptArray = CompoptArray::new();
+                    *opts |= compopts.compoptArr[oind as usize].optflag as i32;
+                }
+                'D' => {
+                    Dflag = 1;
+                }
+                'E' => {
+                    Eflag = 1;
+                }
+                'I' => {
+                    Iflag = 1;
+                }
+                _ => {
+                    builtin_usage();
                     return EX_USAGE;
                 }
             }
