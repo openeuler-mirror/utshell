@@ -2392,8 +2392,21 @@ pub unsafe extern "C" fn make_child(
     return pid;
 }
 
-
-
+#[no_mangle]
+pub unsafe extern "C"  fn  ignore_tty_job_signals() {
+    set_signal_handler(
+        SIGTSTP as c_int,
+        SIG_IGN!() 
+    );
+    set_signal_handler(
+        SIGTTIN as c_int,
+        SIG_IGN!() 
+    );
+    set_signal_handler(
+        SIGTTOU as c_int,
+        SIG_IGN!() 
+    );
+}
 
 
 
