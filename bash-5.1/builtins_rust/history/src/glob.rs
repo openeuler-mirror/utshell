@@ -704,6 +704,14 @@ pub const __stack_t_defined: u32 = 1;
 pub const _SYS_UCONTEXT_H: u32 = 1;
 pub const __NGREG: u32 = 23;
 pub const NGREG: u32 = 23;
+pub const _BITS_SIGSTACK_H: u32 = 1;
+pub const MINSIGSTKSZ: u32 = 2048;
+pub const SIGSTKSZ: u32 = 8192;
+pub const _BITS_SS_FLAGS_H: u32 = 1;
+pub const __sigstack_defined: u32 = 1;
+pub const _BITS_PTHREADTYPES_COMMON_H: u32 = 1;
+pub const _THREAD_SHARED_TYPES_H: u32 = 1;
+pub const _BITS_PTHREADTYPES_ARCH_H: u32 = 1;
 #[no_mangle]
 pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
 
