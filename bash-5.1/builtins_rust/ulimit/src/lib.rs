@@ -797,21 +797,28 @@ fn set_limit(ind: i32, newlim: RLIMTYPE, mode: i32) -> i32 {
     }
 }
 
-unsafe fn getmaxvm(softlim : *mut RLIMTYPE , hardlim : *mut libc::c_char) -> i32 {
-    let  mut  datalim :  rlimit = rlimit { rlim_cur: 0, rlim_max: 0 };
-    let  mut  stacklim : rlimit = rlimit { rlim_cur: 0, rlim_max: 0 };
-    
+unsafe fn getmaxvm(softlim: *mut RLIMTYPE, hardlim: *mut libc::c_char) -> i32 {
+    let mut datalim: rlimit = rlimit {
+        rlim_cur: 0,
+        rlim_max: 0,
+    };
+    let mut stacklim: rlimit = rlimit {
+        rlim_cur: 0,
+        rlim_max: 0,
+    };
+
     if getrlimit(RLIMIT_DATA, &mut datalim) < 0 {
         return -1;
     }
-    if getrlimit (RLIMIT_STACK, &mut  stacklim) < 0 {
+    if getrlimit(RLIMIT_STACK, &mut stacklim) < 0 {
         return -1;
-    }    
-        *softlim = (datalim.rlim_cur as i64 / 1024 as i64) + (stacklim.rlim_cur as i64/1024 as i64);
-        *hardlim = ((datalim.rlim_max as i64) /1024 as i64) as libc::c_char + (stacklim.rlim_max as i64/1024 as i64) as libc::c_char;
+    }
+    *softlim = (datalim.rlim_cur as i64 / 1024 as i64) + (stacklim.rlim_cur as i64 / 1024 as i64);
+    *hardlim = ((datalim.rlim_max as i64) / 1024 as i64) as libc::c_char
+        + (stacklim.rlim_max as i64 / 1024 as i64) as libc::c_char;
     return 0;
 }
- 
+
 fn filesize(_valuep: *mut rlim_t) -> i32 {
     unsafe {
         *__errno_location() = libc::EINVAL;

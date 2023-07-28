@@ -1670,6 +1670,21 @@ extern "C" {
     pub fn iswpunct(__wc: wint_t) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    pub fn iswspace(__wc: wint_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswupper(__wc: wint_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswxdigit(__wc: wint_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn iswblank(__wc: wint_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn wctype(__property: *const ::std::os::raw::c_char) -> wctype_t;
+}
+extern "C" {
     pub fn iswalnum_l(__wc: wint_t, __locale: locale_t) -> ::std::os::raw::c_int;
 }
 extern "C" {
