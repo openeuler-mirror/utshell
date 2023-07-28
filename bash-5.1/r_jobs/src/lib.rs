@@ -2513,8 +2513,31 @@ pub unsafe extern "C"  fn  set_tty_state() -> c_int {
     return 0 ;
 }
 
+unsafe extern "C" fn find_last_proc(mut job: c_int, mut block: c_int) -> *mut PROCESS 
+{
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
+    if block != 0 {
+        BLOCK_CHILD (&mut  set, &mut oset);
+    }
+    p = (**jobs.offset(job as isize)).pipe;
+    while !p.is_null() && (*p).next != (**jobs.offset(job as isize)).pipe {
+        p = (*p).next;
+    }
+    if block != 0 {
+        UNBLOCK_CHILD (&mut oset);
+    }
+    return p;
+}
 
+unsafe extern "C" fn find_last_pid(mut job: c_int, mut block: c_int) -> pid_t 
+{
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    p = find_last_proc(job, block);
+    return (*p).pid;
+}
 
 
 
