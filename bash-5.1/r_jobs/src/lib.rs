@@ -2317,8 +2317,54 @@ pub unsafe extern "C" fn make_child(
         throw_to_top_level();
     }
 
-
-
+    if pid == 0 as c_int {
+        let mut mypid: pid_t = 0;
+        mypid = getpid();
+        unset_bash_input(0 as c_int);
+        ::std::ptr::write_volatile(
+            &mut interrupt_state as *mut sig_atomic_t,
+            0 as c_int,
+        );
+        restore_sigmask();
+        if job_control != 0 {
+            if pipeline_pgrp == 0 as c_int {
+                pipeline_pgrp = mypid;
+            }
+            if pipeline_pgrp == shell_pgrp {
+                ignore_tty_job_signals();
+            } else {
+                default_tty_job_signals();
+            }
+            if setpgid(mypid, pipeline_pgrp) < 0 as c_int {
+                sys_error(
+                    dcgettext(
+                        0 as *const c_char,
+                        b"child setpgid (%ld to %ld)\0" as *const u8
+                            as *const c_char,
+                        5 as c_int,
+                    ),
+                    mypid as libc::c_long,
+                    pipeline_pgrp as libc::c_long,
+                );
+            }
+            if flags & 4 as c_int == 0 as c_int
+                && async_p == 0 as c_int && pipeline_pgrp != shell_pgrp
+                && subshell_environment & (0x1 as c_int | 0x10 as c_int)
+                    == 0 as c_int && running_in_background == 0 as c_int
+            {
+                give_terminal_to(pipeline_pgrp, 0 as c_int);
+            }
+            if pipeline_pgrp == mypid {
+                pipe_read(pgrp_pipe.as_mut_ptr());
+            }
+        } else {
+            if pipeline_pgrp == 0 as c_int {
+                pipeline_pgrp = shell_pgrp;
+            }
+            default_tty_job_signals();
+        }
+        sh_closepipe(pgrp_pipe.as_mut_ptr());
+    }
 
 }
 
