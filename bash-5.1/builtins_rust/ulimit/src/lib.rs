@@ -645,40 +645,36 @@ unsafe fn ulimit_internal(
         return EXECUTION_SUCCESS!();
     }
 
-  let c_str_hard = CString::new("hard").unwrap();
-  let c_str_soft = CString::new("soft").unwrap();
-  let c_str_unlimited = CString::new("unlimited").unwrap();
-  if unsafe{STREQ!(cmdarg,c_str_hard.as_ptr() as *mut libc::c_char )}{
-    real_limit = hard_limit;
-  }
+    let c_str_hard = CString::new("hard").unwrap();
+    let c_str_soft = CString::new("soft").unwrap();
+    let c_str_unlimited = CString::new("unlimited").unwrap();
+    if unsafe { STREQ!(cmdarg, c_str_hard.as_ptr() as *mut libc::c_char) } {
+        real_limit = hard_limit;
+    } else if unsafe { STREQ!(cmdarg, c_str_soft.as_ptr() as *mut libc::c_char) } {
+        real_limit = soft_limit;
+    } else if unsafe { STREQ!(cmdarg, c_str_unlimited.as_ptr() as *mut libc::c_char) } {
+        real_limit = RLIM_INFINITY!();
+    } else if unsafe { all_digits(cmdarg) } != 0 {
+        limit = unsafe { string_to_rlimtype(cmdarg) as i64 };
+        block_factor = BLOCKSIZE!(limits[limind as usize].block_factor);
+        real_limit = limit * block_factor as i64;
 
-  else if unsafe{STREQ!(cmdarg, c_str_soft.as_ptr() as *mut libc::c_char)}{
-    real_limit = soft_limit;
-  }
-  else if unsafe{STREQ!(cmdarg, c_str_unlimited.as_ptr() as *mut libc::c_char)}{
-    real_limit = RLIM_INFINITY!();
-  }
-
-  else if unsafe {all_digits(cmdarg)} !=0 {
-    limit = unsafe {string_to_rlimtype (cmdarg) as i64};
-    block_factor =  BLOCKSIZE!(limits[limind as usize].block_factor);
-    real_limit = limit * block_factor as i64;
-
-    if (real_limit / block_factor as i64) != limit {
-        let c_str_limit =CString::new("limit").unwrap();
-	    unsafe {sh_erange (cmdarg,c_str_limit.as_ptr() as *mut libc::c_char)};
-	    return EXECUTION_FAILURE!();
-	}
-  }
-
-  else {
-    sh_invalidnum (cmdarg);
-    return EXECUTION_FAILURE!();
-  }
-    if set_limit (limind, real_limit, mode) < 0 {
-            builtin_error(b"%s: cannot modify limit : %s\0" as *const u8 as  *const libc::c_char,  limits[limind as usize].description, 
-             strerror(*__errno_location()) as *const libc::c_char);
-    return EXECUTION_FAILURE!();
+        if (real_limit / block_factor as i64) != limit {
+            let c_str_limit = CString::new("limit").unwrap();
+            unsafe { sh_erange(cmdarg, c_str_limit.as_ptr() as *mut libc::c_char) };
+            return EXECUTION_FAILURE!();
+        }
+    } else {
+        sh_invalidnum(cmdarg);
+        return EXECUTION_FAILURE!();
+    }
+    if set_limit(limind, real_limit, mode) < 0 {
+        builtin_error(
+            b"%s: cannot modify limit : %s\0" as *const u8 as *const libc::c_char,
+            limits[limind as usize].description,
+            strerror(*__errno_location()) as *const libc::c_char,
+        );
+        return EXECUTION_FAILURE!();
     }
     return EXECUTION_SUCCESS!();
 }
