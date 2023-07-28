@@ -1456,9 +1456,9 @@ pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
             strlist_dispose(sl);
         }
 
-    compspec_dispose (cs);
-    return rval;
-  }
+        compspec_dispose(cs);
+        return rval;
+    }
 }
 
 #[no_mangle]
@@ -1500,8 +1500,6 @@ pub extern "C" fn r_compopt_builtin(listt: *mut WordList) -> i32 {
                     sh_invalidoptname (list_optarg);
                     return EX_USAGE;
                 }
-                let compopts:CompoptArray=CompoptArray::new();
-                *opts |= compopts.compoptArr[oind as usize].optflag as i32;
             }
             'D'=>{
               Dflag = 1;
@@ -1517,8 +1515,6 @@ pub extern "C" fn r_compopt_builtin(listt: *mut WordList) -> i32 {
               return EX_USAGE;
             }
         }
-        opt = internal_getopt (list, CString::new("+o:DEI").unwrap().as_ptr() as * mut c_char);
-    }
 
     list = loptend.clone();
 
@@ -1537,7 +1533,6 @@ pub extern "C" fn r_compopt_builtin(listt: *mut WordList) -> i32 {
             builtin_error (CString::new("not currently executing completion function").unwrap().as_ptr());
             return EXECUTION_FAILURE!();
         }
-        cs = pcomp_curcs.clone();
 
         if opts_on == 0 && opts_off == 0 {
             r_print_compopts (pcomp_curcmd, cs, 1);
@@ -1588,4 +1583,3 @@ pub extern "C" fn r_compopt_builtin(listt: *mut WordList) -> i32 {
     return ret;
   }
 }
-
