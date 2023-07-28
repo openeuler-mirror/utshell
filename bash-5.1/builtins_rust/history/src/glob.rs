@@ -4111,6 +4111,27 @@ extern "C" {
 extern "C" {
     pub fn signal_in_progress(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
 }
+extern "C" {
+    pub fn set_trap_state(arg1: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn next_pending_trap(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn first_pending_trap() -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn clear_pending_traps();
+}
+extern "C" {
+    pub fn any_signals_trapped() -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn check_signals();
+}
+extern "C" {
+    pub fn check_signals_and_traps();
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct direct {
