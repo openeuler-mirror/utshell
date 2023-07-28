@@ -738,152 +738,16 @@ pub const INT16_MAX: u32 = 32767;
 pub const INT32_MAX: u32 = 2147483647;
 pub const UINT8_MAX: u32 = 255;
 pub const UINT16_MAX: u32 = 65535;
-#[no_mangle]
-pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
-
-    let mut flags: c_int = 0;
-    let mut opt: c_int;
-    let mut result: c_int;
-
-    let filename: *mut c_char;
-    let mut delete_arg: *mut c_char = PT_NULL as *mut c_char;
-    let mut range: *mut c_char;
-
-    let mut delete_offset: c_long = 0;
-
-unsafe {
-    reset_internal_getopt();
-    let opt_str = CString::new("acd:npsrw").unwrap();
-    opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
-    while  opt != -1 {
-        let opt_char:char=char::from(opt as u8);
-        match opt_char {
-            'a' => flags |= AFLAG,
-            'c' => flags |= CFLAG,
-            'n' => flags |= NFLAG,
-            'r' => flags |= RFLAG,
-            'w' => flags |= WFLAG,
-            's' => flags |= SFLAG,
-            'd' => {
-                flags |= DFLAG;
-                delete_arg = list_optarg;
-            }
-            'p' => flags |= PFLAG,
-            _ => {
-                if opt == -99 {
-                    r_builtin_help();
-                    return EX_USAGE;
-                }
-            r_builtin_usage ();
-            return EX_USAGE;
-            }
-        }
-        opt = internal_getopt (list, opt_str.as_ptr() as * mut c_char);
-    }
-    list = loptend;
-
-    opt = flags & (AFLAG | RFLAG | WFLAG | NFLAG);
-    if opt != 0 && opt != AFLAG && opt != RFLAG && opt != WFLAG && opt != NFLAG {
-        let c_err = CString::new("cannot use more than one of -anrw").unwrap();
-        builtin_error( c_err.as_ptr());
-        return EXECUTION_FAILURE;
-    }
-
-    if (flags & CFLAG) != 0 {
-        bash_clear_history();
-        if list.is_null() {
-            return EXECUTION_SUCCESS;
-        }
-    }
-
-    if (flags & SFLAG) != 0 {
-        if !list.is_null() {
-            push_history(list);
-        }
-        return EXECUTION_SUCCESS;
-    }
-    else if (flags & PFLAG) != 0 {
-        if !list.is_null() {
-            return expand_and_print_history(list);
-        }
-        return r_sh_chkwrite(EXECUTION_SUCCESS);
-    } 
-    else if (flags & DFLAG) != 0 {
-        let c_tmp = if *delete_arg == b'-' as c_char {delete_arg.offset(1 as isize ) as *mut c_char} else {delete_arg};
-        range = libc::strchr(c_tmp, b'-' as c_int);
-        if  !range.is_null() {
-            let mut delete_start: c_long = 0;
-            let mut delete_end: c_long = 0;
-
-        *range = b'\0' as c_char;
-        range = (range as usize + 1) as *mut c_char;
-        if legal_number(delete_arg, std::mem::transmute(&delete_start)) == 0 ||
-        legal_number(range, std::mem::transmute(&delete_end)) == 0 {
-            *((range as usize - 1) as *mut c_char) = b'-' as c_char;
-            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
-            return EXECUTION_FAILURE;
-        }
-        if *delete_arg == b'-' as c_char && delete_start < 0 {
-            delete_start += history_length as c_long;
-            if delete_start < history_base as c_long {
-                r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
-                return EXECUTION_FAILURE;
-            }
-        } else if delete_start > 0 {
-            delete_start -= history_base as c_long;
-        }
-        if delete_start < 0 || delete_start >= history_length as c_long {
-            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
-            return EXECUTION_FAILURE;
-        }
-        if *range == b'-' as c_char && delete_end < 0 {
-            delete_end += history_length as c_long;
-            if delete_end < history_base as c_long {
-                r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
-                return EXECUTION_FAILURE;
-            }
-        } else if delete_end > 0 {
-            delete_end -= history_base as c_long;
-        }
-
-        if delete_end < 0 || delete_end >= history_length as c_long {
-            r_sh_erange(range, "history position\0".as_ptr() as *mut c_char);
-            return EXECUTION_FAILURE;
-        }
-        result = bash_delete_history_range(delete_start as c_int, delete_end as c_int);
-        if where_history() > history_length {
-            history_set_pos(history_length);
-        }
-
-        return if result != 0 {EXECUTION_SUCCESS} else {EXECUTION_FAILURE};
-        }
-     else if (flags & DFLAG) != 0 {
-        if legal_number(delete_arg, &mut delete_offset) == 0 {
-            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
-            return EXECUTION_FAILURE;
-        }
-
-        if *delete_arg == b'-' as c_char && delete_offset < 0 {
-            let ind = history_length + delete_offset as c_int;
-            if ind < history_base {
-                r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
-                return EXECUTION_FAILURE;
-            }
-            opt = ind + history_base;
-        } else if delete_offset < history_base as c_long ||
-            (delete_offset >= (history_base + history_length) as c_long) {
-            r_sh_erange(delete_arg, "history position\0".as_ptr() as *mut c_char);
-            return EXECUTION_FAILURE;
-        } else {
-            opt = delete_offset as c_int;
-        }
-        result = bash_delete_histent(opt - history_base);
-        if where_history() > history_length {
-            history_set_pos(history_length);
-        }
-        return if result != 0 {EXECUTION_FAILURE} else {EXECUTION_SUCCESS};
-    }
-}
+pub const UINT32_MAX: u32 = 4294967295;
+pub const INT_LEAST8_MIN: i32 = -128;
+pub const INT_LEAST16_MIN: i32 = -32768;
+pub const INT_LEAST32_MIN: i32 = -2147483648;
+pub const INT_LEAST8_MAX: u32 = 127;
+pub const INT_LEAST16_MAX: u32 = 32767;
+pub const INT_LEAST32_MAX: u32 = 2147483647;
+pub const UINT_LEAST8_MAX: u32 = 255;
+pub const UINT_LEAST16_MAX: u32 = 65535;
+pub const UINT_LEAST32_MAX: u32 = 4294967295;
 pub const INT_FAST8_MIN: i32 = -128;
 pub const INT_FAST16_MIN: i64 = -9223372036854775808;
 pub const INT_FAST32_MIN: i64 = -9223372036854775808;

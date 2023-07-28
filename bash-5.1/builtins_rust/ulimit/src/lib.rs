@@ -847,34 +847,32 @@ fn getmaxuprc(valuep: *mut rlim_t) -> i32 {
     };
 }
 
-fn print_all_limits (mut mode : i32) {
-    let mut  i : i32 ;
-    let mut softlim : RLIMTYPE = 0;
-    let mut hardlim : RLIMTYPE = 0;
-  
-    if mode == 0
-    {
+fn print_all_limits(mut mode: i32) {
+    let mut i: i32;
+    let mut softlim: RLIMTYPE = 0;
+    let mut hardlim: RLIMTYPE = 0;
+
+    if mode == 0 {
         mode = mode | LIMIT_SOFT!();
     }
     i = 0;
-    while limits[i as usize].option >0 {
-
+    while limits[i as usize].option > 0 {
         if get_limit(i, &mut softlim, &mut hardlim) == 0 {
             if mode & LIMIT_SOFT!() != 0 {
-                printone(i,softlim,1);
+                printone(i, softlim, 1);
+            } else {
+                printone(i, hardlim, 1);
             }
-            else {
-                printone(i, hardlim,1);
+        } else if unsafe { *__errno_location() != libc::EINVAL } {
+            unsafe {
+                builtin_error(
+                    b"%s: cannot get limit : %s\0" as *const u8 as *const libc::c_char,
+                    limits[i as usize].description,
+                    strerror(*__errno_location()) as *const libc::c_char,
+                );
             }
         }
-        else if unsafe {
-            *__errno_location() != libc::EINVAL } {
-                unsafe {
-                    builtin_error(b"%s: cannot get limit : %s\0" as *const u8 as  *const libc::c_char,  limits[i as usize].description, 
-                     strerror(*__errno_location()) as *const libc::c_char);
-                }
-        }
-     i = i+1;
+        i = i + 1;
     }
 }
 
