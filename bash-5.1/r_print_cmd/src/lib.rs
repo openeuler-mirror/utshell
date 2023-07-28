@@ -1437,6 +1437,13 @@ pub unsafe extern "C" fn print_redirection(redirect:*mut REDIRECT)
             // cprintf_1("&> {}", *(*redirectee).word);
         }
 
+        r_instruction_r_append_err_and_out  =>{
+            let mut str = format!("&>> {}\0", CStr::from_ptr((*redirectee).word).to_str().unwrap());
+            cprintf_1(str.as_mut_ptr() as *mut c_char);
+            // cprintf_1("&>> {}", *(*redirectee).word);
+        }
+        
+        _ =>{}
 
     }
 
