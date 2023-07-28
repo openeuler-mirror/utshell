@@ -1458,3 +1458,14 @@ pub unsafe extern "C" fn reset_locals()
     printing_connection = 0;
     deferred_heredocs = 0 as *mut REDIRECT;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn newline(string: *mut c_char)
+{
+    cprintf_1(b"\n\0" as *const u8 as *const i8);
+    indent(indentation);
+    if !string.is_null() && *string as c_int != 0
+    {
+        cprintf_1(string);
+    }
+}

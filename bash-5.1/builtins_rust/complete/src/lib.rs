@@ -1560,30 +1560,41 @@ pub extern "C" fn r_compopt_builtin(listt: *mut WordList) -> i32 {
           l=list.clone();
       }
 
-      while l != std::ptr::null_mut() {
-          cs = progcomp_search ((*((*list).word)).word);
-          if cs == std::ptr::null_mut() {
-            builtin_error (CString::new("%s: no completion specification").unwrap().as_ptr(), (*((*list).word)).word);
-            ret = EXECUTION_FAILURE!();
-          l = (*l).next;
-            continue;
-          }
-          if opts_on == 0 && opts_off == 0 {
-            r_print_compopts ((*((*list).word)).word, cs, 1);
-          l = (*l).next;
-            continue;			/* XXX -- fill in later */
-          }
-
-          /* Set the compspec options */
-          pcomp_set_compspec_options (cs, opts_on, 1);
-          pcomp_set_compspec_options (cs, opts_off, 0);
-          l = (*l).next;
+        if wl != std::ptr::null_mut() {
+            l = wl.clone();
+        } else {
+            l = list.clone();
         }
 
-    if wl != std::ptr::null_mut() {
-      dispose_words (wl);
-    }
+        while l != std::ptr::null_mut() {
+            cs = progcomp_search((*((*list).word)).word);
+            if cs == std::ptr::null_mut() {
+                builtin_error(
+                    CString::new("%s: no completion specification")
+                        .unwrap()
+                        .as_ptr(),
+                    (*((*list).word)).word,
+                );
+                ret = EXECUTION_FAILURE!();
+                l = (*l).next;
+                continue;
+            }
+            if opts_on == 0 && opts_off == 0 {
+                r_print_compopts((*((*list).word)).word, cs, 1);
+                l = (*l).next;
+                continue; /* XXX -- fill in later */
+            }
 
-    return ret;
-  }
+            /* Set the compspec options */
+            pcomp_set_compspec_options(cs, opts_on, 1);
+            pcomp_set_compspec_options(cs, opts_off, 0);
+            l = (*l).next;
+        }
+
+        if wl != std::ptr::null_mut() {
+            dispose_words(wl);
+        }
+
+        return ret;
+    }
 }
