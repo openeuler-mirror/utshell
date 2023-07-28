@@ -561,21 +561,24 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32 {
         }
     }
 
-  for d in 0..ncmd {
-    //as *mut ULCMD) as ULCMD).cmd);
-      let cmm = *((cmdlist as usize + (d as usize )*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD;
-      let _dmd = cmm.cmd;
+    for d in 0..ncmd {
+        //as *mut ULCMD) as ULCMD).cmd);
+        let cmm = *((cmdlist as usize + (d as usize) * std::mem::size_of::<ULCMD>()) as *mut ULCMD)
+            as ULCMD;
+        let _dmd = cmm.cmd;
 
-      limind = _findlim ((*cmdlist.offset(d as isize)).cmd);
-      if limind == -1 {
-        unsafe {
-            builtin_error(b"%s: bad command : %s\0" as *const u8 as  *const libc::c_char, 
-            (*cmdlist.offset(d as isize)).cmd, 
-            strerror(*__errno_location()) as *const libc::c_char);
+        limind = _findlim((*cmdlist.offset(d as isize)).cmd);
+        if limind == -1 {
+            unsafe {
+                builtin_error(
+                    b"%s: bad command : %s\0" as *const u8 as *const libc::c_char,
+                    (*cmdlist.offset(d as isize)).cmd,
+                    strerror(*__errno_location()) as *const libc::c_char,
+                );
+            }
+            return EX_USAGE;
         }
-        return EX_USAGE;
-      }
-  }
+    }
 
   for d in 0..ncmd {
     let dmd = (*cmdlist.offset(d as isize)).cmd;
