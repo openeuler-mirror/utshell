@@ -2470,4 +2470,66 @@ static mut shell_tty_info: libc::termios = libc::termios {
     c_ospeed: 0,
 };
 
+#[macro_export]
+macro_rules! input_tty {
+    () => {
+        if shell_tty != -1 { shell_tty } else { fileno(stderr) }
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C"  fn  get_tty_state() -> c_int {
+    let mut tty: c_int = 0;
+
+    tty = input_tty!();
+    if tty != -1 {
+        if libc::tcgetattr(tty, &mut shell_tty_info) < 0 {
+            return -(1 as c_int);
+        }
+        if check_window_size != 0 {
+            get_new_window_size(0 as c_int, 0 as *mut c_int, 0 as *mut c_int);
+        }
+    }
+    return 0 as c_int;
+}
+
+#[no_mangle]
+pub unsafe extern "C"  fn  set_tty_state() -> c_int {
+    let mut tty: c_int = 0;
+    tty = input_tty!();
+    if tty != -1 {
+        if libc::tcsetattr(tty, 1 as c_int, &mut shell_tty_info) < 0 as c_int {
+            if interactive != 0 {
+                sys_error(
+                    b"[%ld: %d (%d)] tcsetattr\0" as *const u8 as *const c_char,
+                    getpid() as libc::c_long,
+                    shell_level,
+                    tty,
+                );
+            }
+            return -1;
+        }
+    }
+    return 0 ;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
