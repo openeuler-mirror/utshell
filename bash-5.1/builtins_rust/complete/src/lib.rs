@@ -1307,54 +1307,56 @@ pub extern "C" fn r_print_compitem(item: *mut BUCKET_CONTENTS) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn r_print_all_completions ()
-{
-  unsafe {
-    progcomp_walk (r_print_compitem);
-  }
-}
-
-#[no_mangle]
-pub extern "C" fn r_print_cmd_completions (list:* mut WordList)->i32
-{
-  let mut l:* mut WordList;
-  let mut cs:* mut COMPSPEC;
-  let mut ret:i32;
-
-  unsafe {
-      ret = EXECUTION_SUCCESS!();
-      l = list.clone();
-      while l != std::ptr::null_mut() {
-        cs = progcomp_search ((*(*l).word).word);
-        if cs != std::ptr::null_mut() {
-            r_print_one_completion ((*(*l).word).word, cs);
-        } else {
-            builtin_error (CString::new("%s: no completion specification").unwrap().as_ptr(),(*(*l).word).word);
-            ret = EXECUTION_FAILURE!();
-        }
-        l = (*l).next;
-      }
-      return sh_chkwrite (ret);
-  }
-}
-
-#[no_mangle]
-pub extern "C" fn r_compgen_builtin (listt:* mut WordList)->i32
-{
-  let mut rval:i32;
-  let mut acts:c_ulong=0;
-  let mut copts:c_ulong=0;
-  let mut cs: * mut COMPSPEC;
-  let mut sl:* mut STRINGLIST;
-  let word:* mut c_char;
-  let mut matches:* mut * mut c_char;
-  let old_line:* mut c_char;
-  let old_ind:i32;
-  unsafe {
-    let mut list:* mut WordList=listt.clone();
-    if list == std::ptr::null_mut() {
-      return EXECUTION_SUCCESS!();
+pub extern "C" fn r_print_all_completions() {
+    unsafe {
+        progcomp_walk(r_print_compitem);
     }
+}
+
+#[no_mangle]
+pub extern "C" fn r_print_cmd_completions(list: *mut WordList) -> i32 {
+    let mut l: *mut WordList;
+    let mut cs: *mut COMPSPEC;
+    let mut ret: i32;
+
+    unsafe {
+        ret = EXECUTION_SUCCESS!();
+        l = list.clone();
+        while l != std::ptr::null_mut() {
+            cs = progcomp_search((*(*l).word).word);
+            if cs != std::ptr::null_mut() {
+                r_print_one_completion((*(*l).word).word, cs);
+            } else {
+                builtin_error(
+                    CString::new("%s: no completion specification")
+                        .unwrap()
+                        .as_ptr(),
+                    (*(*l).word).word,
+                );
+                ret = EXECUTION_FAILURE!();
+            }
+            l = (*l).next;
+        }
+        return sh_chkwrite(ret);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
+    let mut rval: i32;
+    let mut acts: c_ulong = 0;
+    let mut copts: c_ulong = 0;
+    let mut cs: *mut COMPSPEC;
+    let mut sl: *mut STRINGLIST;
+    let word: *mut c_char;
+    let mut matches: *mut *mut c_char;
+    let old_line: *mut c_char;
+    let old_ind: i32;
+    unsafe {
+        let mut list: *mut WordList = listt.clone();
+        if list == std::ptr::null_mut() {
+            return EXECUTION_SUCCESS!();
+        }
 
     Garg=std::ptr::null_mut();
     Warg=std::ptr::null_mut();
