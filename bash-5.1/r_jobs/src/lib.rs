@@ -2364,8 +2364,32 @@ pub unsafe extern "C" fn make_child(
             default_tty_job_signals();
         }
         sh_closepipe(pgrp_pipe.as_mut_ptr());
+    }  else {
+        if job_control != 0 {
+            if pipeline_pgrp == 0 as c_int {
+                pipeline_pgrp = pid;
+            }
+            setpgid(pid, pipeline_pgrp);
+        } else if pipeline_pgrp == 0 as c_int {
+            pipeline_pgrp = shell_pgrp;
+        }
+        add_process(command, pid);
+        if async_p != 0 {
+            ::std::ptr::write_volatile(&mut last_asynchronous_pid as *mut pid_t, pid);
+        }
+        delete_old_job(pid);
+        bgp_delete(pid);
+        ::std::ptr::write_volatile(&mut last_made_pid as *mut pid_t, pid);
+        js.c_totforked += 1;
+        js.c_living += 1;
+        sigprocmask(
+            2 as c_int,
+            &mut oset,
+            0 as *mut libc::c_void as *mut sigset_t,
+        );
     }
-
+    // println!("make child pid {}",pid);
+    return pid;
 }
 
 
