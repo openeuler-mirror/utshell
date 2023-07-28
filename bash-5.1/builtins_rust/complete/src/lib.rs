@@ -1388,13 +1388,21 @@ pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
         word = wordtmp.as_ptr() as * mut c_char;
     }
 
-    if Farg != std::ptr::null_mut() {
-      builtin_error (CString::new("warning: -F option may not work as you expect").unwrap().as_ptr());
-    }
+        if Farg != std::ptr::null_mut() {
+            builtin_error(
+                CString::new("warning: -F option may not work as you expect")
+                    .unwrap()
+                    .as_ptr(),
+            );
+        }
 
-    if Carg != std::ptr::null_mut() {
-      builtin_error (CString::new("warning: -C option may not work as you expect").unwrap().as_ptr());
-    }
+        if Carg != std::ptr::null_mut() {
+            builtin_error(
+                CString::new("warning: -C option may not work as you expect")
+                    .unwrap()
+                    .as_ptr(),
+            );
+        }
 
         /* If we get here, we need to build a compspec and evaluate it. */
         cs = compspec_create();
@@ -1410,17 +1418,17 @@ pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
         (*cs).command = STRDUP(Carg);
         (*cs).filterpat = STRDUP(Xarg);
 
-    rval = EXECUTION_FAILURE!();
+        rval = EXECUTION_FAILURE();
 
-    /* probably don't have to save these, just being safe */
-    old_line = pcomp_line;
-    old_ind = pcomp_ind;
-    pcomp_line = std::ptr::null_mut();
-    pcomp_ind = 0;
-    let compgenStr=CString::new("compgen").unwrap();
-    sl = gen_compspec_completions (cs, compgenStr.as_ptr(), word, 0, 0, std::ptr::null_mut());
-    pcomp_line = old_line;
-    pcomp_ind = old_ind;
+        /* probably don't have to save these, just being safe */
+        old_line = pcomp_line;
+        old_ind = pcomp_ind;
+        pcomp_line = std::ptr::null_mut();
+        pcomp_ind = 0;
+        let compgenStr = CString::new("compgen").unwrap();
+        sl = gen_compspec_completions(cs, compgenStr.as_ptr(), word, 0, 0, std::ptr::null_mut());
+        pcomp_line = old_line;
+        pcomp_ind = old_ind;
 
     /* If the compspec wants the bash default completions, temporarily
       turn off programmable completion and call the bash completion code. */
