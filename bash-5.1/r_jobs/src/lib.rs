@@ -2408,8 +2408,39 @@ pub unsafe extern "C"  fn  ignore_tty_job_signals() {
     );
 }
 
-
-
+#[no_mangle]
+pub unsafe extern "C"  fn  default_tty_job_signals() {
+    if signal_is_trapped(SIGTSTP as c_int) == 0 
+        && signal_is_hard_ignored(SIGTSTP as c_int) != 0
+    {
+        set_signal_handler(
+            SIGTSTP as c_int,
+            SIG_IGN!() 
+        );
+    } else {
+        set_signal_handler(SIGTSTP as c_int, &mut None);
+    }
+    if signal_is_trapped(SIGTTIN as c_int) == 0 
+        && signal_is_hard_ignored(SIGTTIN as c_int) != 0
+    {
+        set_signal_handler(
+            SIGTTIN as c_int,
+            SIG_IGN!() 
+        );
+    } else {
+        set_signal_handler(SIGTTIN as c_int, &mut None);
+    }
+    if signal_is_trapped(SIGTTOU as c_int) == 0 
+        && signal_is_hard_ignored(SIGTTOU as c_int) != 0
+    {
+        set_signal_handler(
+            SIGTTOU as c_int,
+            SIG_IGN!() 
+        );
+    } else {
+        set_signal_handler(SIGTTOU as c_int, &mut None);
+    };
+}
 
 
 
