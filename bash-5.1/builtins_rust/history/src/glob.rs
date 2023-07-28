@@ -681,6 +681,19 @@ pub const __sigevent_t_defined: u32 = 1;
 pub const __SIGEV_MAX_SIZE: u32 = 64;
 pub const __have_pthread_attr_t: u32 = 1;
 pub const _BITS_SIGEVENT_CONSTS_H: u32 = 1;
+pub const NSIG: u32 = 33;
+pub const _BITS_SIGACTION_H: u32 = 1;
+pub const SA_NOCLDSTOP: u32 = 1;
+pub const SA_NOCLDWAIT: u32 = 2;
+pub const SA_SIGINFO: u32 = 4;
+pub const SA_ONSTACK: u32 = 134217728;
+pub const SA_RESTART: u32 = 268435456;
+pub const SA_NODEFER: u32 = 1073741824;
+pub const SA_RESETHAND: u32 = 2147483648;
+pub const SA_INTERRUPT: u32 = 536870912;
+pub const SA_NOMASK: u32 = 1073741824;
+pub const SA_ONESHOT: u32 = 2147483648;
+pub const SA_STACK: u32 = 134217728;
 #[no_mangle]
 pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
 

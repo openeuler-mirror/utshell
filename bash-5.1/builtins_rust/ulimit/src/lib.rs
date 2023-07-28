@@ -580,19 +580,18 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32 {
         }
     }
 
-  for d in 0..ncmd {
-    let dmd = (*cmdlist.offset(d as isize)).cmd;
-    let  drg = (*cmdlist.offset(d as isize)).arg;
-    // let dmd =   (*((cmdlist as usize + (d as usize )*std::mem::size_of::<ULCMD>())
-    // as *mut ULCMD) as ULCMD).cmd;
-    // let drg =  (*((cmdlist as usize + (d as usize )*std::mem::size_of::<ULCMD>())
-    // as *mut ULCMD) as ULCMD).arg;
-    if (ulimit_internal (dmd,drg, mode, d-1))  == EXECUTION_FAILURE!() {
-        return EXECUTION_FAILURE!();
-       }
+    for d in 0..ncmd {
+        let dmd = (*cmdlist.offset(d as isize)).cmd;
+        let drg = (*cmdlist.offset(d as isize)).arg;
+        // let dmd =   (*((cmdlist as usize + (d as usize )*std::mem::size_of::<ULCMD>())
+        // as *mut ULCMD) as ULCMD).cmd;
+        // let drg =  (*((cmdlist as usize + (d as usize )*std::mem::size_of::<ULCMD>())
+        // as *mut ULCMD) as ULCMD).arg;
+        if (ulimit_internal(dmd, drg, mode, d - 1)) == EXECUTION_FAILURE!() {
+            return EXECUTION_FAILURE!();
+        }
     }
-      return EXECUTION_SUCCESS!();
-  
+    return EXECUTION_SUCCESS!();
 }
 
 unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32, multiple : i32) -> i32 {
