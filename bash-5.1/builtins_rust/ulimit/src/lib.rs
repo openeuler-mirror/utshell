@@ -594,51 +594,56 @@ pub unsafe extern "C" fn r_ulimit_builtin(mut list: *mut WordList) -> i32 {
     return EXECUTION_SUCCESS!();
 }
 
-unsafe fn ulimit_internal (cmd : i32 , cmdarg :*mut libc::c_char,mut  mode : i32, multiple : i32) -> i32 {
-    let opt : i32 ;
-    let limind : i32 ;
-    let setting : i32 ;
-    let block_factor : i32 ;
-    let mut soft_limit : RLIMTYPE = 0;
-    let mut  hard_limit : RLIMTYPE  =0;
-    let mut real_limit : RLIMTYPE = 0;
-    let limit : RLIMTYPE;
-   
+unsafe fn ulimit_internal(
+    cmd: i32,
+    cmdarg: *mut libc::c_char,
+    mut mode: i32,
+    multiple: i32,
+) -> i32 {
+    let opt: i32;
+    let limind: i32;
+    let setting: i32;
+    let block_factor: i32;
+    let mut soft_limit: RLIMTYPE = 0;
+    let mut hard_limit: RLIMTYPE = 0;
+    let mut real_limit: RLIMTYPE = 0;
+    let limit: RLIMTYPE;
+
     if cmdarg != std::ptr::null_mut() {
         setting = 1;
-    }
-    else {
+    } else {
         setting = 0;
     }
     limind = _findlim(cmd);
     if mode == 0 {
         if setting != 0 {
-            mode = LIMIT_HARD!()|LIMIT_SOFT!();
-        }
-        else {
+            mode = LIMIT_HARD!() | LIMIT_SOFT!();
+        } else {
             mode = LIMIT_SOFT!();
         }
     }
-  opt = get_limit (limind, &mut soft_limit, &mut hard_limit);
+    opt = get_limit(limind, &mut soft_limit, &mut hard_limit);
 
-  if opt < 0 {
-    unsafe {
-        builtin_error(b"%s: cannot get limit : %s\0" as *const u8 as  *const libc::c_char,  limits[limind as usize].description, 
-         strerror(*__errno_location()) as *const libc::c_char);
+    if opt < 0 {
+        unsafe {
+            builtin_error(
+                b"%s: cannot get limit : %s\0" as *const u8 as *const libc::c_char,
+                limits[limind as usize].description,
+                strerror(*__errno_location()) as *const libc::c_char,
+            );
+        }
+
+        return EXECUTION_FAILURE!();
     }
- 
-    return EXECUTION_FAILURE!();
-  }
 
-  if setting == 0 {
-      if (mode & LIMIT_SOFT!()) != 0 {   
-        printone (limind,soft_limit,multiple);
-      }
-      else {
-        printone (limind,hard_limit,multiple);
-      }
-    return EXECUTION_SUCCESS!();
-  }
+    if setting == 0 {
+        if (mode & LIMIT_SOFT!()) != 0 {
+            printone(limind, soft_limit, multiple);
+        } else {
+            printone(limind, hard_limit, multiple);
+        }
+        return EXECUTION_SUCCESS!();
+    }
 
   let c_str_hard = CString::new("hard").unwrap();
   let c_str_soft = CString::new("soft").unwrap();
