@@ -681,62 +681,59 @@ unsafe fn ulimit_internal(
     return EXECUTION_FAILURE!();
     }
     return EXECUTION_SUCCESS!();
-
 }
 
-fn get_limit (ind : i32, softlim : *mut RLIMTYPE, hardlim : *mut RLIMTYPE ) -> i32 { 
-    let mut value :  RLIMTYPE = 0 ;
-    let mut limit: rlimit = rlimit { rlim_cur: 1, rlim_max: 1 };
+fn get_limit(ind: i32, softlim: *mut RLIMTYPE, hardlim: *mut RLIMTYPE) -> i32 {
+    let mut value: RLIMTYPE = 0;
+    let mut limit: rlimit = rlimit {
+        rlim_cur: 1,
+        rlim_max: 1,
+    };
 
     if limits[ind as usize].parameter >= 256 {
         match limits[ind as usize].parameter {
             RLIMIT_FILESIZE!() => {
-                if filesize (((&mut value)  as *mut i64) as *mut u64) < 0 {
+                if filesize(((&mut value) as *mut i64) as *mut u64) < 0 {
                     return -1;
                 }
             }
             RLIMIT_PIPESIZE!() => {
-                if unsafe {
-                    pipesize (((&mut value)  as *mut i64) as *mut u64)} < 0 {
-                        return -1;
-                    }
-                
-            }
-            RLIMIT_OPENFILES!() => {
-                value = unsafe {getdtablesize()} as RLIMTYPE ;
-                
-            }
-            RLIMIT_VIRTMEM!() => {
-                return unsafe {getmaxvm(softlim, hardlim as *mut libc::c_char) };
-            }
-            RLIMIT_MAXUPROC!() => {
-                if getmaxuprc ((value as usize) as *mut u64) < 0 {
+                if unsafe { pipesize(((&mut value) as *mut i64) as *mut u64) } < 0 {
                     return -1;
                 }
-              
             }
-            _ => {
-                unsafe {
-                    *__errno_location() = libc::EINVAL;
+            RLIMIT_OPENFILES!() => {
+                value = unsafe { getdtablesize() } as RLIMTYPE;
+            }
+            RLIMIT_VIRTMEM!() => {
+                return unsafe { getmaxvm(softlim, hardlim as *mut libc::c_char) };
+            }
+            RLIMIT_MAXUPROC!() => {
+                if getmaxuprc((value as usize) as *mut u64) < 0 {
+                    return -1;
                 }
             }
+            _ => unsafe {
+                *__errno_location() = libc::EINVAL;
+            },
         }
         unsafe {
-            *softlim =  value;
+            *softlim = value;
             *hardlim = value;
         }
         return 0;
-      }
-    else{
+    } else {
         unsafe {
-        let ii = getrlimit(limits[ind as u32 as usize ].parameter as __rlimit_resource_t,
-              &mut limit);
-        if  ii < 0 {
-            return -1;
-        } 
+            let ii = getrlimit(
+                limits[ind as u32 as usize].parameter as __rlimit_resource_t,
+                &mut limit,
+            );
+            if ii < 0 {
+                return -1;
+            }
         }
         unsafe {
-           // limit.rlim_max as i64);
+            // limit.rlim_max as i64);
             *softlim = limit.rlim_cur as i64;
             *hardlim = limit.rlim_max as i64;
         }
