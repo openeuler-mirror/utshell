@@ -712,6 +712,21 @@ pub const __sigstack_defined: u32 = 1;
 pub const _BITS_PTHREADTYPES_COMMON_H: u32 = 1;
 pub const _THREAD_SHARED_TYPES_H: u32 = 1;
 pub const _BITS_PTHREADTYPES_ARCH_H: u32 = 1;
+pub const __SIZEOF_PTHREAD_MUTEX_T: u32 = 40;
+pub const __SIZEOF_PTHREAD_ATTR_T: u32 = 56;
+pub const __SIZEOF_PTHREAD_RWLOCK_T: u32 = 56;
+pub const __SIZEOF_PTHREAD_BARRIER_T: u32 = 32;
+pub const __SIZEOF_PTHREAD_MUTEXATTR_T: u32 = 4;
+pub const __SIZEOF_PTHREAD_COND_T: u32 = 48;
+pub const __SIZEOF_PTHREAD_CONDATTR_T: u32 = 4;
+pub const __SIZEOF_PTHREAD_RWLOCKATTR_T: u32 = 8;
+pub const __SIZEOF_PTHREAD_BARRIERATTR_T: u32 = 4;
+pub const __PTHREAD_MUTEX_LOCK_ELISION: u32 = 1;
+pub const __PTHREAD_MUTEX_NUSERS_AFTER_KIND: u32 = 0;
+pub const __PTHREAD_MUTEX_USE_UNION: u32 = 0;
+pub const __PTHREAD_RWLOCK_INT_FLAGS_SHARED: u32 = 1;
+pub const __PTHREAD_MUTEX_HAVE_PREV: u32 = 1;
+pub const _BITS_SIGTHREAD_H: u32 = 1;
 #[no_mangle]
 pub extern "C" fn r_history_glob(mut list: *mut WordList) -> i32 {
 
