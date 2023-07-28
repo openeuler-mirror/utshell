@@ -1439,22 +1439,22 @@ pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
             strvec_dispose(matches);
         }
 
-    /* This isn't perfect, but it's the best we can do, given what readline
-      exports from its set of completion utility functions. */
-    if (sl == std::ptr::null_mut() || (*sl).list_len == 0) && (copts & COPT_DEFAULT!()) !=0 {
-        matches = rl_completion_matches (word, rl_filename_completion_function);
-        strlist_dispose (sl);
-        sl = completions_to_stringlist (matches);
-        strvec_dispose (matches);
-      }
-
-    if sl != std::ptr::null_mut() {
-        if (*sl).list != std::ptr::null_mut() && (*sl).list_len !=0 {
-            rval = EXECUTION_SUCCESS!();
-            strlist_print (sl, std::ptr::null_mut());
+        /* This isn't perfect, but it's the best we can do, given what readline
+        exports from its set of completion utility functions. */
+        if (sl == std::ptr::null_mut() || (*sl).list_len == 0) && (copts & COPT_DEFAULT!()) != 0 {
+            matches = rl_completion_matches(word, rl_filename_completion_function);
+            strlist_dispose(sl);
+            sl = completions_to_stringlist(matches);
+            strvec_dispose(matches);
         }
-        strlist_dispose (sl);
-      }
+
+        if sl != std::ptr::null_mut() {
+            if (*sl).list != std::ptr::null_mut() && (*sl).list_len != 0 {
+                rval = EXECUTION_SUCCESS!();
+                strlist_print(sl, std::ptr::null_mut());
+            }
+            strlist_dispose(sl);
+        }
 
     compspec_dispose (cs);
     return rval;
@@ -1462,20 +1462,19 @@ pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn r_compopt_builtin (listt:* mut WordList)->i32
-{
-  let mut opts_on:i32=0;
-  let mut opts_off:i32=0;
-  let mut opts:* mut i32;
-  let mut opt:i32;
-  let mut oind:i32;
-  let mut ret:i32;
-  let mut Dflag:i32=0;
-  let mut Eflag:i32=0;
-  let mut Iflag:i32=0;
-  let mut l:* mut WordList;
-  let wl:* mut WordList;
-  let mut cs:* mut COMPSPEC;
+pub extern "C" fn r_compopt_builtin(listt: *mut WordList) -> i32 {
+    let mut opts_on: i32 = 0;
+    let mut opts_off: i32 = 0;
+    let mut opts: *mut i32;
+    let mut opt: i32;
+    let mut oind: i32;
+    let mut ret: i32;
+    let mut Dflag: i32 = 0;
+    let mut Eflag: i32 = 0;
+    let mut Iflag: i32 = 0;
+    let mut l: *mut WordList;
+    let mut wl: *mut WordList;
+    let mut cs: *mut COMPSPEC;
 
   ret = EXECUTION_SUCCESS!();
   unsafe {
