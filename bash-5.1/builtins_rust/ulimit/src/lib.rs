@@ -847,80 +847,89 @@ fn getmaxuprc(valuep: *mut rlim_t) -> i32 {
     };
 }
 
-fn print_all_limits (mut mode : i32) {
-    let mut  i : i32 ;
-    let mut softlim : RLIMTYPE = 0;
-    let mut hardlim : RLIMTYPE = 0;
-  
-    if mode == 0
-    {
+fn print_all_limits(mut mode: i32) {
+    let mut i: i32;
+    let mut softlim: RLIMTYPE = 0;
+    let mut hardlim: RLIMTYPE = 0;
+
+    if mode == 0 {
         mode = mode | LIMIT_SOFT!();
     }
     i = 0;
-    while limits[i as usize].option >0 {
-
+    while limits[i as usize].option > 0 {
         if get_limit(i, &mut softlim, &mut hardlim) == 0 {
             if mode & LIMIT_SOFT!() != 0 {
-                printone(i,softlim,1);
+                printone(i, softlim, 1);
+            } else {
+                printone(i, hardlim, 1);
             }
-            else {
-                printone(i, hardlim,1);
+        } else if unsafe { *__errno_location() != libc::EINVAL } {
+            unsafe {
+                builtin_error(
+                    b"%s: cannot get limit : %s\0" as *const u8 as *const libc::c_char,
+                    limits[i as usize].description,
+                    strerror(*__errno_location()) as *const libc::c_char,
+                );
             }
         }
-        else if unsafe {
-            *__errno_location() != libc::EINVAL } {
-                unsafe {
-                    builtin_error(b"%s: cannot get limit : %s\0" as *const u8 as  *const libc::c_char,  limits[i as usize].description, 
-                     strerror(*__errno_location()) as *const libc::c_char);
-                }
-        }
-     i = i+1;
+        i = i + 1;
     }
 }
 
-fn  printone (limind : i32, curlim :RLIMTYPE  , pdesc : i32){
-    let mut unitstr :[ libc::c_char; 64] = [0 ; 64];
-    let factor : i32 ;
+fn printone(limind: i32, curlim: RLIMTYPE, pdesc: i32) {
+    let mut unitstr: [libc::c_char; 64] = [0; 64];
+    let factor: i32;
 
     factor = BLOCKSIZE!(limits[limind as usize].block_factor);
     if pdesc > 0 {
-        if !limits[limind as usize].units.is_null(){
+        if !limits[limind as usize].units.is_null() {
             unsafe {
-                sprintf (unitstr.as_mut_ptr(), b"(%s, -%c) \0" as *const u8 as *const libc::c_char,
-                limits[limind as usize].units, 
-                limits[limind as usize].option);
+                sprintf(
+                    unitstr.as_mut_ptr(),
+                    b"(%s, -%c) \0" as *const u8 as *const libc::c_char,
+                    limits[limind as usize].units,
+                    limits[limind as usize].option,
+                );
             }
-         
-        }
-        else {
+        } else {
             unsafe {
-                sprintf (unitstr.as_mut_ptr(),b"(-%c) \0" as *const u8 as *const libc::c_char,
-                limits[limind as usize].option);
+                sprintf(
+                    unitstr.as_mut_ptr(),
+                    b"(-%c) \0" as *const u8 as *const libc::c_char,
+                    limits[limind as usize].option,
+                );
             }
         }
-        print!("{:<20} {:>20}", unsafe {
-            CStr::from_ptr(limits[limind as usize].description).to_str().unwrap()}
-        , unsafe {CStr::from_ptr(unitstr.as_mut_ptr()).to_str().unwrap()});
+        print!(
+            "{:<20} {:>20}",
+            unsafe {
+                CStr::from_ptr(limits[limind as usize].description)
+                    .to_str()
+                    .unwrap()
+            },
+            unsafe { CStr::from_ptr(unitstr.as_mut_ptr()).to_str().unwrap() }
+        );
     }
     if curlim == RLIM_INFINITY!() {
         let c_str_unlimited = b"unlimited" as *const u8 as *const libc::c_char;
-        println!("{}",unsafe {CStr::from_ptr(c_str_unlimited).to_str().unwrap()});
-    }
-  
-    else if curlim == RLIM_SAVED_MAX!() {
+        println!("{}", unsafe {
+            CStr::from_ptr(c_str_unlimited).to_str().unwrap()
+        });
+    } else if curlim == RLIM_SAVED_MAX!() {
         //println!("hard");
         let c_str_hard = b"hard" as *const u8 as *const libc::c_char;
-        println!("{}",unsafe {CStr::from_ptr(c_str_hard).to_str().unwrap()});
-    }
-    else if curlim == RLIM_SAVED_CUR!() {
+        println!("{}", unsafe {
+            CStr::from_ptr(c_str_hard).to_str().unwrap()
+        });
+    } else if curlim == RLIM_SAVED_CUR!() {
         //println!("soft");
         let c_str_soft = b"soft" as *const u8 as *const libc::c_char;
-        println!("{}",unsafe {CStr::from_ptr(c_str_soft).to_str().unwrap()});
-    }  
-    else{
-        print_rlimtype ((curlim / factor as i64) as u64 , 1); 
+        println!("{}", unsafe {
+            CStr::from_ptr(c_str_soft).to_str().unwrap()
+        });
+    } else {
+        print_rlimtype((curlim / factor as i64) as u64, 1);
     }
-   
 }
 
 /* Set all limits to NEWLIM.  NEWLIM currently must be RLIM_INFINITY, which
@@ -929,19 +938,17 @@ fn  printone (limind : i32, curlim :RLIMTYPE  , pdesc : i32){
    were set successfully, and 1 if at least one limit could not be set.
 
    To raise all soft limits to their corresponding hard limits, use
-	ulimit -S -a unlimited
+    ulimit -S -a unlimited
    To attempt to raise all hard limits to infinity (superuser-only), use
-	ulimit -H -a unlimited
+    ulimit -H -a unlimited
    To attempt to raise all soft and hard limits to infinity, use
-	ulimit -a unlimited
+    ulimit -a unlimited
 */
 
-fn  print_rlimtype(num : u64, nl : i32) 
-{
-    if nl > 0{
+fn print_rlimtype(num: u64, nl: i32) {
+    if nl > 0 {
         println!("{num}");
-    }
-    else {
+    } else {
         print!("{num}");
     }
 }
