@@ -1217,9 +1217,62 @@ pub unsafe extern "C" fn print_redirection(redirect:*mut REDIRECT)
     let redir_fd:c_int;
     let redirectee:*mut WORD_DESC;
     let redir_word:*mut WORD_DESC;
+
     redirectee = (*redirect).redirectee.filename;
     redir_fd = (*redirect).redirectee.dest;
     redir_word = (*redirect).redirector.filename;
     redirector = (*redirect).redirector.dest;
+
+    match (*redirect).instruction {  
+
+        r_instruction_r_input_direction  => 
+        {    
+            if (*redirect).flags & REDIR_VARASSIGN as i32 != 0{
+                cprintf_1( (*redir_word).word);
+            }
+            else if !redirect.is_null()
+            {
+                cprintf_1(redirector as *mut c_char);
+            }
+            let mut str = format!("< {}\0",CStr::from_ptr((*redirectee).word).to_str().unwrap());
+            cprintf_1(str.as_mut_ptr() as *mut c_char);
+        }
+        
+        r_instruction_r_output_direction => 
+        {
+            if (*redirect).rflags & REDIR_VARASSIGN as i32 != 0
+            {
+                cprintf_1((*redir_word).word);
+            }
+            else if redirector != 1
+            {
+                cprintf_1(redirector as *mut c_char);
+            }
+            let mut str = format!("< {}\0",CStr::from_ptr((*redirectee).word).to_str().unwrap());
+            cprintf_1(str.as_mut_ptr() as *mut c_char);
+        }
+        
+        r_instruction_r_inputa_direction => 
+        {
+            let mut str = format!("&\0");
+            cprintf_1(str.as_mut_ptr() as *mut c_char);
+        }
+        
+        r_instruction_r_output_force => 
+        {
+            if (*redirect).rflags & REDIR_VARASSIGN as i32 != 0
+            {
+                cprintf_1((*redir_word).word);
+            }
+            else if redirector != 1
+            {
+                cprintf_1(redirector as *mut c_char);
+            }
+            let mut str = format!(">| {}\0", CStr::from_ptr((*redirectee).word).to_str().unwrap());
+            cprintf_1(str.as_mut_ptr() as *mut c_char);
+            //cprintf_2(">| {}", *(*redirectee).word);
+        }
+
+    }
 
 }

@@ -1290,21 +1290,20 @@ pub extern "C" fn r_print_compopts(cmd: *mut c_char, cs: *mut COMPSPEC, full: i3
         r_print_compoptions((*cs).options, full);
         r_print_cmd_name(cmd);
 
-    libc::printf (CString::new("\n").unwrap().as_ptr());
-  }
+        libc::printf(CString::new("\n").unwrap().as_ptr());
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn r_print_compitem (item:* mut BUCKET_CONTENTS)->i32
-{
-  let cs:* mut COMPSPEC;
-  let cmd:* mut c_char;
-  unsafe {
-    cmd = (*item).key;
-    cs = (*item).data as * mut COMPSPEC;
-  }
+pub extern "C" fn r_print_compitem(item: *mut BUCKET_CONTENTS) -> i32 {
+    let cs: *mut COMPSPEC;
+    let cmd: *mut c_char;
+    unsafe {
+        cmd = (*item).key;
+        cs = (*item).data as *mut COMPSPEC;
+    }
 
-  return r_print_one_completion (cmd, cs);
+    return r_print_one_completion(cmd, cs);
 }
 
 #[no_mangle]
