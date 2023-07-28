@@ -1368,12 +1368,12 @@ pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
 
         cs = std::ptr::null_mut();
 
-    /* Build the actions from the arguments.  Also sets the [A-Z]arg variables
-      as a side effect if they are supplied as options. */
-    rval = r_build_actions (list, std::ptr::null_mut(), &mut acts, &mut copts);
-    if rval == EX_USAGE {
-        return rval;
-    }
+        /* Build the actions from the arguments.  Also sets the [A-Z]arg variables
+        as a side effect if they are supplied as options. */
+        rval = r_build_actions(list, std::ptr::null_mut(), &mut acts, &mut copts);
+        if rval == EX_USAGE {
+            return rval;
+        }
 
         if rval == EXECUTION_FAILURE!() {
             return EXECUTION_SUCCESS();
@@ -1381,12 +1381,12 @@ pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
 
         list = loptend.clone();
 
-    let wordtmp=CString::new("").unwrap();
-    if list !=std::ptr::null_mut() && (*list).word != std::ptr::null_mut() {
-        word = (*((*list).word)).word; 
-    } else {
-        word = wordtmp.as_ptr() as * mut c_char;
-    }
+        let wordtmp = CString::new("").unwrap();
+        if list != std::ptr::null_mut() && (*list).word != std::ptr::null_mut() {
+            word = (*((*list).word)).word;
+        } else {
+            word = wordtmp.as_ptr() as *mut c_char;
+        }
 
         if Farg != std::ptr::null_mut() {
             builtin_error(
@@ -1430,13 +1430,14 @@ pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
         pcomp_line = old_line;
         pcomp_ind = old_ind;
 
-    /* If the compspec wants the bash default completions, temporarily
-      turn off programmable completion and call the bash completion code. */
-    if (sl == std::ptr::null_mut() || (*sl).list_len == 0) && (copts & COPT_BASHDEFAULT!()) !=0 {
-        matches = bash_default_completion (word, 0, 0, 0, 0);
-        sl = completions_to_stringlist (matches);
-        strvec_dispose (matches);
-    }
+        /* If the compspec wants the bash default completions, temporarily
+        turn off programmable completion and call the bash completion code. */
+        if (sl == std::ptr::null_mut() || (*sl).list_len == 0) && (copts & COPT_BASHDEFAULT!()) != 0
+        {
+            matches = bash_default_completion(word, 0, 0, 0, 0);
+            sl = completions_to_stringlist(matches);
+            strvec_dispose(matches);
+        }
 
     /* This isn't perfect, but it's the best we can do, given what readline
       exports from its set of completion utility functions. */
