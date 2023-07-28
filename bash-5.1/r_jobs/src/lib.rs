@@ -2442,7 +2442,32 @@ pub unsafe extern "C"  fn  default_tty_job_signals() {
     };
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  get_original_tty_job_signals() {
+    static mut fetched: c_int = 0 as c_int;
+    if fetched == 0 as c_int {
+        if interactive_shell != 0 {
+            set_original_signal(SIGTSTP as c_int, None);
+            set_original_signal(SIGTTIN as c_int, None);
+            set_original_signal(SIGTTOU as c_int, None);
+        } else {
+            get_original_signal(SIGTSTP as c_int);
+            get_original_signal(SIGTTIN as c_int);
+            get_original_signal(SIGTTOU as c_int);
+        }
+        fetched = 1;
+    }
+}
 
-
+static mut shell_tty_info: libc::termios = libc::termios {
+    c_iflag: 0,
+    c_oflag: 0,
+    c_cflag: 0,
+    c_lflag: 0,
+    c_line: 0,
+    c_cc: [0; 32],
+    c_ispeed: 0,
+    c_ospeed: 0,
+};
 
 
