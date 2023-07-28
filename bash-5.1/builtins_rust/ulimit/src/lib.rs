@@ -737,42 +737,50 @@ fn get_limit(ind: i32, softlim: *mut RLIMTYPE, hardlim: *mut RLIMTYPE) -> i32 {
     }
 }
 
-fn  set_limit (ind : i32, newlim : RLIMTYPE, mode : i32) -> i32{
-    let  mut limit  : rlimit  = rlimit { rlim_cur: 0, rlim_max: 0 };
-    let  mut val :  RLIMTYPE = 0;
-     
+fn set_limit(ind: i32, newlim: RLIMTYPE, mode: i32) -> i32 {
+    let mut limit: rlimit = rlimit {
+        rlim_cur: 0,
+        rlim_max: 0,
+    };
+    let mut val: RLIMTYPE = 0;
+
     if limits[ind as usize].parameter >= 256 {
         match limits[ind as usize].parameter {
             RLIMIT_FILESIZE!() => {
                 unsafe {
                     *__errno_location() = libc::EINVAL;
                 }
-	            return -1;
+                return -1;
             }
-            RLIMIT_OPENFILES!() | RLIMIT_PIPESIZE !() |
-            RLIMIT_VIRTMEM!() | RLIMIT_MAXUPROC !() |
-             _ => {
+            RLIMIT_OPENFILES!()
+            | RLIMIT_PIPESIZE!()
+            | RLIMIT_VIRTMEM!()
+            | RLIMIT_MAXUPROC!()
+            | _ => {
                 unsafe {
                     *__errno_location() = libc::EINVAL;
                 }
                 return -1;
             }
         }
-    }
-    else{
+    } else {
         if unsafe {
-            getrlimit (limits[ind as usize].parameter 
-                as __rlimit_resource_t,&mut limit )
-            } < 0 {
-                return  -1;
+            getrlimit(
+                limits[ind as usize].parameter as __rlimit_resource_t,
+                &mut limit,
+            )
+        } < 0
+        {
+            return -1;
         }
-        let b =  unsafe {current_user.euid }!= 0  && newlim == RLIM_INFINITY!() 
-                 && (mode & LIMIT_HARD!()) == 0  && limit.rlim_cur <= limit.rlim_max;
+        let b = unsafe { current_user.euid } != 0
+            && newlim == RLIM_INFINITY!()
+            && (mode & LIMIT_HARD!()) == 0
+            && limit.rlim_cur <= limit.rlim_max;
         if b {
-            val = limit.rlim_max as i64; 
-        }
-        else {
-            val =  newlim;
+            val = limit.rlim_max as i64;
+        } else {
+            val = newlim;
         }
         if mode & LIMIT_SOFT!() != 0 {
             limit.rlim_cur = val as u64;
@@ -780,9 +788,13 @@ fn  set_limit (ind : i32, newlim : RLIMTYPE, mode : i32) -> i32{
         if mode & LIMIT_HARD!() != 0 {
             limit.rlim_max = val as u64;
         }
-        return 
-        unsafe {setrlimit(limits[ind as usize].parameter as __rlimit_resource_t, &mut limit)};
-    }  
+        return unsafe {
+            setrlimit(
+                limits[ind as usize].parameter as __rlimit_resource_t,
+                &mut limit,
+            )
+        };
+    }
 }
 
 unsafe fn getmaxvm(softlim : *mut RLIMTYPE , hardlim : *mut libc::c_char) -> i32 {
