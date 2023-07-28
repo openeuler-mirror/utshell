@@ -827,13 +827,13 @@ fn filesize(_valuep: *mut rlim_t) -> i32 {
 }
 
 unsafe fn pipesize(valuep: *mut rlim_t) -> i32 {
-    *((valuep as usize) as *mut rlim_t) =  PIPE_BUF!() as rlim_t;
-    return 0 ;
+    *((valuep as usize) as *mut rlim_t) = PIPE_BUF!() as rlim_t;
+    return 0;
 }
 
 fn getmaxuprc(valuep: *mut rlim_t) -> i32 {
     let mut maxchild: i64 = 0;
-    maxchild = unsafe{getmaxchild()};
+    maxchild = unsafe { getmaxchild() };
     if maxchild < 0 as i32 as libc::c_long {
         unsafe {
             *__errno_location() = libc::EINVAL;
@@ -842,8 +842,8 @@ fn getmaxuprc(valuep: *mut rlim_t) -> i32 {
     } else {
         unsafe {
             *valuep = maxchild as rlim_t;
-        }        
-        return 0 ;
+        }
+        return 0;
     };
 }
 
