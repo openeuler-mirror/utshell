@@ -1296,11 +1296,49 @@ pub unsafe extern "C" fn print_redirection(redirect:*mut REDIRECT)
             cprintf_1(str.as_mut_ptr() as *mut c_char);
             // cprintf_1("<> {}", *(*redirectee).word);
         }
-        
+
         r_instruction_r_deblank_reading_until | r_instruction_r_reading_until =>{
             print_heredoc_header(redirect);
             cprintf_1(b"\n\0" as *const u8 as *const i8);
             print_heredoc_body(redirect);
+        }
+
+        r_instruction_r_reading_string =>{
+            if (*redirect).rflags & REDIR_VARASSIGN as i32 !=0 {
+                cprintf_1((*redir_word).word);
+            }
+            else if redirector != 0{
+                cprintf_1(redirector as *const c_char);
+            }
+            let mut str = format!("<<< {}\0", CStr::from_ptr((*(*redirect).redirectee.filename).word).to_str().unwrap());
+            cprintf_1(str.as_mut_ptr() as *mut c_char);
+            // cprintf_1("<<< {}", *(*(*redirect).redirectee.filename).word);
+        }
+
+        r_instruction_r_duplicating_input =>{
+            if (*redirect).rflags & REDIR_VARASSIGN as i32 != 0{
+                let mut str = format!("{{{}}}<&{}\0", CStr::from_ptr((*redir_word).word).to_str().unwrap(),redir_fd);
+                cprintf_1(str.as_mut_ptr() as *mut c_char);
+                // cprintf_1("{}<&{}", *(*redir_word).word, redir_fd);
+            }
+            else{
+                let mut str = format!("{}<&{}\0", redirector,redir_fd);
+                cprintf_1(str.as_mut_ptr() as *mut c_char);
+                // cprintf_1("{}<&{}",redirector, redir_fd);
+            }
+        }
+        
+        r_instruction_r_duplicating_output => {
+            if (*redirect).rflags & REDIR_VARASSIGN as i32 != 0{
+                let mut str = format!("{{ {} }}>&{}\0", CStr::from_ptr((*redir_word).word).to_str().unwrap(),redir_fd);
+                cprintf_1(str.as_mut_ptr() as *mut c_char);
+                //cprintf_1("{{ {} }}>&{}", *(*redir_word).word, redir_fd);
+            }
+            else{
+                let mut str = format!("{}>&{}\0", redirector,redir_fd);
+                cprintf_1(str.as_mut_ptr() as *mut c_char);
+                //cprintf_1("{}>&{}",redirector, redir_fd);
+            }
         }
 
     }

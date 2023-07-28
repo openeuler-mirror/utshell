@@ -1358,15 +1358,15 @@ pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
             return EXECUTION_SUCCESS!();
         }
 
-    Garg=std::ptr::null_mut();
-    Warg=std::ptr::null_mut();
-    Parg=std::ptr::null_mut();
-    Sarg=std::ptr::null_mut();
-    Xarg=std::ptr::null_mut();
-    Farg=std::ptr::null_mut();
-    Carg=std::ptr::null_mut();
+        Garg = std::ptr::null_mut();
+        Warg = std::ptr::null_mut();
+        Parg = std::ptr::null_mut();
+        Sarg = std::ptr::null_mut();
+        Xarg = std::ptr::null_mut();
+        Farg = std::ptr::null_mut();
+        Carg = std::ptr::null_mut();
 
-    cs = std::ptr::null_mut();
+        cs = std::ptr::null_mut();
 
     /* Build the actions from the arguments.  Also sets the [A-Z]arg variables
       as a side effect if they are supplied as options. */
@@ -1375,11 +1375,11 @@ pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
         return rval;
     }
 
-    if rval == EXECUTION_FAILURE!() {
-        return EXECUTION_SUCCESS!();
-    }
+        if rval == EXECUTION_FAILURE!() {
+            return EXECUTION_SUCCESS();
+        }
 
-    list = loptend.clone();
+        list = loptend.clone();
 
     let wordtmp=CString::new("").unwrap();
     if list !=std::ptr::null_mut() && (*list).word != std::ptr::null_mut() {
