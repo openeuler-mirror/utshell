@@ -2302,6 +2302,24 @@ pub unsafe extern "C" fn make_child(
         sigprocmask(2 as c_int, &mut set, 0 as *mut libc::c_void as *mut sigset_t);
     }
 
+    if pid != 0 as c_int {
+        if interactive_shell != 0 {
+            set_signal_handler(15 as c_int, oterm);
+        }
+    }
+    if pid < 0 as c_int {
+        sys_error(b"fork\0" as *const u8 as *const c_char);
+        terminate_current_pipeline();
+        if !the_pipeline.is_null() {
+            kill_current_pipeline();
+        }
+        set_exit_status(126 as c_int);
+        throw_to_top_level();
+    }
+
+
+
+
 }
 
 
