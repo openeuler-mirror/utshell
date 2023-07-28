@@ -2560,8 +2560,69 @@ macro_rules! CHECK_TERMSIG {
     };
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  wait_for_single_pid(mut pid: pid_t, mut flags: c_int) -> c_int 
+{
+    let mut child: *mut PROCESS = 0 as *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut r: c_int = 0;
+    let mut job: c_int = 0;
+    let mut alive: c_int = 0;
 
+    BLOCK_CHILD (&mut set, &mut oset);
+    child = find_pipeline(pid,0 ,0  as *mut c_int);
+    UNBLOCK_CHILD (&mut oset);
 
+    if child.is_null() {
+        r = bgp_search(pid);
+        if r >= 0  {
+            return r;
+        }
+    }
+    if child.is_null() {
+        if flags & JWAIT_PERROR as c_int != 0 {
+            internal_error(b"wait: pid %ld is not a child of this shell\0" as *const u8 as *const c_char,
+                pid as libc::c_long,
+            );
+        }
+        return 127 ;
+    }
+    alive = 0 ;
+    loop {
+        r = wait_for(pid, 0 );
+        if flags & JWAIT_FORCE as c_int == 0 {
+            break;
+        }
+
+        BLOCK_CHILD (&mut set, &mut oset);
+        alive = PALIVE!(child) as c_int;
+        UNBLOCK_CHILD (& mut oset);
+
+        if !(alive != 0) {
+            break;
+        }
+    }
+
+    BLOCK_CHILD (&mut set, &mut oset);
+    job = find_job(pid, 0 , 0 as *mut *mut PROCESS);
+    if job != NO_JOB && !(*jobs.offset(job as isize)).is_null()
+        && DEADJOB!(job)
+    {
+        (**jobs.offset(job as isize)).flags |= J_NOTIFIED as c_int;
+    }
+    UNBLOCK_CHILD (&mut oset);
+    
+    
+    if posixly_correct != 0 {
+        cleanup_dead_jobs();
+        bgp_delete(pid);
+    }
+    
+    CHECK_WAIT_INTR!();
+
+    return r;
+}
 
 
 
