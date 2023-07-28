@@ -1520,37 +1520,22 @@ pub extern "C" fn r_compopt_builtin(listt: *mut WordList) -> i32 {
                     return EX_USAGE;
                 }
             }
-            'D'=>{
-              Dflag = 1;
-            }
-            'E'=>{
-              Eflag = 1;
-            }
-            'I'=>{
-              Iflag = 1;
-            }
-            _=>{
-              builtin_usage ();
-              return EX_USAGE;
-            }
+            opt = internal_getopt(
+                list,
+                CString::new("+o:DEI").unwrap().as_ptr() as *mut c_char,
+            );
         }
 
-    list = loptend.clone();
+        list = loptend.clone();
 
-    if Dflag != 0 {
-      wl = make_word_list (make_bare_word (DEFAULTCMD()), std::ptr::null_mut());
-    } else if Eflag !=0 {
-      wl = make_word_list (make_bare_word (EMPTYCMD()), std::ptr::null_mut());
-    } else if Iflag !=0 {
-      wl = make_word_list (make_bare_word (INITIALWORD()), std::ptr::null_mut());
-    } else {
-      wl = std::ptr::null_mut();
-    }
-
-    if list == std::ptr::null_mut() && wl == std::ptr::null_mut() {
-        if RL_ISSTATE (RL_STATE_COMPLETING!()) == 0 || pcomp_curcs == std::ptr::null_mut() {
-            builtin_error (CString::new("not currently executing completion function").unwrap().as_ptr());
-            return EXECUTION_FAILURE!();
+        if Dflag != 0 {
+            wl = make_word_list(make_bare_word(DEFAULTCMD()), std::ptr::null_mut());
+        } else if Eflag != 0 {
+            wl = make_word_list(make_bare_word(EMPTYCMD()), std::ptr::null_mut());
+        } else if Iflag != 0 {
+            wl = make_word_list(make_bare_word(INITIALWORD()), std::ptr::null_mut());
+        } else {
+            wl = std::ptr::null_mut();
         }
 
         if opts_on == 0 && opts_off == 0 {

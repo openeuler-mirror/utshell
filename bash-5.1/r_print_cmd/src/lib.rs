@@ -1442,9 +1442,19 @@ pub unsafe extern "C" fn print_redirection(redirect:*mut REDIRECT)
             cprintf_1(str.as_mut_ptr() as *mut c_char);
             // cprintf_1("&>> {}", *(*redirectee).word);
         }
-        
+
         _ =>{}
 
     }
 
+}
+
+
+#[no_mangle]
+pub unsafe extern "C" fn reset_locals()
+{
+    inside_function_def = 0;
+    indentation = 0;
+    printing_connection = 0;
+    deferred_heredocs = 0 as *mut REDIRECT;
 }
