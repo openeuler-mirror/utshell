@@ -2539,8 +2539,26 @@ unsafe extern "C" fn find_last_pid(mut job: c_int, mut block: c_int) -> pid_t
     return (*p).pid;
 }
 
+#[macro_export]
+macro_rules! CHECK_WAIT_INTR {
+    () => {
+        if wait_intr_flag != 0 && wait_signal_received != 0 && this_shell_builtin.is_some()
+        && this_shell_builtin 
+            == (Some(wait_builtin as unsafe extern "C" fn(*mut WORD_LIST) -> c_int))
+    {
+        siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as c_int);
+    }
+    };
+}
 
-
+#[macro_export]
+macro_rules! CHECK_TERMSIG {
+    () => {
+        if terminating_signal != 0 {
+            termsig_handler(terminating_signal);
+        }
+    };
+}
 
 
 
