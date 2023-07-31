@@ -91,9 +91,9 @@ pub struct case_com {
 
 #[repr(C)]
 pub struct while_com {
-    flags:libc::c_int,
-    test:*mut COMMAND,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    test: *mut COMMAND,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
