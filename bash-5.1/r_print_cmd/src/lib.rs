@@ -1459,6 +1459,18 @@ pub unsafe extern "C" fn reset_locals()
     deferred_heredocs = 0 as *mut REDIRECT;
 }
 
+
+#[no_mangle]
+pub unsafe extern "C" fn print_function_def(func: *mut FUNCTION_DEF)
+{
+    let mut cmdcopy: *mut COMMAND;
+    let mut func_redirects:*mut REDIRECT;
+    func_redirects = std::ptr::null_mut();
+ 
+    let mut str = format!("{} () \n\0", CStr::from_ptr((*(*func).name).word).to_str().unwrap());
+    cprintf_1(str.as_mut_ptr() as *mut c_char);
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn newline(string: *mut c_char)
 {

@@ -1538,18 +1538,25 @@ pub extern "C" fn r_compopt_builtin(listt: *mut WordList) -> i32 {
             wl = std::ptr::null_mut();
         }
 
-        if opts_on == 0 && opts_off == 0 {
-            r_print_compopts (pcomp_curcmd, cs, 1);
-            return sh_chkwrite (ret);
-        }
+        if list == std::ptr::null_mut() && wl == std::ptr::null_mut() {
+            if RL_ISSTATE(RL_STATE_COMPLETING!()) == 0 || pcomp_curcs == std::ptr::null_mut() {
+                builtin_error(
+                    CString::new("not currently executing completion function")
+                        .unwrap()
+                        .as_ptr(),
+                );
+                return EXECUTION_FAILURE!();
+            }
+            cs = pcomp_curcs.clone();
 
-        /* Set the compspec options */
-        pcomp_set_compspec_options (cs, opts_on, 1);
-        pcomp_set_compspec_options (cs, opts_off, 0);
+            if opts_on == 0 && opts_off == 0 {
+                r_print_compopts(pcomp_curcmd, cs, 1);
+                return sh_chkwrite(ret);
+            }
 
-        /* And change the readline variables the options control */
-        pcomp_set_readline_variables (opts_on, 1);
-        pcomp_set_readline_variables (opts_off, 0);
+            /* Set the compspec options */
+            pcomp_set_compspec_options(cs, opts_on, 1);
+            pcomp_set_compspec_options(cs, opts_off, 0);
 
         return ret;
       }
