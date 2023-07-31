@@ -98,10 +98,10 @@ pub struct while_com {
 
 #[repr(C)]
 pub struct if_com {
-    flags:libc::c_int,
-    test:*mut COMMAND,
-    true_case:*mut COMMAND,
-    false_case:*mut COMMAND
+    flags: libc::c_int,
+    test: *mut COMMAND,
+    true_case: *mut COMMAND,
+    false_case: *mut COMMAND,
 }
 
 #[repr(C)]
