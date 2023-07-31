@@ -1,11 +1,13 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::ffi::CStr;
 //extern crate rcommon;
 
-use rcommon::{WordList, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE,r_builtin_usage,SHELL_VAR};
+use rcommon::{
+    r_builtin_usage, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE, SHELL_VAR,
+};
 use rhelp::r_builtin_help;
 use std::ffi::CString;
 extern "C" {
@@ -31,9 +33,9 @@ extern "C" {
     fn sh_chkwrite(_: libc::c_int) -> libc::c_int;
     static mut loptend: *mut WordList;
     fn internal_getopt(_: *mut WordList, _: *mut libc::c_char) -> libc::c_int;
-    fn find_user_command(name:*const libc::c_char)->*mut libc::c_char;
+    fn find_user_command(name: *const libc::c_char) -> *mut libc::c_char;
     fn find_shell_builtin(builtin: *mut libc::c_char) -> *mut libc::c_char;
-    fn find_function (name:* const libc::c_char)-> *mut SHELL_VAR;
+    fn find_function(name: *const libc::c_char) -> *mut SHELL_VAR;
     fn reset_internal_getopt();
 }
 pub type SizeT = libc::c_ulong;
@@ -63,14 +65,14 @@ pub struct alias {
     pub flags: libc::c_char,
 }
 pub type AliasT = alias;
-pub static AL_REUSABLE:i32 = 0x01;
+pub static AL_REUSABLE: i32 = 0x01;
 #[no_mangle]
 pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int {
     let mut any_failed;
     let mut offset;
-    let mut pflag ;
-    let mut dflags ;
-    let  alias_list: *mut *mut AliasT;
+    let mut pflag;
+    let mut dflags;
+    let alias_list: *mut *mut AliasT;
     let mut t: *mut AliasT;
     let mut name: *mut libc::c_char;
     let mut value: *mut libc::c_char;
