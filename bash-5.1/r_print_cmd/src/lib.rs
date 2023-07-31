@@ -1598,6 +1598,16 @@ pub unsafe extern "C" fn r_named_function_string(name:*mut c_char, command:*mut 
         newline(b"}\0" as *const u8 as *const c_char as *mut c_char);
     }
  
+
+    result = the_printed_command;
+    if (flags & FUNC_MULTILINE) == 0
+    {
+        if *result.offset(2) == '\n' as i8
+        {
+            libc::memmove(result.offset(2) as *mut c_void, result.offset(3) as *const c_void, libc::strlen(result).wrapping_sub(2));
+        }   
+    }
+
 }
 
 
