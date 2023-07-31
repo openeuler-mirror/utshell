@@ -131,18 +131,18 @@ pub struct function_def {
 
 #[repr(C)]
 pub struct group_com {
-    ignore:libc::c_int,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    ignore: libc::c_int,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
 pub struct select_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    map_list:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    map_list: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
@@ -162,12 +162,12 @@ pub struct cond_com {
 
 #[repr(C)]
 pub struct arith_for_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    init:*mut WordList,
-    test:*mut WordList,
-    step:*mut WordList,
-    action:*mut COMMAND
+    flags: libc::c_int,
+    line: libc::c_int,
+    init: *mut WordList,
+    test: *mut WordList,
+    step: *mut WordList,
+    action: *mut COMMAND,
 }
 
 #[repr(C)]
