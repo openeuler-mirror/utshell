@@ -75,10 +75,10 @@ pub struct for_com {
 
 #[repr(C)]
 pub struct PATTERN_LIST {
-    next:* mut PATTERN_LIST,
-    patterns:* mut WordList,
-    action:*mut COMMAND,
-    flags:libc::c_int
+    next: *mut PATTERN_LIST,
+    patterns: *mut WordList,
+    action: *mut COMMAND,
+    flags: libc::c_int,
 }
 
 #[repr(C)]
