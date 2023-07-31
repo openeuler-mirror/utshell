@@ -1499,7 +1499,7 @@ pub unsafe extern "C" fn print_function_def(func: *mut FUNCTION_DEF)
         }
     );
     PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char );
-    
+
     remove_unwind_protect();
     indentation -= indentation_amount;
     inside_function_def -= 1;
@@ -1518,6 +1518,48 @@ pub unsafe extern "C" fn print_function_def(func: *mut FUNCTION_DEF)
 
     dispose_command(cmdcopy);
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn r_named_function_string(name:*mut c_char, command:*mut COMMAND, flags:c_int)-> *mut c_char
+{
+     // println!("r_named_function_string");
+     r_print_command(command);
+     let mut result:*mut c_char;
+     let old_indent:c_int;
+     let old_amount:c_int;
+     let mut cmdcopy:*mut COMMAND;
+     let mut func_redirects:*mut REDIRECT;
+    
+     old_indent = indentation;
+     old_amount = indentation_amount;
+     command_string_index = was_heredoc;
+     command_string_index = 0;
+     was_heredoc = 0;
+     deferred_heredocs = std::ptr::null_mut();
+     
+     if !name.is_null() &&  *name as c_int != 0
+     {
+         if find_reserved_word(name) >= 0
+         {
+             cprintf_1(b"function \0" as *const u8 as *const c_char);
+         }
+         cprintf_1(name);
+     }
+     cprintf_1(b"() \0" as *const u8 as *const c_char);
+     if (flags & FUNC_MULTILINE) == 0
+     {
+         indentation = 1;
+         indentation_amount = 0;
+     }
+     else 
+     {
+         cprintf_1(b"\n\0" as *const u8 as *const c_char);
+         indentation += indentation_amount;    
+     }
+ 
+}
+
 
 #[no_mangle]
 pub unsafe extern "C" fn newline(string: *mut c_char)

@@ -76,7 +76,11 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int
     let mut t: *mut AliasT;
     let mut name: *mut libc::c_char;
     let mut value: *mut libc::c_char;
-    dflags = if posixly_correct != 0 { 0 as libc::c_int } else { 0x1 as libc::c_int };
+    dflags = if posixly_correct != 0 {
+        0 as libc::c_int
+    } else {
+        0x1 as libc::c_int
+    };
     pflag = 0 as libc::c_int;
     reset_internal_getopt();
     loop {
@@ -132,23 +136,24 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int
         }
         if offset != 0 && *name.offset(offset as isize) as libc::c_int == '=' as i32 {
             *name.offset(offset as isize) = '\u{0}' as i32 as libc::c_char;
-            value = name.offset(offset as isize).offset(1 as libc::c_int as isize);
+            value = name
+                .offset(offset as isize)
+                .offset(1 as libc::c_int as isize);
             if legal_alias_name(name, 0) == 0 {
                 builtin_error(
                     dcgettext(
                         0 as *const libc::c_char,
-                        b"`%s': invalid alias name\0" as *const u8
-                            as *const libc::c_char,
+                        b"`%s': invalid alias name\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
                     ),
                     name,
                 );
                 any_failed += 1;
             } else {
-                let slice= CStr::from_ptr(value);
-                let r_str=slice.to_str().unwrap().to_owned();
-                let new_str =  CString::new(r_str).unwrap();
-                if legal_alias_rust(name,new_str.as_ptr() as *mut libc::c_char) == 0 {
+                let slice = CStr::from_ptr(value);
+                let r_str = slice.to_str().unwrap().to_owned();
+                let new_str = CString::new(r_str).unwrap();
+                if legal_alias_rust(name, new_str.as_ptr() as *mut libc::c_char) == 0 {
                     add_alias(name, value);
                 }
             }
@@ -214,25 +219,28 @@ pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WordList) -> libc::c_i
         }
         list = (*list).next;
     }
-    return if aflag != 0 { 1 as libc::c_int } else { 0 as libc::c_int };
+    return if aflag != 0 {
+        0 as libc::c_int
+    } else {
+        1 as libc::c_int
+    };
 }
-unsafe extern "C" fn print_alias( alias: *mut AliasT,  flags: libc::c_int) {
+unsafe extern "C" fn print_alias(alias: *mut AliasT, flags: libc::c_int) {
     let value: *mut libc::c_char;
     value = sh_single_quote((*alias).value);
     if flags & 0x1 as libc::c_int != 0 {
         print!("alias ");
         //printf(
         //    b"alias %s\0" as *const u8 as *const libc::c_char,
-            if !((*alias).name).is_null()
-                && *((*alias).name).offset(0 as libc::c_int as isize) as libc::c_int
-                    == '-' as i32
-            {
-               // b"-- \0" as *const u8 as *const libc::c_char
-               print!("-- ");
-            } else {
-               // b"\0" as *const u8 as *const libc::c_char
-               print!(" ");
-            }
+        if !((*alias).name).is_null()
+            && *((*alias).name).offset(0 as libc::c_int as isize) as libc::c_int == '-' as i32
+        {
+            // b"-- \0" as *const u8 as *const libc::c_char
+            print!("-- ");
+        } else {
+            // b"\0" as *const u8 as *const libc::c_char
+            print!(" ");
+        }
         //);
     }
     println!("{}={}", CStr::from_ptr((*alias).name).to_string_lossy().into_owned(), CStr::from_ptr(value).to_string_lossy().into_owned());
