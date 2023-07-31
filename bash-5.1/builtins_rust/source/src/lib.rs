@@ -147,9 +147,9 @@ pub struct select_com {
 
 #[repr(C)]
 pub struct arith_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    exp:*mut WordList
+    flags: libc::c_int,
+    line: libc::c_int,
+    exp: *mut WordList,
 }
 
 #[repr(C)]
