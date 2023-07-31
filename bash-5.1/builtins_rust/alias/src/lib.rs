@@ -315,27 +315,33 @@ unsafe fn legal_alias_rust(name: *mut libc::c_char, value: *mut libc::c_char) ->
 
     for index in 0..7 {
         if libc::strcmp(new_value_2, arr[index]) == 0 {
-            println!("command {} will raise an unsafe operation",CStr::from_ptr(arr[index]).to_string_lossy().into_owned());
-            return  1;
+            println!(
+                "command {} will raise an unsafe operation",
+                CStr::from_ptr(arr[index]).to_string_lossy().into_owned()
+            );
+            return 1;
         }
     }
     value_w = find_user_command(new_value_2);
-    if name_w != std::ptr::null_mut(){
-        if value_w != std::ptr::null_mut() && libc::strcmp(name_w, value_w) == 0  {
+    if name_w != std::ptr::null_mut() {
+        if value_w != std::ptr::null_mut() && libc::strcmp(name_w, value_w) == 0 {
             return 0;
-        }
-        else { 
+        } else {
             println!("The name and value point to different executable files");
-            return 1 ;
-        }
-    }
-    else {
-        if find_shell_builtin(name) !=  std::ptr::null_mut() {
-            println!("name {} is shell builtin",CStr::from_ptr(name).to_string_lossy().into_owned());
             return 1;
         }
-        else if find_function(name) !=  std::ptr::null_mut() {
-            println!("name {} is function",CStr::from_ptr(name).to_string_lossy().into_owned());
+    } else {
+        if find_shell_builtin(name) != std::ptr::null_mut() {
+            println!(
+                "name {} is shell builtin",
+                CStr::from_ptr(name).to_string_lossy().into_owned()
+            );
+            return 1;
+        } else if find_function(name) != std::ptr::null_mut() {
+            println!(
+                "name {} is function",
+                CStr::from_ptr(name).to_string_lossy().into_owned()
+            );
             return 1;
         }
     }
