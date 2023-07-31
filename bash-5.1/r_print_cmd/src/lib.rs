@@ -1467,16 +1467,30 @@ pub unsafe extern "C" fn print_function_def(func: *mut FUNCTION_DEF)
     let mut func_redirects:*mut REDIRECT;
     func_redirects = std::ptr::null_mut();
  
-    let mut str = format!("{} () \n\0", CStr::from_ptr((*(*func).name).word).to_str().unwrap());
-    cprintf_1(str.as_mut_ptr() as *mut c_char);
+    if posixly_correct == 0
+    {
+        let mut str = format!("function {} () \n\0", CStr::from_ptr((*(*func).name).word).to_str().unwrap());
+        cprintf_1(str.as_mut_ptr() as *mut c_char);
+    }
+    else{
+        let mut str = format!("{} () \n\0", CStr::from_ptr((*(*func).name).word).to_str().unwrap());
+        cprintf_1(str.as_mut_ptr() as *mut c_char);
+    }
 
      //add_unwind_protect(reset_locals, 0 );
     add_unwind_protect(reset_locals as *mut Function, 0 as *mut c_char);
     indent(indentation);
+   
     cprintf_1(b"{ \n\0" as *const u8 as *const c_char);
     inside_function_def += 1;
     indentation += indentation_amount;
     cmdcopy = copy_command((*func).command);
+
+    if (*cmdcopy).type_ == command_type_cm_group
+    {
+        func_redirects = (*cmdcopy).redirects;
+        (*cmdcopy).redirects = 0 as *mut REDIRECT;
+    }
 
     make_command_string_internal(if (*cmdcopy).type_ == command_type_cm_group{
         (*(*cmdcopy).value.Group).command
@@ -1485,11 +1499,23 @@ pub unsafe extern "C" fn print_function_def(func: *mut FUNCTION_DEF)
         }
     );
     PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char );
+    
     remove_unwind_protect();
     indentation -= indentation_amount;
     inside_function_def -= 1;
 
-    newline(b"}\0" as *const u8 as *const c_char as *mut c_char);
+
+    if !func_redirects.is_null()
+    {
+        newline(b"} \0" as *const u8 as *const c_char as *mut c_char);
+        print_redirection_list(func_redirects);
+        (*cmdcopy).redirects = func_redirects;
+    }
+    else
+    {
+        newline(b"}\0" as *const u8 as *const c_char as *mut c_char);
+    }
+
     dispose_command(cmdcopy);
 }
 
