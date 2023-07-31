@@ -168,7 +168,11 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int
         }
         list = (*list).next;
     }
-    return if any_failed != 0 {EXECUTION_FAILURE!()} else { EXECUTION_SUCCESS!()};
+    return if any_failed != 0 {
+        EXECUTION_FAILURE
+    } else {
+        EXECUTION_SUCCESS
+    };
 }
 #[no_mangle]
 pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WordList) -> libc::c_int {
@@ -257,18 +261,26 @@ unsafe fn legal_alias_rust(name: *mut libc::c_char, value: *mut libc::c_char) ->
     let mut new_value_2: *mut libc::c_char;
     let mut _shell_bui: *mut libc::c_char;
     let mut t: *mut AliasT;
-    let dflags ;
-    dflags = if posixly_correct != 0 { 0 as libc::c_int } else { 0x1 as libc::c_int };
-    
-    if libc::strstr(value,CString::new(";").unwrap().as_ptr() as *mut libc::c_char) != std::ptr::null_mut() {
+    let dflags;
+    dflags = if posixly_correct != 0 {
+        0 as libc::c_int
+    } else {
+        0x1 as libc::c_int
+    };
+
+    if libc::strstr(
+        value,
+        CString::new(";").unwrap().as_ptr() as *mut libc::c_char,
+    ) != std::ptr::null_mut()
+    {
         println!("; is not allow in alias");
-        return  1;
+        return 0;
     }
     t = find_alias(name);
     if !t.is_null() {
         println!("{} is already in alias", CStr::from_ptr(name).to_string_lossy().into_owned());
         print_alias(t, dflags);
-        return  1;
+        return 0;
     }
     name_w = find_user_command(name);
     new_value = sh_single_quote(value);

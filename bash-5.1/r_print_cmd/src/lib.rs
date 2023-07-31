@@ -1568,6 +1568,22 @@ pub unsafe extern "C" fn r_named_function_string(name:*mut c_char, command:*mut 
     );
 
     cmdcopy = copy_command(command);
+    func_redirects = std::ptr::null_mut();
+    if (*cmdcopy).type_ == command_type_cm_group
+    {
+        func_redirects = (*cmdcopy).redirects;
+        (*cmdcopy).redirects = 0 as *mut redirect ;
+    } 
+    
+    make_command_string_internal(if (*cmdcopy).type_ == command_type_cm_group {
+                                    (*(*cmdcopy).value.Group).command
+                                } else {
+                                    cmdcopy
+                                },
+                                );
+                                
+    PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
+
  
 }
 
