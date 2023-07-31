@@ -1471,14 +1471,26 @@ pub unsafe extern "C" fn print_function_def(func: *mut FUNCTION_DEF)
     cprintf_1(str.as_mut_ptr() as *mut c_char);
 
      //add_unwind_protect(reset_locals, 0 );
-     add_unwind_protect(reset_locals as *mut Function, 0 as *mut c_char);
-     indent(indentation);
-     cprintf_1(b"{ \n\0" as *const u8 as *const c_char);
-     inside_function_def += 1;
-     indentation += indentation_amount;
-     cmdcopy = copy_command((*func).command);
+    add_unwind_protect(reset_locals as *mut Function, 0 as *mut c_char);
+    indent(indentation);
+    cprintf_1(b"{ \n\0" as *const u8 as *const c_char);
+    inside_function_def += 1;
+    indentation += indentation_amount;
+    cmdcopy = copy_command((*func).command);
 
-     newline(b"}\0" as *const u8 as *const c_char as *mut c_char);
+    make_command_string_internal(if (*cmdcopy).type_ == command_type_cm_group{
+        (*(*cmdcopy).value.Group).command
+        } else {
+            cmdcopy
+        }
+    );
+    PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char );
+    remove_unwind_protect();
+    indentation -= indentation_amount;
+    inside_function_def -= 1;
+
+    newline(b"}\0" as *const u8 as *const c_char as *mut c_char);
+    dispose_command(cmdcopy);
 }
 
 #[no_mangle]

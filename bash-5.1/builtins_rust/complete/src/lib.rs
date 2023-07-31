@@ -1278,7 +1278,7 @@ pub extern "C" fn r_print_one_completion(cmd: *mut c_char, cs: *mut COMPSPEC) ->
         r_print_cmd_name(cmd);
         libc::printf(CString::new("\n").unwrap().as_ptr());
 
-        return 1;
+        return 0;
     }
 }
 
@@ -1376,7 +1376,7 @@ pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
         }
 
         if rval == EXECUTION_FAILURE!() {
-            return EXECUTION_SUCCESS();
+            return EXECUTION_SUCCESS!();
         }
 
         list = loptend.clone();
@@ -1418,7 +1418,7 @@ pub extern "C" fn r_compgen_builtin(listt: *mut WordList) -> i32 {
         (*cs).command = STRDUP(Carg);
         (*cs).filterpat = STRDUP(Xarg);
 
-        rval = EXECUTION_FAILURE();
+        rval = EXECUTION_FAILURE!();
 
         /* probably don't have to save these, just being safe */
         old_line = pcomp_line;
@@ -1476,7 +1476,7 @@ pub extern "C" fn r_compopt_builtin(listt: *mut WordList) -> i32 {
     let mut wl: *mut WordList;
     let mut cs: *mut COMPSPEC;
 
-    ret = EXECUTION_SUCCESS();
+    ret = EXECUTION_SUCCESS!();
     unsafe {
         let mut list: *mut WordList = listt.clone();
         reset_internal_getopt();
@@ -1501,7 +1501,7 @@ pub extern "C" fn r_compopt_builtin(listt: *mut WordList) -> i32 {
                     oind = r_find_compopt(list_optarg);
                     if oind < 0 {
                         sh_invalidoptname(list_optarg);
-                        return EX_USAGE!();
+                        return EX_USAGE;
                     }
                     let compopts: CompoptArray = CompoptArray::new();
                     *opts |= compopts.compoptArr[oind as usize].optflag as i32;
