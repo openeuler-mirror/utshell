@@ -122,11 +122,11 @@ pub struct simple_com {
 
 #[repr(C)]
 pub struct function_def {
-    flags:libc::c_int,
-    line:libc::c_int,
-    name:*mut WordDesc,
-    command:*mut COMMAND,
-    source_file:*mut c_char
+    flags: libc::c_int,
+    line: libc::c_int,
+    name: *mut WordDesc,
+    command: *mut COMMAND,
+    source_file: *mut c_char,
 }
 
 #[repr(C)]
