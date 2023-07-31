@@ -1581,9 +1581,22 @@ pub unsafe extern "C" fn r_named_function_string(name:*mut c_char, command:*mut 
                                     cmdcopy
                                 },
                                 );
-                                
+
     PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const c_char);
 
+    indentation = old_indent;
+    indentation = old_amount;
+    indentation_amount = old_amount;
+    inside_function_def -= 1;
+    if !func_redirects.is_null()
+    {
+        newline(b"} \0" as *const u8 as *const c_char as *mut c_char);
+        print_redirection_list(func_redirects);
+        (*cmdcopy).redirects = func_redirects;
+    }
+    else{
+        newline(b"}\0" as *const u8 as *const c_char as *mut c_char);
+    }
  
 }
 

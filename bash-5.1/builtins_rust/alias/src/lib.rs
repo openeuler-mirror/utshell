@@ -278,30 +278,41 @@ unsafe fn legal_alias_rust(name: *mut libc::c_char, value: *mut libc::c_char) ->
     }
     t = find_alias(name);
     if !t.is_null() {
-        println!("{} is already in alias", CStr::from_ptr(name).to_string_lossy().into_owned());
+        println!(
+            "{} is already in alias",
+            CStr::from_ptr(name).to_string_lossy().into_owned()
+        );
         print_alias(t, dflags);
         return 0;
     }
     name_w = find_user_command(name);
     new_value = sh_single_quote(value);
     // 按照空格区分
-    new_value_2 = libc::strtok(value, CString::new(" ").unwrap().as_ptr() as *mut libc::c_char) ;
+    new_value_2 = libc::strtok(
+        value,
+        CString::new(" ").unwrap().as_ptr() as *mut libc::c_char,
+    );
     t = find_alias(new_value_2);
     while t != std::ptr::null_mut() {
-        new_value_2 = libc::strtok((*t).value, CString::new(" ").unwrap().as_ptr() as *mut libc::c_char) ;
-        if libc::strcmp((*t).name,new_value_2) == 0 {
+        new_value_2 = libc::strtok(
+            (*t).value,
+            CString::new(" ").unwrap().as_ptr() as *mut libc::c_char,
+        );
+        if libc::strcmp((*t).name, new_value_2) == 0 {
             break;
         }
         t = find_alias(new_value_2);
     }
-    let arr:[ *mut libc::c_char;7] = [CString::new("exec").unwrap().into_raw() as *mut libc::c_char,
-                                      CString::new("eval").unwrap().into_raw() as *mut libc::c_char,
-                                      CString::new("builtin").unwrap().into_raw() as *mut libc::c_char,
-                                      CString::new("command").unwrap().into_raw() as *mut libc::c_char,
-                                      CString::new("function").unwrap().into_raw() as *mut libc::c_char,
-                                      CString::new("source").unwrap().into_raw() as *mut libc::c_char,
-                                      CString::new(".").unwrap().into_raw() as *mut libc::c_char ];
-    
+    let arr: [*mut libc::c_char; 7] = [
+        CString::new("exec").unwrap().into_raw() as *mut libc::c_char,
+        CString::new("eval").unwrap().into_raw() as *mut libc::c_char,
+        CString::new("builtin").unwrap().into_raw() as *mut libc::c_char,
+        CString::new("command").unwrap().into_raw() as *mut libc::c_char,
+        CString::new("function").unwrap().into_raw() as *mut libc::c_char,
+        CString::new("source").unwrap().into_raw() as *mut libc::c_char,
+        CString::new(".").unwrap().into_raw() as *mut libc::c_char,
+    ];
+
     for index in 0..7 {
         if libc::strcmp(new_value_2, arr[index]) == 0 {
             println!("command {} will raise an unsafe operation",CStr::from_ptr(arr[index]).to_string_lossy().into_owned());
