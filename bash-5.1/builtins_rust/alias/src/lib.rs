@@ -169,9 +169,9 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int
         list = (*list).next;
     }
     return if any_failed != 0 {
-        EXECUTION_FAILURE
+        EXECUTION_FAILURE!()
     } else {
-        EXECUTION_SUCCESS
+        EXECUTION_SUCCESS!()
     };
 }
 #[no_mangle]
@@ -224,9 +224,9 @@ pub unsafe extern "C" fn r_unalias_builtin(mut list: *mut WordList) -> libc::c_i
         list = (*list).next;
     }
     return if aflag != 0 {
-        0 as libc::c_int
-    } else {
         1 as libc::c_int
+    } else {
+        0 as libc::c_int
     };
 }
 unsafe extern "C" fn print_alias(alias: *mut AliasT, flags: libc::c_int) {
@@ -274,7 +274,7 @@ unsafe fn legal_alias_rust(name: *mut libc::c_char, value: *mut libc::c_char) ->
     ) != std::ptr::null_mut()
     {
         println!("; is not allow in alias");
-        return 0;
+        return 1;
     }
     t = find_alias(name);
     if !t.is_null() {
@@ -283,7 +283,7 @@ unsafe fn legal_alias_rust(name: *mut libc::c_char, value: *mut libc::c_char) ->
             CStr::from_ptr(name).to_string_lossy().into_owned()
         );
         print_alias(t, dflags);
-        return 0;
+        return 1;
     }
     name_w = find_user_command(name);
     new_value = sh_single_quote(value);
