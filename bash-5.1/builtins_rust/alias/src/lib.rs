@@ -93,7 +93,7 @@ pub unsafe extern "C" fn r_alias_builtin(mut list: *mut WordList) -> libc::c_int
         }
         match offset as u8 {
             b'p' => {
-                pflag = 1 ;
+                pflag = 1;
                 dflags |= AL_REUSABLE;
             }
             _ => {
@@ -243,16 +243,19 @@ unsafe extern "C" fn print_alias(alias: *mut AliasT, flags: libc::c_int) {
         }
         //);
     }
-    println!("{}={}", CStr::from_ptr((*alias).name).to_string_lossy().into_owned(), CStr::from_ptr(value).to_string_lossy().into_owned());
+    println!(
+        "{}={}",
+        CStr::from_ptr((*alias).name).to_string_lossy().into_owned(),
+        CStr::from_ptr(value).to_string_lossy().into_owned()
+    );
     free(value as *mut libc::c_void);
 }
-unsafe  fn legal_alias_rust(name :*mut libc::c_char,value  :*mut libc::c_char ) -> libc::c_int {  
-    
-    let name_w:*mut libc::c_char;
-    let value_w:*mut libc::c_char;
-    let new_value:*mut libc::c_char;
-    let mut new_value_2:*mut libc::c_char;
-    let mut _shell_bui : *mut libc::c_char;
+unsafe fn legal_alias_rust(name: *mut libc::c_char, value: *mut libc::c_char) -> libc::c_int {
+    let name_w: *mut libc::c_char;
+    let value_w: *mut libc::c_char;
+    let new_value: *mut libc::c_char;
+    let mut new_value_2: *mut libc::c_char;
+    let mut _shell_bui: *mut libc::c_char;
     let mut t: *mut AliasT;
     let dflags ;
     dflags = if posixly_correct != 0 { 0 as libc::c_int } else { 0x1 as libc::c_int };
