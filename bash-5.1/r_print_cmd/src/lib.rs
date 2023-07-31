@@ -1608,6 +1608,12 @@ pub unsafe extern "C" fn r_named_function_string(name:*mut c_char, command:*mut 
         }   
     }
 
+    dispose_command(cmdcopy);
+    if (flags & FUNC_EXTERNAL) != 0
+    {
+        result = remove_quoted_escapes(result);
+    }
+    return result;
 }
 
 
