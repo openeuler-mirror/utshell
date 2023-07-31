@@ -1558,14 +1558,12 @@ pub extern "C" fn r_compopt_builtin(listt: *mut WordList) -> i32 {
             pcomp_set_compspec_options(cs, opts_on, 1);
             pcomp_set_compspec_options(cs, opts_off, 0);
 
-        return ret;
-      }
+            /* And change the readline variables the options control */
+            pcomp_set_readline_variables(opts_on, 1);
+            pcomp_set_readline_variables(opts_off, 0);
 
-      if wl != std::ptr::null_mut() {
-          l = wl.clone();
-      } else {
-          l=list.clone();
-      }
+            return ret;
+        }
 
         if wl != std::ptr::null_mut() {
             l = wl.clone();

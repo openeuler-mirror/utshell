@@ -1469,6 +1469,16 @@ pub unsafe extern "C" fn print_function_def(func: *mut FUNCTION_DEF)
  
     let mut str = format!("{} () \n\0", CStr::from_ptr((*(*func).name).word).to_str().unwrap());
     cprintf_1(str.as_mut_ptr() as *mut c_char);
+
+     //add_unwind_protect(reset_locals, 0 );
+     add_unwind_protect(reset_locals as *mut Function, 0 as *mut c_char);
+     indent(indentation);
+     cprintf_1(b"{ \n\0" as *const u8 as *const c_char);
+     inside_function_def += 1;
+     indentation += indentation_amount;
+     cmdcopy = copy_command((*func).command);
+
+     newline(b"}\0" as *const u8 as *const c_char as *mut c_char);
 }
 
 #[no_mangle]
