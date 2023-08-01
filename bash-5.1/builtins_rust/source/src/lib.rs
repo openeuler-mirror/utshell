@@ -83,10 +83,10 @@ pub struct PATTERN_LIST {
 
 #[repr(C)]
 pub struct case_com {
-    flags:libc::c_int,
-    line:libc::c_int,
-    word:*mut WordDesc,
-    clauses:*mut PATTERN_LIST
+    flags: libc::c_int,
+    line: libc::c_int,
+    word: *mut WordDesc,
+    clauses: *mut PATTERN_LIST,
 }
 
 #[repr(C)]
