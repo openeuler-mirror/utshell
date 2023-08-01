@@ -1706,3 +1706,94 @@ unsafe fn cprintf_2(str1:*const c_char,str2:*mut c_char)
     command_string_index += arg_len_2;
     *the_printed_command.offset(command_string_index as isize) = '\u{0}' as i32 as libc::c_char;
 }
+
+/* 
+unsafe extern "C" fn cprintf(mut control: *const libc::c_char, mut args: ...) {
+    let mut s: *const libc::c_char = 0 as *const libc::c_char;
+    let mut char_arg: [libc::c_char; 2] = [0; 2];
+    let mut argp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut intbuf: [libc::c_char; 11] = [0; 11];
+    let mut digit_arg: libc::c_int = 0;
+    let mut arg_len: libc::c_int = 0;
+    let mut c: libc::c_int = 0;
+    let mut args_0: ::std::ffi::VaListImpl;
+    args_0 = args.clone();
+    arg_len = strlen(control) as libc::c_int;
+    the_printed_command_resize(arg_len + 1 as libc::c_int);
+    char_arg[1 as libc::c_int as usize] = '\u{0}' as i32 as libc::c_char;
+    s = control;
+    while !s.is_null() && *s as libc::c_int != 0 {
+        let fresh7 = s;
+        s = s.offset(1);
+        c = *fresh7 as libc::c_int;
+        argp = 0 as *mut libc::c_void as *mut libc::c_char;
+        if c != '%' as i32 || *s == 0 {
+            char_arg[0 as libc::c_int as usize] = c as libc::c_char;
+            argp = char_arg.as_mut_ptr();
+            arg_len = 1 as libc::c_int;
+        } else {
+            let fresh8 = s;
+            s = s.offset(1);
+            c = *fresh8 as libc::c_int;
+            match c {
+                37 => {
+                    char_arg[0 as libc::c_int as usize] = c as libc::c_char;
+                    argp = char_arg.as_mut_ptr();
+                    arg_len = 1 as libc::c_int;
+                }
+                115 => {
+                    argp = args_0.arg::<*mut libc::c_char>();
+                    arg_len = strlen(argp) as libc::c_int;
+                }
+                100 => {
+                    digit_arg = args_0.arg::<libc::c_int>();
+                    if digit_arg < 0 as libc::c_int {
+                        sprintf(
+                            intbuf.as_mut_ptr(),
+                            b"%u\0" as *const u8 as *const libc::c_char,
+                            -(1 as libc::c_int) as libc::c_uint,
+                        );
+                        argp = intbuf.as_mut_ptr();
+                    } else {
+                        argp = inttostr(
+                            digit_arg as intmax_t,
+                            intbuf.as_mut_ptr(),
+                            ::std::mem::size_of::<[libc::c_char; 11]>() as libc::c_ulong,
+                        );
+                    }
+                    arg_len = strlen(argp) as libc::c_int;
+                }
+                99 => {
+                    char_arg[0 as libc::c_int
+                        as usize] = args_0.arg::<libc::c_int>() as libc::c_char;
+                    argp = char_arg.as_mut_ptr();
+                    arg_len = 1 as libc::c_int;
+                }
+                _ => {
+                    programming_error(
+                        dcgettext(
+                            0 as *const libc::c_char,
+                            b"cprintf: `%c': invalid format character\0" as *const u8
+                                as *const libc::c_char,
+                            5 as libc::c_int,
+                        ),
+                        c,
+                    );
+                }
+            }
+        }
+        if !argp.is_null() && arg_len != 0 {
+            the_printed_command_resize(arg_len + 1 as libc::c_int);
+            libc::memcpy(
+                the_printed_command.offset(command_string_index as isize)
+                    as *mut libc::c_void,
+                argp as *const libc::c_void,
+                arg_len as libc::c_ulong as libc::size_t,
+            );
+            command_string_index += arg_len;
+        }
+    }
+    *the_printed_command
+        .offset(command_string_index as isize) = '\u{0}' as i32 as libc::c_char;
+}
+*/
