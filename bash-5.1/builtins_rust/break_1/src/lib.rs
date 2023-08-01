@@ -13,7 +13,6 @@ use rcommon::{WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
 
 type intmax_t = c_long;
-
 /*
 #[macro_export]
 macro_rules! ISHELP {
@@ -32,7 +31,6 @@ macro_rules! CHECK_HELPOPT {
   }
 }
 */
-
 fn checkhelp(l: *mut WordList) -> i32 {
     unsafe {
         let tmp = CString::new("--help").unwrap();
@@ -63,6 +61,7 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn r_break_builtin(list: *mut WordList) -> i32 {
+    //println!("enter r_break_builtin");
     let mut newbreak: intmax_t = 1 as intmax_t;
     unsafe {
         checkhelp(list);
@@ -84,6 +83,7 @@ pub extern "C" fn r_break_builtin(list: *mut WordList) -> i32 {
             newbreak = loop_level as i64;
         }
         breaking = newbreak as i32;
+        // set_breaking(newbreak as i32);
     }
     return EXECUTION_SUCCESS!();
 }
@@ -92,6 +92,7 @@ pub extern "C" fn r_break_builtin(list: *mut WordList) -> i32 {
 pub extern "C" fn r_continue_builtin(list: *mut WordList) -> i32 {
     let mut newcont: intmax_t = 0 as intmax_t;
     unsafe {
+        //CHECK_HELPOPT! (list);
         checkhelp(list);
     }
     if check_loop_level() == 0 {
@@ -112,6 +113,7 @@ pub extern "C" fn r_continue_builtin(list: *mut WordList) -> i32 {
             newcont = loop_level as i64;
         }
         continuing = newcont as i32;
+        //set_continuing(newcont as i32);
     }
     return EXECUTION_SUCCESS!();
 }
