@@ -260,20 +260,19 @@ pub extern "C" fn r_hash_builtin(mut list: *mut WordList) -> i32 {
         return opt;
     } //unsafe
 }
-extern "C" fn r_add_hashed_command(w:*mut c_char,quiet:i32)->i32{
-    let mut rv:i32;
-    let full_path:*mut c_char;
-    rv = 0;
-    unsafe{
-        if find_function(w).is_null() && find_shell_builtin(w).is_null(){
-        // if find_function(w).is_null() && r_find_shell_builtin(w).is_null(){
+extern "C" fn r_add_hashed_command(w: *mut c_char, quiet: i32) -> i32 {
+    let mut rv: i32;
+    let full_path: *mut c_char;
+    rv = 1;
+    unsafe {
+        if find_function(w).is_null() && find_shell_builtin(w).is_null() {
+            // if find_function(w).is_null() && r_find_shell_builtin(w).is_null(){
             phash_remove(w);
             full_path = find_user_command(w);
-            if full_path != std::ptr::null_mut() && executable_file(full_path) != 0{
-                phash_insert(w,full_path,dot_found_in_search,0)
-            }
-            else{
-                if quiet == 0{
+            if full_path != std::ptr::null_mut() && executable_file(full_path) != 0 {
+                phash_insert(w, full_path, dot_found_in_search, 0)
+            } else {
+                if quiet == 0 {
                     sh_notfound(w);
                 }
                 rv += 1;
@@ -281,53 +280,51 @@ extern "C" fn r_add_hashed_command(w:*mut c_char,quiet:i32)->i32{
             FREE!(full_path);
         }
         return rv;
-    }//unsafe
+    } 
 }
-extern "C" fn r_print_hash_info(item:*mut BUCKET_CONTENTS)->i32{
-    
-    unsafe{
-        let path_string = CStr::from_ptr((*pathdata!(item)).path).to_str().unwrap();//.to_owned()
-        println!("{:04}\t{}",(*item).times_found,path_string);
+extern "C" fn r_print_hash_info(item: *mut BUCKET_CONTENTS) -> i32 {
+    unsafe {
+        let path_string = CStr::from_ptr((*pathdata!(item)).path).to_str().unwrap(); //.to_owned()
+        println!("{:04}\t{}", (*item).times_found, path_string);
         // println!("{:04}\t{}",(*item).times_found,*(*pathdata!(item)).path);
-    }//unsafe
+    }
     0
 }
 #[no_mangle]
-extern "C" fn r_print_portable_hash_info(item:*mut BUCKET_CONTENTS)->i32{
-    let fp:*mut c_char;
-    let f:*mut c_char;
-    unsafe{
-        fp = printable_filename((*pathdata!(item)).path,1);
-        f = printable_filename((*item).key,1);
-        let fp_string = CStr::from_ptr(fp).to_str().unwrap();//.to_owned()
-        let f_string = CStr::from_ptr(f).to_str().unwrap();//.to_owned()
-        println!("builtin hash -p {} {}",fp_string,f_string);
-        if fp != (*pathdata!(item)).path{
+extern "C" fn r_print_portable_hash_info(item: *mut BUCKET_CONTENTS) -> i32 {
+    let fp: *mut c_char;
+    let f: *mut c_char;
+    unsafe {
+        fp = printable_filename((*pathdata!(item)).path, 1);
+        f = printable_filename((*item).key, 1);
+        let fp_string = CStr::from_ptr(fp).to_str().unwrap(); //.to_owned()
+        let f_string = CStr::from_ptr(f).to_str().unwrap(); //.to_owned()
+        println!("builtin hash -p {} {}", fp_string, f_string);
+        if fp != (*pathdata!(item)).path {
             free(fp as *mut c_void);
         }
-        if f != (*item).key{
+        if f != (*item).key {
             free(f as *mut c_void);
         }
         return 0;
-    }//unsafe
+    } 
 }
 #[no_mangle]
-extern "C" fn r_print_hashed_commands(fmt:i32)->i32{
-    unsafe{
+extern "C" fn r_print_hashed_commands(fmt: i32) -> i32 {
+    unsafe {
         if hashed_filenames.is_null() || hash_entries(hashed_filenames) == 0 {
             return 0;
         }
-        if fmt == 0{
+        if fmt == 0 {
             println!("hits\tcommand");
         }
-        let fmt_t:hash_wfunc;
-        if fmt != 0{
+        let fmt_t: hash_wfunc;
+        if fmt != 0 {
             fmt_t = r_print_portable_hash_info;
-        }
-        else{
+        } else {
             fmt_t = r_print_hash_info;
         }
-        hash_walk(hashed_filenames,fmt_t as *mut hash_wfunc);
+        hash_walk(hashed_filenames, fmt_t as *mut hash_wfunc);
         return 1;
     }
 }
