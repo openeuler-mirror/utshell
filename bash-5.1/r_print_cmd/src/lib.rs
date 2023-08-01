@@ -1646,3 +1646,34 @@ unsafe extern "C" fn indent(mut amount:c_int)
     *indentation_string.offset(i as isize) = '\0' as c_char;
     cprintf_1(indentation_string);
 }
+
+#[no_mangle]
+unsafe extern "C" fn semicolon()
+{
+    if command_string_index > 0 &&
+        (*the_printed_command.offset((command_string_index -1) as isize) == '&' as c_char ||
+         *the_printed_command.offset((command_string_index -1) as isize) == '\n' as c_char)
+    {
+        return;
+    }
+    cprintf_1(b";\0" as *const u8 as *const i8);
+}
+
+
+#[no_mangle]
+unsafe extern "C" fn the_printed_command_resize(length:c_int)
+{
+    if the_printed_command.is_null()
+    {
+        the_printed_command_size = (length + PRINTED_COMMAND_INITIAL_SIZE - 1) & !PRINTED_COMMAND_INITIAL_SIZE - 1;
+        the_printed_command = libc::malloc(the_printed_command_size as usize) as *mut c_char;
+        command_string_index = 0;
+    }
+    else if (command_string_index + length) >= the_printed_command_size {
+        let mut new:c_int;
+        new = command_string_index + length + 1;
+        new = (new + PRINTED_COMMAND_CROW_SIZE -1 ) & !(PRINTED_COMMAND_CROW_SIZE -1);
+        the_printed_command_size = new;
+        the_printed_command = libc::realloc(the_printed_command as *mut c_void, the_printed_command_size as usize) as *mut c_char;
+    }
+}
