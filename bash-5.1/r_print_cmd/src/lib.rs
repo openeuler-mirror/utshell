@@ -1627,3 +1627,22 @@ pub unsafe extern "C" fn newline(string: *mut c_char)
         cprintf_1(string);
     }
 }
+
+static mut indentation_string:*mut c_char = std::ptr::null_mut();
+static mut indentation_size:c_int = 0;
+
+#[no_mangle]
+unsafe extern "C" fn indent(mut amount:c_int)
+{
+    let mut i:c_int;
+    RESIZE_MALLOCED_BUFFER!(indentation_string, 0 as c_int, amount, indentation_size , 16);
+    i = 0;
+    while amount > 0
+    {
+        *indentation_string.offset(i as isize)  = ' ' as c_char;
+        i += 1;
+        amount -= 1;
+    }
+    *indentation_string.offset(i as isize) = '\0' as c_char;
+    cprintf_1(indentation_string);
+}
