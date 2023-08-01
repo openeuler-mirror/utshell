@@ -191,10 +191,10 @@ pub extern "C" fn r_hash_builtin(mut list: *mut WordList) -> i32 {
             }
             return EXECUTION_FAILURE!();
         }
-        
+
         /* We want hash -r to be silent, but hash -- to print hashing info, so
-         we test expunge_hash_table. */
-        if list==std::ptr::null_mut() && expunge_hash_table == 0{
+        we test expunge_hash_table. */
+        if list == std::ptr::null_mut() && expunge_hash_table == 0 {
             opt = r_print_hashed_commands(list_portably);
             if opt == 0
                 && posixly_correct == 0
@@ -211,18 +211,18 @@ pub extern "C" fn r_hash_builtin(mut list: *mut WordList) -> i32 {
             phash_flush();
         }
         /* If someone runs `hash -r -t xyz' he will be disappointed. */
-        if list_targets != 0{
-            return r_list_hashed_filename_targets(list,list_portably);
+        if list_targets != 0 {
+            return r_list_hashed_filename_targets(list, list_portably);
         }
-        if restricted != 0 && pathname != std::ptr::null_mut(){
-            if strchr(pathname,'/' as c_int) != std::ptr::null_mut(){
+        if restricted != 0 && pathname != std::ptr::null_mut() {
+            if strchr(pathname, '/' as c_int) != std::ptr::null_mut() {
                 sh_restricted(pathname);
                 return EXECUTION_FAILURE!();
             }
             /* If we are changing the hash table in a restricted shell, make sure the
-             target pathname can be found using a $PATH search. */
+            target pathname can be found using a $PATH search. */
             w = find_user_command(pathname);
-            if w==std::ptr::null_mut() || *w==0 || executable_file(w)==0{
+            if w == std::ptr::null_mut() || *w == 0 || executable_file(w) == 0 {
                 sh_notfound(pathname);
                 free(w as *mut c_void);
                 return EXECUTION_FAILURE!();
@@ -233,14 +233,13 @@ pub extern "C" fn r_hash_builtin(mut list: *mut WordList) -> i32 {
         while list != std::ptr::null_mut() {
             /* Add, remove or rehash the specified commands. */
             w = (*(*list).word).word;
-            if absolute_program(w as *const c_char) != 0{
+            if absolute_program(w as *const c_char) != 0 {
                 continue;
-            }
-            else if pathname != std::ptr::null_mut(){
-                if is_directory(pathname) != 0{
+            } else if pathname != std::ptr::null_mut() {
+                if is_directory(pathname) != 0 {
                     let c_err = CString::new("%s:%s").unwrap();
                     let c_err_ptr = c_err.as_ptr();
-                    builtin_error(c_err_ptr,pathname,strerror(EISDIR));
+                    builtin_error(c_err_ptr, pathname, strerror(EISDIR));
                     opt = EXECUTION_SUCCESS!();
                 } else {
                     if legal_hash_rust(w, pathname) == 0 {
