@@ -1271,48 +1271,47 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
                             var = find_variable_noref(name);
                         }
 
-	      if refvar !=std::ptr::null_mut() {
-			/* XXX - use declare_find_variable here? */
-			if mkglobal !=0 {
-				var = find_global_variable (nameref_cell (refvar));
-			} else {
-				var =find_variable (nameref_cell (refvar));
-			}
-		  }
-	    } else if var == std::ptr::null_mut() && offset !=0 && array_subscript_assignment {
-			/* If we have an array assignment to a nameref, remove the nameref
-	     attribute and go on. */
-		 if mkglobal !=0 {
-			var = find_global_variable_noref (name);
-		} else {
-			var = find_variable_noref (name);
-		}
+                        if var != std::ptr::null_mut() && nameref_p(var) != 0 {
+                            internal_warning(
+                                CString::new("%s: removing nameref attribute")
+                                    .unwrap()
+                                    .as_ptr(),
+                                name,
+                            );
+                            libc::free(value_cell(var) as *mut c_void); /* XXX - bash-4.3 compat */
+                            var_setvalue(var, std::ptr::null_mut());
+                            VUNSETATTR(var, att_nameref!());
+                        }
+                    }
 
-	    if var !=std::ptr::null_mut() && nameref_p (var) !=0 {
-		  internal_warning (CString::new("%s: removing nameref attribute").unwrap().as_ptr(), name);
-		  libc::free (value_cell (var) as * mut c_void);	/* XXX - bash-4.3 compat */
-		  var_setvalue (var, std::ptr::null_mut());
-		  VUNSETATTR (var, att_nameref!());
-		}
-	  }
+                    /* See if we are trying to set flags or value (or create) for an
+                     existing nameref that points to a non-existent variable: e.g.,
+                    declare -n foo=bar
+                    unset foo	# unsets bar
+                    declare -i foo
+                    foo=4+4
+                    declare -p foo */
+                    if var == std::ptr::null_mut()
+                        && (mkglobal != 0 || flags_on != 0 || flags_off != 0 || offset != 0)
+                    {
+                        if mkglobal != 0 {
+                            refvar = find_global_variable_last_nameref(name, 0);
+                        } else {
+                            refvar = find_variable_last_nameref(name, 0);
+                        }
 
-	  /* See if we are trying to set flags or value (or create) for an
-	     existing nameref that points to a non-existent variable: e.g.,
-		declare -n foo=bar
-		unset foo	# unsets bar
-		declare -i foo
-		foo=4+4
-		declare -p foo */
-	  if var == std::ptr::null_mut() && (mkglobal !=0 || flags_on !=0 || flags_off !=0 || offset !=0) {
-		  if mkglobal !=0 {
-			refvar = find_global_variable_last_nameref (name, 0);
-		  } else {
-			refvar = find_variable_last_nameref (name, 0);
-		  }
+                        if refvar != std::ptr::null_mut() && nameref_p(refvar) == 0 {
+                            refvar = std::ptr::null_mut();
+                        }
 
-	      if refvar != std::ptr::null_mut() && nameref_p (refvar) == 0 {
-			refvar = std::ptr::null_mut();
-		  }
+                        if refvar != std::ptr::null_mut() {
+                            /* XXX - use declare_find_variable here? */
+                            if mkglobal != 0 {
+                                var = find_global_variable(nameref_cell(refvar));
+                            } else {
+                                var = find_variable(nameref_cell(refvar));
+                            }
+                        }
 
                         if refvar != std::ptr::null_mut() && var == std::ptr::null_mut() {
                             oldname = name; /* need to free this */
@@ -1354,7 +1353,7 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
                                         '\0' as c_char;
                                 }
 
-                                offset = assignment(name, 1);
+                                offset = assignment(name, 0);
                                 /* if offset was valid previously, but the substituting
                                 of the nameref value results in an invalid assignment,
                                 throw an invalid identifier error */
@@ -1393,299 +1392,378 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
                         as i32;
                     creating_array = flags_on & (att_array!() | att_assoc!());
 
-	    if var == std::ptr::null_mut() {
-	      if (flags_on & att_assoc!()) !=0 {
-		  	var = make_new_assoc_variable (name);
-		    if var != std::ptr::null_mut() && offset == 0 {
-			  VSETATTR (var, att_invisible!());
-		    }
-		  } else if (flags_on & att_array!()) !=0 || making_array_special !=0  {
-		  	var = make_new_array_variable (name);
-		  	if var != std::ptr::null_mut() && offset == 0 {
-				VSETATTR (var, att_invisible!());
-			}
-		} else {
-		  if mkglobal !=0 {
-			var=bind_global_variable (name, std::ptr::null_mut(), ASS_FORCE!());
-		  }	else {
-			var= bind_variable (name, std::ptr::null_mut(), ASS_FORCE!());
-		  }
-		  if var != std::ptr::null_mut() && offset == 0 {
-			VSETATTR (var, att_invisible!());
-		  }
-		}
+                    if var == std::ptr::null_mut() {
+                        if (flags_on & att_assoc!()) != 0 {
+                            var = make_new_assoc_variable(name);
+                            if var != std::ptr::null_mut() && offset == 0 {
+                                VSETATTR(var, att_invisible!());
+                            }
+                        } else if (flags_on & att_array!()) != 0 || making_array_special != 0 {
+                            var = make_new_array_variable(name);
+                            if var != std::ptr::null_mut() && offset == 0 {
+                                VSETATTR(var, att_invisible!());
+                            }
+                        } else {
+                            if mkglobal != 0 {
+                                var =
+                                    bind_global_variable(name, std::ptr::null_mut(), ASS_FORCE!());
+                            } else {
+                                var = bind_variable(name, std::ptr::null_mut(), ASS_FORCE!());
+                            }
+                            if var != std::ptr::null_mut() && offset == 0 {
+                                VSETATTR(var, att_invisible!());
+                            }
+                        }
 
-		if var == std::ptr::null_mut() {
-		  /* Has to appear in brackets */
-		  libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter;
-		}
-	      created_var = 1;
-	   } else if (array_p (var) !=0 || assoc_p (var) !=0 ) && (flags_on & att_nameref!()) !=0 {
-			 /* Can't take an existing array variable and make it a nameref */
-	      builtin_error (CString::new("%s: reference variable cannot be an array").unwrap().as_ptr(), name);
-	      assign_error+=1;
-	      libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter;
-	    } else if nameref_p (var) !=0 && (flags_on & att_nameref!()) == 0 && (flags_off & att_nameref!()) == 0 && offset !=0 && valid_nameref_value (value, 1) == 0 {
-	      builtin_error (CString::new("`%s': invalid variable name for name reference").unwrap().as_ptr(), value);
-	      any_failed+=1;
-	      libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter;
-	    } else if (flags_on & att_nameref!()) !=0 {
-	      /* Check of offset is to allow an assignment to a nameref var as
-		 part of the declare word to override existing value */
-	      if nameref_p (var) == 0 && var_isset (var) && offset == 0 && valid_nameref_value (value_cell (var), 0) == 0 {
-			builtin_error (CString::new("`%s': invalid variable name for name reference").unwrap().as_ptr(), value_cell (var));
-			any_failed+=1;
-			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
-		  }
+                        if var == std::ptr::null_mut() {
+                            /* Has to appear in brackets */
+                            libc::free(name as *mut c_void);
+                            list = (*list).next;
+                            continue 'outter;
+                        }
+                        created_var = 1;
+                    } else if (array_p(var) != 0 || assoc_p(var) != 0)
+                        && (flags_on & att_nameref!()) != 0
+                    {
+                        /* Can't take an existing array variable and make it a nameref */
+                        builtin_error(
+                            CString::new("%s: reference variable cannot be an array")
+                                .unwrap()
+                                .as_ptr(),
+                            name,
+                        );
+                        assign_error += 1;
+                        libc::free(name as *mut c_void);
+                        list = (*list).next;
+                        continue 'outter;
+                    } else if nameref_p(var) != 0
+                        && (flags_on & att_nameref!()) == 0
+                        && (flags_off & att_nameref!()) == 0
+                        && offset != 0
+                        && valid_nameref_value(value, 1) == 0
+                    {
+                        builtin_error(
+                            CString::new("`%s': invalid variable name for name reference")
+                                .unwrap()
+                                .as_ptr(),
+                            value,
+                        );
+                        any_failed += 1;
+                        libc::free(name as *mut c_void);
+                        list = (*list).next;
+                        continue 'outter;
+                    } else if (flags_on & att_nameref!()) != 0 {
+                        /* Check of offset is to allow an assignment to a nameref var as
+                        part of the declare word to override existing value */
+                        if nameref_p(var) == 0
+                            && var_isset(var)
+                            && offset == 0
+                            && valid_nameref_value(value_cell(var), 0) == 0
+                        {
+                            builtin_error(
+                                CString::new("`%s': invalid variable name for name reference")
+                                    .unwrap()
+                                    .as_ptr(),
+                                value_cell(var),
+                            );
+                            any_failed += 1;
+                            libc::free(name as *mut c_void);
+                            list = (*list).next;
+                            continue 'outter;
+                        }
 
-	      if readonly_p (var) !=0 {
-			sh_readonly (name);
-			any_failed+=1;
-			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
-		  }
-	      /* ksh93 compat: turning on nameref attribute turns off -ilu */
-	      VUNSETATTR (var, att_integer!()|att_uppercase!()|att_lowercase!()|att_capcase!());
-	    }
+                        if readonly_p(var) != 0 {
+                            sh_readonly(name);
+                            any_failed += 1;
+                            libc::free(name as *mut c_void);
+                            list = (*list).next;
+                            continue 'outter;
+                        }
+                        /* ksh93 compat: turning on nameref attribute turns off -ilu */
+                        VUNSETATTR(
+                            var,
+                            att_integer!() | att_uppercase!() | att_lowercase!() | att_capcase!(),
+                        );
+                    }
 
-		/* Cannot use declare +r to turn off readonly attribute. */
-		if readonly_p (var) !=0 && (flags_off & att_readonly!()) !=0 {
-			sh_readonly ((*var).name);
-			any_failed+=1;
-			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
-		}
+                    /* Cannot use declare +r to turn off readonly attribute. */
+                    if readonly_p(var) != 0 && (flags_off & att_readonly!()) != 0 {
+                        sh_readonly((*var).name);
+                        any_failed += 1;
+                        libc::free(name as *mut c_void);
+                        list = (*list).next;
+                        continue 'outter;
+                    }
 
-		/* Cannot use declare to assign value to readonly or noassign
-			variable. */
-		if (readonly_p (var) !=0 || noassign_p (var)!=0 ) && offset !=0 {
-			if readonly_p (var) !=0 {
-				sh_readonly (name);
-			}
-			assign_error+=1;
-			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
-		}
+                    /* Cannot use declare to assign value to readonly or noassign
+                    variable. */
+                    if (readonly_p(var) != 0 || noassign_p(var) != 0) && offset != 0 {
+                        if readonly_p(var) != 0 {
+                            sh_readonly(name);
+                        }
+                        assign_error += 1;
+                        libc::free(name as *mut c_void);
+                        list = (*list).next;
+                        continue 'outter;
+                    }
 
-		/* make declare a[2]=foo as similar to a[2]=foo as possible if
-			a is already an array or assoc variable. */
-		if array_subscript_assignment && array_exists !=0 && creating_array == 0 {
-			simple_array_assign = 1;
-		} else if (making_array_special !=0 || creating_array !=0 || array_exists !=0) && offset!=0 {
-	      let vlen:i32;
-	      vlen = libc::strlen (value) as i32;
-		  /*itrace("declare_builtin: name = %s value = %s flags = %d", name, value, wflags);*/
-	      if shell_compatibility_level > 43 && (wflags & W_COMPASSIGN!()) == 0 && *value == '(' as c_char && *(value.offset((vlen-1) as isize) as * mut c_char) == ')' as c_char {
-		  /* The warning is only printed when using compound assignment
-		     to an array variable that doesn't already exist.  We use
-		     creating_array to allow things like
-		     declare -a foo$bar='(abc)' to work. */
-			if array_exists == 0 && creating_array == 0 {
-				internal_warning (CString::new("%s: quoted compound array assignment deprecated").unwrap().as_ptr(), (*(*list).word).word);
-			}
-			compound_array_assign = (array_exists !=0 || creating_array !=0) as i32;
-			simple_array_assign = making_array_special;
-		 } else if *value == '(' as c_char && *(value.offset((vlen-1) as isize) as * mut c_char) == ')' as c_char && (shell_compatibility_level < 44 || (wflags & W_COMPASSIGN!()) !=0 ) {
-			compound_array_assign = 1;
-		 } else {
-			simple_array_assign = 1;
-		 }
-	    }
+                    /* make declare a[2]=foo as similar to a[2]=foo as possible if
+                    a is already an array or assoc variable. */
+                    if array_subscript_assignment && array_exists != 0 && creating_array == 0 {
+                        simple_array_assign = 1;
+                    } else if (making_array_special != 0
+                        || creating_array != 0
+                        || array_exists != 0)
+                        && offset != 0
+                    {
+                        let vlen: i32;
+                        vlen = libc::strlen(value) as i32;
+                        /*itrace("declare_builtin: name = %s value = %s flags = %d", name, value, wflags);*/
+                        if shell_compatibility_level > 43
+                            && (wflags & W_COMPASSIGN!()) == 0
+                            && *value == '(' as c_char
+                            && *(value.offset((vlen - 1) as isize) as *mut c_char) == ')' as c_char
+                        {
+                            /* The warning is only printed when using compound assignment
+                            to an array variable that doesn't already exist.  We use
+                            creating_array to allow things like
+                            declare -a foo$bar='(abc)' to work. */
+                            if array_exists == 0 && creating_array == 0 {
+                                internal_warning(
+                                    CString::new("%s: quoted compound array assignment deprecated")
+                                        .unwrap()
+                                        .as_ptr(),
+                                    (*(*list).word).word,
+                                );
+                            }
+                            compound_array_assign =
+                                (array_exists != 0 || creating_array != 0) as i32;
+                            simple_array_assign = making_array_special;
+                        } else if *value == '(' as c_char
+                            && *(value.offset((vlen - 1) as isize) as *mut c_char) == ')' as c_char
+                            && (shell_compatibility_level < 44 || (wflags & W_COMPASSIGN!()) != 0)
+                        {
+                            compound_array_assign = 1;
+                        } else {
+                            simple_array_assign = 1;
+                        }
+                    }
 
-		/* Cannot use declare +a name or declare +A name to remove an
-			array variable. */
-		if ((flags_off & att_array!()) !=0 && array_p (var) !=0) || ((flags_off & att_assoc!()) !=0 && assoc_p (var) !=0)	{
-			builtin_error (CString::new("%s: cannot destroy array variables in this way").unwrap().as_ptr(), name);
-			any_failed+=1;
-			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
-		}
+                    /* Cannot use declare +a name or declare +A name to remove an
+                    array variable. */
+                    if ((flags_off & att_array!()) != 0 && array_p(var) != 0)
+                        || ((flags_off & att_assoc!()) != 0 && assoc_p(var) != 0)
+                    {
+                        builtin_error(
+                            CString::new("%s: cannot destroy array variables in this way")
+                                .unwrap()
+                                .as_ptr(),
+                            name,
+                        );
+                        any_failed += 1;
+                        libc::free(name as *mut c_void);
+                        list = (*list).next;
+                        continue 'outter;
+                    }
 
-		if (flags_on & att_array!()) !=0 && assoc_p (var) !=0 {
-			builtin_error (CString::new("%s: cannot convert associative to indexed array").unwrap().as_ptr(), name);
-			any_failed+=1;
-			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
-		}
+                    if (flags_on & att_array!()) != 0 && assoc_p(var) != 0 {
+                        builtin_error(
+                            CString::new("%s: cannot convert associative to indexed array")
+                                .unwrap()
+                                .as_ptr(),
+                            name,
+                        );
+                        any_failed += 1;
+                        libc::free(name as *mut c_void);
+                        list = (*list).next;
+                        continue 'outter;
+                    }
 
-	    if (flags_on & att_assoc!()) !=0 && array_p (var) !=0 {
-	      builtin_error (CString::new("%s: cannot convert indexed to associative array").unwrap().as_ptr(), name);
-	      any_failed+=1;
-	      libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter;
-	    }
+                    if (flags_on & att_assoc!()) != 0 && array_p(var) != 0 {
+                        builtin_error(
+                            CString::new("%s: cannot convert indexed to associative array")
+                                .unwrap()
+                                .as_ptr(),
+                            name,
+                        );
+                        any_failed += 1;
+                        libc::free(name as *mut c_void);
+                        list = (*list).next;
+                        continue 'outter;
+                    }
 
-	    /* declare -A name[[n]] makes name an associative array variable. */
-	    if (flags_on & att_assoc!()) !=0 {
-	      if assoc_p (var) == 0 {
-			var = convert_var_to_assoc (var);
-		  }
-	    } else if (making_array_special !=0 || (flags_on & att_array!()) !=0 ) && array_p (var) == 0 && assoc_p (var) == 0 {
-		  /* declare -a name[[n]] or declare name[n] makes name an indexed
-			array variable. */
-			var = convert_var_to_array (var);
-	    }
+                    /* declare -A name[[n]] makes name an associative array variable. */
+                    if (flags_on & att_assoc!()) != 0 {
+                        if assoc_p(var) == 0 {
+                            var = convert_var_to_assoc(var);
+                        }
+                    } else if (making_array_special != 0 || (flags_on & att_array!()) != 0)
+                        && array_p(var) == 0
+                        && assoc_p(var) == 0
+                    {
+                        /* declare -a name[[n]] or declare name[n] makes name an indexed
+                        array variable. */
+                        var = convert_var_to_array(var);
+                    }
 
-		/* XXX - we note that we are turning on nameref attribute and defer
-			setting it until the assignment has been made so we don't do an
-			inadvertent nameref lookup.  Might have to do the same thing for
-			flags_off&att_nameref. */
-		/* XXX - ksh93 makes it an error to set a readonly nameref variable
-			using a single typeset command. */
-	    onref = flags_on & att_nameref!();
-	    flags_on &= !att_nameref!();
+                    /* XXX - we note that we are turning on nameref attribute and defer
+                    setting it until the assignment has been made so we don't do an
+                    inadvertent nameref lookup.  Might have to do the same thing for
+                    flags_off&att_nameref. */
+                    /* XXX - ksh93 makes it an error to set a readonly nameref variable
+                    using a single typeset command. */
+                    onref = flags_on & att_nameref!();
+                    flags_on &= !att_nameref!();
 
-		if array_p (var) !=0 || assoc_p (var) !=0 || (offset !=0 && compound_array_assign !=0) || simple_array_assign !=0 {
-			onref = 0;		/* array variables may not be namerefs */
-		}
-		/* ksh93 seems to do this */
-		offref = flags_off & att_nameref!();
-		flags_off &= !att_nameref!();
-        
-		VSETATTR (var, flags_on);
-		VUNSETATTR (var, flags_off);
+                    if array_p(var) != 0
+                        || assoc_p(var) != 0
+                        || (offset != 0 && compound_array_assign != 0)
+                        || simple_array_assign != 0
+                    {
+                        onref = 0; /* array variables may not be namerefs */
+                    }
+                    /* ksh93 seems to do this */
+                    offref = flags_off & att_nameref!();
+                    flags_off &= !att_nameref!();
 
-	  if offset !=0 && compound_array_assign !=0 {
-		assign_array_var_from_string (var, value, aflags|ASS_FORCE!());
-	  } else if simple_array_assign !=0 && subscript_start !=std::ptr::null_mut() {
-	      let mut local_aflags:i32;
-	      /* declare [-aA] name[N]=value */
-	      *subscript_start = '[' as c_char;	/* ] */
-	      /* XXX - problem here with appending */
-	      local_aflags = aflags&ASS_APPEND!();
-		  if assoc_noexpand  {
-			local_aflags |= ASS_NOEXPAND!();
-		  } else {
-			local_aflags |= 0;
-		  }
+                    VSETATTR(var, flags_on);
+                    VUNSETATTR(var, flags_off);
 
-	      var = assign_array_element (name, value, local_aflags);	/* XXX - not aflags */
-	      *subscript_start = '\0' as c_char;
-	      if var == std::ptr::null_mut() {/* some kind of assignment error */
-			assign_error+=1;
-			flags_on |= onref;
-			flags_off |= offref;
-			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
-		  }
-	    } else if simple_array_assign !=0 {
-	      /* let bind_{array,assoc}_variable take care of this. */
-	      if assoc_p (var) !=0 {
-			bind_assoc_variable (var, name, r_savestring (CString::new("0").unwrap().as_ptr()), value, aflags|ASS_FORCE!());
-		  } else {
-			bind_array_variable (name, 0, value, aflags|ASS_FORCE!());
-		  }
-	    } else if offset !=0 {
-			/* XXX - no ASS_FORCE here */
-	        /* bind_variable_value duplicates the essential internals of bind_variable() */
-	      if onref !=0 || nameref_p (var) !=0 {
-			aflags |= ASS_NAMEREF!();
-		  }
+                    if offset != 0 && compound_array_assign != 0 {
+                        assign_array_var_from_string(var, value, aflags | ASS_FORCE!());
+                    } else if simple_array_assign != 0 && subscript_start != std::ptr::null_mut() {
+                        let mut local_aflags: i32;
+                        /* declare [-aA] name[N]=value */
+                        *subscript_start = '[' as c_char; /* ] */
+                        /* XXX - problem here with appending */
+                        local_aflags = aflags & ASS_APPEND!();
+                        if assoc_noexpand {
+                            local_aflags |= ASS_NOEXPAND!();
+                        } else {
+                            local_aflags |= 0;
+                        }
 
-	      v = bind_variable_value (var, value, aflags);
-	      if v == std::ptr::null_mut() && (onref !=0 || nameref_p (var) !=0) {
-			if valid_nameref_value (value, 1) == 0 {
-				sh_invalidid (value);
-			}
+                        var = assign_array_element(name, value, local_aflags); /* XXX - not aflags */
+                        *subscript_start = '\0' as c_char;
+                        if var == std::ptr::null_mut() {
+                            /* some kind of assignment error */
+                            assign_error += 1;
+                            flags_on |= onref;
+                            flags_off |= offref;
+                            libc::free(name as *mut c_void);
+                            list = (*list).next;
+                            continue 'outter;
+                        }
+                    } else if simple_array_assign != 0 {
+                        /* let bind_{array,assoc}_variable take care of this. */
+                        if assoc_p(var) != 0 {
+                            bind_assoc_variable(
+                                var,
+                                name,
+                                r_savestring(CString::new("0").unwrap().as_ptr()),
+                                value,
+                                aflags | ASS_FORCE!(),
+                            );
+                        } else {
+                            bind_array_variable(name, 0, value, aflags | ASS_FORCE!());
+                        }
+                    } else if offset != 0 {
+                        /* XXX - no ASS_FORCE here */
+                        /* bind_variable_value duplicates the essential internals of bind_variable() */
+                        if onref != 0 || nameref_p(var) != 0 {
+                            aflags |= ASS_NAMEREF!();
+                        }
 
-			assign_error+=1;
-			/* XXX - unset this variable? or leave it as normal var? */
-			if created_var !=0 {
-				if mkglobal !=0 {
-					delete_var ( (*var).name, global_variables);
-				} else {
-					delete_var ( (*var).name, shell_variables);
-				}
-			}
+                        v = bind_variable_value(var, value, aflags);
+                        if v == std::ptr::null_mut() && (onref != 0 || nameref_p(var) != 0) {
+                            if valid_nameref_value(value, 1) == 0 {
+                                sh_invalidid(value);
+                            }
 
-			flags_on |= onref;/* undo change from above */
-			flags_off |= offref;
-			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
-		  }
-	    }
+                            assign_error += 1;
+                            /* XXX - unset this variable? or leave it as normal var? */
+                            if created_var != 0 {
+                                if mkglobal != 0 {
+                                    delete_var((*var).name, global_variables);
+                                } else {
+                                    delete_var((*var).name, shell_variables);
+                                }
+                            }
 
-	  /* If we found this variable in the temporary environment, as with
-	     `var=value declare -x var', make sure it is treated identically
-	     to `var=value export var'.  Do the same for `declare -r' and
-	     `readonly'.  Preserve the attributes, except for att_tempvar. */
-	  /* XXX -- should this create a variable in the global scope, or
-	     modify the local variable flags?  ksh93 has it modify the
-	     global scope.
-	     Need to handle case like in set_var_attribute where a temporary
-	     variable is in the same table as the function local vars. */
-	  if (flags_on & (att_exported!()|att_readonly!()) !=0 ) && tempvar_p (var) !=0 {
-		 let mut tv:* mut SHELL_VAR;
-	     let mut tvalue:* mut c_char=std::ptr::null_mut();
+                            flags_on |= onref; /* undo change from above */
+                            flags_off |= offref;
+                            libc::free(name as *mut c_void);
+                            list = (*list).next;
+                            continue 'outter;
+                        }
+                    }
 
-	     tv = find_tempenv_variable ((*var).name);
-	     if tv != std::ptr::null_mut() {
-			  if var_isset(var) {
-				tvalue = r_savestring (value_cell (var));
-			  } else {
-				tvalue = r_savestring (CString::new("").unwrap().as_ptr());
-			  }
-	          tv = bind_variable ((*var).name, tvalue, 0);
+                    /* If we found this variable in the temporary environment, as with
+                    `var=value declare -x var', make sure it is treated identically
+                    to `var=value export var'.  Do the same for `declare -r' and
+                    `readonly'.  Preserve the attributes, except for att_tempvar. */
+                    /* XXX -- should this create a variable in the global scope, or
+                    modify the local variable flags?  ksh93 has it modify the
+                    global scope.
+                    Need to handle case like in set_var_attribute where a temporary
+                    variable is in the same table as the function local vars. */
+                    if (flags_on & (att_exported!() | att_readonly!()) != 0) && tempvar_p(var) != 0
+                    {
+                        let mut tv: *mut SHELL_VAR;
+                        let mut tvalue: *mut c_char = std::ptr::null_mut();
 
-			  if tv != std::ptr::null_mut() {
-		      	(*tv).attributes |= (*var).attributes & !att_tempvar!();
-				if (*tv).context > 0 {
-					VSETATTR (tv, att_propagate!());
-				}
-		      }
-	          libc::free (tvalue as * mut c_void);
-		 }
-	     VSETATTR (var, att_propagate!());
-	    }
-	}
+                        tv = find_tempenv_variable((*var).name);
+                        if tv != std::ptr::null_mut() {
+                            if var_isset(var) {
+                                tvalue = r_savestring(value_cell(var));
+                            } else {
+                                tvalue = r_savestring(CString::new("").unwrap().as_ptr());
+                            }
+                            tv = bind_variable((*var).name, tvalue, 0);
 
-      /* Turn on nameref attribute we deferred above. */
-      /* XXX - should we turn on the noassign attribute for consistency with
-	  ksh93 when we turn on the nameref attribute? */
-      VSETATTR (var, onref);
-      flags_on |= onref;
-      VUNSETATTR (var, offref);
-      flags_off |= offref;
-      /* Yuck.  ksh93 compatibility.  XXX - need to investigate more but
-	  definitely happens when turning off nameref attribute on nameref
-	  (see comments above).  Under no circumstances allow this to turn
-	  off readonly attribute on readonly nameref variable. */
-      if refvar !=std::ptr::null_mut() {
-		if (flags_off & att_readonly!()) !=0 {
-			flags_off &= !att_readonly!();
-		}
-		VUNSETATTR (refvar, flags_off);
-	  }
-      stupidly_hack_special_variables (name);
-	  libc::free (name as * mut c_void);
-	  list = (*list).next;
-	  continue 'outter;
-     }
-	}
-  if assign_error !=0 {
-	return EX_BADASSIGN!();
-  } else {
-	  if any_failed == 0 {
-		return EXECUTION_SUCCESS!();
-	  } else {
-		return EXECUTION_FAILURE!();
-	  }
-  }
-}
+                            if tv != std::ptr::null_mut() {
+                                (*tv).attributes |= (*var).attributes & !att_tempvar!();
+                                if (*tv).context > 0 {
+                                    VSETATTR(tv, att_propagate!());
+                                }
+                            }
+                            libc::free(tvalue as *mut c_void);
+                        }
+                        VSETATTR(var, att_propagate!());
+                    }
+                }
+
+                /* Turn on nameref attribute we deferred above. */
+                /* XXX - should we turn on the noassign attribute for consistency with
+                ksh93 when we turn on the nameref attribute? */
+                VSETATTR(var, onref);
+                flags_on |= onref;
+                VUNSETATTR(var, offref);
+                flags_off |= offref;
+                /* Yuck.  ksh93 compatibility.  XXX - need to investigate more but
+                definitely happens when turning off nameref attribute on nameref
+                (see comments above).  Under no circumstances allow this to turn
+                off readonly attribute on readonly nameref variable. */
+                if refvar != std::ptr::null_mut() {
+                    if (flags_off & att_readonly!()) != 0 {
+                        flags_off &= !att_readonly!();
+                    }
+                    VUNSETATTR(refvar, flags_off);
+                }
+                stupidly_hack_special_variables(name);
+                libc::free(name as *mut c_void);
+                list = (*list).next;
+                continue 'outter;
+            }
+        }
+        if assign_error != 0 {
+            return EX_BADASSIGN!();
+        } else {
+            if any_failed == 0 {
+                return EXECUTION_SUCCESS!();
+            } else {
+                return EXECUTION_FAILURE!();
+            }
+        }
+    }
 }
