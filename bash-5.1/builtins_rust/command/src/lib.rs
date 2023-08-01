@@ -1,9 +1,9 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
 use std::ffi::*;
 
-use rcommon::{WordList, WordDesc, EX_USAGE, EXECUTION_SUCCESS, EXECUTION_FAILURE};
+use rcommon::{WordDesc, WordList, EXECUTION_FAILURE, EXECUTION_SUCCESS, EX_USAGE};
 use rhelp::r_builtin_help;
 extern "C" {
     fn copy_word_list(_: *mut WordList) -> *mut WordList;
@@ -229,13 +229,13 @@ pub struct for_com {
     pub action: *mut COMMAND,
 }
 
-pub const CDESC_ALL:i32 = 0x001;
+pub const CDESC_ALL: i32 = 0x001;
 pub const CDESC_SHORTDESC: i32 = 0x002;
-pub const CDESC_REUSABLE:i32 = 0x004;
+pub const CDESC_REUSABLE: i32 = 0x004;
 pub const CDESC_TYPE: i32 = 0x008;
-pub const CDESC_PATH_ONLY:i32 = 0x010;
+pub const CDESC_PATH_ONLY: i32 = 0x010;
 pub const CDESC_FORCE_PATH: i32 = 0x020;
-pub const CDESC_NOFUNCS:i32 = 0x040;
+pub const CDESC_NOFUNCS: i32 = 0x040;
 pub const CDESC_ABSPATH: i32 = 0x080;
 pub const CDESC_STDPATH: i32 = 0x100;
 
@@ -248,43 +248,41 @@ pub const CDESC_STDPATH: i32 = 0x100;
 //#define CDESC_NOFUNCS		0x040	/* type -f */
 //#define CDESC_ABSPATH		0x080	/* convert to absolute path, no ./ */
 //#define CDESC_STDPATH		0x100	/* command -p */
-
-
-pub const const_command_builtin:*mut libc::c_char = b"command_builtin\0" as *const u8 as *const libc::c_char as *mut libc::c_char;//.unwrap();
-//#define COMMAND_BUILTIN_FLAGS (CMD_NO_FUNCTIONS | CMD_INHIBIT_EXPANSION | CMD_COMMAND_BUILTIN | (use_standard_path ? CMD_STDPATH : 0))
-//#define CMD_WANT_SUBSHELL  0x01	/* User wants a subshell: ( command ) */
-//#define CMD_FORCE_SUBSHELL 0x02	/* Shell needs to force a subshell. */
-//#define CMD_INVERT_RETURN  0x04	/* Invert the exit value. */
-//#define CMD_IGNORE_RETURN  0x08	/* Ignore the exit value.  For set -e. */
-//#define CMD_NO_FUNCTIONS   0x10 /* Ignore functions during command lookup. */
-//#define CMD_INHIBIT_EXPANSION 0x20 /* Do not expand the command words. */
-//#define CMD_NO_FORK	   0x40	/* Don't fork; just call execve */
-//#define CMD_TIME_PIPELINE  0x80 /* Time a pipeline */
-//#define CMD_TIME_POSIX	   0x100 /* time -p; use POSIX.2 time output spec. */
-//#define CMD_AMPERSAND	   0x200 /* command & */
-//#define CMD_STDIN_REDIR	   0x400 /* async command needs implicit </dev/null */
-//#define CMD_COMMAND_BUILTIN 0x0800 /* command executed by `command' builtin */
-//#define CMD_COPROC_SUBSHELL 0x1000
-//#define CMD_LASTPIPE	    0x2000
-//#define CMD_STDPATH	    0x4000	/* use standard path for command lookup */
-//#define CMD_TRY_OPTIMIZING  0x8000	/* try to optimize this simple command */
-
-pub const CMD_WANT_SUBSHELL :i32 = 0x01;
-pub const CMD_FORCE_SUBSHELL :i32 = 0x02;
-pub const CMD_INVERT_RETURN :i32 = 0x04;
-pub const CMD_IGNORE_RETURN :i32 = 0x08;
-pub const CMD_NO_FUNCTIONS :i32 = 0x10;
-pub const CMD_INHIBIT_EXPANSION :i32 = 0x20;
-pub const CMD_NO_FORK :i32 = 0x40;
-pub const CMD_TIME_PIPELINE :i32 = 0x80;
-pub const CMD_TIME_POSIX :i32 = 0x100;
-pub const CMD_AMPERSAND :i32 = 0x200;
-pub const CMD_STDIN_REDIR :i32 = 0x400;
-pub const CMD_COMMAND_BUILTIN :i32 = 0x0800;
-pub const CMD_COPROC_SUBSHELL :i32 = 0x1000;
-pub const CMD_LASTPIPE :i32 = 0x2000;
-pub const CMD_STDPATH :i32 = 0x4000;
-pub const CMD_TRY_OPTIMIZING :i32 = 0x8000;
+pub const const_command_builtin: *mut libc::c_char =
+    b"command_builtin\0" as *const u8 as *const libc::c_char as *mut libc::c_char; //.unwrap();
+                                                                                   //#define COMMAND_BUILTIN_FLAGS (CMD_NO_FUNCTIONS | CMD_INHIBIT_EXPANSION | CMD_COMMAND_BUILTIN | (use_standard_path ? CMD_STDPATH : 0))
+                                                                                   //#define CMD_WANT_SUBSHELL  0x01	/* User wants a subshell: ( command ) */
+                                                                                   //#define CMD_FORCE_SUBSHELL 0x02	/* Shell needs to force a subshell. */
+                                                                                   //#define CMD_INVERT_RETURN  0x04	/* Invert the exit value. */
+                                                                                   //#define CMD_IGNORE_RETURN  0x08	/* Ignore the exit value.  For set -e. */
+                                                                                   //#define CMD_NO_FUNCTIONS   0x10 /* Ignore functions during command lookup. */
+                                                                                   //#define CMD_INHIBIT_EXPANSION 0x20 /* Do not expand the command words. */
+                                                                                   //#define CMD_NO_FORK	   0x40	/* Don't fork; just call execve */
+                                                                                   //#define CMD_TIME_PIPELINE  0x80 /* Time a pipeline */
+                                                                                   //#define CMD_TIME_POSIX	   0x100 /* time -p; use POSIX.2 time output spec. */
+                                                                                   //#define CMD_AMPERSAND	   0x200 /* command & */
+                                                                                   //#define CMD_STDIN_REDIR	   0x400 /* async command needs implicit </dev/null */
+                                                                                   //#define CMD_COMMAND_BUILTIN 0x0800 /* command executed by `command' builtin */
+                                                                                   //#define CMD_COPROC_SUBSHELL 0x1000
+                                                                                   //#define CMD_LASTPIPE	    0x2000
+                                                                                   //#define CMD_STDPATH	    0x4000	/* use standard path for command lookup */
+                                                                                   //#define CMD_TRY_OPTIMIZING  0x8000	/* try to optimize this simple command */
+pub const CMD_WANT_SUBSHELL: i32 = 0x01;
+pub const CMD_FORCE_SUBSHELL: i32 = 0x02;
+pub const CMD_INVERT_RETURN: i32 = 0x04;
+pub const CMD_IGNORE_RETURN: i32 = 0x08;
+pub const CMD_NO_FUNCTIONS: i32 = 0x10;
+pub const CMD_INHIBIT_EXPANSION: i32 = 0x20;
+pub const CMD_NO_FORK: i32 = 0x40;
+pub const CMD_TIME_PIPELINE: i32 = 0x80;
+pub const CMD_TIME_POSIX: i32 = 0x100;
+pub const CMD_AMPERSAND: i32 = 0x200;
+pub const CMD_STDIN_REDIR: i32 = 0x400;
+pub const CMD_COMMAND_BUILTIN: i32 = 0x0800;
+pub const CMD_COPROC_SUBSHELL: i32 = 0x1000;
+pub const CMD_LASTPIPE: i32 = 0x2000;
+pub const CMD_STDPATH: i32 = 0x4000;
+pub const CMD_TRY_OPTIMIZING: i32 = 0x8000;
 
 #[no_mangle]
 pub unsafe extern "C" fn r_command_builtin(mut list: *mut WordList) -> libc::c_int {
@@ -299,7 +297,7 @@ pub unsafe extern "C" fn r_command_builtin(mut list: *mut WordList) -> libc::c_i
     reset_internal_getopt();
     let adnpsf = CString::new("pvV").expect("CString::new failed");
     loop {
-        opt = internal_getopt(list, adnpsf.as_ptr() );
+        opt = internal_getopt(list, adnpsf.as_ptr());
         if !(opt != -1) {
             break;
         }
@@ -315,7 +313,7 @@ pub unsafe extern "C" fn r_command_builtin(mut list: *mut WordList) -> libc::c_i
                 verbose = CDESC_REUSABLE; // ditto
             }
             _ => {
-                if opt ==-99 {
+                if opt == -99 {
                     r_builtin_help();
                     return EX_USAGE;
                 }
@@ -345,11 +343,13 @@ pub unsafe extern "C" fn r_command_builtin(mut list: *mut WordList) -> libc::c_i
             any_found += found;
             list = (*list).next;
         }
-        return if any_found != 0 { EXECUTION_SUCCESS!() } else { EXECUTION_FAILURE!() };
+        return if any_found != 0 {
+            EXECUTION_SUCCESS!()
+        } else {
+            EXECUTION_FAILURE!()
+        };
     }
-    begin_unwind_frame(
-        const_command_builtin
-    );
+    begin_unwind_frame(const_command_builtin);
     command = make_bare_simple_command();
     // let ref mut fresh0 = (*(*command).value.Simple).words;
     //*fresh0 = copy_word_list(list);

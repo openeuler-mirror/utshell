@@ -1,14 +1,14 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.  
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
-use libc::{c_int, c_char};
+use libc::{c_char, c_int};
 use std::ffi::CStr;
 include!(concat!("intercdep.rs"));
 
 #[no_mangle]
 pub extern "C" fn r_builtin_builtin(mut list: *mut WordList) -> i32 {
-    unsafe{
-        let mut function: Option::<sh_builtin_func_t> = None;
+    unsafe {
+        let mut function: Option<sh_builtin_func_t> = None;
         if no_options(list) != 0 {
             return EX_USAGE;
         }
@@ -30,4 +30,3 @@ pub extern "C" fn r_builtin_builtin(mut list: *mut WordList) -> i32 {
         };
     }
 }
-
