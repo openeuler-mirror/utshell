@@ -437,7 +437,7 @@ macro_rules! ASS_NOEXPAND {
 #[macro_export]
 macro_rules! EX_BADASSIGN {
     () => {
-        26 /* variable assignment error */
+        260 /* variable assignment error */
     };
 }
 
@@ -868,40 +868,83 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
             let mut creating_array: i32;
             let mut array_subscript_assignment: bool;
 
-      let mut making_array_special:i32;
-	  let mut compound_array_assign:i32;
-	  let mut simple_array_assign:i32;
-      let mut var_exists:i32;
-	  let mut array_exists:i32;
-	  let mut creating_array:i32;
-	  let mut array_subscript_assignment:bool;
+            name = r_savestring((*(*list).word).word);
+            wflags = (*(*list).word).flags;
 
-      name = r_savestring ((*(*list).word).word);
-      wflags = (*(*list).word).flags;
+            assoc_noexpand = assoc_expand_once != 0 && (wflags & (1 << 2)) != 0;
+            //　分出=
+            if assoc_noexpand {
+                offset = assignment(name, 2);
+            } else {
+                offset = assignment(name, 0);
+            }
 
-      assoc_noexpand = assoc_expand_once !=0 && (wflags & (1 << 2)) !=0;
-      //　分出=
-      if assoc_noexpand {
-		offset = assignment (name,  2);
-	  } else {
-		offset = assignment (name,  0);
-	  }
+            aflags = 0;
+            created_var = 0;
 
-      aflags = 0;
-      created_var = 0;
+            if local_var != 0
+                && variable_context != 0
+                && STREQ(name, CString::new("-").unwrap().as_ptr())
+            {
+                var = make_local_variable(CString::new("-").unwrap().as_ptr(), 0);
+                if value_cell(var) != std::ptr::null_mut() {
+                    libc::free(value_cell(var) as *mut c_void); /* just in case */
+                }
+                value = get_current_options();
+                var_setvalue(var, value);
+                VSETATTR(var, att_invisible!());
+                libc::free(name as *mut c_void);
+                list = (*list).next;
+                continue 'outter;
+            }
 
-      if local_var !=0 && variable_context !=0 && STREQ (name, CString::new("-").unwrap().as_ptr())	{
-		var = make_local_variable (CString::new("-").unwrap().as_ptr(), 0);
-        if value_cell(var) != std::ptr::null_mut() {
-		  libc::free (value_cell (var) as * mut c_void);		/* just in case */
-        }
-		value = get_current_options ();
-		var_setvalue (var, value);
-		VSETATTR (var, att_invisible!());
-		libc::free (name as * mut c_void);
-		list = (*list).next;
-		continue 'outter;
-	  }
+            if offset != 0 {
+                /* declare [-aAfFirx] name=value */
+                *name.offset(offset as isize) = '\0' as c_char;
+                value = name.offset((offset + 1) as isize);
+                if *(name.offset((offset - 1) as isize)) == '+' as c_char {
+                    aflags |= ASS_APPEND!();
+                    *(name.offset((offset - 1) as isize)) = '\0' as c_char;
+                }
+            } else {
+                value = tmpValue.as_ptr() as *mut c_char;
+            }
+            /* Do some lexical error checking on the LHS and RHS of the assignment
+            that is specific to nameref variables. */
+            if (flags_on & att_nameref!()) != 0 {
+                if valid_array_reference(name, 0) != 0 {
+                    builtin_error(
+                        CString::new("%s: reference variable cannot be an array")
+                            .unwrap()
+                            .as_ptr(),
+                        name,
+                    );
+                    assign_error += 1;
+                    libc::free(name as *mut c_void);
+                    list = (*list).next;
+                    continue 'outter;
+                } else if check_selfref(name, value, 0) != 0 {
+                    /* disallow self references at global scope, warn at function scope */
+                    if variable_context == 0 {
+                        builtin_error(
+                            CString::new("%s: nameref variable self references not allowed")
+                                .unwrap()
+                                .as_ptr(),
+                            name,
+                        );
+                        assign_error += 1;
+                        libc::free(name as *mut c_void);
+                        list = (*list).next;
+                        continue 'outter;
+                    } else {
+                        builtin_warning(
+                            CString::new("%s: circular name reference")
+                                .unwrap()
+                                .as_ptr(),
+                            name,
+                        );
+                    }
+                }
 
       if offset !=0 {	/* declare [-aAfFirx] name=value */
 	  	*name.offset(offset as isize) = '\0' as c_char;
@@ -1017,42 +1060,96 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
                 /* If we are declaring a function, then complain about it in some way.
                 We don't let people make functions by saying `typeset -f foo=bar'. */
 
-	  	if var != std::ptr::null_mut() && nameref_p (var) !=0 && readonly_p (var) != 0 && nameref_cell (var) != std::ptr::null_mut() && (flags_off & att_nameref!()) !=0 {
-	      sh_readonly (name);
-	      any_failed+=1;
-	      libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter; 
-	    }
-	} else {
-		var = std::ptr::null_mut();
-	}
-      /* If we are declaring a function, then complain about it in some way.
-	 We don't let people make functions by saying `typeset -f foo=bar'. */
+                /* There should be a way, however, to let people look at a particular
+                function definition by saying `typeset -f foo'. */
 
-      /* There should be a way, however, to let people look at a particular
-	 function definition by saying `typeset -f foo'. */
+                if (flags_on & att_function!()) != 0 {
+                    if offset != 0 {
+                        /* declare -f [-rix] foo=bar */
+                        builtin_error(
+                            CString::new("cannot use `-f' to make functions")
+                                .unwrap()
+                                .as_ptr(),
+                        );
+                        libc::free(name as *mut c_void);
+                        return EXECUTION_FAILURE!();
+                    } else {
+                        /* declare -f [-rx] name [name...] */
+                        var = find_function(name);
+                        if var != std::ptr::null_mut() {
+                            if readonly_p(var) != 0 && (flags_off & att_readonly!()) != 0 {
+                                builtin_error(
+                                    CString::new("%s: readonly function").unwrap().as_ptr(),
+                                    name,
+                                );
+                                any_failed += 1;
+                                libc::free(name as *mut c_void);
+                                list = (*list).next;
+                                continue 'outter;
+                            } else if (flags_on & (att_array!() | att_assoc!())) != 0 {
+                                if (flags_on & att_array!()) != 0 {
+                                    sh_invalidopt(
+                                        CString::new("-a").unwrap().as_ptr() as *mut c_char
+                                    );
+                                } else {
+                                    sh_invalidopt(
+                                        CString::new("-A").unwrap().as_ptr() as *mut c_char
+                                    );
+                                }
 
-    if (flags_on & att_function!()) !=0	{
-	  if offset !=0 {	/* declare -f [-rix] foo=bar */   
-	      builtin_error (CString::new("cannot use `-f' to make functions").unwrap().as_ptr());
-	      libc::free (name as * mut c_void);
-	      return EXECUTION_FAILURE!();
-	  } else {/* declare -f [-rx] name [name...] */
-	      var = find_function (name);
-	      if var != std::ptr::null_mut() {
-		  if readonly_p (var) !=0 && (flags_off & att_readonly!()) !=0 {
-		      builtin_error (CString::new("%s: readonly function").unwrap().as_ptr(), name);
-		      any_failed+=1;
-		      libc::free (name as * mut c_void);
-			  list = (*list).next;
-			  continue 'outter; 
-		  } else if (flags_on & (att_array!()|att_assoc!())) !=0 {
-			  if (flags_on & att_array!()) !=0 {
-				sh_invalidopt (CString::new("-a").unwrap().as_ptr() as * mut c_char);
-			  } else {
-				sh_invalidopt (CString::new("-A").unwrap().as_ptr() as * mut c_char);
-			  }
+                                any_failed += 1;
+                                libc::free(name as *mut c_void);
+                                list = (*list).next;
+                                continue 'outter;
+                            }
+                            /* declare -[Ff] name [name...] */
+                            if flags_on == att_function!() && flags_off == 0 {
+                                if nodefs != 0 && debugging_mode != 0 {
+                                    shell_fn = find_function_def((*var).name);
+                                    if shell_fn != std::ptr::null_mut() {
+                                        println!(
+                                            "{} {} {}",
+                                            CStr::from_ptr((*var).name).to_str().unwrap(),
+                                            (*shell_fn).line,
+                                            CStr::from_ptr((*shell_fn).source_file)
+                                                .to_str()
+                                                .unwrap()
+                                        );
+                                    } else {
+                                        println!(
+                                            "{}",
+                                            CStr::from_ptr((*var).name).to_str().unwrap()
+                                        );
+                                    }
+                                } else {
+                                    if nodefs != 0 {
+                                        t = (*var).name;
+                                    } else {
+                                        t = named_function_string(
+                                            name,
+                                            function_cell(var),
+                                            FUNC_MULTILINE!() | FUNC_EXTERNAL!(),
+                                        );
+                                    }
+                                    println!("{}", CStr::from_ptr(t).to_str().unwrap());
+                                    any_failed = sh_chkwrite(any_failed);
+                                }
+                            } else {
+                                /* declare -[fF] -[rx] name [name...] */
+                                VSETATTR(var, flags_on);
+                                flags_off &= !att_function!(); /* makes no sense */
+                                VUNSETATTR(var, flags_off);
+                            }
+                        } else {
+                            any_failed += 1;
+                        }
+                        libc::free(name as *mut c_void);
+                        list = (*list).next;
+                        continue 'outter;
+                    }
+                } else {
+                    /* declare -[aAinrx] name [name...] */
+                    /* Non-null if we just created or fetched a local variable. */
 
 		      any_failed+=1;
 		      libc::free (name as * mut c_void);

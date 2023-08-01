@@ -1677,3 +1677,32 @@ unsafe extern "C" fn the_printed_command_resize(length:c_int)
         the_printed_command = libc::realloc(the_printed_command as *mut c_void, the_printed_command_size as usize) as *mut c_char;
     }
 }
+
+//xprintf 没有重构，用到xprint的地方直接换成println！
+//cprintf测试
+unsafe fn cprintf_1(str:*const c_char)
+{
+    let mut _c:c_int;
+    let arg_len:i32;
+    arg_len = libc::strlen(str) as i32;
+    the_printed_command_resize(arg_len + 1);
+    libc::strncpy(the_printed_command.offset(command_string_index as isize), str, arg_len as usize);
+    command_string_index += arg_len;
+    *the_printed_command.offset(command_string_index as isize) = '\u{0}' as i32 as libc::c_char;
+}
+
+unsafe fn cprintf_2(str1:*const c_char,str2:*mut c_char)
+{
+    let mut _c:c_int;
+    let arg_len_1:i32;
+    let arg_len_2:i32;
+    // println!("cprintf_2");
+    arg_len_1 = libc::strlen(str1) as i32;
+    arg_len_2 = libc::strlen(str2 as *const c_char) as i32;
+    the_printed_command_resize(arg_len_1 + arg_len_2 + 1);
+    libc::strncpy(the_printed_command.offset(command_string_index as isize), str1, arg_len_1 as usize);
+    command_string_index += arg_len_1;
+    libc::strncpy(the_printed_command.offset(command_string_index as isize), str2, arg_len_1 as usize);
+    command_string_index += arg_len_2;
+    *the_printed_command.offset(command_string_index as isize) = '\u{0}' as i32 as libc::c_char;
+}
