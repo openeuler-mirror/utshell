@@ -561,11 +561,11 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn r_declare_builtin(list: *mut WordList) -> i32 {
-    return r_declare_internal(list, 1);
+    return r_declare_internal(list, 0);
 }
 
-unsafe fn STREQ( a:* const c_char, b:* const c_char)->bool {  
-  return *a ==*b  && libc::strcmp(a, b) == 0; 
+unsafe fn STREQ(a: *const c_char, b: *const c_char) -> bool {
+    return *a == *b && libc::strcmp(a, b) == 0;
 }
 
 #[no_mangle]
@@ -711,7 +711,7 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
         reset_internal_getopt();
         let tmp = DECLARE_OPTS();
         opt = internal_getopt(list, tmp.as_ptr() as *mut c_char);
-        while opt != 0 {
+        while opt != -1 {
             if list_opttype == '+' as i32 {
                 flags = &mut flags_off;
             } else {
@@ -946,94 +946,132 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
                     }
                 }
 
-      if offset !=0 {	/* declare [-aAfFirx] name=value */
-	  	*name.offset(offset as isize) = '\0' as c_char;
-	  	value = name.offset((offset + 1) as isize) ; 
-	  	if *(name.offset((offset - 1) as isize)) == '+' as c_char {
-	      aflags |= ASS_APPEND!();
-	      *(name.offset((offset - 1) as isize))= '\0' as c_char;
-	    }
-	  } else {
-		value = tmpValue.as_ptr() as * mut c_char;
-	  }
-      /* Do some lexical error checking on the LHS and RHS of the assignment
-	 that is specific to nameref variables. */
-      if (flags_on & att_nameref!()) !=0 {
-		if valid_array_reference (name, 0) !=0 {
-			builtin_error (CString::new("%s: reference variable cannot be an array").unwrap().as_ptr(), name);
-			assign_error+=1;
-			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter;
-		} else if check_selfref (name, value, 0) !=0 {/* disallow self references at global scope, warn at function scope */
-	        if variable_context == 0 {
-				builtin_error (CString::new("%s: nameref variable self references not allowed").unwrap().as_ptr(), name);
-				assign_error+=1;
-				libc::free (name as * mut c_void);
-				list = (*list).next;
-				continue 'outter;
-			} else {
-				builtin_warning (CString::new("%s: circular name reference").unwrap().as_ptr(), name);
-			}
-	    }
+                if value != std::ptr::null_mut()
+                    && (*value) != 0
+                    && (aflags & ASS_APPEND!()) == 0
+                    && valid_nameref_value(value, 1) == 0
+                {
+                    builtin_error(
+                        CString::new("`nvalid %s': ivariable name for name reference")
+                            .unwrap()
+                            .as_ptr(),
+                        value,
+                    );
+                    assign_error += 1;
+                    libc::free(name as *mut c_void);
+                    list = (*list).next;
+                    continue 'outter;
+                }
+            }
+            //restart_new_var_name:
+            'inner: loop {
+                var_exists = 0;
+                array_exists = 0;
+                creating_array = 0;
+                compound_array_assign = 0;
+                simple_array_assign = 0;
+                array_subscript_assignment = false;
+                subscript_start = std::ptr::null_mut();
+                t = libc::strchr(name, '[' as libc::c_int);
+                if t != std::ptr::null_mut() && (flags_on & att_function!()) == 0 {
+                    /* ] */
+                    /* If offset != 0 we have already validated any array reference
+                    because assignment() calls skipsubscript() */
+                    if offset == 0 && valid_array_reference(name, 0) == 0 {
+                        sh_invalidid(name);
+                        assign_error += 1;
+                        libc::free(name as *mut c_void);
+                        list = (*list).next;
+                        continue 'outter;
+                    }
 
-	    if value != std::ptr::null_mut() && (*value) !=0 && (aflags & ASS_APPEND!()) == 0 && valid_nameref_value (value, 1) == 0 {
-	      builtin_error (CString::new("`nvalid %s': ivariable name for name reference").unwrap().as_ptr(), value);
-	      assign_error+=1;
-	      libc::free (name as * mut c_void);
-		  list = (*list).next;
-		  continue 'outter;
-	    }
-	 }
-//restart_new_var_name:
-	'inner: loop {
-      var_exists = 0;
-	  array_exists = 0;
-	  creating_array = 0;
-      compound_array_assign = 0;
-	  simple_array_assign = 0;
-      array_subscript_assignment = false;
-      subscript_start = std::ptr::null_mut();
-	  t = libc::strchr (name, '[' as libc::c_int);
-      if t !=std::ptr::null_mut() && (flags_on & att_function!()) == 0	{/* ] */
-	  /* If offset != 0 we have already validated any array reference
-	     because assignment() calls skipsubscript() */
-		if offset == 0 && valid_array_reference (name, 0) == 0 {
-			sh_invalidid (name);
-			assign_error+=1;
-			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter; 
-		}
+                    subscript_start = t;
+                    *t = '\0' as c_char;
+                    making_array_special = 1; /* XXX - should this check offset? */
+                    array_subscript_assignment = offset != 0;
+                } else {
+                    making_array_special = 0;
+                }
+                /* If we're in posix mode or not looking for a shell function (since
+                shell function names don't have to be valid identifiers when the
+                shell's not in posix mode), check whether or not the argument is a
+                valid, well-formed shell identifier. */
+                if (posixly_correct != 0 || (flags_on & att_function!()) == 0)
+                    && legal_identifier(name) == 0
+                {
+                    sh_invalidid(name);
+                    assign_error += 1;
+                    libc::free(name as *mut c_void);
+                    list = (*list).next;
+                    continue 'outter;
+                }
+                /* If VARIABLE_CONTEXT has a non-zero value, then we are executing
+                inside of a function.  This means we should make local variables,
+                not global ones. */
 
-		subscript_start = t;
-		*t = '\0' as c_char;
-		making_array_special = 1;	/* XXX - should this check offset? */
-		array_subscript_assignment = offset != 0;
-	 } else {
-		making_array_special = 0;
-	 }
-      /* If we're in posix mode or not looking for a shell function (since
-	 shell function names don't have to be valid identifiers when the
-	 shell's not in posix mode), check whether or not the argument is a
-	 valid, well-formed shell identifier. */
-	 if (posixly_correct !=0 || (flags_on & att_function!()) == 0) && legal_identifier(name) == 0 {
-		sh_invalidid (name);
-	  	assign_error+=1;
-		libc::free (name as * mut c_void);
-		list = (*list).next;
-		continue 'outter; 
-	 }
-      /* If VARIABLE_CONTEXT has a non-zero value, then we are executing
-	 inside of a function.  This means we should make local variables,
-	 not global ones. */
+                /* XXX - this has consequences when we're making a local copy of a
+                variable that was in the temporary environment.  Watch out
+                for this. */
+                refvar = std::ptr::null_mut();
+                if variable_context != 0 && mkglobal == 0 && ((flags_on & att_function!()) == 0) {
+                    let newname: *mut c_char;
 
-      /* XXX - this has consequences when we're making a local copy of a
-	       variable that was in the temporary environment.  Watch out
-	       for this. */
-     refvar = std::ptr::null_mut();
-     if variable_context !=0 && mkglobal == 0 && ((flags_on & att_function!()) == 0) {
-	  	 let newname: * mut c_char;
+                    /* check name for validity here? */
+                    var = find_variable(name);
+                    if var == std::ptr::null_mut() {
+                        newname = nameref_transform_name(name, ASS_MKLOCAL!());
+                    } else if (flags_on & att_nameref!()) == 0 && (flags_off & att_nameref!()) == 0
+                    {
+                        /* Ok, we're following namerefs here, so let's make sure that if
+                        we followed one, it was at the same context (see below for
+                        more details). */
+                        refvar = find_variable_last_nameref(name, 1);
+                        if refvar != std::ptr::null_mut() && (*refvar).context != variable_context {
+                            newname = name;
+                        } else {
+                            newname = (*var).name;
+                        }
+                        refvar = std::ptr::null_mut();
+                    } else {
+                        newname = name; /* dealing with nameref attribute */
+                    }
+                    // 至此，find_variable 返回var 没有被更新
+                    /* Pass 1 as second argument to make_local_{assoc,array}_variable
+                    return an existing {array,assoc} variable to be flagged as an
+                    error below. */
+                    if (flags_on & att_assoc!()) != 0 {
+                        var = make_local_assoc_variable(newname, MKLOC_ARRAYOK!() | inherit_flag);
+                    } else if (flags_on & att_array!()) != 0 || making_array_special != 0 {
+                        var = make_local_array_variable(newname, MKLOC_ASSOCOK!() | inherit_flag);
+                    } else if offset == 0 && (flags_on & att_nameref!()) != 0 {
+                        /* First look for refvar at current scope */
+                        refvar = find_variable_last_nameref(name, 1);
+                        /* VARIABLE_CONTEXT != 0, so we are attempting to create or modify
+                        the attributes for a local variable at the same scope.  If we've
+                        used a reference from a previous context to resolve VAR, we
+                        want to throw REFVAR and VAR away and create a new local var. */
+                        if refvar != std::ptr::null_mut() && (*refvar).context != variable_context {
+                            refvar = std::ptr::null_mut();
+                            var = make_local_variable(name, inherit_flag);
+                        } else if refvar != std::ptr::null_mut()
+                            && (*refvar).context == variable_context
+                        {
+                            var = refvar;
+                        } else if var == std::ptr::null_mut()
+                            || (*refvar).context != variable_context
+                        {
+                            /* Maybe we just want to create a new local variable */
+                            var = make_local_variable(name, inherit_flag);
+                        }
+                        /* otherwise we have a var at the right context */
+                    } else {
+                        /* XXX - check name for validity here with valid_nameref_value */
+                        if flags_on & att_nameref!() != 0 {
+                            var = make_local_variable(name, inherit_flag);
+                        } else {
+                            var = make_local_variable(newname, inherit_flag); /* sets att_invisible for new vars */
+                        }
+                    }
 
                     if var == std::ptr::null_mut() {
                         any_failed += 1;
@@ -1151,99 +1189,87 @@ pub extern "C" fn r_declare_internal(mut list: *mut WordList, local_var: i32) ->
                     /* declare -[aAinrx] name [name...] */
                     /* Non-null if we just created or fetched a local variable. */
 
-		      any_failed+=1;
-		      libc::free (name as * mut c_void);
-			  list = (*list).next;
-			  continue 'outter; 
-		  }
-		  /* declare -[Ff] name [name...] */
-		  if flags_on == att_function!() && flags_off == 0 {
-		      if nodefs !=0 && debugging_mode !=0 {
-			  	shell_fn = find_function_def ((*var).name);
-				if shell_fn !=std::ptr::null_mut() {
-					println!("{} {} {}",CStr::from_ptr((*var).name).to_str().unwrap(),(*shell_fn).line,CStr::from_ptr((*shell_fn).source_file).to_str().unwrap());
-				} else {
-					println!("{}",CStr::from_ptr((*var).name).to_str().unwrap());
-				}
-			  } else {
-				  if nodefs !=0 {
-					t=(*var).name;
-				  } else {
-					t = named_function_string (name, function_cell (var), FUNC_MULTILINE!()|FUNC_EXTERNAL!());
-				  }
-				  println!("{}",CStr::from_ptr(t).to_str().unwrap());
-			      any_failed = sh_chkwrite (any_failed);
-			 }
-		  } else {	/* declare -[fF] -[rx] name [name...] */ 
-		      VSETATTR (var, flags_on);
-		      flags_off &= ! att_function!(); 	/* makes no sense */
-		      VUNSETATTR (var, flags_off);
-		  }
-		} else {
-			any_failed+=1;
-		}
-		libc::free (name as * mut c_void);
-		list = (*list).next;
-		continue 'outter; 
-	    }
-	} else {
-		/* declare -[aAinrx] name [name...] */
-	 /* Non-null if we just created or fetched a local variable. */
+                    /* Here's what ksh93 seems to do as of the 2012 version: if we are
+                    using declare -n to modify the value of an existing nameref
+                    variable, don't follow the nameref chain at all and just search
+                    for a nameref at the current context.  If we have a nameref,
+                    modify its value (changing which variable #define ASS_NAMEREF	0x0010	/* assigning to nameref variable */it references). */
+                    if var == std::ptr::null_mut() && (flags_on & att_nameref!()) != 0 {
+                        /* See if we are trying to modify an existing nameref variable,
+                        but don't follow the nameref chain. */
+                        if mkglobal != 0 {
+                            var = find_global_variable_noref(name);
+                        } else {
+                            var = find_variable_noref(name);
+                        }
 
-	  /* Here's what ksh93 seems to do as of the 2012 version: if we are
-	     using declare -n to modify the value of an existing nameref
-	     variable, don't follow the nameref chain at all and just search
-	     for a nameref at the current context.  If we have a nameref,
-	     modify its value (changing which variable #define ASS_NAMEREF	0x0010	/* assigning to nameref variable */it references). */
-	  if var == std::ptr::null_mut() && (flags_on & att_nameref!()) !=0 {
-	      /* See if we are trying to modify an existing nameref variable,
-		 but don't follow the nameref chain. */
-		 if mkglobal !=0 {
-			var = find_global_variable_noref (name);
-		 } else {
-			var = find_variable_noref (name);
-		 }
+                        if var != std::ptr::null_mut() && nameref_p(var) == 0 {
+                            var = std::ptr::null_mut();
+                        }
+                    } else if var == std::ptr::null_mut() && (flags_off & att_nameref!()) != 0 {
+                        /* However, if we're turning off the nameref attribute on an existing
+                        nameref variable, we first follow the nameref chain to the end,
+                        modify the value of the variable this nameref variable references
+                        if there is an assignment statement argument,
+                        *CHANGING ITS VALUE AS A SIDE EFFECT*, then turn off the nameref
+                        flag *LEAVING THE NAMEREF VARIABLE'S VALUE UNCHANGED* */
+                        /* See if we are trying to modify an existing nameref variable */
+                        if mkglobal != 0 {
+                            refvar = find_global_variable_last_nameref(name, 0);
+                        } else {
+                            refvar = find_variable_last_nameref(name, 0);
+                        }
 
-	     if var != std::ptr::null_mut() && nameref_p (var) == 0 {
-			var = std::ptr::null_mut();
-		 }
-	  } else if var == std::ptr::null_mut() && (flags_off & att_nameref!()) !=0 {
-		  /* However, if we're turning off the nameref attribute on an existing
-	     nameref variable, we first follow the nameref chain to the end,
-	     modify the value of the variable this nameref variable references
-	     if there is an assignment statement argument,
-	     *CHANGING ITS VALUE AS A SIDE EFFECT*, then turn off the nameref
-	     flag *LEAVING THE NAMEREF VARIABLE'S VALUE UNCHANGED* */
-	      /* See if we are trying to modify an existing nameref variable */
-		  if mkglobal !=0 {
-			refvar=find_global_variable_last_nameref (name, 0);
-		  } else {
-			refvar=find_variable_last_nameref (name, 0);
-		  }
+                        if refvar != std::ptr::null_mut() && nameref_p(refvar) == 0 {
+                            refvar = std::ptr::null_mut();
+                        }
+                        /* If the nameref is readonly but doesn't have a value, ksh93
+                        allows the nameref attribute to be removed.  If it's readonly
+                        and has a value, even if the value doesn't reference an
+                        existing variable, we disallow the modification */
+                        if refvar != std::ptr::null_mut()
+                            && nameref_cell(refvar) != std::ptr::null_mut()
+                            && readonly_p(refvar) != 0
+                        {
+                            sh_readonly(name);
+                            any_failed += 1;
+                            libc::free(name as *mut c_void);
+                            list = (*list).next;
+                            continue 'outter;
+                        }
+                        /* If all we're doing is turning off the nameref attribute, don't
+                        bother with VAR at all, whether it exists or not. Just turn it
+                        off and go on. */
+                        if refvar != std::ptr::null_mut()
+                            && flags_on == 0
+                            && offset == 0
+                            && (flags_off & !att_nameref!()) == 0
+                        {
+                            VUNSETATTR(refvar, att_nameref!());
+                            libc::free(name as *mut c_void);
+                            list = (*list).next;
+                            continue 'outter;
+                        }
 
-	      if refvar != std::ptr::null_mut() && nameref_p (refvar) == 0 {
-			refvar = std::ptr::null_mut();
-		  }
-	      /* If the nameref is readonly but doesn't have a value, ksh93
-		 allows the nameref attribute to be removed.  If it's readonly
-		 and has a value, even if the value doesn't reference an
-		 existing variable, we disallow the modification */
-	      if refvar != std::ptr::null_mut() && nameref_cell (refvar) != std::ptr::null_mut() && readonly_p (refvar) != 0 {
-			sh_readonly (name);
-			any_failed+=1;
-			libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter; 
-		  }
-	      /* If all we're doing is turning off the nameref attribute, don't
-		 bother with VAR at all, whether it exists or not. Just turn it
-		 off and go on. */
-	      if refvar != std::ptr::null_mut() && flags_on == 0 && offset == 0 && (flags_off & !att_nameref!()) == 0 {
-		  	VUNSETATTR (refvar, att_nameref!());
-		  	libc::free (name as * mut c_void);
-			list = (*list).next;
-			continue 'outter; 
-		  }
+                        if refvar != std::ptr::null_mut() {
+                            /* XXX - use declare_find_variable here? */
+                            if mkglobal != 0 {
+                                var = find_global_variable(nameref_cell(refvar));
+                            } else {
+                                var = find_variable(nameref_cell(refvar));
+                            }
+                        }
+                    } else if var == std::ptr::null_mut()
+                        && offset != 0
+                        && array_subscript_assignment
+                    {
+                        /* If we have an array assignment to a nameref, remove the nameref
+                        attribute and go on. */
+                        if mkglobal != 0 {
+                            var = find_global_variable_noref(name);
+                        } else {
+                            var = find_variable_noref(name);
+                        }
 
 	      if refvar !=std::ptr::null_mut() {
 			/* XXX - use declare_find_variable here? */
