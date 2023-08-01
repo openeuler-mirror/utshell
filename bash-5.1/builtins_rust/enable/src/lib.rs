@@ -70,7 +70,7 @@ pub const RTLD_NOLOAD: i32 = 0x00004;
 pub const RTLD_DEEPBIND: i32 = 0x00008;
 pub const RTLD_GLOBAL: i32 = 0x00100;
 
-pub const FS_NODIRS: i32 = 0x02;
+pub const FS_NODIRS: i32 = 0x20;
 pub const FS_EXEC_PREFERRED: i32 = 0x4;
 
 extern "C" {
@@ -133,7 +133,7 @@ pub type STRINGLIST = _list_of_strings;
 #[repr(C)]
 pub struct builtin {
     pub name: *mut libc::c_char,
-    pub function: Option::<sh_builtin_func_t>,
+    pub function: Option<sh_builtin_func_t>,
     pub flags: libc::c_int,
     pub long_doc: *const *mut libc::c_char,
     pub short_doc: *const libc::c_char,
@@ -185,7 +185,7 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
                 flags |= DFLAG;
             }
             _ => {
-                if opt == '?' {
+                if opt == -99 {
                     r_builtin_help();
                     return EX_USAGE;
                 }
@@ -196,8 +196,8 @@ pub unsafe extern "C" fn r_enable_builtin(mut list: *mut WordList) -> i32 {
     }
     list = loptend;
     // 如果是严格模式，就直接返回EXECUTION_FAILURE，命令结束。
-    if restricted != 0 && flags & (FFLAG|DFLAG) != 0 {
-        sh_restricted (0 as *mut c_char);
+    if restricted != 0 && flags & (FFLAG | DFLAG) != 0 {
+        sh_restricted(0 as *mut c_char);
         return EXECUTION_FAILURE!();
     }
 
@@ -337,7 +337,7 @@ unsafe extern "C" fn dyn_load_builtin(
     let mut struct_name: *mut libc::c_char = 0 as *mut libc::c_char;
     let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
     let mut funcname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut loadfunc: Option::<sh_load_func_t> = None;
+    let mut loadfunc: Option<sh_load_func_t> = None;
     let mut new_builtins: *mut *mut builtin = 0 as *mut *mut builtin;
     let mut b: *mut builtin = 0 as *mut builtin;
     let mut new_shell_builtins: *mut builtin = 0 as *mut builtin;
@@ -425,9 +425,7 @@ unsafe extern "C" fn dyn_load_builtin(
             funcname = xrealloc(
                 struct_name as *mut libc::c_void,
                 (size as libc::c_ulong)
-                    .wrapping_add(
-                        ::std::mem::size_of::<[libc::c_char; 14]>() as libc::c_ulong,
-                    )
+                    .wrapping_add(::std::mem::size_of::<[libc::c_char; 14]>() as libc::c_ulong)
                     .wrapping_add(1 as libc::c_int as libc::c_ulong),
             ) as *mut libc::c_char;
             strcpy(funcname, name);
@@ -435,10 +433,9 @@ unsafe extern "C" fn dyn_load_builtin(
                 funcname.offset(size as isize),
                 b"_builtin_load\0" as *const u8 as *const libc::c_char,
             );
-            loadfunc = ::std::mem::transmute::<
-                *mut libc::c_void,
-                Option::<sh_load_func_t>,
-            >(dlsym(handle, funcname));
+            loadfunc = ::std::mem::transmute::<*mut libc::c_void, Option<sh_load_func_t>>(dlsym(
+                handle, funcname,
+            ));
             if loadfunc.is_some() {
                 if !old_builtin.is_null()
                     && (*old_builtin).flags & 0x4 as libc::c_int == 0 as libc::c_int
@@ -489,8 +486,7 @@ unsafe extern "C" fn dyn_load_builtin(
                         libc::memcpy(
                             old_builtin as *mut libc::c_char as *mut libc::c_void,
                             b as *mut libc::c_char as *const libc::c_void,
-                            ::std::mem::size_of::<builtin>() as libc::c_ulong
-                                as libc::size_t,
+                            ::std::mem::size_of::<builtin>() as libc::c_ulong as libc::size_t,
                         );
                     } else {
                         let fresh1 = new;
@@ -526,8 +522,7 @@ unsafe extern "C" fn dyn_load_builtin(
             libc::memcpy(
                 &mut *new_shell_builtins.offset((num_shell_builtins + replaced) as isize)
                     as *mut builtin as *mut libc::c_char as *mut libc::c_void,
-                *new_builtins.offset(replaced as isize) as *mut libc::c_char
-                    as *const libc::c_void,
+                *new_builtins.offset(replaced as isize) as *mut libc::c_char as *const libc::c_void,
                 ::std::mem::size_of::<builtin>() as libc::c_ulong as libc::size_t,
             );
             replaced += 1;
@@ -547,7 +542,7 @@ unsafe extern "C" fn dyn_load_builtin(
     free(new_builtins as *mut libc::c_void);
     return 0 as libc::c_int;
 }
-unsafe extern "C" fn delete_builtin(b: *mut builtin) {
+unsafe extern "C" fn delete_builtin(mut b: *mut builtin) {
     let mut ind: libc::c_int = 0;
     let mut size: libc::c_int = 0;
     let mut new_shell_builtins: *mut builtin = 0 as *mut builtin;
@@ -559,14 +554,13 @@ unsafe extern "C" fn delete_builtin(b: *mut builtin) {
         libc::memcpy(
             new_shell_builtins as *mut libc::c_char as *mut libc::c_void,
             shell_builtins as *mut libc::c_char as *const libc::c_void,
-            (ind as libc::c_ulong)
-                .wrapping_mul(::std::mem::size_of::<builtin>() as libc::c_ulong)
+            (ind as libc::c_ulong).wrapping_mul(::std::mem::size_of::<builtin>() as libc::c_ulong)
                 as libc::size_t,
         );
     }
     libc::memcpy(
-        &mut *new_shell_builtins.offset(ind as isize) as *mut builtin
-            as *mut libc::c_char as *mut libc::c_void,
+        &mut *new_shell_builtins.offset(ind as isize) as *mut builtin as *mut libc::c_char
+            as *mut libc::c_void,
         &mut *shell_builtins.offset((ind + 1 as libc::c_int) as isize) as *mut builtin
             as *mut libc::c_char as *const libc::c_void,
         ((num_shell_builtins - ind) as libc::c_ulong)
@@ -579,10 +573,10 @@ unsafe extern "C" fn delete_builtin(b: *mut builtin) {
     num_shell_builtins -= 1;
     shell_builtins = new_shell_builtins;
 }
-unsafe extern "C" fn local_dlclose(handle: *mut libc::c_void) -> libc::c_int {
+unsafe extern "C" fn local_dlclose(mut handle: *mut libc::c_void) -> libc::c_int {
     return dlclose(handle);
 }
-unsafe extern "C" fn dyn_unload_builtin(name: *mut libc::c_char) -> libc::c_int {
+unsafe extern "C" fn dyn_unload_builtin(mut name: *mut libc::c_char) -> libc::c_int {
     let mut b: *mut builtin = 0 as *mut builtin;
     let mut handle: *mut libc::c_void = 0 as *mut libc::c_void;
     let mut funcname: *mut libc::c_char = 0 as *mut libc::c_char;
