@@ -234,75 +234,82 @@ pub union VALUE_COMMAND {
 
 #[repr(C)]
 pub struct COMMAND {
-    type_c:command_type,
-    flags:i32,
-    line:i32,
-    redirects:*mut REDIRECT,
-    value:VALUE_COMMAND
+    type_c: command_type,
+    flags: i32,
+    line: i32,
+    redirects: *mut REDIRECT,
+    value: VALUE_COMMAND,
 }
 
 #[repr(C)]
 pub struct JOB {
     wd: *mut c_char,
     pipe: *mut PROCESS,
-    pgrp:i32,
-    state:JOB_STATE,
-    flags:i32,
-    deferred:*mut COMMAND,
-    j_cleanup:*mut fn(),
-    cleanarg:* mut fn()
+    pgrp: i32,
+    state: JOB_STATE,
+    flags: i32,
+    deferred: *mut COMMAND,
+    j_cleanup: *mut fn(),
+    cleanarg: *mut fn(),
 }
 
 #[repr(C)]
 pub struct SHELL_VAR {
-  name:*mut c_char,
-  value:*mut c_char,
-  exportstr:*mut c_char,
-  dynamic_value:*mut fn(v:* mut SHELL_VAR)->*mut SHELL_VAR,
-  assign_func:* mut fn(v:* mut SHELL_VAR,str1:* mut c_char,t:c_long,str2:* mut c_char)->*mut SHELL_VAR,
-  attributes:i32,
-  context:i32
+    name: *mut c_char,
+    value: *mut c_char,
+    exportstr: *mut c_char,
+    dynamic_value: *mut fn(v: *mut SHELL_VAR) -> *mut SHELL_VAR,
+    assign_func: *mut fn(
+        v: *mut SHELL_VAR,
+        str1: *mut c_char,
+        t: c_long,
+        str2: *mut c_char,
+    ) -> *mut SHELL_VAR,
+    attributes: i32,
+    context: i32,
 }
 
 #[repr(C)]
 pub struct GENERIC_LIST {
-  next: * mut GENERIC_LIST
+    next: *mut GENERIC_LIST,
 }
 
 #[repr(C)]
 pub struct REPL {
-  next: *mut REPL,
-  pat:*mut c_char,
-  rep:*mut c_char
+    next: *mut REPL,
+    pat: *mut c_char,
+    rep: *mut c_char,
 }
 
 #[repr(C)]
 pub struct HIST_ENTRY {
-    line:*mut c_char,
-    timestamp:*mut c_char,
-    data:*mut fn()
+    line: *mut c_char,
+    timestamp: *mut c_char,
+    data: *mut fn(),
 }
-
 
 #[macro_export]
 macro_rules! ISHELP {
-   ($s:expr) => {
-    libc::strcmp($s as *const c_char,CString::new("--help").unwrap().as_ptr())
-    }
+    ($s:expr) => {
+        libc::strcmp(
+            $s as *const c_char,
+            CString::new("--help").unwrap().as_ptr(),
+        )
+    };
 }
 
 #[macro_export]
 macro_rules! errno {
-  () => {
-    *libc::__errno_location()
-  }
+    () => {
+        *libc::__errno_location()
+    };
 }
 
 #[macro_export]
 macro_rules! HN_LISTING {
-  () => {
-    0x01
-  }
+    () => {
+        0x01
+    };
 }
 
 #[macro_export]
