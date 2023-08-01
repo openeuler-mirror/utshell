@@ -356,17 +356,19 @@ pub unsafe extern "C" fn r_command_builtin(mut list: *mut WordList) -> libc::c_i
     (*(*command).value.Simple).words = copy_word_list(list);
     //let ref mut fresh1 = (*(*command).value.Simple).redirects;
     //*fresh1 = 0 as *mut libc::c_void as *mut REDIRECT;
-    (*(*command).value.Simple).redirects = 0  as *mut libc::c_void as *mut REDIRECT;
+    (*(*command).value.Simple).redirects = 0 as *mut libc::c_void as *mut REDIRECT;
 
-    (*command).flags
-        |= CMD_NO_FUNCTIONS | CMD_INHIBIT_EXPANSION | CMD_COMMAND_BUILTIN
-            | (if use_standard_path != 0 {
-                CMD_STDPATH
-            } else {
-                0 as libc::c_int
-            });
-    (*(*command).value.Simple).flags
-        |= CMD_NO_FUNCTIONS | CMD_INHIBIT_EXPANSION | CMD_COMMAND_BUILTIN
+    (*command).flags |= CMD_NO_FUNCTIONS
+        | CMD_INHIBIT_EXPANSION
+        | CMD_COMMAND_BUILTIN
+        | (if use_standard_path != 0 {
+            CMD_STDPATH
+        } else {
+            0 as libc::c_int
+        });
+    (*(*command).value.Simple).flags |= CMD_NO_FUNCTIONS
+        | CMD_INHIBIT_EXPANSION
+        | CMD_COMMAND_BUILTIN
         | (if use_standard_path != 0 {
             CMD_STDPATH
         } else {
@@ -380,8 +382,6 @@ pub unsafe extern "C" fn r_command_builtin(mut list: *mut WordList) -> libc::c_i
         command,
     );*/
     result = execute_command(command);
-    run_unwind_frame(
-        b"command_builtin\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-    );
+    run_unwind_frame(b"command_builtin\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
     return result;
 }
