@@ -2703,9 +2703,64 @@ pub unsafe extern "C"  fn  wait_for_background_pids(mut ps: *mut procstat) {
     bgp_clear();
 }
 
+pub type SigHandler1 = Option<unsafe extern "C" fn(arg1: ::std::os::raw::c_int)>;
+#[macro_export]
+macro_rules! INVALID_SIGNAL_HANDLER {
+    () => {
+        wait_for_background_pids as *mut SigHandler
+    }
+}
+static mut old_sigint_handler:*mut SigHandler = INVALID_SIGNAL_HANDLER!();
 
 
 
+
+unsafe extern "C" fn restore_sigint_handler() {
+    if old_sigint_handler != INVALID_SIGNAL_HANDLER!()
+    {
+        set_signal_handler(SIGINT as c_int, old_sigint_handler);     
+        old_sigint_handler = INVALID_SIGNAL_HANDLER!();
+        waiting_for_child = 0 ;
+    }
+}
+
+
+
+unsafe extern "C" fn wait_sigint_handler(mut sig: c_int) {
+    println!("wait_sigint_handler");
+    let mut sigint_handler: Option::<SigHandler> = None;
+
+    if this_shell_builtin.is_some() && this_shell_builtin == Some(wait_builtin) 
+    {
+        set_exit_status(128 + SIGINT as c_int);
+        restore_sigint_handler();
+        if this_shell_builtin.is_some()
+            && this_shell_builtin == Some(wait_builtin)  && signal_is_trapped(SIGINT as c_int) != 0
+            && {
+                sigint_handler = Some(trap_to_sighandler(SIGINT as c_int));
+                sigint_handler
+                    == Some(Some(trap_handler as unsafe extern "C" fn(c_int) -> ()))
+            }
+        {
+            trap_handler(SIGINT as c_int);
+            wait_signal_received = SIGINT as c_int;
+            if wait_intr_flag != 0 {
+                siglongjmp(wait_intr_buf.as_mut_ptr(), 1 );
+            } else {
+                return
+            }
+        } else {
+            kill(getpid(), SIGINT as c_int);
+        }
+    }
+    if waiting_for_child != 0 {
+        wait_sigint_received = 1 ;
+    } else {
+        set_exit_status(128  + SIGINT as c_int);
+        restore_sigint_handler();
+        kill(getpid(), SIGINT as c_int);
+    };
+}
 
 
 
