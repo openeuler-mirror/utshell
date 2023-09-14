@@ -2624,7 +2624,84 @@ pub unsafe extern "C"  fn  wait_for_single_pid(mut pid: pid_t, mut flags: c_int)
     return r;
 }
 
+#[macro_export]
+macro_rules! QUIT {
+    () => {
+        if terminating_signal != 0 {
+            termsig_handler(terminating_signal);
+        }
+        if interrupt_state != 0 {
+            throw_to_top_level();
+        }
+    };
+}
 
+#[no_mangle]
+pub unsafe extern "C"  fn  wait_for_background_pids(mut ps: *mut procstat) {
+    let mut i: c_int = 0;
+    let mut r: c_int = 0;
+    let mut any_stopped: c_int = 0;
+    let mut check_async: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut pid: pid_t = 0;
+
+
+    any_stopped = 0 ;
+    check_async = 1;
+    loop {
+        BLOCK_CHILD (&mut set, &mut set);
+
+        i = 0;
+        while i < js.j_jobslots {
+            if !(*jobs.offset(i as isize)).is_null() && STOPPED! (i)
+            {
+                builtin_warning(
+                    b"job %d[%d] stopped\0" as *const u8 as *const c_char,
+                    i + 1 ,
+                    find_last_pid(i, 0 ),
+                );
+                any_stopped = 1;
+            }
+            if !(*jobs.offset(i as isize)).is_null() && RUNNING!(i) && IS_FOREGROUND!(i)
+            {
+                break;
+            }
+            i += 1;
+        }
+        if i == js.j_jobslots {
+            UNBLOCK_CHILD (&mut oset);
+            break;
+        } 
+
+        pid = find_last_pid(i, 0  );
+        UNBLOCK_CHILD (&mut oset);
+        QUIT!();
+        if terminating_signal != 0 {
+            termsig_handler(terminating_signal);
+        }
+        if interrupt_state != 0 {
+            throw_to_top_level();
+        }
+        *__errno_location() = 0 ;
+        r = wait_for_single_pid(pid, JWAIT_PERROR as c_int);
+        if !ps.is_null() {
+            (*ps).pid = pid;
+            (*ps)
+                .status = (if r < 0 as c_int { 127 as c_int } else { r })
+                as libc::c_short;
+        }
+        if r == -1 && *__errno_location() == ECHILD as c_int {
+            check_async = 0 ;
+            mark_all_jobs_as_dead();
+        }
+        
+    }
+    procsub_waitall();
+    mark_dead_jobs_as_notified(1);
+    cleanup_dead_jobs();
+    bgp_clear();
+}
 
 
 
