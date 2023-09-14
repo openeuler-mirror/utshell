@@ -2763,6 +2763,45 @@ unsafe extern "C" fn wait_sigint_handler(mut sig: c_int) {
 }
 
 
+unsafe extern "C" fn process_exit_signal(mut status: WAIT) -> c_int {
+
+    if libc::WIFSIGNALED(status) {
+        return libc::WTERMSIG(status);
+    } else {
+        return 0;
+    }
+}
+
+
+unsafe extern "C" fn process_exit_status(mut status: WAIT) -> c_int {
+    if WIFSIGNALED!(status) {
+        return 128 + WTERMSIG! (status);
+    } else if WIFSTOPPED! (status) as c_int == 0 {
+        return WEXITSTATUS!(status);
+    } else {
+        return 0;
+    }
+
+}
+
+unsafe extern "C" fn job_signal_status(mut job: c_int) -> WAIT {
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut s: WAIT = 0;
+
+    p = (**jobs.offset(job as isize)).pipe;
+    loop {
+        s = (*p).status;
+        if WIFSIGNALED!(s) || WIFSTOPPED!(s)
+        {
+            break;
+        }
+        p = (*p).next;
+        if !(p != (**jobs.offset(job as isize)).pipe) {
+            break;
+        }
+    }
+    return s;
+}
 
 
 
