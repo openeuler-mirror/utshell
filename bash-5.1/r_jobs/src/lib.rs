@@ -2840,6 +2840,34 @@ pub unsafe extern "C"  fn  job_exit_signal(mut job: c_int) -> c_int {
     return process_exit_signal(raw_job_exit_status(job));
 }
 
+pub const ANY_PID:pid_t = -1;
+#[macro_export]
+macro_rules! IS_JOBCONTROL {
+    ($job:expr) => {
+        (**jobs.offset($job as isize)).flags & 0x4 as c_int
+                    != 0 as c_int
+    };
+}
+
+#[macro_export]
+macro_rules! RL_ISSTATE {
+    ($x:expr) => {
+        rl_readline_state & ($x)
+    };
+}
+#[macro_export]
+macro_rules! RL_STATE_COMPLETING {
+    () => {
+        0x0004000
+    };
+}
+
+#[macro_export]
+macro_rules! ADDINTERRUPT {
+    () => {
+        interrupt_state += 1
+    };
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn wait_for(
