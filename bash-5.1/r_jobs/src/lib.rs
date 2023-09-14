@@ -2803,6 +2803,40 @@ unsafe extern "C" fn job_signal_status(mut job: c_int) -> WAIT {
     return s;
 }
 
+unsafe extern "C" fn raw_job_exit_status(mut job: c_int) -> WAIT {
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut fail: c_int = 0;
+    let mut ret: WAIT = 0;
+
+    if (**jobs.offset(job as isize)).flags & J_PIPEFAIL as c_int != 0 {
+        fail = 0;
+        p = (**jobs.offset(job as isize)).pipe;
+        loop {
+            if WSTATUS!((*p).status) != 0 {
+                fail = WSTATUS!((*p).status);
+            }
+            p = (*p).next;
+            if !(p != (**jobs.offset(job as isize)).pipe) {
+                break;
+            }
+        }
+        WSTATUS!(ret) = fail;
+        return ret;
+    }
+    p = (**jobs.offset(job as isize)).pipe;
+    while (*p).next != (**jobs.offset(job as isize)).pipe {
+        p = (*p).next;
+    }
+    return (*p).status;
+}
 
 
+#[no_mangle]
+pub unsafe extern "C"  fn  job_exit_status(mut job: c_int) -> c_int {
+    return process_exit_status(raw_job_exit_status(job));
+}
+#[no_mangle]
+pub unsafe extern "C"  fn  job_exit_signal(mut job: c_int) -> c_int {
+    return process_exit_signal(raw_job_exit_status(job));
+}
 
