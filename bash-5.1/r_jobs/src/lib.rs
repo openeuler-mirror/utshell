@@ -2840,3 +2840,371 @@ pub unsafe extern "C"  fn  job_exit_signal(mut job: c_int) -> c_int {
     return process_exit_signal(raw_job_exit_status(job));
 }
 
+
+#[no_mangle]
+pub unsafe extern "C" fn wait_for(
+    mut pid: pid_t,
+    mut flags: c_int,
+) -> c_int {
+    let mut current_block: u64;
+    let mut job: c_int = 0;
+    let mut termination_state: c_int = 0;
+    let mut r: c_int = 0;
+    let mut s: WAIT = 0;
+    let mut child: *mut PROCESS = 0 as *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    child = 0 as *mut PROCESS;
+    sigemptyset(&mut set);
+    sigaddset(&mut set, 17 as c_int);
+    sigemptyset(&mut oset);
+    sigprocmask(0 as c_int, &mut set, &mut oset);
+    child_caught_sigint = 0 as c_int;
+    wait_sigint_received = child_caught_sigint;
+    if job_control == 0 as c_int || subshell_environment & 0x4 as c_int != 0
+    {
+        let mut temp_sigint_handler: *mut SigHandler;
+        temp_sigint_handler = set_signal_handler(SIGINT as c_int, wait_sigint_handler as *mut Option<unsafe extern "C" fn(i32)>);
+        if !(temp_sigint_handler == wait_sigint_handler as *mut SigHandler) {
+                        old_sigint_handler = temp_sigint_handler;
+                    }
+                    waiting_for_child = 0;
+                    if old_sigint_handler
+                        == &mut ::std::mem::transmute::<
+                            libc::intptr_t,
+                            __sighandler_t,
+                        >(1 as c_int as libc::intptr_t) 
+                    {
+                        set_signal_handler(2 as c_int, old_sigint_handler);
+                    }
+    }
+    termination_state = last_command_exit_value;
+    if interactive != 0 && job_control == 0 as c_int {
+        if terminating_signal != 0 {
+            termsig_handler(terminating_signal);
+        }
+        if interrupt_state != 0 {
+            throw_to_top_level();
+        }
+    }
+    if terminating_signal != 0 {
+        termsig_handler(terminating_signal);
+    }
+    if wait_intr_flag != 0 && wait_signal_received != 0 && this_shell_builtin.is_some()
+        && this_shell_builtin
+            == Some(wait_builtin as unsafe extern "C" fn(*mut WordList) -> c_int)
+    {
+        siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as c_int);
+    }
+    job = -(1 as c_int);
+    loop {
+        if pid != -(1 as c_int) {
+            child = find_pipeline(
+                pid,
+                0 as c_int,
+                0 as *mut libc::c_void as *mut c_int,
+            );
+            if child.is_null() {
+                give_terminal_to(shell_pgrp, 0 as c_int);
+                sigprocmask(
+                    2 as c_int,
+                    &mut oset,
+                    0 as *mut libc::c_void as *mut sigset_t,
+                );
+                internal_error(
+                    dcgettext(
+                        0 as *const c_char,
+                        b"wait_for: No record of process %ld\0" as *const u8
+                            as *const c_char,
+                        5 as c_int,
+                    ),
+                    pid as libc::c_long,
+                );
+                restore_sigint_handler();
+                termination_state = 127 as c_int;
+                return termination_state;
+            }
+        }
+        if job == -(1 as c_int) && pid != -(1 as c_int) {
+            job = find_job(pid, 0 as c_int, 0 as *mut *mut PROCESS);
+        }
+        if pid == -(1 as c_int) || (*child).running == 1 as c_int
+            || job != -(1 as c_int)
+                && (**jobs.offset(job as isize)).state as c_int
+                    == JRUNNING as c_int
+        {
+            let mut old_waiting: c_int = 0;
+            queue_sigchld = 1 as c_int;
+            old_waiting = waiting_for_child;
+            waiting_for_child = 1 as c_int;
+            if wait_intr_flag != 0 && wait_signal_received != 0
+                && this_shell_builtin.is_some()
+                && this_shell_builtin
+                    == Some(
+                        wait_builtin
+                            as unsafe extern "C" fn(*mut WordList) -> c_int,
+                    )
+            {
+                siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as c_int);
+            }
+            r = waitchld(pid, 1 as c_int);
+            waiting_for_child = old_waiting;
+            queue_sigchld = 0 as c_int;
+            if r == -(1 as c_int) && *__errno_location() == 10 as c_int
+                && this_shell_builtin
+                    == Some(
+                        wait_builtin
+                            as unsafe extern "C" fn(*mut WordList) -> c_int,
+                    )
+            {
+                termination_state = -(1 as c_int);
+                restore_sigint_handler();
+                current_block = 6718615339517147058;
+                break;
+            } else if r == -(1 as c_int)
+                    && *__errno_location() == 10 as c_int
+                {
+                if !child.is_null() {
+                    (*child).running = 0 as c_int;
+                    (*child).status = 0 as c_int;
+                }
+                js.c_living = 0 as c_int;
+                if job != -(1 as c_int) {
+                    (**jobs.offset(job as isize)).state = JDEAD;
+                    js.c_reaped += 1;
+                    js.j_ndead += 1;
+                }
+                if pid == -(1 as c_int) {
+                    termination_state = -(1 as c_int);
+                    current_block = 7072655752890836508;
+                    break;
+                }
+            }
+        }
+        if interactive != 0 && job_control == 0 as c_int {
+            if terminating_signal != 0 {
+                termsig_handler(terminating_signal);
+            }
+            if interrupt_state != 0 {
+                throw_to_top_level();
+            }
+        }
+        if terminating_signal != 0 {
+            termsig_handler(terminating_signal);
+        }
+        if wait_intr_flag != 0 && wait_signal_received != 0
+            && this_shell_builtin.is_some()
+            && this_shell_builtin
+                == Some(
+                    wait_builtin as unsafe extern "C" fn(*mut WordList) -> c_int,
+                )
+        {
+            siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as c_int);
+        }
+        if pid == -(1 as c_int) {
+            restore_sigint_handler();
+            current_block = 6718615339517147058;
+            break;
+        } else if !((*child).running == 1 as c_int
+                || job != -(1 as c_int)
+                    && (**jobs.offset(job as isize)).state as c_int
+                        == JRUNNING as c_int)
+            {
+            current_block = 7072655752890836508;
+            break;
+        }
+    }
+    match current_block {
+        7072655752890836508 => {
+            restore_sigint_handler();
+            termination_state = if job != -(1 as c_int) {
+                job_exit_status(job)
+            } else if !child.is_null() {
+                process_exit_status((*child).status)
+            } else {
+                0 as c_int
+            };
+            last_command_exit_signal = if job != -(1 as c_int) {
+                job_exit_signal(job)
+            } else if !child.is_null() {
+                process_exit_signal((*child).status)
+            } else {
+                0 as c_int
+            };
+            if job != -(1 as c_int)
+                && (**jobs.offset(job as isize)).state as c_int
+                    == JSTOPPED as c_int
+                || !child.is_null()
+                    && (*child).status & 0xff as c_int == 0x7f as c_int
+            {
+                termination_state = 128 as c_int
+                    + (((*child).status & 0xff00 as c_int) >> 8 as c_int);
+            }
+            if job == -(1 as c_int)
+                || (**jobs.offset(job as isize)).flags & 0x4 as c_int
+                    != 0 as c_int
+            {
+                if flags & (1 as c_int) << 8 as c_int == 0 as c_int
+                    && running_in_background == 0 as c_int
+                    && subshell_environment & (0x1 as c_int | 0x10 as c_int)
+                        == 0 as c_int
+                {
+                    give_terminal_to(shell_pgrp, 0 as c_int);
+                }
+            }
+            if job != -(1 as c_int) {
+                if interactive_shell != 0 && subshell_environment == 0 as c_int {
+                    s = job_signal_status(job);
+                    if ((s & 0x7f as c_int) + 1 as c_int) as libc::c_schar
+                        as c_int >> 1 as c_int > 0 as c_int
+                        || s & 0xff as c_int == 0x7f as c_int
+                    {
+                        set_tty_state();
+                        if check_window_size != 0
+                            && (job == js.j_current
+                                || (**jobs.offset(job as isize)).flags & 0x1 as c_int
+                                    != 0 as c_int)
+                        {
+                            get_new_window_size(
+                                0 as c_int,
+                                0 as *mut c_int,
+                                0 as *mut c_int,
+                            );
+                        }
+                    } else if rl_readline_state & 0x4000 as c_int as libc::c_ulong
+                            == 0 as c_int as libc::c_ulong
+                        {
+                        get_tty_state();
+                    }
+                    if job_control != 0
+                        && (**jobs.offset(job as isize)).flags & 0x4 as c_int
+                            != 0 as c_int
+                        && (**jobs.offset(job as isize)).flags & 0x1 as c_int
+                            != 0 as c_int
+                        && ((s & 0x7f as c_int) + 1 as c_int)
+                            as libc::c_schar as c_int >> 1 as c_int
+                            > 0 as c_int
+                        && s & 0x7f as c_int == 2 as c_int
+                    {
+                        if signal_is_trapped(2 as c_int) == 0 as c_int
+                            && (loop_level != 0
+                                || shell_compatibility_level > 32 as c_int
+                                    && executing_list != 0)
+                        {
+                            ::std::ptr::write_volatile(
+                                &mut interrupt_state as *mut sig_atomic_t,
+                                ::std::ptr::read_volatile::<
+                                    sig_atomic_t,
+                                >(&interrupt_state as *const sig_atomic_t) + 1,
+                            );
+                        } else if signal_is_trapped(2 as c_int) != 0
+                                && loop_level != 0
+                            {
+                            ::std::ptr::write_volatile(
+                                &mut interrupt_state as *mut sig_atomic_t,
+                                ::std::ptr::read_volatile::<
+                                    sig_atomic_t,
+                                >(&interrupt_state as *const sig_atomic_t) + 1,
+                            );
+                        } else if interactive_shell != 0
+                                && signal_is_trapped(2 as c_int) == 0 as c_int
+                                && sourcelevel != 0
+                            {
+                            ::std::ptr::write_volatile(
+                                &mut interrupt_state as *mut sig_atomic_t,
+                                ::std::ptr::read_volatile::<
+                                    sig_atomic_t,
+                                >(&interrupt_state as *const sig_atomic_t) + 1,
+                            );
+                        } else {
+                            putchar('\n' as i32);
+                            libc::fflush(stdout);
+                        }
+                    }
+                } else if subshell_environment
+                        & (0x4 as c_int | 0x10 as c_int) != 0
+                        && wait_sigint_received != 0
+                    {
+                    if child_caught_sigint == 0 as c_int
+                        && signal_is_trapped(2 as c_int) == 0 as c_int
+                    {
+                        sigprocmask(
+                            2 as c_int,
+                            &mut oset,
+                            0 as *mut libc::c_void as *mut sigset_t,
+                        );
+                        old_sigint_handler = set_signal_handler(2 as c_int, &mut None);
+                        if old_sigint_handler == SIG_IGN!()
+                        {
+                            restore_sigint_handler();
+                        } else {
+                            kill(getpid(), 2 as c_int);
+                        }
+                    }
+                } else if interactive_shell == 0 as c_int
+                        && subshell_environment == 0 as c_int
+                        && (**jobs.offset(job as isize)).flags & 0x1 as c_int
+                            != 0 as c_int
+                    {
+                    s = job_signal_status(job);
+                    if job_control != 0
+                        && (**jobs.offset(job as isize)).flags & 0x4 as c_int
+                            != 0 as c_int
+                        && ((s & 0x7f as c_int) + 1 as c_int)
+                            as libc::c_schar as c_int >> 1 as c_int
+                            > 0 as c_int
+                        && s & 0x7f as c_int == 2 as c_int
+                    {
+                        ::std::ptr::write_volatile(
+                            &mut interrupt_state as *mut sig_atomic_t,
+                            ::std::ptr::read_volatile::<
+                                sig_atomic_t,
+                            >(&interrupt_state as *const sig_atomic_t) + 1,
+                        );
+                    }
+                    if check_window_size != 0 {
+                        get_new_window_size(
+                            0 as c_int,
+                            0 as *mut c_int,
+                            0 as *mut c_int,
+                        );
+                    }
+                }
+                if (**jobs.offset(job as isize)).state as c_int
+                    == JDEAD as c_int
+                    && (**jobs.offset(job as isize)).flags & 0x1 as c_int
+                        != 0 as c_int
+                {
+                    setjstatus(job);
+                }
+                notify_and_cleanup();
+            }
+        }
+        _ => {}
+    }
+    sigprocmask(2 as c_int, &mut oset, 0 as *mut libc::c_void as *mut sigset_t);
+    return termination_state;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
