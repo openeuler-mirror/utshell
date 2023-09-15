@@ -3376,8 +3376,50 @@ pub unsafe extern "C"  fn  wait_for_any_job(mut flags: c_int, mut ps: *mut procs
     return r;
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  notify_and_cleanup() {
+    if jobs_list_frozen != 0 {
+        return;
+    }
+    if interactive != 0 || interactive_shell == 0  || sourcelevel != 0 {
+        notify_of_job_status();
+    }
+    cleanup_dead_jobs();
+}
 
+#[no_mangle]
+pub unsafe extern "C"  fn  reap_dead_jobs() {
+    mark_dead_jobs_as_notified(0);
+    cleanup_dead_jobs();
+}
 
+unsafe extern "C" fn most_recent_job_in_state(
+    mut job: c_int,
+    mut state: JOB_STATE,
+) -> c_int {
+    let mut i: c_int = 0;
+    let mut result: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    sigemptyset(&mut set);
+    sigaddset(&mut set, 17 as c_int);
+    sigemptyset(&mut oset);
+    sigprocmask(0 as c_int, &mut set, &mut oset);
+    result = -(1 as c_int);
+    i = job - 1 as c_int;
+    while i >= 0 as c_int {
+        if !(*jobs.offset(i as isize)).is_null()
+            && (**jobs.offset(i as isize)).state as c_int == state as c_int
+        {
+            result = i;
+            break;
+        } else {
+            i -= 1;
+        }
+    }
+    sigprocmask(2 as c_int, &mut oset, 0 as *mut libc::c_void as *mut sigset_t);
+    return result;
+}
 
 
 
