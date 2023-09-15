@@ -3270,8 +3270,111 @@ pub unsafe extern "C"  fn  wait_for_job(mut job: c_int, mut flags: c_int, mut ps
     return r;
 }
 
+#[macro_export]
+macro_rules! IS_WAITING {
+    ($i:expr) => {
+        (**jobs.offset($i as isize)).flags & 0x80 as c_int != 0 as c_int
+    };
+}
 
+#[no_mangle]
+pub unsafe extern "C"  fn  wait_for_any_job(mut flags: c_int, mut ps: *mut procstat) -> c_int 
+{
+    let mut current_block: u64;
+    let mut pid: pid_t = 0;
+    let mut i: c_int = 0;
+    let mut r: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
+    if jobs_list_frozen != 0 {
+        return -1;
+    }
+
+    BLOCK_CHILD (&mut set, &mut oset);
+    i = 0 as c_int;
+    loop {
+        if i < js.j_jobslots {
+            if !(flags & JWAIT_WAITING as c_int != 0 && !(*jobs.offset(i as isize)).is_null()
+                && IS_WAITING!(i) as c_int == 0)
+            {
+                if !(*jobs.offset(i as isize)).is_null() && DEADJOB!(i) && IS_NOTIFIED! (i)  as c_int == 0
+                {
+                    current_block = 2729223887955387488;
+                    break;
+                }
+            }
+            i += 1;
+        } else {
+            UNBLOCK_CHILD (&mut oset);
+            current_block = 7172762164747879670;
+            break;
+        }
+    }
+    'c_22951: loop {
+        match current_block {
+            2729223887955387488 => {
+                r = job_exit_status(i);
+                break;
+            }
+            _ => {
+                BLOCK_CHILD (&mut set, &mut oset);
+                i = 0 as c_int;
+                while i < js.j_jobslots {
+                    if !(*jobs.offset(i as isize)).is_null()
+                        && RUNNING!(i)
+                        &&  IS_FOREGROUND!(i) as c_int == 0
+                    {
+                        break;
+                    }
+                    i += 1;
+                }
+                if i == js.j_jobslots {
+                    UNBLOCK_CHILD (&mut oset);
+                    return -1;
+                }
+                UNBLOCK_CHILD (&mut oset);
+
+                QUIT!();
+                CHECK_TERMSIG!();
+                CHECK_WAIT_INTR!();
+
+                errno!() = 0;
+                r = wait_for(ANY_PID, 0 );
+                if r == -1 && errno!() == ECHILD {
+                    mark_all_jobs_as_dead();
+                }
+                BLOCK_CHILD (&mut set, &mut oset);
+
+                i = 0 as c_int;
+                while i < js.j_jobslots {
+                    if !(flags & JWAIT_WAITING as c_int != 0 && !(*jobs.offset(i as isize)).is_null() && IS_WAITING!(i) as c_int == 0)
+                    {
+                        if !(*jobs.offset(i as isize)).is_null()
+                            && DEADJOB!(i)
+                        {
+                            current_block = 2729223887955387488;
+                            continue 'c_22951;
+                        }
+                    }
+                    i += 1;
+                }
+                UNBLOCK_CHILD (&mut oset);
+                current_block = 7172762164747879670;
+            }
+        }
+    }
+    pid = find_last_pid(i, 0 );
+    if !ps.is_null() {
+        (*ps).pid = pid;
+        (*ps).status = r as libc::c_short;
+    }
+    notify_of_job_status();
+    delete_job(i, 0 );
+    coproc_reap();
+    UNBLOCK_CHILD (&mut oset);
+    return r;
+}
 
 
 
