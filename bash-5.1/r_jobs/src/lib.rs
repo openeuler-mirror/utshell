@@ -3468,8 +3468,53 @@ unsafe extern "C" fn set_current_job(mut job: c_int) {
     }
     js.j_previous = js.j_current;
 }
+unsafe extern "C" fn reset_current() {
+    let mut candidate: c_int = 0;
 
+    if js.j_jobslots != 0 && js.j_current != NO_JOB
+        && !(*jobs.offset(js.j_current as isize)).is_null()
+        && STOPPED!(js.j_current)
+    {
+        candidate = js.j_current;
+    } else {
+        candidate = NO_JOB;
 
+        if js.j_previous != NO_JOB
+            && !(*jobs.offset(js.j_previous as isize)).is_null()
+            && STOPPED!(js.j_previous)
+        {
+            candidate = js.j_previous;
+        }
+        if candidate == NO_JOB {
+            candidate = job_last_stopped(js.j_jobslots);
+        }
+        if candidate == NO_JOB {
+            candidate = job_last_running(js.j_jobslots);
+        }
+    }
+    if candidate != NO_JOB {
+        set_current_job(candidate);
+    } else {
+        js.j_previous = NO_JOB;
+        js.j_current = js.j_previous;
+    };
+}
+
+unsafe extern "C" fn set_job_running(mut job: c_int) {
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+
+    p = (**jobs.offset(job as isize)).pipe;
+    loop {
+        if WIFSTOPPED!((*p).status) {
+            (*p).running = PS_RUNNING as c_int;
+        }
+        p = (*p).next;
+        if !(p != (**jobs.offset(job as isize)).pipe) {
+            break;
+        }
+    }
+    JOBSTATE!(job) = JRUNNING;
+}
 
 
 
