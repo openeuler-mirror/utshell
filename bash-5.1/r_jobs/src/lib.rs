@@ -3214,8 +3214,61 @@ pub unsafe extern "C" fn wait_for(
     return termination_state;
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  wait_for_job(mut job: c_int, mut flags: c_int, mut ps: *mut procstat) -> c_int 
+{
+    let mut pid: pid_t = 0;
+    let mut r: c_int = 0;
+    let mut state: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
+    BLOCK_CHILD(&mut set, &mut oset);
+    state = JOBSTATE!(job);
+    if state == JSTOPPED as c_int {
+        internal_warning(b"wait_for_job: job %d is stopped\0" as *const u8 as *const c_char,
+                job + 1 as c_int);
+    }
 
+    pid = find_last_pid(job, 0 );
+    UNBLOCK_CHILD(&mut oset);
+
+    loop {
+        r = wait_for(pid, 0);
+        if r == -1 && errno!() == ECHILD {
+            mark_all_jobs_as_dead();
+        }
+
+        CHECK_WAIT_INTR!();
+
+        if flags & JWAIT_FORCE as c_int == 0  {
+            break;
+        }
+        BLOCK_CHILD (&mut set, &mut oset);
+        state = if job != NO_JOB && !(*jobs.offset(job as isize)).is_null()
+        {
+            JOBSTATE!(job)
+        } else {
+            JDEAD as c_int
+        };
+        UNBLOCK_CHILD (&mut oset);
+        if !(state != JDEAD as c_int) {
+            break;
+        }
+    }
+
+    BLOCK_CHILD (&mut set, &mut oset);
+    if job != NO_JOB && !(*jobs.offset(job as isize)).is_null() && DEADJOB!(job)
+    {
+        (**jobs.offset(job as isize)).flags |= J_NOTIFIED as c_int;
+    }
+    UNBLOCK_CHILD (&mut oset);
+    if !ps.is_null() {
+        (*ps).pid = pid;
+        (*ps).status = (if r < 0  { 127  } else { r }) as libc::c_short;
+    }
+    return r;
+}
 
 
 
