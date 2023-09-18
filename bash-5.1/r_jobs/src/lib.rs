@@ -3516,7 +3516,152 @@ unsafe extern "C" fn set_job_running(mut job: c_int) {
     JOBSTATE!(job) = JRUNNING;
 }
 
+pub type cc_t = libc::c_uchar;
+pub type speed_t = libc::c_uint;
+pub type tcflag_t = libc::c_uint;
 
+#[no_mangle]
+pub unsafe extern "C"  fn  start_job(mut job: c_int, mut foreground: c_int) -> c_int 
+{
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut already_running: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut wd: *mut c_char = 0 as *mut c_char;
+    let mut s: *mut c_char = 0 as *mut c_char;
+    static mut save_stty: libc::termios = libc::termios {
+        c_iflag: 0,
+        c_oflag: 0,
+        c_cflag: 0,
+        c_lflag: 0,
+        c_line: 0,
+        c_cc: [0; 32],
+        c_ispeed: 0,
+        c_ospeed: 0,
+    };
+
+    BLOCK_CHILD (&mut set, &mut oset);
+    if subshell_environment & SUBSHELL_COMSUB as c_int != 0 && pipeline_pgrp == shell_pgrp {
+        internal_error(
+            b"%s: no current jobs\0" as *const u8 as *const c_char,               
+            this_command_name,
+        );
+        UNBLOCK_CHILD (&mut oset);
+        return -1;
+    }
+    if DEADJOB!(job){
+        internal_error(           
+            b"%s: job has terminated\0" as *const u8 as *const c_char,             
+            this_command_name,
+        );
+        UNBLOCK_CHILD(&mut oset);
+        return -1;
+    }
+    already_running = RUNNING! (job) as c_int;
+
+    if foreground == 0  && already_running != 0 {
+        internal_error(                          
+            b"%s: job %d already in background\0" as *const u8 as *const c_char,              
+            this_command_name,
+            job + 1 as c_int,
+        );
+        UNBLOCK_CHILD (&mut oset);
+        return 0 ;
+    }
+
+    wd = current_working_directory();
+
+    (**jobs.offset(job as isize)).flags &= !(J_NOTIFIED as c_int);
+
+    if foreground != 0 {
+        set_current_job(job);
+        (**jobs.offset(job as isize)).flags |= J_FOREGROUND as c_int;
+    }
+
+    p = (**jobs.offset(job as isize)).pipe;
+
+    if foreground == 0  {
+        if posixly_correct == 0 as c_int {
+            s = (if job == js.j_current {
+                b"+ \0" as *const u8 as *const c_char
+            } else if job == js.j_previous {
+                b"- \0" as *const u8 as *const c_char
+            } else {
+                b" \0" as *const u8 as *const c_char
+            }) as *mut c_char;
+        } else {
+            s = b" \0" as *const u8 as *const c_char as *mut c_char;
+        }
+        print!("[{}]{}",job + 1 as c_int, CStr::from_ptr(s).to_str().unwrap());
+    }
+    loop {
+        print!(
+            "{}{}",
+            if !((*p).command).is_null() {
+                let str1 = (*p).command;
+                CStr::from_ptr(str1).to_str().unwrap()
+            } else {
+                let str1 = b"\0" as *const u8 as *const c_char;
+                CStr::from_ptr(str1).to_str().unwrap()
+            },
+
+            if (*p).next != (**jobs.offset(job as isize)).pipe {
+                let str1 =  b" | \0" as *const u8 as *const c_char;
+                CStr::from_ptr(str1).to_str().unwrap()
+            } else {
+                let str1 = b"\0" as *const u8 as *const c_char;
+                CStr::from_ptr(str1).to_str().unwrap()
+            },
+        );
+        p = (*p).next;
+        if !(p != (**jobs.offset(job as isize)).pipe) {
+            break;
+        }
+    }
+    if foreground == 0 {
+        print!(" &");
+    }
+    if strcmp(wd, (**jobs.offset(job as isize)).wd) != 0  {
+        let str1 = polite_directory_format((**jobs.offset(job as isize)).wd);
+        print!(
+            " (wd:{})",
+            CStr::from_ptr(str1).to_str().unwrap()
+        );
+    }
+    print!("\n");
+
+    if already_running == 0 {
+        set_job_running(job);
+    }
+    if foreground != 0 {
+        get_tty_state();
+        save_stty = shell_tty_info;
+        if IS_JOBCONTROL!(job) {
+            give_terminal_to((**jobs.offset(job as isize)).pgrp, 0);
+        }
+    } else {
+        (**jobs.offset(job as isize)).flags &= !(J_FOREGROUND as c_int);
+    }
+    if already_running == 0 {
+        (**jobs.offset(job as isize)).flags |= J_NOTIFIED as c_int;
+        killpg((**jobs.offset(job as isize)).pgrp, 18 as c_int);
+    }
+    if foreground != 0 {
+        let mut pid: pid_t = 0;
+        let mut st: c_int = 0;
+
+        pid = find_last_pid(job, 0 as c_int);
+        UNBLOCK_CHILD (&mut oset);
+        st = wait_for(pid, 0 );
+        shell_tty_info = save_stty;
+        set_tty_state();
+        return st;
+    } else {
+        reset_current();
+        UNBLOCK_CHILD (&mut set);
+        return 0 as c_int;
+    };
+}
 
 
 
