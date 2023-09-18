@@ -3421,8 +3421,53 @@ unsafe extern "C" fn most_recent_job_in_state(
     return result;
 }
 
+unsafe extern "C" fn job_last_stopped(mut job: c_int) -> c_int {
+    return most_recent_job_in_state(job, JSTOPPED as c_int);
+}
+
+unsafe extern "C" fn job_last_running(mut job: c_int) -> c_int {
+    return most_recent_job_in_state(job, JRUNNING as c_int);
+}
 
 
+unsafe extern "C" fn set_current_job(mut job: c_int) {
+    let mut candidate: c_int = 0;
+
+    if js.j_current != job {
+        js.j_previous = js.j_current;
+        js.j_current = job;
+    }
+
+    if js.j_previous != js.j_current && js.j_previous != NO_JOB
+        && !(*jobs.offset(js.j_previous as isize)).is_null()
+        && (**jobs.offset(js.j_previous as isize)).state as c_int
+            == JSTOPPED as c_int
+    {
+        return;
+    }
+    candidate = NO_JOB;
+    if (**jobs.offset(js.j_current as isize)).state as c_int
+        == JSTOPPED as c_int
+    {
+        candidate = job_last_stopped(js.j_current);
+        if candidate != NO_JOB {
+            js.j_previous = candidate;
+            return;
+        }
+    }
+    candidate = if (**jobs.offset(js.j_current as isize)).state as c_int
+        == JRUNNING as c_int
+    {
+        job_last_running(js.j_current)
+    } else {
+        job_last_running(js.j_jobslots)
+    };
+    if candidate != NO_JOB {
+        js.j_previous = candidate;
+        return;
+    }
+    js.j_previous = js.j_current;
+}
 
 
 
