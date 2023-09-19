@@ -3740,6 +3740,231 @@ pub unsafe extern "C"  fn  kill_pid(mut pid: pid_t, mut sig: c_int, mut group: c
     return result;
 }
 
-
-
+unsafe extern "C" fn waitchld(mut wpid: pid_t, mut block: c_int) -> c_int {
+    let mut status: WAIT = 0;
+    let mut child: *mut PROCESS = 0 as *mut PROCESS;
+    let mut pid: pid_t = 0;
+    let mut ind: c_int = 0;
+    let mut call_set_current: c_int = 0;
+    let mut last_stopped_job: c_int = 0;
+    let mut job: c_int = 0;
+    let mut children_exited: c_int = 0;
+    let mut waitpid_flags: c_int = 0;
+    static mut wcontinued: c_int = 8 as c_int;
+    children_exited = 0 as c_int;
+    call_set_current = children_exited;
+    last_stopped_job = -(1 as c_int);
+    loop {
+        waitpid_flags = if job_control != 0 && subshell_environment == 0 as c_int {
+            2 as c_int | wcontinued
+        } else {
+            0 as c_int
+        };
+        if sigchld != 0 || block == 0 as c_int {
+            waitpid_flags |= 1 as c_int;
+        }
+        if terminating_signal != 0 {
+            termsig_handler(terminating_signal);
+        }
+        if wait_intr_flag != 0 && wait_signal_received != 0
+            && this_shell_builtin.is_some()
+            && this_shell_builtin
+                == Some(
+                    wait_builtin as unsafe extern "C" fn(*mut WordList) -> c_int,
+                )
+        {
+            siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as c_int);
+        }
+        if block == 1 as c_int && queue_sigchld == 0 as c_int
+            && waitpid_flags & 1 as c_int == 0 as c_int
+        {
+            internal_warning(
+                dcgettext(
+                    0 as *const c_char,
+                    b"waitchld: turning on WNOHANG to avoid indefinite block\0"
+                        as *const u8 as *const c_char,
+                    5 as c_int,
+                ),
+            );
+            waitpid_flags |= 1 as c_int;
+        }
+        pid = waitpid(-(1 as c_int), &mut status, waitpid_flags);
+        if wcontinued != 0 && pid < 0 as c_int
+            && *__errno_location() == 22 as c_int
+        {
+            wcontinued = 0 as c_int;
+        } else {
+            if sigchld > 0 as c_int && waitpid_flags & 1 as c_int != 0 {
+                sigchld -= 1;
+            }
+            if pid < 0 as c_int && *__errno_location() == 10 as c_int {
+                if !(children_exited == 0 as c_int) {
+                    break;
+                }
+                return -(1 as c_int);
+            } else {
+                if terminating_signal != 0 {
+                    termsig_handler(terminating_signal);
+                }
+                if wait_intr_flag != 0 && wait_signal_received != 0
+                    && this_shell_builtin.is_some()
+                    && this_shell_builtin
+                        == Some(
+                            wait_builtin
+                                as unsafe extern "C" fn(*mut WordList) -> c_int,
+                        )
+                {
+                    siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as c_int);
+                }
+                if pid < 0 as c_int && *__errno_location() == 4 as c_int
+                    && wait_sigint_received != 0
+                {
+                    child_caught_sigint = 1 as c_int;
+                }
+                if !(pid <= 0 as c_int) {
+                    if wait_sigint_received != 0
+                        && ((((status & 0x7f as c_int) + 1 as c_int)
+                            as libc::c_schar as c_int >> 1 as c_int
+                            > 0 as c_int) as c_int == 0 as c_int
+                            || status & 0x7f as c_int != 2 as c_int)
+                    {
+                        child_caught_sigint = 1 as c_int;
+                    }
+                    if ((status & 0x7f as c_int) + 1 as c_int)
+                        as libc::c_schar as c_int >> 1 as c_int
+                        > 0 as c_int
+                        && status & 0x7f as c_int == 2 as c_int
+                    {
+                        child_caught_sigint = 0 as c_int;
+                    }
+                    if (status == 0xffff as c_int) as c_int
+                        == 0 as c_int
+                    {
+                        children_exited += 1;
+                        js.c_living -= 1;
+                    }
+                    child = find_process(pid, 1 as c_int, &mut job);
+                    coproc_pidchk(pid, status);
+                    ind = find_procsub_child(pid);
+                    if ind >= 0 as c_int {
+                        set_procsub_status(ind, pid, status);
+                    }
+                    if child.is_null() {
+                        if status & 0x7f as c_int == 0 as c_int
+                            || ((status & 0x7f as c_int) + 1 as c_int)
+                                as libc::c_schar as c_int >> 1 as c_int
+                                > 0 as c_int
+                        {
+                            js.c_reaped += 1;
+                        }
+                    } else {
+                        (*child).status = status;
+                        (*child)
+                            .running = if status == 0xffff as c_int {
+                            1 as c_int
+                        } else {
+                            0 as c_int
+                        };
+                        if (*child).running == 0 as c_int {
+                            js.c_totreaped += 1;
+                            if job != -(1 as c_int) {
+                                js.c_reaped += 1;
+                            }
+                        }
+                        if !(job == -(1 as c_int)) {
+                            call_set_current += set_job_status_and_cleanup(job);
+                            if (**jobs.offset(job as isize)).state as c_int
+                                == JSTOPPED as c_int
+                            {
+                                last_stopped_job = job;
+                            } else if (**jobs.offset(job as isize)).state as c_int
+                                    == JDEAD as c_int && last_stopped_job == job
+                                {
+                                last_stopped_job = -(1 as c_int);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if !((sigchld != 0 || block == 0 as c_int) && pid > 0 as c_int) {
+            break;
+        }
+    }
+    if call_set_current != 0 {
+        if last_stopped_job != -(1 as c_int) {
+            set_current_job(last_stopped_job);
+        } else {
+            reset_current();
+        }
+    }
+    if children_exited != 0
+        && (signal_is_trapped(17 as c_int) != 0
+            || *trap_list.as_mut_ptr().offset(17 as c_int as isize)
+                == ::std::mem::transmute::<
+                    *mut SigHandler,
+                    *mut c_char,
+                >(
+                    ::std::mem::transmute::<
+                        unsafe extern "C" fn() -> (),
+                        *mut SigHandler,
+                    >(initialize_traps as unsafe extern "C" fn() -> ()),
+                ))
+        && *trap_list.as_mut_ptr().offset(17 as c_int as isize)
+            != ::std::mem::transmute::<
+                __sighandler_t,
+                *mut c_char,
+            >(
+                ::std::mem::transmute::<
+                    libc::intptr_t,
+                    __sighandler_t,
+                >(1 as c_int as libc::intptr_t),
+            )
+    {
+        if posixly_correct != 0 && this_shell_builtin.is_some()
+            && this_shell_builtin
+                == Some(
+                    wait_builtin as unsafe extern "C" fn(*mut WordList) -> c_int,
+                )
+        {
+            queue_sigchld_trap(children_exited);
+            wait_signal_received = 17 as c_int;
+            if sigchld == 0 as c_int && wait_intr_flag != 0 {
+                siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as c_int);
+            }
+        } else if sigchld != 0 {
+            queue_sigchld_trap(children_exited);
+        } else if signal_in_progress(17 as c_int) != 0 {
+            queue_sigchld_trap(children_exited);
+        } else if *trap_list.as_mut_ptr().offset(17 as c_int as isize)
+                == ::std::mem::transmute::<
+                    *mut SigHandler,
+                    *mut c_char,
+                >(
+                    ::std::mem::transmute::<
+                        unsafe extern "C" fn() -> (),
+                        *mut SigHandler,
+                    >(initialize_traps as unsafe extern "C" fn() -> ()),
+                )
+            {
+            queue_sigchld_trap(children_exited);
+        } else if running_trap != 0 {
+            queue_sigchld_trap(children_exited);
+        } else if this_shell_builtin
+                == Some(
+                    wait_builtin as unsafe extern "C" fn(*mut WordList) -> c_int,
+                )
+            {
+            run_sigchld_trap(children_exited);
+        } else {
+            queue_sigchld_trap(children_exited);
+        }
+    }
+    if asynchronous_notification != 0 && interactive != 0
+        && executing_builtin == 0 as c_int
+    {
+        notify_of_job_status();
+    }
+    return children_exited;
+}
 
