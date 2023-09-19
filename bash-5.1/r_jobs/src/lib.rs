@@ -3740,6 +3740,45 @@ pub unsafe extern "C"  fn  kill_pid(mut pid: pid_t, mut sig: c_int, mut group: c
     return result;
 }
 
+unsafe extern "C" fn sigchld_handler(mut sig: c_int) {
+    let mut n: c_int = 0;
+    let mut oerrno: c_int = 0;
+
+    oerrno = errno!();
+    sigchld += 1;
+    n = 0 ;
+    if queue_sigchld == 0  {
+        n = waitchld(-1, 0 );
+    }
+    errno!() = oerrno;
+    return;
+}
+
+
+#[macro_export]
+macro_rules! sh_longjmp {
+    ($x:expr,$n:expr) => {
+        siglongjmp($x, $n as c_int)
+    };
+}
+
+
+pub const EINVAL:i32 = 22;
+pub const EINTR:i32 = 22;
+
+#[macro_export]
+macro_rules! IMPOSSIBLE_TRAP_HANDLER {
+    () => {
+        initialize_traps as *mut SigHandler
+    };
+}
+
+#[macro_export]
+macro_rules! IGNORE_SIG {
+    () => {
+        SIG_IGN!() 
+    };
+}
 unsafe extern "C" fn waitchld(mut wpid: pid_t, mut block: c_int) -> c_int {
     let mut status: WAIT = 0;
     let mut child: *mut PROCESS = 0 as *mut PROCESS;
