@@ -3663,8 +3663,82 @@ pub unsafe extern "C"  fn  start_job(mut job: c_int, mut foreground: c_int) -> c
     };
 }
 
+#[macro_export]
+macro_rules! PEXITED {
+    ($p:expr) => {
+        (*$p).running  == 0 as c_int
+    };
+}
 
 
+#[no_mangle]
+pub unsafe extern "C"  fn  kill_pid(mut pid: pid_t, mut sig: c_int, mut group: c_int) -> c_int 
+{
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut job: c_int = 0;
+    let mut result: c_int = 0;
+    let mut negative: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+    if pid < -1 {
+        pid = -pid;
+        negative = 1;
+        group = negative;
+    } else {
+        negative = 0 ;
+    }
+    result = 0 ;
+    if group != 0 {
+        BLOCK_CHILD ( &mut set, &mut oset);
+        p = find_pipeline(pid, 0, &mut job);
+
+        if job != NO_JOB  {
+            (**jobs.offset(job as isize)).flags &= !(J_NOTIFIED as c_int);
+            if negative != 0 && (**jobs.offset(job as isize)).pgrp == shell_pgrp {
+                result = killpg(pid, sig);
+            } else if (**jobs.offset(job as isize)).pgrp == shell_pgrp {
+                p = (**jobs.offset(job as isize)).pipe;
+                loop {
+                    if !(PALIVE!(p) as c_int == 0)
+                    {
+                        kill((*p).pid, sig);
+                        if PEXITED!(p)
+                            && (sig == SIGTERM as c_int || sig == SIGHUP as c_int)
+                        {
+                            kill((*p).pid, SIGCONT as c_int);
+                        }
+                        p = (*p).next;
+                    }
+                    if !(p != (**jobs.offset(job as isize)).pipe) {
+                        break;
+                    }
+                }
+            } else {
+                result = killpg((**jobs.offset(job as isize)).pgrp, sig);
+                if !p.is_null()
+                    && STOPPED!(job)
+                    && (sig == SIGTERM as c_int || sig == SIGHUP as c_int)
+                {
+                    killpg((**jobs.offset(job as isize)).pgrp, SIGCONT as c_int);
+                }
+                if !p.is_null()
+                    && STOPPED!(job) && sig == SIGCONT as c_int
+                {
+                    set_job_running(job);
+                    (**jobs.offset(job as isize)).flags &= !(J_FOREGROUND as c_int);
+                    (**jobs.offset(job as isize)).flags |= J_NOTIFIED as c_int;
+                }
+            }
+        } else {
+            result = killpg(pid, sig);
+        }
+        UNBLOCK_CHILD (&mut oset);
+    } else {
+        result = kill(pid, sig);
+    }
+    return result;
+}
 
 
 
