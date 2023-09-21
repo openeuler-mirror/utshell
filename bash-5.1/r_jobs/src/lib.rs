@@ -4647,3 +4647,65 @@ pub unsafe extern "C"  fn  initialize_job_signals() {
         );
     }
 }
+
+unsafe extern "C" fn sigcont_sighandler(mut sig: c_int) {
+    initialize_job_signals();
+    set_signal_handler(SIGCONT as c_int, old_cont);
+    kill(getpid(), SIGCONT as c_int);
+}
+unsafe extern "C" fn sigstop_sighandler(mut sig: c_int) {
+    set_signal_handler(SIGTSTP as c_int, old_tstp);
+    set_signal_handler(SIGTTOU as c_int, old_ttou);
+    set_signal_handler(SIGTTIN as c_int, old_ttin);
+    old_cont = set_signal_handler(
+        SIGCONT as c_int,
+        sigcont_sighandler as *mut Option<unsafe extern "C" fn(i32)>
+    );
+    give_terminal_to(shell_pgrp, 0 );
+    kill(getpid(), sig);
+}
+
+
+#[no_mangle]
+pub unsafe extern "C"  fn  give_terminal_to(mut pgrp: pid_t,mut force: c_int) -> c_int 
+{
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut r: c_int = 0;
+    let mut e: c_int = 0;
+
+    if job_control != 0 || force != 0 {
+        sigemptyset(&mut set);
+        sigaddset(&mut set, SIGTTOU as c_int);
+        sigaddset(&mut set, SIGTTIN as c_int);
+        sigaddset(&mut set, SIGTSTP as c_int);
+        sigaddset(&mut set, SIGCHLD as c_int);
+        sigemptyset(&mut oset);
+        sigprocmask(SIG_BLOCK as c_int, &mut set, &mut oset);
+
+        if tcsetpgrp(shell_tty, pgrp) < 0 {
+            r = -1;
+            e = errno!();
+        } else {
+            terminal_pgrp = pgrp;
+        }
+        sigprocmask(
+            SIG_SETMASK as c_int,
+            &mut oset,
+            0 as *mut sigset_t,
+        );
+    }
+    if r == -1 {
+        errno!() = e;
+    }
+    return r;
+}
+
+
+
+
+
+
+
+
+
