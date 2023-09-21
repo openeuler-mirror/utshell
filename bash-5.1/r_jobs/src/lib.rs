@@ -4615,4 +4615,35 @@ pub unsafe extern "C" fn initialize_job_control(mut force: c_int) -> c_int {
     return job_control;
 }
 
+unsafe extern "C" fn set_new_line_discipline(mut tty: c_int) -> c_int {
+    return 0 as c_int;
+}
 
+#[no_mangle]
+pub unsafe extern "C"  fn  initialize_job_signals() {
+    if interactive != 0 {
+        set_signal_handler(
+                    2 as c_int,
+                    std::mem::transmute::<
+                    std::option::Option<unsafe extern "C" fn(i32)>,
+                    *mut std::option::Option<unsafe extern "C" fn(i32)>
+                    >(Some(sigint_sighandler as unsafe extern "C" fn(c_int) -> ()),),
+                );
+        set_signal_handler (SIGTSTP as c_int, SIG_IGN!());
+        set_signal_handler (SIGTTOU as c_int, SIG_IGN!());
+        set_signal_handler (SIGTTIN as c_int, SIG_IGN!());
+    } else if job_control != 0 {
+        old_tstp = set_signal_handler(
+            SIGTSTP as c_int,
+            sigstop_sighandler as *mut Option<unsafe extern "C" fn(i32)>,
+        );
+        old_ttin = set_signal_handler(
+            SIGTTIN as c_int,
+            sigstop_sighandler as *mut Option<unsafe extern "C" fn(i32)>,
+        );
+        old_ttou = set_signal_handler(
+            SIGTTOU as c_int,
+            sigstop_sighandler as *mut Option<unsafe extern "C" fn(i32)>,
+        );
+    }
+}
