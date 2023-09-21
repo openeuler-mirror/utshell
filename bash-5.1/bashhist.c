@@ -875,7 +875,7 @@ bash_add_history (line)
   add_it = 1;
   if (command_oriented_history && current_command_line_count > 1)
     {
-      is_comment = (parser_state & PST_HEREDOC) ? 0 : shell_comment (line); #开头是返回1,后面有返回2,没有返回0
+      is_comment = (parser_state & PST_HEREDOC) ? 0 : shell_comment (line); //开头是返回1,后面有返回2,没有返回0
 
       /* The second and subsequent lines of a here document have the trailing
 	 newline preserved.  We don't want to add extra newlines here, but we
