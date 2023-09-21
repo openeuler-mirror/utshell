@@ -4007,3 +4007,132 @@ unsafe extern "C" fn waitchld(mut wpid: pid_t, mut block: c_int) -> c_int {
     return children_exited;
 }
 
+unsafe extern "C" fn set_job_status_and_cleanup(mut job: c_int) -> c_int {
+    let mut child: *mut PROCESS = 0 as *mut PROCESS;
+    let mut tstatus: c_int = 0;
+    let mut job_state: c_int = 0;
+    let mut any_stopped: c_int = 0;
+    let mut any_tstped: c_int = 0;
+    let mut call_set_current: c_int = 0;
+    let mut temp_handler: *mut SigHandler;
+
+    child = (**jobs.offset(job as isize)).pipe;
+    (**jobs.offset(job as isize)).flags &= !(J_NOTIFIED as c_int);
+
+    call_set_current = 0;
+
+    any_tstped = 0;
+    any_stopped = any_tstped;
+    job_state = any_stopped;
+    loop {
+        job_state |= PRUNNING! (child) as c_int;
+        if PSTOPPED (child) != 0 {
+            any_stopped = 1;
+            any_tstped |= (job_control != 0 && WSTOPSIG!((*child).status) == SIGTSTP as c_int) as c_int;
+        }
+        child = (*child).next;
+        if !(child != (**jobs.offset(job as isize)).pipe) {
+            break;
+        }
+    }
+
+    if job_state != 0 
+        && JOBSTATE!(job) != JSTOPPED as c_int
+    {
+        return 0 ;
+    }
+
+    if any_stopped != 0 {
+        (**jobs.offset(job as isize)).state = JSTOPPED;
+        (**jobs.offset(job as isize)).flags &= !(J_FOREGROUND as c_int);
+        call_set_current += 1;
+
+        if any_tstped != 0 && loop_level != 0 {
+            breaking = loop_level;
+        }
+    } else if job_state != 0  {
+        (**jobs.offset(job as isize)).state = JRUNNING;
+        call_set_current += 1;
+    } else {
+        (**jobs.offset(job as isize)).state = JDEAD;
+        js.j_ndead += 1;
+
+        if ((**jobs.offset(job as isize)).j_cleanup).is_some() {
+            (Some(
+                ((**jobs.offset(job as isize)).j_cleanup)
+                    .expect("non-null function pointer"),
+            ))
+                .expect(
+                    "non-null function pointer",
+                )((**jobs.offset(job as isize)).cleanarg);
+            
+            (**jobs.offset(job as isize)).j_cleanup = ::std::mem::transmute::<*mut libc::c_void, sh_vptrfunc_t>(0 as *mut libc::c_void);
+        }
+    }
+    if JOBSTATE!(job) == JDEAD as c_int {
+        if wait_sigint_received != 0 && interactive_shell == 0  
+            && child_caught_sigint != 0
+            && IS_FOREGROUND!(job) && signal_is_trapped(SIGINT as c_int) != 0
+        {
+            let mut old_frozen: c_int = 0;
+            wait_sigint_received = 0 ;
+            last_command_exit_value = process_exit_status ((*child).status);
+
+            old_frozen = jobs_list_frozen;
+            jobs_list_frozen = 1 ;
+            tstatus = maybe_call_trap_handler(SIGINT as c_int);
+            jobs_list_frozen = old_frozen;
+        } else if wait_sigint_received != 0 && child_caught_sigint == 0  
+                && IS_FOREGROUND!(job)
+                && IS_JOBCONTROL!(job) as c_int == 0  
+            {
+            let mut old_frozen_0: c_int = 0;
+
+            wait_sigint_received = 0 ;
+
+            if signal_is_trapped(SIGINT as c_int) != 0 {
+                last_command_exit_value = process_exit_status ((*child).status);
+            }
+            old_frozen_0 = jobs_list_frozen;
+            jobs_list_frozen = 1  ;
+            tstatus = maybe_call_trap_handler(SIGINT as c_int);
+            jobs_list_frozen = old_frozen_0;
+            if tstatus == 0 
+                && old_sigint_handler  != INVALID_SIGNAL_HANDLER!()
+            {
+                temp_handler = old_sigint_handler;
+                if temp_handler == trap_handler as *mut Option<unsafe extern "C" fn(i32)>
+                    && signal_is_trapped(SIGINT as c_int) == 0 
+                {
+                    temp_handler = &mut trap_to_sighandler(SIGINT as c_int);
+                }
+                println!("161616161616");
+                restore_sigint_handler();
+                if !temp_handler.is_null() {
+                    termsig_handler(SIGINT as c_int);
+                } else if temp_handler 
+                        != SIG_IGN!() 
+                    {
+                        //这里是函数回调传入参数
+                    (*temp_handler).unwrap()(SIGINT as c_int);
+                }
+            }
+        }
+    }
+    return call_set_current;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
