@@ -4123,8 +4123,47 @@ unsafe extern "C" fn set_job_status_and_cleanup(mut job: c_int) -> c_int {
 }
 
 
+unsafe extern "C" fn setjstatus(mut j: c_int) {
+    let mut i: c_int = 0;
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+
+    i = 1 ;
+    p = (**jobs.offset(j as isize)).pipe;
+    while (*p).next != (**jobs.offset(j as isize)).pipe {
+        p = (*p).next;
+        i += 1;
+    }
+    i += 1;
+    if statsize < i {
+        pstatuses = libc::realloc(pstatuses as *mut c_void, (i * 4) as usize) as *mut c_int;    //i * sizeof (int)
+        statsize = i;
+    }
+    i = 0 as c_int;
+    p = (**jobs.offset(j as isize)).pipe;
+    loop {
+        *pstatuses.offset(i as isize) = process_exit_status((*p).status);
+        i = i + 1;
+        p = (*p).next;
+        if !(p != (**jobs.offset(j as isize)).pipe) {
+            break;
+        }
+    }
+
+    *pstatuses.offset(i as isize) = -1;
+    set_pipestatus_array(pstatuses, i);
+}
 
 
+#[macro_export]
+macro_rules! savestring {
+    ($x:expr) => {
+        libc::strcpy(libc::malloc(1+ libc::strlen($x)) as *mut c_char , ($x))
+    };
+}
+
+
+pub const SEVAL_NOHIST:c_int = 0x004;
+pub const SEVAL_RESETLINE:c_int = 0x010;
 
 
 #[no_mangle]
@@ -4227,6 +4266,8 @@ pub unsafe extern "C"  fn  run_sigchld_trap(mut nchild: c_int) {
     running_trap = 0 as c_int;
 }
 }
+
+
 
 
 
