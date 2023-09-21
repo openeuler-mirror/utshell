@@ -4127,9 +4127,106 @@ unsafe extern "C" fn set_job_status_and_cleanup(mut job: c_int) -> c_int {
 
 
 
+#[no_mangle]
+pub unsafe extern "C"  fn  run_sigchld_trap(mut nchild: c_int) {
+    let mut trap_command: *mut c_char ;
+    let mut i: c_int = 0;
+    trap_command = savestring!(*trap_list.as_mut_ptr().offset(SIGCHLD as c_int as isize));
+    
+    begin_unwind_frame(
+        b"SIGCHLD trap\0" as *const u8 as *mut c_char,
+    );
+
+    unwind_protect_mem(
+        &mut last_command_exit_value as *mut c_int as *mut c_char,
+        ::std::mem::size_of::<c_int>() as libc::c_ulong as c_int,
+    );
+    unwind_protect_mem(
+        &mut last_command_exit_signal as *mut c_int as *mut c_char,
+        ::std::mem::size_of::<c_int>() as libc::c_ulong as c_int,
+    );
+    unwind_protect_mem(
+        &mut last_made_pid as *mut pid_t as *mut c_char,
+        ::std::mem::size_of::<pid_t>() as libc::c_ulong as c_int,
+    );
+    unwind_protect_mem(
+        &mut jobs_list_frozen as *mut c_int as *mut c_char,
+        ::std::mem::size_of::<c_int>() as libc::c_ulong as c_int,
+    );
+    unwind_protect_mem(
+        &mut the_pipeline as *mut *mut PROCESS as *mut c_char,
+        ::std::mem::size_of::<*mut PROCESS>() as libc::c_ulong as c_int,
+    );
+    unwind_protect_mem(
+        &mut subst_assign_varlist as *mut *mut WordList as *mut c_char,
+        ::std::mem::size_of::<*mut WordList>() as libc::c_ulong as c_int,
+    );
+    unsafe{
+    unwind_protect_mem(
+        &mut this_shell_builtin as *const sh_builtin_func_t  as *mut c_char,
+        ::std::mem::size_of::<Option::<sh_builtin_func_t>>() as libc::c_ulong
+            as c_int,
+    );
+    }
+    unwind_protect_mem(
+        &mut temporary_env as *mut *mut HASH_TABLE as *mut c_char,
+        ::std::mem::size_of::<*mut HASH_TABLE>() as libc::c_ulong as c_int,
+    );
+
+    extern "C" {
+        pub fn xfree(arg1: *mut ::std::os::raw::c_void);
+    }
+    let t1=xfree;
+    unsafe{
+    let t = xfree as *const  libc::c_void;
+    let t2=t1 as *const unsafe extern "C" fn() ->i32;
+    let t3 = t2 as *mut unsafe extern "C" fn() -> ::std::os::raw::c_int;
+    
 
 
 
+    let mut t4=&Some(t2);
+    let mut t5=&Some(t3);
+    let mut  t6=t5;
+
+    add_unwind_protect(
+        t5.unwrap() as *const ::std::option::Option<*mut unsafe  extern "C" fn()->i32> 
+        as *mut ::std::option::Option<unsafe  extern "C" fn()->i32>, 
+        trap_command,
+    );
+
+
+    let r1=maybe_set_sigchld_trap as *const fn(_: *mut c_char);
+    let r2=&Some(r1);
+    add_unwind_protect(
+        Some(maybe_set_sigchld_trap as *mut unsafe extern "C" fn() -> std::os::raw::c_int).unwrap() as *const ::std::option::Option<*mut unsafe  extern "C" fn()->i32> 
+        as *mut ::std::option::Option<unsafe  extern "C" fn()->i32>,
+        trap_command,
+    );
+    
+    subst_assign_varlist = 0 as *mut WordList;
+    the_pipeline = 0 as *mut PROCESS;
+    temporary_env = 0 as *mut HASH_TABLE;
+
+    running_trap = SIGCHLD as c_int + 1 ;
+
+    set_impossible_sigchld_trap();
+    jobs_list_frozen = 1 ;
+    i = 0 ;
+    while i < nchild {
+        parse_and_execute(
+            savestring! (trap_command),
+            b"trap\0" as *const u8 as *const c_char,
+            SEVAL_NOHIST | SEVAL_RESETLINE 
+        );
+        i += 1;
+    }
+    run_unwind_frame(
+        b"SIGCHLD trap\0" as *const u8 as *const c_char as *mut c_char,
+    );
+    running_trap = 0 as c_int;
+}
+}
 
 
 
