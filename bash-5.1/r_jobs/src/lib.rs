@@ -4267,8 +4267,149 @@ pub unsafe extern "C"  fn  run_sigchld_trap(mut nchild: c_int) {
 }
 }
 
+unsafe extern "C" fn notify_of_job_status() {
+    let mut job: c_int = 0;
+    let mut termsig: c_int = 0;
+    let mut dir: *mut c_char = 0 as *mut c_char;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut s: WAIT = 0;
 
+    if jobs.is_null() || js.j_jobslots == 0 {
+        return;
+    }
+    if !old_ttou.is_null(){
+        sigemptyset(&mut set);
+        sigaddset(&mut set, SIGCHLD as c_int);
+        sigaddset(&mut set, SIGTTOU as c_int);
+        sigemptyset(&mut oset);
+        sigprocmask(SIG_BLOCK as c_int, &mut set, &mut oset);
+    } else {
+        queue_sigchld += 1;
+    }
+    job = 0 ;
+    dir = 0 as *mut c_char;
+    while job < js.j_jobslots {
+        if !(*jobs.offset(job as isize)).is_null()
+            && IS_NOTIFIED!(job)as c_int == 0 
+        {
+            s = raw_job_exit_status(job);
+            termsig = WTERMSIG! (s);
 
+            if !(startup_state == 0 && WIFSIGNALED!(s) as c_int == 0 
+                && ((DEADJOB!(job) && IS_FOREGROUND!(job) as c_int == 0 || STOPPED!(job))))
+            {
+                if job_control == 0 && interactive_shell != 0
+                    || startup_state == 2  && subshell_environment & SUBSHELL_COMSUB as c_int != 0
+                    || startup_state == 2  && posixly_correct != 0
+                        && subshell_environment & SUBSHELL_COMSUB as c_int == 0 as c_int
+                {
+                    if (DEADJOB! (job) && (interactive_shell != 0
+                            || find_last_pid(job, 0)!= last_asynchronous_pid))
+                    {
+                        (**jobs.offset(job as isize)).flags |= J_NOTIFIED as c_int;
+                    }
+                } else {
+                    match (**jobs.offset(job as isize)).state as c_int {
+                        JDEAD => {
+                            if interactive_shell == 0 && termsig != 0
+                                && WIFSIGNALED! (s)
+                                && termsig != SIGINT as c_int
+                                && termsig != SIGTERM as c_int
+                                && signal_is_trapped(termsig) == 0  
+                            {
+                                fprintf(
+                                    stderr,
+                                    b"%s: line %d: \0" as *const u8 as *const c_char,  
+                                    get_name_for_error(),
+                                    if line_number == 0  {
+                                        1 
+                                    } else {
+                                        line_number
+                                    },
+                                );
+                                pretty_print_job(job, JLIST_NONINTERACTIVE as c_int, stderr);
+                            } else if IS_FOREGROUND!(job)
+                                {
+                                if termsig != 0
+                                    &&  WIFSIGNALED! (s)
+                                    && termsig != SIGINT as c_int
+                                    && termsig != SIGPIPE as c_int
+                                {
+                                    fprintf(
+                                        stderr,
+                                        b"%s\0" as *const u8 as *const c_char,
+                                        j_strsignal(termsig),
+                                    );
+                                    if WIFCORED! (s) {
+                                        fprintf(
+                                            stderr,
+                                            b" (core dumped)\0" as *const u8 as *const c_char);
+                                    }
+                                    fprintf(
+                                        stderr,
+                                        b"\n\0" as *const u8 as *const c_char,
+                                    );
+                                }
+                            } else if job_control != 0 {
+                                if dir.is_null() {
+                                    dir = current_working_directory();
+                                }
+                                pretty_print_job(job, JLIST_STANDARD as c_int, stderr);
+                                if !dir.is_null()
+                                    && strcmp(dir, (**jobs.offset(job as isize)).wd)
+                                        != 0 
+                                {
+                                    fprintf(
+                                        stderr,
+                                        b"(wd now: %s)\n\0" as *const u8 as *const c_char,   
+                                        polite_directory_format(dir)
+                                    );
+                                }
+                            }
+                            (**jobs.offset(job as isize)).flags |= J_NOTIFIED as c_int;
+                        }
+                        JSTOPPED => {
+                            fprintf(stderr, b"\n\0" as *const u8 as *const c_char);
+                            if dir.is_null() {
+                                dir = current_working_directory();
+                            }
+                            pretty_print_job(job, JLIST_STANDARD as c_int, stderr);
+                            if !dir.is_null()
+                                && strcmp(dir, (**jobs.offset(job as isize)).wd)
+                                    != 0 
+                            {
+                                fprintf(
+                                    stderr,
+                                    b"(wd now: %s)\n\0" as *const u8 as *const c_char,
+                                    polite_directory_format(dir),
+                                );
+                            }
+                            (**jobs.offset(job as isize)).flags |= J_NOTIFIED as c_int;
+                        }
+                        JRUNNING | JMIXED => {}
+                        _ => {
+                            programming_error(
+                                b"notify_of_job_status\0" as *const u8
+                                    as *const c_char, 
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        job += 1;
+    }
+    if !old_ttou.is_null()   {
+        sigprocmask(
+            SIG_SETMASK as c_int,
+            &mut oset,
+            0 as *mut libc::c_void as *mut sigset_t,
+        );
+    } else {
+        queue_sigchld -= 1;
+    };
+}
 
 
 
