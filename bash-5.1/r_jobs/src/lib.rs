@@ -4701,8 +4701,62 @@ pub unsafe extern "C"  fn  give_terminal_to(mut pgrp: pid_t,mut force: c_int) ->
     return r;
 }
 
+pub const ENOTTY:i32 = 25;
+
+unsafe extern "C" fn maybe_give_terminal_to(mut opgrp: pid_t, mut npgrp: pid_t, mut flags: c_int) -> c_int 
+{
+    let mut tpgrp: c_int = 0;
+
+    tpgrp = tcgetpgrp(shell_tty);
+    if tpgrp < 0 && errno!() == ENOTTY {
+        return -1;
+    }
+    if tpgrp == npgrp {
+        terminal_pgrp = npgrp;
+        return 0 ;
+    } else if tpgrp != opgrp {
+        return -1
+    } else {
+        return give_terminal_to(npgrp, flags)
+    };
+}
 
 
+#[no_mangle]
+pub unsafe extern "C"  fn  delete_all_jobs(mut running_only: c_int) {
+    let mut i: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+    BLOCK_CHILD (&mut set, &mut oset);
+    if js.j_jobslots != 0 {
+        js.j_previous = NO_JOB;
+        js.j_current = js.j_previous;
+        i = 0  ;
+        while i < js.j_jobslots {
+            if !(*jobs.offset(i as isize)).is_null()
+                && (running_only == 0  
+                    || running_only != 0
+                        && RUNNING!(i))
+            {
+                delete_job(i, DEL_WARNSTOPPED as c_int | DEL_NOBGPID as c_int);
+            }
+            i += 1;
+        }
+        if running_only == 0 {
+            libc::free(jobs as *mut c_void);
+            
+            js.j_jobslots = 0 ;
+            js.j_njobs = 0  ;
+            js.j_lastj = js.j_njobs;
+            js.j_firstj = js.j_lastj;
+        }
+    }
+    if running_only == 0 {
+        bgp_clear();
+    }
+    UNBLOCK_CHILD (&mut oset);
+}
 
 
 
