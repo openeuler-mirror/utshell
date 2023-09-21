@@ -4801,5 +4801,86 @@ pub unsafe extern "C"  fn  count_all_jobs() -> c_int {
     return n;
 }
 
+unsafe extern "C" fn mark_all_jobs_as_dead() {
+    let mut i: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+    if js.j_jobslots == 0  {
+        return;
+    }
+    BLOCK_CHILD (&mut set, &mut oset);
+    i = 0 ;
+    while i < js.j_jobslots {
+        if !(*jobs.offset(i as isize)).is_null() {
+            (**jobs.offset(i as isize)).state = JDEAD;
+            js.j_ndead += 1;
+        }
+        i += 1;
+    }
+    UNBLOCK_CHILD (&mut oset);
+}
 
 
+unsafe extern "C" fn mark_dead_jobs_as_notified(mut force: c_int) {
+    let mut i: c_int = 0;
+    let mut ndead: c_int = 0;
+    let mut ndeadproc: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+    if js.j_jobslots == 0 {
+        return;
+    }
+    BLOCK_CHILD (&mut set, &mut oset);
+    if force != 0 {
+        i = 0 ;
+        while i < js.j_jobslots {
+            if !(*jobs.offset(i as isize)).is_null()
+                && DEADJOB!(i)
+                && (interactive_shell != 0
+                    || find_last_pid(i, 0 as c_int) != last_asynchronous_pid)
+            {
+                (**jobs.offset(i as isize)).flags |= J_NOTIFIED as c_int;
+            }
+            i += 1;
+        }
+        UNBLOCK_CHILD (&mut oset);
+        return;
+    }
+    ndeadproc = 0 ;
+    ndead = ndeadproc;
+    i = ndead;
+    while i < js.j_jobslots {
+        if !(*jobs.offset(i as isize)).is_null()
+            && DEADJOB!(i)
+        {
+            ndead += 1;
+            ndeadproc += processes_in_job(i);
+        }
+        i += 1;
+    }
+    if js.c_childmax < 0 {
+        set_maxchild(0 );
+    }
+    if ndeadproc as libc::c_long <= js.c_childmax {
+        UNBLOCK_CHILD (&mut oset);
+        return;
+    }
+    i = 0 ;
+    while i < js.j_jobslots {
+        if !(*jobs.offset(i as isize)).is_null()
+            && DEADJOB!(i)
+            && (interactive_shell != 0
+                || find_last_pid(i, 0 as c_int) != last_asynchronous_pid)
+        {
+            ndeadproc -= processes_in_job(i);
+            if ndeadproc as libc::c_long <= js.c_childmax {
+                break;
+            }
+            (**jobs.offset(i as isize)).flags |= J_NOTIFIED as c_int;
+        }
+        i += 1;
+    }
+    UNBLOCK_CHILD (&mut oset);
+}
