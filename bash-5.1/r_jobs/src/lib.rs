@@ -4758,8 +4758,48 @@ pub unsafe extern "C"  fn  delete_all_jobs(mut running_only: c_int) {
     UNBLOCK_CHILD (&mut oset);
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  nohup_all_jobs(mut running_only: c_int) {
+    let mut i: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
+    BLOCK_CHILD (&mut set, &mut oset);
+    if js.j_jobslots != 0 {
+        i = 0 ;
+        while i < js.j_jobslots {
+            if !(*jobs.offset(i as isize)).is_null()
+                && (running_only == 0  || running_only != 0 && RUNNING!(i))
+            {
+                nohup_job(i);
+            }
+            i += 1;
+        }
+    }
+    UNBLOCK_CHILD (&mut oset);
+}
 
+#[no_mangle]
+pub unsafe extern "C"  fn  count_all_jobs() -> c_int {
+    let mut i: c_int = 0;
+    let mut n: c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+    BLOCK_CHILD (&mut set, &mut oset);
+    n = 0 ;
+    i = n;
+    while i < js.j_jobslots {
+        if !(*jobs.offset(i as isize)).is_null()
+            && DEADJOB!(i)as c_int == 0 as c_int
+        {
+            n += 1;
+        }
+        i += 1;
+    }
+    UNBLOCK_CHILD (&mut oset);
+    return n;
+}
 
 
 
