@@ -4411,7 +4411,208 @@ unsafe extern "C" fn notify_of_job_status() {
     };
 }
 
+pub const O_RDWR:i32 = 0o2; 
+pub const O_NONBLOCK:i32 = 0o4000;
+pub const F_SETFD:i32 = 2; 
+pub const FD_CLOEXEC:i32 = 1;  
+
+#[macro_export]
+macro_rules! SET_CLOSE_ON_EXEC {
+    ($fd:expr) => {
+        libc::fcntl (($fd), F_SETFD, FD_CLOEXEC)
+    };
+}
 
 
+#[no_mangle]
+pub unsafe extern "C" fn initialize_job_control(mut force: c_int) -> c_int {
+    let mut current_block: u64;
+    let mut t: pid_t = 0;
+    let mut t_errno: c_int = 0;
+    let mut tty_sigs: c_int = 0;
+
+    t_errno = -(1 as c_int);
+    shell_pgrp = getpgid(0);
+
+    if shell_pgrp == -(1 as c_int) {
+        sys_error(
+            dcgettext(
+                0 as *const c_char,
+                b"initialize_job_control: getpgrp failed\0" as *const u8
+                    as *const c_char,
+                5 as c_int,
+            ),
+        );
+        exit(1 as c_int);
+    }
+
+    if interactive == 0 as c_int && force == 0 as c_int {
+        job_control = 0 as c_int;
+        original_pgrp = -(1 as c_int);
+        shell_tty = fileno(stderr);
+        terminal_pgrp = tcgetpgrp(shell_tty);
+    } else {
+        shell_tty = -(1 as c_int);
+        if forced_interactive != 0 && isatty(fileno(stderr)) == 0 as c_int {
+            shell_tty = open(
+                b"/dev/tty\0" as *const u8 as *const c_char,
+                0o2 as c_int | 0o4000 as c_int,
+            );
+        }
+        if shell_tty == -(1 as c_int) {
+            shell_tty = dup(fileno(stderr));
+        }
+        if shell_tty != -(1 as c_int) {
+            shell_tty = move_to_high_fd(
+                shell_tty,
+                1 as c_int,
+                -(1 as c_int),
+            );
+        }
+        if shell_pgrp == 0 as c_int {
+            shell_pgrp = getpid();
+            setpgid(0 as c_int, shell_pgrp);
+            if shell_tty != -(1 as c_int) {
+                tcsetpgrp(shell_tty, shell_pgrp);
+            }
+        }
+        tty_sigs = 0 as c_int;
+        loop {
+            terminal_pgrp = tcgetpgrp(shell_tty);
+            if !(terminal_pgrp != -(1 as c_int)) {
+                current_block = 5529461102203738653;
+                break;
+            }
+            if !(shell_pgrp != terminal_pgrp) {
+                current_block = 5529461102203738653;
+                break;
+            }
+            let mut ottin: *mut SigHandler ;
+            if terminating_signal != 0 {
+                termsig_handler(terminating_signal);
+            }
+            ottin = set_signal_handler(21 as c_int, &mut None);
+            kill(0 as c_int, 21 as c_int);
+            set_signal_handler(21 as c_int, ottin);
+            let fresh35 = tty_sigs;
+            tty_sigs = tty_sigs + 1;
+            if !(fresh35 > 16 as c_int) {
+                continue;
+            }
+            sys_error(
+                dcgettext(
+                    0 as *const c_char,
+                    b"initialize_job_control: no job control in background\0"
+                        as *const u8 as *const c_char,
+                    5 as c_int,
+                ),
+            );
+            job_control = 0 as c_int;
+            original_pgrp = terminal_pgrp;
+            current_block = 16073591882049499585;
+            break;
+        }
+        match current_block {
+            16073591882049499585 => {}
+            _ => {
+                if terminal_pgrp == -(1 as c_int) {
+                    t_errno = *__errno_location();
+                }
+                if set_new_line_discipline(shell_tty) < 0 as c_int {
+                    sys_error(
+                        dcgettext(
+                            0 as *const c_char,
+                            b"initialize_job_control: line discipline\0" as *const u8
+                                as *const c_char,
+                            5 as c_int,
+                        ),
+                    );
+                    job_control = 0 as c_int;
+                } else {
+                    original_pgrp = shell_pgrp;
+                    shell_pgrp = getpid();
+                    if original_pgrp != shell_pgrp
+                        && setpgid(0 as c_int, shell_pgrp) < 0 as c_int
+                    {
+                        sys_error(
+                            dcgettext(
+                                0 as *const c_char,
+                                b"initialize_job_control: setpgid\0" as *const u8
+                                    as *const c_char,
+                                5 as c_int,
+                            ),
+                        );
+                        shell_pgrp = original_pgrp;
+                    }
+                    job_control = 1 as c_int;
+                    if shell_pgrp != original_pgrp && shell_pgrp != terminal_pgrp {
+                        if give_terminal_to(shell_pgrp, 0 as c_int)
+                            < 0 as c_int
+                        {
+                            t_errno = *__errno_location();
+                            setpgid(0 as c_int, original_pgrp);
+                            shell_pgrp = original_pgrp;
+                            *__errno_location() = t_errno;
+                            sys_error(
+                                dcgettext(
+                                    0 as *const c_char,
+                                    b"cannot set terminal process group (%d)\0" as *const u8
+                                        as *const c_char,
+                                    5 as c_int,
+                                ),
+                                shell_pgrp,
+                            );
+                            job_control = 0 as c_int;
+                        }
+                    }
+                    if job_control != 0
+                        && {
+                            t = tcgetpgrp(shell_tty);
+                            t == -(1 as c_int) || t != shell_pgrp
+                        }
+                    {
+                        if t_errno != -(1 as c_int) {
+                            *__errno_location() = t_errno;
+                        }
+                        sys_error(
+                            dcgettext(
+                                0 as *const c_char,
+                                b"cannot set terminal process group (%d)\0" as *const u8
+                                    as *const c_char,
+                                5 as c_int,
+                            ),
+                            t,
+                        );
+                        job_control = 0 as c_int;
+                    }
+                }
+                if job_control == 0 as c_int {
+                    internal_error(
+                        dcgettext(
+                            0 as *const c_char,
+                            b"no job control in this shell\0" as *const u8
+                                as *const c_char,
+                            5 as c_int,
+                        ),
+                    );
+                }
+            }
+        }
+    }
+    running_in_background = (terminal_pgrp != shell_pgrp) as c_int;
+    if shell_tty != fileno(stderr) {
+        fcntl(shell_tty, 2 as c_int, 1 as c_int);
+    }
+    set_signal_handler(
+        17 as c_int,
+        sigchld_handler as *mut Option<unsafe extern "C" fn(i32)>
+    );
+    change_flag('m' as i32, if job_control != 0 { '-' as i32 } else { '+' as i32 });
+    if interactive != 0 {
+        get_tty_state();
+    }
+    set_maxchild(0 as c_int);
+    return job_control;
+}
 
 
