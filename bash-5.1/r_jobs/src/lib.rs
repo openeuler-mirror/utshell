@@ -4925,8 +4925,35 @@ pub unsafe extern "C"  fn  set_job_control(mut arg: c_int) -> c_int {
     return old;
 }
 
-
-
+#[no_mangle]
+pub unsafe extern "C"  fn  without_job_control() {
+    stop_making_children();
+    start_pipeline();
+    sh_closepipe(pgrp_pipe.as_mut_ptr());
+    delete_all_jobs(0 );
+    set_job_control(0 );
+}
+#[no_mangle]
+pub unsafe extern "C"  fn  end_job_control() {
+    if job_control != 0 {
+        terminate_stopped_jobs();
+    }
+    if original_pgrp >= 0 as c_int && terminal_pgrp != original_pgrp {
+        give_terminal_to(original_pgrp, 1 );
+    }
+    if original_pgrp >= 0  
+        && setpgid(0 , original_pgrp) == 0  
+    {
+        shell_pgrp = original_pgrp;
+    }
+}
+#[no_mangle]
+pub unsafe extern "C"  fn  restart_job_control() {
+    if shell_tty != -1 {
+        libc::close(shell_tty);
+    }
+    initialize_job_control(0 );
+}
 
 
 
