@@ -4884,3 +4884,52 @@ unsafe extern "C" fn mark_dead_jobs_as_notified(mut force: c_int) {
     }
     UNBLOCK_CHILD (&mut oset);
 }
+
+#[no_mangle]
+pub unsafe extern "C"  fn  freeze_jobs_list() -> c_int {
+    let mut o: c_int = 0;
+
+    o = jobs_list_frozen;
+    jobs_list_frozen = 1;
+    return o;
+}
+
+#[no_mangle]
+pub unsafe extern "C"  fn  unfreeze_jobs_list() {
+    jobs_list_frozen = 0;
+}
+
+#[no_mangle]
+pub unsafe extern "C"  fn  set_jobs_list_frozen(mut s: c_int) {
+    jobs_list_frozen = s;
+}
+
+#[no_mangle]
+pub unsafe extern "C"  fn  set_job_control(mut arg: c_int) -> c_int {
+    let mut old: c_int = 0;
+
+    old = job_control;
+    job_control = arg;
+
+    if terminal_pgrp ==NO_PID as c_int {
+        terminal_pgrp = tcgetpgrp(shell_tty);
+    }
+    if job_control != old && job_control != 0 {
+        shell_pgrp = getpgid(0);
+    }
+    running_in_background = (terminal_pgrp != shell_pgrp) as c_int;
+
+    if job_control != old && job_control != 0 {
+        pipeline_pgrp = 0;
+    }
+    return old;
+}
+
+
+
+
+
+
+
+
+
