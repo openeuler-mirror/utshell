@@ -4955,8 +4955,52 @@ pub unsafe extern "C"  fn  restart_job_control() {
     initialize_job_control(0 );
 }
 
+#[no_mangle]
+pub unsafe extern "C"  fn  set_maxchild(mut nchild: c_int) {
+    static mut lmaxchild: c_int =-1;
+
+    if lmaxchild < 0{
+        errno!() = 0 ;
+        lmaxchild = getmaxchild() as c_int;
+        if lmaxchild < 0 && *__errno_location() == 0  {
+            lmaxchild = MAX_CHILD_MAX as c_int;
+        }
+    }
+    if lmaxchild < 0 {
+        lmaxchild = DEFAULT_CHILD_MAX as c_int;
+    }
+    if nchild < lmaxchild {
+        nchild = lmaxchild;
+    } else if nchild > MAX_CHILD_MAX as c_int {
+        nchild = MAX_CHILD_MAX as c_int;
+    }
+    js.c_childmax = nchild as libc::c_long;
+}
+
+#[no_mangle]
+pub unsafe extern "C"  fn  set_sigchld_handler() {
+    set_signal_handler(
+        SIGCHLD as c_int,sigchld_handler as *mut Option<unsafe extern "C" fn(i32)>);
+}
 
 
+unsafe extern "C" fn pipe_read(mut pp: *mut c_int) {
+    let mut ch: c_char = 0;
+
+    if *pp.offset(1 as isize) >= 0 {
+        libc::close(*pp.offset(1 as c_int as isize));
+        *pp.offset(1 as isize) = -(1 as c_int);
+    }
+    if *pp.offset(0 as c_int as isize) >= 0 {
+        while libc::read(
+            *pp.offset(0 as c_int as isize),
+            &mut ch as *mut c_char as *mut libc::c_void,
+            1 as c_int as size_t,
+        ) == -1
+            && errno!() == EINTR as c_int
+        {}
+    }
+}
 
 
 
