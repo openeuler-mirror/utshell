@@ -5004,3 +5004,25 @@ unsafe extern "C" fn pipe_read(mut pp: *mut c_int) {
 
 
 
+#[no_mangle]
+pub unsafe extern "C"  fn  close_pgrp_pipe() {
+    sh_closepipe(pgrp_pipe.as_mut_ptr());
+}
+
+
+#[no_mangle]
+pub unsafe extern "C"  fn  save_pgrp_pipe(mut p: *mut c_int, mut clear: c_int,) 
+{
+    *p.offset(0 as c_int as isize) = pgrp_pipe[0 as c_int as usize];
+    *p.offset(1 as c_int as isize) = pgrp_pipe[1 as c_int as usize];
+    if clear != 0 {
+        pgrp_pipe[1] = -1;
+        pgrp_pipe[0] = pgrp_pipe[1];
+    }
+}
+#[no_mangle]
+pub unsafe extern "C"  fn  restore_pgrp_pipe(mut p: *mut c_int) {
+    pgrp_pipe[0 ] = *p.offset(0 );
+    pgrp_pipe[1 ] = *p.offset(1 as c_int as isize);
+}
+
