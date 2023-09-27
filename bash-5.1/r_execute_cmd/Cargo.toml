@@ -1,0 +1,23 @@
+[package]
+name = "r_execute_cmd"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libc = "*"
+r_bash = {path = "../r_bash"}
+r_jobs = {path = "../r_jobs"}
+rexec_cmd = {path = "../builtins_rust/exec_cmd"}
+rcommon = {path = "../builtins_rust/common"}
+
+[lib]
+name = "r_execute_cmd"
+crate-type = ["rlib", "staticlib"]
+
+
+
+
+
+
