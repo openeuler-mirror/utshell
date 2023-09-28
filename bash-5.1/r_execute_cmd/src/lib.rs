@@ -39,8 +39,41 @@ extern "C"{
     fn fpurge(stream: *mut FILE) -> libc::c_int;
     fn sh_regmatch(a: *const libc::c_char, b:*const libc::c_char, c:libc::c_int) -> libc::c_int;
 }
+pub const r_input_direction: r_instruction = 1;
+pub const r_input_output: r_instruction = 11;
+pub const r_inputa_direction: r_instruction = 2;
+pub const r_duplicating_input_word: r_instruction = 13;
+pub const r_duplicating_output_word: r_instruction = 14;
+pub const r_move_input_word: r_instruction = 17;
+pub const r_move_output_word: r_instruction = 18;
 
+#[macro_export]
+macro_rules! FREE {
+    ($s:expr) => {
+        if ($s) != std::ptr::null_mut() {
+            free($s as *mut c_void);
+        }
+    };
+}
 
+#[macro_export]
+macro_rules! FD_BITMAP_DEFAULT_SIZE {
+    () => {
+        32
+    };
+}
+
+#[macro_export]
+macro_rules! QUIT {
+    () => {
+        if terminating_signal != 0 {
+            termsig_handler(terminating_signal);
+        }
+        if interrupt_state != 0 {
+            throw_to_top_level();
+        } 
+    };
+}
 
 
 #[no_mangle]
