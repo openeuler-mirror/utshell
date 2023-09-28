@@ -116,7 +116,49 @@ macro_rules! RESIZE_MALLOCED_BUFFER {
     };
 }
 
+#[macro_export]
+macro_rules! COPY_PROCENV {
+    ($old:expr, $save:expr) => {
+        xbcopy(
+            $old.as_mut_ptr() as *mut libc::c_char,
+            $save.as_mut_ptr() as *mut libc::c_char,
+            size_of::<sigjmp_buf>() as libc::c_ulong as libc::c_int,
+        );
+    };
+}
 
+
+#[macro_export]
+macro_rules! setjmp_nosigs {
+    ($x:expr) => {
+        __sigsetjmp($x.as_mut_ptr(), 0 as libc::c_int)
+    };
+}
+
+
+#[macro_export]
+macro_rules! POSIX_TIMEFORMAT {
+    () => {
+        b"real %2R\nuser %2U\nsys %2S\0" as *const u8 as *mut libc::c_char
+    };
+}
+
+#[macro_export]
+macro_rules! BASH_TIMEFORMAT {
+    () => {
+        b"\nreal\t%3lR\nuser\t%3lU\nsys\t%3lS\0" as *const u8
+                    as *const libc::c_char as *mut libc::c_char;
+    };
+}
+
+#[macro_export]
+macro_rules! CHECK_TERMSIG {
+    () => {
+        if terminating_signal != 0 {
+            termsig_handler(terminating_signal);
+        }
+    };
+}
 
 
 
