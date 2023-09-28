@@ -7,6 +7,41 @@ use rexec_cmd::{r_exec_cmd};
 use rcommon::{WordList, WordDesc};
 use stdext::function_name;
 
+extern "C"{
+    static mut the_printed_command: *mut libc::c_char;
+    static mut shellstart: timeval;
+    static mut command_string_index: libc::c_int;
+
+    fn add_unwind_protect(cleanup:*mut Function, arg:*mut c_char);
+    fn make_child(_: *mut libc::c_char, _: libc::c_int) -> pid_t;
+    fn difftimeval(_: *mut timeval, _: *mut timeval, _: *mut timeval) -> *mut timeval;
+    fn addtimeval(_: *mut timeval, _: *mut timeval, _: *mut timeval) -> *mut timeval;
+    fn timeval_to_cpu(_: *mut timeval, _: *mut timeval, _: *mut timeval) -> libc::c_int;
+    fn timeval_to_secs(tvp:*mut timeval, sp:*mut time_t, sfp:*mut c_int);
+    fn mbstowcs(__pwcs: *mut wchar_t, __s: *const libc::c_char, __n: size_t) -> size_t;
+    fn read_builtin(_: *mut WordList) -> libc::c_int;
+    fn list_length(_:*mut GENERIC_LIST) -> libc::c_int;
+    fn strmatch(
+        _: *mut libc::c_char,
+        _: *mut libc::c_char,
+        _: libc::c_int,
+    ) -> libc::c_int;
+    fn command_builtin(_: *mut WordList) -> libc::c_int;
+    fn eval_builtin(_: *mut WordList) -> libc::c_int;
+    fn source_builtin(_: *mut WordList) -> libc::c_int;
+    fn unset_builtin(_: *mut WordList) -> libc::c_int;
+    fn mapfile_builtin(_: *mut WordList) -> libc::c_int;
+    fn fc_builtin(_: *mut WordList) -> libc::c_int;
+    fn return_builtin(_: *mut WordList) -> libc::c_int;
+    fn jobs_builtin(_: *mut WordList) -> libc::c_int;
+    fn exec_builtin(_: *mut WordList) -> libc::c_int;
+    fn fflush(__stream: *mut FILE) -> libc::c_int;
+    fn fpurge(stream: *mut FILE) -> libc::c_int;
+    fn sh_regmatch(a: *const libc::c_char, b:*const libc::c_char, c:libc::c_int) -> libc::c_int;
+}
+
+
+
 
 #[no_mangle]
 pub static mut stdin_redir: libc::c_int = 0;
