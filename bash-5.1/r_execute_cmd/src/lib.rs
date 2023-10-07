@@ -294,10 +294,56 @@ pub unsafe extern "C" fn new_fd_bitmap(mut size: libc::c_int) -> *mut fd_bitmap
     return ret;
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn dispose_fd_bitmap(mut fdbp: *mut fd_bitmap) 
+{
+    FREE!((*fdbp).bitmap);
+    free(fdbp as *mut c_void);
+}
 
+#[no_mangle]
+pub unsafe extern "C" fn close_fd_bitmap(mut fdbp: *mut fd_bitmap) 
+{
+    let mut i: libc::c_int = 0;
 
+    if !fdbp.is_null() {
+        i = 0;
+        while i < (*fdbp).size {
+            if *((*fdbp).bitmap).offset(i as isize) != 0 {
+                close(i);
+                *((*fdbp).bitmap).offset(i as isize) = 0 as libc::c_char;
+            }
+            i += 1;
+        }
+    }
+}
 
-
+#[no_mangle]
+pub unsafe extern "C" fn executing_line_number() -> libc::c_int {
+    if executing != 0 && showing_function_line == 0 
+        && (variable_context == 0 || interactive_shell == 0 )
+        && !currently_executing_command.is_null()
+    {
+        if (*currently_executing_command).type_ as libc::c_uint
+            == command_type_cm_cond as libc::c_uint
+        {
+            return (*(*currently_executing_command).value.Cond).line;
+        }
+        if (*currently_executing_command).type_ as libc::c_uint
+            == command_type_cm_arith  as libc::c_uint
+        {
+            return (*(*currently_executing_command).value.Arith).line;
+        }
+        if (*currently_executing_command).type_ as libc::c_uint
+            == command_type_cm_arith_for as libc::c_uint
+        {
+            return (*(*currently_executing_command).value.ArithFor).line;
+        }
+        return line_number;
+    } else {
+        return line_number
+    };
+}
 
 
 
