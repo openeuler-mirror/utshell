@@ -74,6 +74,59 @@ macro_rules! QUIT {
         } 
     };
 }
+#[macro_export]
+macro_rules! errno {
+    () => {
+        *__errno_location()
+    };
+}
+
+#[macro_export]
+macro_rules! savestring {
+    ($x:expr) => {
+        strcpy(malloc((strlen($x as *const c_char) + 1) as usize) as *mut c_char, $x) as *mut c_char
+    };
+}
+
+#[macro_export]
+macro_rules! DESCRIBE_PID {
+    ($pid:expr) => {
+        if interactive != 0 {
+            describe_pid($pid);
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! NO_PID {
+    () => {
+        -1 as pid_t
+    };
+}
+
+#[macro_export]
+macro_rules! RESIZE_MALLOCED_BUFFER {
+    ($srt:expr,$cind:expr, $room:expr, $csize:expr, $sincr:expr) => {
+        if $cind + $room   >= $csize {
+            while $cind + $room >= $csize {
+                $csize += $sincr;
+            }
+            $srt = realloc($srt as *mut c_void, $csize as usize) as *mut c_char;
+        }
+    };
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #[no_mangle]
