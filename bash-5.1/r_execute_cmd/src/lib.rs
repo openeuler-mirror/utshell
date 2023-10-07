@@ -7,6 +7,41 @@ use rexec_cmd::{r_exec_cmd};
 use rcommon::{WordList, WordDesc};
 use stdext::function_name;
 
+extern "C"{
+    static mut the_printed_command: *mut libc::c_char;
+    static mut shellstart: timeval;
+    static mut command_string_index: libc::c_int;
+
+    fn add_unwind_protect(cleanup:*mut Function, arg:*mut c_char);
+    fn make_child(_: *mut libc::c_char, _: libc::c_int) -> pid_t;
+    fn difftimeval(_: *mut timeval, _: *mut timeval, _: *mut timeval) -> *mut timeval;
+    fn addtimeval(_: *mut timeval, _: *mut timeval, _: *mut timeval) -> *mut timeval;
+    fn timeval_to_cpu(_: *mut timeval, _: *mut timeval, _: *mut timeval) -> libc::c_int;
+    fn timeval_to_secs(tvp:*mut timeval, sp:*mut time_t, sfp:*mut c_int);
+    fn mbstowcs(__pwcs: *mut wchar_t, __s: *const libc::c_char, __n: size_t) -> size_t;
+    fn read_builtin(_: *mut WordList) -> libc::c_int;
+    fn list_length(_:*mut GENERIC_LIST) -> libc::c_int;
+    fn strmatch(
+        _: *mut libc::c_char,
+        _: *mut libc::c_char,
+        _: libc::c_int,
+    ) -> libc::c_int;
+    fn command_builtin(_: *mut WordList) -> libc::c_int;
+    fn eval_builtin(_: *mut WordList) -> libc::c_int;
+    fn source_builtin(_: *mut WordList) -> libc::c_int;
+    fn unset_builtin(_: *mut WordList) -> libc::c_int;
+    fn mapfile_builtin(_: *mut WordList) -> libc::c_int;
+    fn fc_builtin(_: *mut WordList) -> libc::c_int;
+    fn return_builtin(_: *mut WordList) -> libc::c_int;
+    fn jobs_builtin(_: *mut WordList) -> libc::c_int;
+    fn exec_builtin(_: *mut WordList) -> libc::c_int;
+    fn fflush(__stream: *mut FILE) -> libc::c_int;
+    fn fpurge(stream: *mut FILE) -> libc::c_int;
+    fn sh_regmatch(a: *const libc::c_char, b:*const libc::c_char, c:libc::c_int) -> libc::c_int;
+}
+
+
+
 
 #[no_mangle]
 pub static mut stdin_redir: libc::c_int = 0;
@@ -37,8 +72,67 @@ pub static mut redirection_undo_list: *mut REDIRECT = 0 as *const libc::c_void
 pub static mut exec_redirection_undo_list: *mut REDIRECT = 0 as *const libc::c_void
     as *mut libc::c_void as *mut REDIRECT;
 
-
-
+#[no_mangle]
+pub static mut executing_builtin: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut executing_list: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut comsub_ignore_return: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut subshell_environment: libc::c_int = 0;
+#[no_mangle]
+pub static mut subshell_level: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut this_shell_function: *mut SHELL_VAR = 0 as *const SHELL_VAR
+    as *mut SHELL_VAR;
+#[no_mangle]
+pub static mut match_ignore_case: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut executing_command_builtin: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut SB: stat = stat {
+    st_dev: 0,
+    st_ino: 0,
+    st_nlink: 0,
+    st_mode: 0,
+    st_uid: 0,
+    st_gid: 0,
+    __pad0: 0,
+    st_rdev: 0,
+    st_size: 0,
+    st_blksize: 0,
+    st_blocks: 0,
+    st_atim: timespec { tv_sec: 0, tv_nsec: 0 },
+    st_mtim: timespec { tv_sec: 0, tv_nsec: 0 },
+    st_ctim: timespec { tv_sec: 0, tv_nsec: 0 },
+    __glibc_reserved: [0; 3],
+};
+static mut special_builtin_failed: libc::c_int = 0;
+static mut currently_executing_command: *mut COMMAND = 0 as *const COMMAND
+    as *mut COMMAND;
+static mut function_line_number: libc::c_int = 0;
+static mut showing_function_line: libc::c_int = 0;
+#[no_mangle]
+pub static mut line_number_for_err_trap: libc::c_int = 0;
+#[no_mangle]
+pub static mut funcnest: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut funcnest_max: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut evalnest: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut evalnest_max: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut sourcenest: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut sourcenest_max: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut from_return_trap: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut lastpipe_opt: libc::c_int = 0 as libc::c_int;
+#[no_mangle]
+pub static mut current_fds_to_close: *mut fd_bitmap = 0 as *const libc::c_void
+    as *mut libc::c_void as *mut fd_bitmap;
 
 
 
