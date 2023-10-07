@@ -404,8 +404,50 @@ unsafe extern "C" fn cleanup_redirects(mut list: *mut REDIRECT) {
     dispose_redirects(list);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn undo_partial_redirects() {
+    if !redirection_undo_list.is_null() {
+        cleanup_redirects(redirection_undo_list);
+        redirection_undo_list = 0 as *mut REDIRECT;
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dispose_exec_redirects() {
+    if !exec_redirection_undo_list.is_null() {
+        dispose_redirects(exec_redirection_undo_list);
+        exec_redirection_undo_list = 0 as *mut REDIRECT;
+    }
+}
 
 
+#[no_mangle]
+pub unsafe extern "C" fn dispose_partial_redirects() {
+    if !redirection_undo_list.is_null() {
+        dispose_redirects(redirection_undo_list);
+        redirection_undo_list = 0 as *mut REDIRECT;
+    }
+}
+
+unsafe extern "C" fn restore_signal_mask(mut set: *mut sigset_t) -> libc::c_int {
+    return sigprocmask(SIG_SETMASK as libc::c_int, set, 0 as *mut sigset_t);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn async_redirect_stdin() {
+    let mut fd: libc::c_int = 0;
+    
+    fd = open(b"/dev/null\0" as *const u8 as *const libc::c_char, O_RDONLY as libc::c_int);
+    if fd > 0 {
+        dup2(fd, 0 );
+        close(fd);
+    } else if fd < 0 {
+        internal_error(
+            b"cannot redirect standard input from /dev/null: %s\0" as *const u8 as *mut c_char,
+            strerror(errno!()),
+        );
+    }
+}
 
 
 
