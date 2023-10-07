@@ -345,8 +345,40 @@ pub unsafe extern "C" fn executing_line_number() -> libc::c_int {
     };
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn execute_command(mut command: *mut COMMAND) -> libc::c_int {
+    let mut bitmap: *mut fd_bitmap = 0 as *mut fd_bitmap;
+    let mut result: libc::c_int = 0;
 
+    current_fds_to_close = 0 as *mut fd_bitmap;
+    bitmap = new_fd_bitmap(FD_BITMAP_DEFAULT_SIZE!());
+    begin_unwind_frame(b"execute-command\0" as *const u8 as *mut libc::c_char,);
+    add_unwind_protect(
+            ::std::mem::transmute::<
+                unsafe extern "C" fn(*mut fd_bitmap) -> (),
+                *mut Function,
+            >(dispose_fd_bitmap),
+        bitmap as *mut libc::c_char,
+    );
 
+    result = execute_command_internal(
+        command, 
+        0,
+        NO_PIPE,
+        NO_PIPE,
+        bitmap,
+    );
+
+    dispose_fd_bitmap(bitmap);
+    discard_unwind_frame(b"execute-command\0" as *const u8 as *mut libc::c_char);
+    
+    if variable_context == 0 && executing_list == 0 {
+        unlink_fifo_list();
+    }
+
+    QUIT!();
+    return result;
+}
 
 
 
