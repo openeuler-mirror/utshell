@@ -159,17 +159,26 @@ macro_rules! CHECK_TERMSIG {
         }
     };
 }
+#[macro_export]
+macro_rules! STREQ {
+    ($a:expr, $b:expr) => {
+        (*($a).offset(0 as isize) as libc::c_int
+         == *$b.offset(0 as isize) as libc::c_int
+            && strcmp($a, $b) == 0 )
+    };
+}
 
 
 
 
+unsafe fn DIGIT(c: c_char) -> bool {
+    char::from(c as u8) >= '0' && char::from(c as u8) <= '9'
+}
 
-
-
-
-
-
-
+pub type __rusage_who = libc::c_int;
+pub const RUSAGE_THREAD: __rusage_who = 1;
+pub const RUSAGE_CHILDREN: __rusage_who = -1;
+pub const RUSAGE_SELF: __rusage_who = 0;
 
 #[no_mangle]
 pub static mut stdin_redir: libc::c_int = 0;
@@ -262,8 +271,28 @@ pub static mut lastpipe_opt: libc::c_int = 0 as libc::c_int;
 pub static mut current_fds_to_close: *mut fd_bitmap = 0 as *const libc::c_void
     as *mut libc::c_void as *mut fd_bitmap;
 
+//函数重构部分
+#[no_mangle]
+pub unsafe extern "C" fn new_fd_bitmap(mut size: libc::c_int) -> *mut fd_bitmap 
+{
+    let mut ret: *mut fd_bitmap = 0 as *mut fd_bitmap;
 
+    ret = malloc(size_of::<fd_bitmap>() as usize) as *mut fd_bitmap;
+    
+    (*ret).size = size;
 
+    if size != 0 {
+        (*ret).bitmap = malloc(size as usize) as *mut c_char;
+        memset(
+            (*ret).bitmap as *mut libc::c_void,
+            '\u{0}' as i32,
+            size as usize,
+        );
+    } else {
+        (*ret).bitmap = 0 as *mut libc::c_char;
+    }
+    return ret;
+}
 
 
 
