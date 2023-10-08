@@ -978,3 +978,99 @@ pub unsafe extern "C" fn execute_command_internal(
     return last_command_exit_value;
 }
 
+static mut precs: [libc::c_int; 4] = [
+    0 as libc::c_int,
+    100 as libc::c_int,
+    10 as libc::c_int,
+    1 as libc::c_int,
+];
+
+unsafe extern "C" fn mkfmt(
+    mut buf: *mut libc::c_char,
+    mut prec: libc::c_int,
+    mut lng: libc::c_int,
+    mut sec: time_t,
+    mut sec_fraction: libc::c_int,
+) -> libc::c_int {
+    let mut min: time_t = 0;
+    let mut abuf: [libc::c_char; 22] = [0; 22];
+    let mut ind: libc::c_int = 0;
+    let mut aind: libc::c_int = 0;
+
+    ind = 0;
+    abuf[((size_of::<[libc::c_char; 22]>() ) - 1)] = '\u{0}' as libc::c_char;
+    
+    if lng != 0 {
+        min = sec / 60 as libc::c_long;
+        sec %= 60 as libc::c_long;
+        aind = (size_of::<[libc::c_char; 22]>() -2 ) as libc::c_int;
+        loop {  //有可能aind的值不正确
+            abuf[aind as usize] = (min % 10 + '0' as libc::c_long) as libc::c_char;
+            aind = aind - 1;
+            min /= 10 as libc::c_long;
+            if !(min != 0) {
+                break;
+            }
+        }
+        aind += 1;
+        while abuf[aind as usize] != 0 { //有可能ind，aind的值不正确
+            *buf.offset(ind as isize) = abuf[aind as usize];
+            aind = aind + 1;
+            ind = ind + 1;
+        }
+        *buf.offset(ind as isize) = 'm' as libc::c_char;
+        ind = ind + 1;
+    }
+
+    aind = ( size_of::<[libc::c_char; 22]>() -2 ) as libc::c_int;
+    loop {        
+        abuf[aind as usize] = ((sec % 10 )+ '0' as libc::c_long) as libc::c_char;
+        aind = aind - 1;
+        sec /= 10 ;
+        if !(sec != 0) {
+            break;
+        }
+    }
+    aind += 1;
+    while abuf[aind as usize] != 0 {
+        *buf.offset(ind as isize) = abuf[aind as usize];
+        aind = aind + 1;
+        ind = ind + 1;
+    }
+
+    if prec != 0 {
+        *buf.offset(ind as isize) = locale_decpoint() as libc::c_char;
+        ind = ind + 1;
+        aind = 1 ;
+        while aind <= prec {            
+            *buf.offset(ind as isize) = (sec_fraction / precs[aind as usize] + '0' as i32) as libc::c_char;
+            ind = ind + 1;
+            sec_fraction %= precs[aind as usize];
+            aind += 1;
+        }
+    }
+
+    if lng != 0 {
+        *buf.offset(ind as isize) = 's' as libc::c_char;
+        ind = ind + 1;
+    }
+    *buf.offset(ind as isize) = '\u{0}' as libc::c_char;
+
+    return ind;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
