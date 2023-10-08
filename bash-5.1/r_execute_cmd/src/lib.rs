@@ -1059,8 +1059,101 @@ unsafe extern "C" fn mkfmt(
     return ind;
 }
 
+unsafe extern "C" fn print_formatted_time(
+    mut fp: *mut FILE,
+    mut format: *mut libc::c_char,
+    mut rs: time_t,
+    mut rsf: libc::c_int,
+    mut us: time_t,
+    mut usf: libc::c_int,
+    mut ss: time_t,
+    mut ssf: libc::c_int,
+    mut cpu: libc::c_int,
+) {
+    let mut prec: libc::c_int = 0;
+    let mut lng: libc::c_int = 0;
+    let mut len: libc::c_int = 0;
+    let mut str: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut s: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ts: [libc::c_char; 30] = [0; 30];
+    let mut sum: time_t = 0;
+    let mut sum_frac: libc::c_int = 0;
+    let mut sindex: libc::c_int = 0;
+    let mut ssize: libc::c_int = 0;
 
+    len = strlen(format) as libc::c_int;
+    ssize = (len + 64) - (len % 64);
+    str = malloc(ssize as usize) as *mut c_char;
+    sindex = 0 ;
 
+    s = format;
+    while *s != 0 {
+        if *s as libc::c_int != '%' as i32
+            || *s.offset(1 as isize) as libc::c_int == '\u{0}' as i32
+        {
+            RESIZE_MALLOCED_BUFFER!(str, sindex, 1, ssize, 64);
+            *str.offset(sindex as isize) = *s;
+            sindex = sindex + 1;
+        } else if *s.offset(1 as isize) as libc::c_int == '%' as i32 {
+            s = s.offset(1);
+            RESIZE_MALLOCED_BUFFER!(str, sindex, 1, ssize, 64);
+            *str.offset(sindex as isize) = *s;
+            sindex = sindex + 1;
+        } else if *s.offset(1 as isize) as libc::c_int == 'P' as i32 {
+            s = s.offset(1);
+            sum = (cpu / 100 ) as time_t;
+            sum_frac = cpu % 100  * 10;
+            len = mkfmt(
+                ts.as_mut_ptr(),
+                2  ,
+                0 ,
+                sum,
+                sum_frac,
+            );
+            RESIZE_MALLOCED_BUFFER!(str, sindex, len, ssize, 64);
+            strcpy(str.offset(sindex as isize), ts.as_mut_ptr());
+            sindex += len;
+        } else {
+            prec = 3 ;
+            lng = 0 ;
+            s = s.offset(1);
+            if DIGIT(*s) {
+                prec = *s as libc::c_int - '0' as i32;
+                s = s.offset(1);
+                if prec > 3 {
+                    prec = 3 ;
+                }
+            }
+            if *s as libc::c_int == 'l' as i32 {
+                lng = 1 ;
+                s = s.offset(1);
+            }
+            if *s as libc::c_int == 'R' as i32 || *s as libc::c_int == 'E' as i32 {
+                len = mkfmt(ts.as_mut_ptr(), prec, lng, rs, rsf);
+            } else if *s as libc::c_int == 'U' as i32 {
+                len = mkfmt(ts.as_mut_ptr(), prec, lng, us, usf);
+            } else if *s as libc::c_int == 'S' as i32 {
+                len = mkfmt(ts.as_mut_ptr(), prec, lng, ss, ssf);
+            } else {
+                internal_error(
+                        b"TIMEFORMAT: `%c': invalid format character\0" as *const u8 as *mut c_char,
+                     *s as libc::c_int,
+                );
+                free(str as *mut c_void);
+                return;
+            }
+
+            RESIZE_MALLOCED_BUFFER!(str, sindex, len, ssize, 64);
+            strcpy(str.offset(sindex as isize), ts.as_mut_ptr());
+            sindex += len;
+        }
+        s = s.offset(1);
+    }
+    *str.offset(sindex as isize) = '\u{0}' as libc::c_char;
+    fprintf(fp, b"%s\n\0" as *const u8 as *const libc::c_char, str);
+    fflush(fp);
+    free(str as *mut c_void);
+}
 
 
 
