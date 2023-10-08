@@ -380,8 +380,29 @@ pub unsafe extern "C" fn execute_command(mut command: *mut COMMAND) -> libc::c_i
     return result;
 }
 
+unsafe extern "C" fn shell_control_structure(mut type_0: command_type) -> libc::c_int {
+    match type_0 as libc::c_uint {
+        command_type_cm_arith_for   | 
+        command_type_cm_select      | 
+        command_type_cm_arith | 
+        command_type_cm_cond | 
+        command_type_cm_case | 
+        command_type_cm_while | 
+        command_type_cm_until | 
+        command_type_cm_if | 
+        command_type_cm_for |
+        command_type_cm_group | 
+        command_type_cm_function_def => return 1 as libc::c_int,
+        
+        _ => return 0 as libc::c_int,
+    };
+}
 
 
+unsafe extern "C" fn cleanup_redirects(mut list: *mut REDIRECT) {
+    do_redirections(list, RX_ACTIVE as libc::c_int);
+    dispose_redirects(list);
+}
 
 
 
