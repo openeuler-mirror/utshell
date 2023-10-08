@@ -449,6 +449,532 @@ pub unsafe extern "C" fn async_redirect_stdin() {
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn execute_command_internal(
+    mut command: *mut COMMAND,
+    mut asynchronous: libc::c_int,
+    mut pipe_in: libc::c_int,
+    mut pipe_out: libc::c_int,
+    mut fds_to_close: *mut fd_bitmap,
+) -> libc::c_int
+{
+    let mut exec_result: libc::c_int = 0;
+    let mut user_subshell: libc::c_int = 0;
+    let mut invert: libc::c_int = 0;
+    let mut ignore_return: libc::c_int = 0;
+    let mut was_error_trap: libc::c_int = 0;
+    let mut fork_flags: libc::c_int = 0;
+    let mut my_undo_list: *mut REDIRECT = 0 as *mut REDIRECT;
+    let mut exec_undo_list: *mut REDIRECT = 0 as *mut REDIRECT;
+    let mut tcmd: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut save_line_number: libc::c_int = 0;
+    let mut ofifo: libc::c_int = 0;
+    let mut nfifo: libc::c_int = 0;
+    let mut osize: libc::c_int = 0;
+    let mut saved_fifo: libc::c_int = 0;
+    let mut ofifo_list: *mut libc::c_void = 0 as *mut libc::c_void;
+    
+    if breaking != 0 || continuing != 0 {
+        return last_command_exit_value;
+    }
+    if command.is_null() || read_but_dont_execute != 0 && rpm_requires == 0 {
+        return EXECUTION_SUCCESS as i32 ;
+    }
+    if rpm_requires != 0
+        && (*command).type_ == command_type_cm_function_def 
+    {
+        last_command_exit_value =
+               execute_intern_function((*(*command).value.Function_def).name,
+                                       (*command).value.Function_def);
+        return last_command_exit_value;
+    }
+    if read_but_dont_execute != 0 {
+        return EXECUTION_SUCCESS as libc::c_int;
+    }
 
+    QUIT!();
+    run_pending_traps();
 
+    currently_executing_command = command;
+
+    invert = ((*command).flags & CMD_INVERT_RETURN as libc::c_int != 0  ) as libc::c_int;
+    
+    if exit_immediately_on_error != 0 && invert != 0 {
+        (*command).flags |= CMD_IGNORE_RETURN as libc::c_int;
+    }
+    
+    exec_result = EXECUTION_SUCCESS as libc::c_int;
+    
+    if (*command).type_  == command_type_cm_subshell  
+        && (*command).flags & CMD_NO_FORK as libc::c_int != 0
+    {
+        return execute_in_subshell(
+            command,
+            asynchronous,
+            pipe_in,
+            pipe_out,
+            fds_to_close,
+        );
+    }
+    if (*command).type_  == command_type_cm_coproc {
+        last_command_exit_value = execute_coproc(command, pipe_in, pipe_out, fds_to_close);
+        return last_command_exit_value;
+    }
+
+    user_subshell = ((*command).type_ == command_type_cm_subshell 
+        || (*command).flags & CMD_WANT_SUBSHELL as libc::c_int != 0 ) as libc::c_int;
+    
+    if (*command).type_ == command_type_cm_subshell
+        || (*command).flags & (CMD_WANT_SUBSHELL as libc::c_int | CMD_FORCE_SUBSHELL as libc::c_int) != 0
+        || shell_control_structure((*command).type_ as libc::c_uint) != 0
+            && (pipe_out != NO_PIPE || pipe_in != NO_PIPE
+                || asynchronous != 0)
+    {
+        let mut paren_pid: pid_t = 0;
+        let mut s: libc::c_int = 0;
+        let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+        
+        save_line_number = line_number;
+        if (*command).type_== command_type_cm_subshell
+        {
+            line_number = (*(*command).value.Subshell).line;
+            line_number_for_err_trap = line_number;
+        }
+
+        tcmd = make_command_string(command);
+        fork_flags = if asynchronous != 0 { FORK_ASYNC as libc::c_int } else { 0 };
+        p = savestring!(tcmd);
+        paren_pid = make_child(p, fork_flags);
+
+        if user_subshell != 0
+            && signal_is_trapped(ERROR_TRAP as libc::c_int) != 0
+            && signal_in_progress(DEBUG_TRAP as libc::c_int) == 0
+            && running_trap == 0 
+        {
+            FREE!(the_printed_command_except_trap);
+            the_printed_command_except_trap = savestring!(the_printed_command);
+        }
+
+        if paren_pid == 0 {
+            FREE!(p);
+            s = (user_subshell == 0 
+                && (*command).type_ == command_type_cm_group 
+                && pipe_in == NO_PIPE && pipe_out == NO_PIPE
+                && asynchronous != 0) as libc::c_int;
+            
+            s += (user_subshell == 0
+                 && (*command).type_== command_type_cm_group 
+                 && (pipe_in != NO_PIPE || pipe_out != NO_PIPE)
+                 && asynchronous == 0 ) as libc::c_int;
+
+            last_command_exit_value = execute_in_subshell(command, asynchronous, pipe_in, pipe_out, fds_to_close);
+            if s != 0 {
+                subshell_exit(last_command_exit_value);
+            } else {
+                sh_exit(last_command_exit_value);
+            }
+        } else {
+            close_pipes(pipe_in, pipe_out);
+
+            if variable_context == 0 {
+                unlink_fifo_list();
+            }
+
+            if pipe_out != NO_PIPE {
+                return EXECUTION_SUCCESS as c_int;
+            }
+
+            stop_pipeline(asynchronous, 0 as *mut COMMAND);
+
+            line_number = save_line_number;
+
+            if asynchronous == 0 {
+                was_error_trap = (signal_is_trapped(ERROR_TRAP as c_int) != 0
+                    && signal_is_ignored( ERROR_TRAP as c_int) == 0 ) as libc::c_int;
+                invert = ((*command).flags & CMD_INVERT_RETURN as libc::c_int != 0 ) as libc::c_int;
+                ignore_return = ((*command).flags & CMD_IGNORE_RETURN as libc::c_int != 0) as libc::c_int;
+               
+                exec_result = wait_for(paren_pid, 0 );
+                
+                if invert != 0 {
+                    exec_result = if exec_result == EXECUTION_SUCCESS as libc::c_int {
+                        EXECUTION_FAILURE as libc::c_int
+                    } else {
+                        EXECUTION_SUCCESS as libc::c_int
+                    };
+                }
+
+                last_command_exit_value = exec_result;
+                if user_subshell != 0 && was_error_trap != 0
+                    && ignore_return == 0 && invert == 0  
+                    && exec_result != EXECUTION_SUCCESS as libc::c_int
+                {
+                    save_line_number = line_number;
+                    line_number = line_number_for_err_trap;
+                    run_error_trap();
+                    line_number = save_line_number;
+                }
+
+                if user_subshell != 0 && ignore_return == 0 
+                    && invert == 0 && exit_immediately_on_error != 0
+                    && exec_result != EXECUTION_SUCCESS as libc::c_int
+                {
+                    run_pending_traps();
+                    jump_to_top_level(ERREXIT as libc::c_int);
+                }
+                return last_command_exit_value;
+            } else {
+                DESCRIBE_PID!(paren_pid);
+
+                run_pending_traps();
+                
+                last_command_exit_value = 0;
+                return EXECUTION_SUCCESS as libc::c_int;
+            }
+        }
+    }
+    if (*command).flags & CMD_TIME_PIPELINE as libc::c_int != 0 
+    {
+        if asynchronous != 0 {
+            (*command).flags |= CMD_FORCE_SUBSHELL as libc::c_int;
+            exec_result = execute_command_internal(
+                command,
+                1,
+                pipe_in,
+                pipe_out,
+                fds_to_close,
+            );
+        } else {
+            exec_result = time_command(
+                command,
+                asynchronous,
+                pipe_in,
+                pipe_out,
+                fds_to_close,
+            );
+            currently_executing_command = 0 as *mut COMMAND;
+        }
+        return exec_result;
+    }
+    if shell_control_structure((*command).type_ ) != 0 && !((*command).redirects).is_null()
+    {
+        stdin_redir = stdin_redirects((*command).redirects);
+    }
+
+    if variable_context != 0 || executing_list != 0 {
+        ofifo = num_fifos();
+        ofifo_list = copy_fifo_list(&mut osize as *mut libc::c_int);
+        begin_unwind_frame( b"internal_fifos\0" as *const u8 as *mut libc::c_char);
+        if !ofifo_list.is_null() {
+            add_unwind_protect(
+                ::std::mem::transmute::<
+                unsafe extern "C" fn(*mut c_void) -> (),
+                *mut Function,
+            >(xfree),
+                ofifo_list as *mut c_char);
+        }
+        saved_fifo = 1;
+    } else {
+        saved_fifo = 0;
+    }
+
+    was_error_trap = (signal_is_trapped(ERROR_TRAP as c_int) != 0
+        && signal_is_ignored(ERROR_TRAP as libc::c_int) == 0 ) as libc::c_int;
+    ignore_return = ((*command).flags & CMD_IGNORE_RETURN as libc::c_int != 0 ) as libc::c_int;
+    
+    if do_redirections((*command).redirects, RX_ACTIVE as libc::c_int | RX_UNDOABLE as libc::c_int) != 0
+    {
+        undo_partial_redirects();
+        dispose_exec_redirects();
+        if saved_fifo != 0 {
+            free(ofifo_list as *mut c_void);
+            discard_unwind_frame(b"internal_fifos\0" as *const u8 as *mut libc::c_char);
+        }
+
+        last_command_exit_value = EXECUTION_FAILURE as c_int;
+        if ignore_return == 0 && invert == 0 && pipe_in == NO_PIPE && pipe_out == NO_PIPE
+        {
+            if was_error_trap != 0 {
+                save_line_number = line_number;
+                line_number = line_number_for_err_trap;
+                run_error_trap();
+                line_number = save_line_number;
+            }
+            if exit_immediately_on_error != 0 {
+                run_pending_traps();
+                jump_to_top_level(ERREXIT as libc::c_int);
+            }
+        }
+        return last_command_exit_value;
+    }
+
+    my_undo_list = redirection_undo_list;
+    redirection_undo_list = 0 as *mut REDIRECT;
+
+    exec_undo_list = exec_redirection_undo_list;
+    exec_redirection_undo_list = 0 as *mut REDIRECT;
+
+    if !my_undo_list.is_null() || !exec_undo_list.is_null() {
+        begin_unwind_frame( b"loop_redirections\0" as *const u8 as *mut libc::c_char);
+    }
+    if !my_undo_list.is_null() {
+        add_unwind_protect(
+            std::mem::transmute::<
+            unsafe extern "C" fn(*mut REDIRECT) -> (),
+                *mut Function,
+            >(cleanup_redirects),
+            my_undo_list as *mut c_char,
+        );
+    }
+    if !exec_undo_list.is_null() {
+        add_unwind_protect(
+            transmute::<
+                unsafe extern "C" fn (arg1: *mut REDIRECT) -> (),
+                *mut Function,
+            >(dispose_redirects),
+            exec_undo_list as *mut c_char,
+        );
+    }
+    
+    QUIT!();
+
+    match (*command).type_ {
+        command_type_cm_simple => {
+            save_line_number = line_number;
+            was_error_trap = (signal_is_trapped(ERROR_TRAP as libc::c_int) != 0
+                && signal_is_ignored(ERROR_TRAP as libc::c_int) == 0) as libc::c_int;
+            
+            if ignore_return != 0 && !((*command).value.Simple).is_null() {
+                (*(*command).value.Simple).flags |= CMD_IGNORE_RETURN as libc::c_int;
+            }
+            if (*command).flags & CMD_STDIN_REDIR as libc::c_int != 0 {
+                (*(*command).value.Simple).flags |= CMD_STDIN_REDIR as libc::c_int;
+            }
+            
+            line_number = (*(*command).value.Simple).line;
+            line_number_for_err_trap = line_number;
+            exec_result = execute_simple_command(
+                (*command).value.Simple,
+                pipe_in,
+                pipe_out,
+                asynchronous,
+                fds_to_close,
+            );
+            line_number = save_line_number;
+
+            dispose_used_env_vars();
+
+            if already_making_children != 0 && pipe_out == NO_PIPE {
+                stop_pipeline(asynchronous, 0 as *mut COMMAND);
+                if asynchronous != 0 {
+                    DESCRIBE_PID!(last_made_pid);
+                    exec_result = EXECUTION_SUCCESS as libc::c_int;
+                    invert = 0;
+                } else if last_made_pid != NO_PID!() {
+                    exec_result = wait_for(last_made_pid, 0 as libc::c_int);
+                }
+            }
+
+            if was_error_trap != 0 && ignore_return == 0 
+                && invert == 0 && pipe_in == NO_PIPE
+                && pipe_out == NO_PIPE
+                && (*(*command).value.Simple).flags & CMD_COMMAND_BUILTIN as libc::c_int == 0 
+                && exec_result != EXECUTION_SUCCESS as libc::c_int
+            {
+                last_command_exit_value = exec_result;
+                line_number = line_number_for_err_trap;
+                run_error_trap();
+                line_number = save_line_number;
+            }
+
+            if ignore_return == 0 && invert == 0 
+                && (posixly_correct != 0 && interactive == 0 
+                    && special_builtin_failed != 0
+                    || exit_immediately_on_error != 0 && pipe_in == NO_PIPE
+                        && pipe_out == NO_PIPE
+                        && exec_result != EXECUTION_SUCCESS as libc::c_int)
+            {
+                last_command_exit_value = exec_result;
+                run_pending_traps();
+                if exit_immediately_on_error != 0
+                    && signal_is_trapped(0 ) != 0
+                    && unwind_protect_tag_on_stack(
+                        b"saved-redirects\0" as *const u8 as *const libc::c_char,
+                    ) != 0
+                {
+                    run_unwind_frame(b"saved-redirects\0" as *const u8 as *mut libc::c_char);
+                }
+                jump_to_top_level(4 as libc::c_int);
+            }
+        }
+        command_type_cm_for => {
+            if ignore_return != 0 {
+                (*(*command).value.For).flags |= CMD_IGNORE_RETURN as libc::c_int;
+            }
+            exec_result = execute_for_command((*command).value.For);
+        }
+        command_type_cm_arith_for => {
+            if ignore_return != 0 {
+                (*(*command).value.ArithFor).flags |= CMD_IGNORE_RETURN as libc::c_int;
+            }
+            exec_result = execute_arith_for_command((*command).value.ArithFor);
+        }
+        command_type_cm_select => {
+            if ignore_return != 0 {
+                (*(*command).value.Select).flags |= CMD_IGNORE_RETURN as libc::c_int;
+            }
+            exec_result = execute_select_command((*command).value.Select);
+        }
+        command_type_cm_case => {
+            if ignore_return != 0 {
+                (*(*command).value.Case).flags |= CMD_IGNORE_RETURN as libc::c_int;
+            }
+            exec_result = execute_case_command((*command).value.Case);
+        }
+        command_type_cm_while => {
+            if ignore_return != 0 {
+                (*(*command).value.While).flags |= CMD_IGNORE_RETURN as libc::c_int;
+            }
+            exec_result = execute_while_command((*command).value.While);
+        }
+        command_type_cm_until => {
+            if ignore_return != 0 {
+                (*(*command).value.While).flags |= CMD_IGNORE_RETURN as libc::c_int;
+            }
+            exec_result = execute_until_command((*command).value.While);
+        }
+        command_type_cm_if => {
+            if ignore_return != 0 {
+                (*(*command).value.If).flags |= CMD_IGNORE_RETURN as libc::c_int;
+            }
+            exec_result = execute_if_command((*command).value.If);
+        }
+        command_type_cm_group => {
+            if asynchronous != 0 {
+                (*command).flags |= CMD_FORCE_SUBSHELL as libc::c_int;
+                exec_result = execute_command_internal(
+                    command,
+                    1 ,
+                    pipe_in,
+                    pipe_out,
+                    fds_to_close,
+                );
+            } else {
+                if ignore_return != 0 && !((*(*command).value.Group).command).is_null() {
+                    (*(*(*command).value.Group).command).flags |= CMD_IGNORE_RETURN as libc::c_int;
+                }
+                exec_result = execute_command_internal(
+                    (*(*command).value.Group).command,
+                    asynchronous,
+                    pipe_in,
+                    pipe_out,
+                    fds_to_close,
+                );
+            }
+        }
+        command_type_cm_connection => {
+            exec_result = execute_connection(
+                command,
+                asynchronous,
+                pipe_in,
+                pipe_out,
+                fds_to_close,
+            );
+            if asynchronous != 0 {
+                invert = 0;
+            }
+        }
+        command_type_cm_arith | command_type_cm_cond | command_type_cm_function_def => {
+            was_error_trap = (signal_is_trapped(ERROR_TRAP as libc::c_int) != 0
+                && signal_is_ignored(ERROR_TRAP as libc::c_int) == 0 ) as libc::c_int;
+            if ignore_return != 0
+                && (*command).type_== command_type_cm_arith 
+            {
+                (*(*command).value.Arith).flags |= CMD_IGNORE_RETURN as libc::c_int;
+            }
+            if ignore_return != 0
+                && (*command).type_ == command_type_cm_cond
+            {
+                (*(*command).value.Cond).flags |= CMD_IGNORE_RETURN as libc::c_int;
+            }
+            line_number_for_err_trap = save_line_number;
+            line_number_for_err_trap = line_number;
+
+            if (*command).type_== command_type_cm_arith 
+            {
+                exec_result = execute_arith_command((*command).value.Arith);
+            } else if (*command).type_ == command_type_cm_cond 
+                {
+                exec_result = execute_cond_command((*command).value.Cond);
+            } else if (*command).type_ == command_type_cm_function_def 
+                {
+                exec_result = execute_intern_function(
+                    (*(*command).value.Function_def).name,
+                    (*command).value.Function_def,
+                );
+            }
+            line_number = save_line_number;
+            if was_error_trap != 0 && ignore_return == 0 
+                && invert == 0 && exec_result != EXECUTION_SUCCESS as libc::c_int
+            {
+                last_command_exit_value = exec_result;
+                save_line_number = line_number;
+                line_number = line_number_for_err_trap;
+                run_error_trap();
+                line_number = save_line_number;
+            }
+            if ignore_return == 0 && invert == 0  
+                && exit_immediately_on_error != 0 && exec_result != EXECUTION_SUCCESS as libc::c_int
+            {
+                last_command_exit_value = exec_result;
+                run_pending_traps();
+                jump_to_top_level(ERREXIT as libc::c_int);
+            }
+        }
+        _ => {
+            command_error(
+                b"execute_command\0" as *const u8 as *const libc::c_char,
+                CMDERR_BADTYPE as libc::c_int,
+                (*command).type_ as libc::c_int,
+                0,
+            );
+        }
+    }
+    if !my_undo_list.is_null() {
+        cleanup_redirects(my_undo_list);
+    }
+    if !exec_undo_list.is_null() {
+        dispose_redirects(exec_undo_list);
+    }
+    if !my_undo_list.is_null() || !exec_undo_list.is_null() {
+        discard_unwind_frame(b"loop_redirections\0" as *const u8 as *mut libc::c_char);
+    }
+
+    if saved_fifo != 0 {
+        nfifo = num_fifos();
+        if nfifo > ofifo {
+            close_new_fifos(ofifo_list as *mut libc::c_void, osize);
+        }
+        free(ofifo_list as *mut c_void);
+        discard_unwind_frame(b"internal_fifos\0" as *const u8 as *mut libc::c_char);
+    }
+
+    if invert != 0 {
+        exec_result = if exec_result == EXECUTION_SUCCESS as libc::c_int {
+            EXECUTION_FAILURE as libc::c_int
+        } else {
+            EXECUTION_SUCCESS as libc::c_int
+        };
+    }
+    match (*command).type_ {
+        command_type_cm_arith | command_type_cm_cond => {
+            set_pipestatus_from_exit(exec_result);
+        }
+        _ => {}
+    }
+    last_command_exit_value = exec_result;
+    run_pending_traps();
+    currently_executing_command = 0 as *mut COMMAND;
+    return last_command_exit_value;
+}
 
