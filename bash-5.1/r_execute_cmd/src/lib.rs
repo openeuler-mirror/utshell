@@ -1352,8 +1352,200 @@ unsafe extern "C" fn time_command(
     return rv;
 }
 
+unsafe extern "C" fn execute_in_subshell(
+    mut command: *mut COMMAND,
+    mut asynchronous: libc::c_int,
+    mut pipe_in: libc::c_int,
+    mut pipe_out: libc::c_int,
+    mut fds_to_close: *mut fd_bitmap,
+) -> libc::c_int {
+    let mut user_subshell: libc::c_int = 0;
+    let mut user_coproc: libc::c_int = 0;
+    let mut invert: libc::c_int = 0;
+    let mut return_code: libc::c_int = 0;
+    let mut function_value: libc::c_int = 0;
+    let mut should_redir_stdin: libc::c_int = 0;
+    let mut ois: libc::c_int = 0;
+    let mut result: libc::c_int = 0;
+    let mut tcom: *mut COMMAND = 0 as *mut COMMAND;
 
+    subshell_level += 1;
+    should_redir_stdin = (asynchronous != 0
+        && (*command).flags & CMD_STDIN_REDIR as libc::c_int != 0 
+        && pipe_in == NO_PIPE
+        && stdin_redirects((*command).redirects) == 0 ) as libc::c_int;
 
+    invert = (((*command).flags & CMD_INVERT_RETURN as c_int) != 0 )as c_int; 
+    user_subshell = ((*command).type_ == command_type_cm_subshell || ((*command).flags & CMD_WANT_SUBSHELL as c_int) != 0) as c_int;
+    user_coproc = ((*command).type_ == command_type_cm_coproc)as c_int;
+    (*command).flags &= !(CMD_FORCE_SUBSHELL as libc::c_int | CMD_WANT_SUBSHELL as libc::c_int | CMD_INVERT_RETURN as libc::c_int);
+   
+    if asynchronous != 0 {
+        original_pgrp = -1;
+
+        ois = interactive_shell;
+        interactive_shell = 0;
+
+        if ois != interactive_shell {
+            expand_aliases = 0 ;
+        }
+    }
+
+    interactive = 0 ;
+    login_shell = interactive;
+
+    if shell_compatibility_level > 44 {
+        loop_level = 0 ;
+    }
+
+    if user_subshell != 0 {
+        subshell_environment = SUBSHELL_PAREN as libc::c_int;
+        if asynchronous != 0 {
+            subshell_environment |= SUBSHELL_ASYNC as libc::c_int;
+        }
+    } else {
+        subshell_environment = 0;
+        if asynchronous != 0 {
+            subshell_environment |= SUBSHELL_ASYNC as libc::c_int;
+        }
+        if pipe_in != NO_PIPE || pipe_out != NO_PIPE {
+            subshell_environment |= SUBSHELL_PIPE as libc::c_int;
+        }
+        if user_coproc != 0 {
+            subshell_environment |= SUBSHELL_COPROC as libc::c_int;
+        }
+    }
+    QUIT!();
+    CHECK_TERMSIG!();   
+
+    reset_terminating_signals();
+    clear_pending_traps();
+    reset_signal_handlers();
+    subshell_environment |= SUBSHELL_RESETTRAP as libc::c_int;
+
+    if running_trap > 0 {
+        run_trap_cleanup(running_trap - 1 as libc::c_int);
+        running_trap = 0 ;
+    }
+
+    if asynchronous != 0 {
+        setup_async_signals();
+        asynchronous = 0;
+    } else {
+        set_sigint_handler();
+    }
+
+    set_sigchld_handler();
+
+    without_job_control();
+
+    if !fds_to_close.is_null() {
+        close_fd_bitmap(fds_to_close);
+    }
+
+    do_piping(pipe_in, pipe_out);
+
+    coproc_closeall();
+
+    clear_fifo_list();
+
+    if user_subshell != 0 {
+        stdin_redir = (stdin_redirects((*command).redirects) != 0
+            || pipe_in != NO_PIPE) as libc::c_int;
+    } else if shell_control_structure((*command).type_ as libc::c_uint) != 0
+            && pipe_in != NO_PIPE
+        {
+        stdin_redir = 1  ;
+    }
+
+    if should_redir_stdin != 0 && stdin_redir == 0 {
+        async_redirect_stdin();
+    }
+
+    default_buffered_input = -1;
+
+    if !((*command).redirects).is_null() {
+        if do_redirections((*command).redirects, RX_ACTIVE as libc::c_int) != 0  
+        {
+            exit(if invert != 0 { EXECUTION_SUCCESS as libc::c_int } else { EXECUTION_FAILURE as libc::c_int });
+        }
+        dispose_redirects((*command).redirects);
+        (*command).redirects = 0 as *mut REDIRECT;
+    }
+
+    if (*command).type_  == command_type_cm_subshell {
+        tcom = (*(*command).value.Subshell).command as *mut COMMAND;
+    } else if user_coproc != 0 {
+        tcom = (*(*command).value.Coproc).command as *mut COMMAND;
+    } else {
+        tcom = command as *mut COMMAND;
+    }
+
+    if (*command).flags & CMD_TIME_PIPELINE as libc::c_int != 0 {
+        (*tcom).flags = CMD_TIME_PIPELINE as c_int;
+    }
+    if (*command).flags & CMD_TIME_POSIX as libc::c_int != 0 {
+        (*tcom).flags = CMD_TIME_POSIX as c_int;
+    }
+
+    if (*command).flags & CMD_IGNORE_RETURN as libc::c_int != 0 && tcom != command as *mut COMMAND {
+        (*tcom).flags = CMD_IGNORE_RETURN as c_int;
+    }
+
+    if (user_subshell != 0 || user_coproc != 0)
+        && ((*tcom).type_  == command_type_cm_simple || (*tcom).type_ == command_type_cm_subshell )
+        && (*tcom).flags & CMD_TIME_PIPELINE as libc::c_int == 0 
+        && (*tcom).flags & CMD_INVERT_RETURN as libc::c_int == 0 
+    {
+        (*tcom).flags = CMD_NO_FORK as c_int;
+        if (*tcom).type_  == command_type_cm_simple  {
+            (*(*tcom).value.Simple).flags |= CMD_NO_FORK as libc::c_int;
+        }
+    }
+
+    invert = ((*tcom).flags & CMD_INVERT_RETURN as c_int != 0 ) as c_int;
+    (*tcom).flags &= !CMD_INVERT_RETURN as c_int;
+
+    result = setjmp_nosigs!(top_level);
+
+    function_value = 0 ;
+    if return_catch_flag != 0 {
+        function_value = setjmp_nosigs!(return_catch);
+    }
+
+    if result == EXITPROG as libc::c_int {
+        invert = 0;
+        return_code = last_command_exit_value;
+    } else if result != 0 {
+        return_code = if last_command_exit_value == EXECUTION_SUCCESS as libc::c_int {
+            EXECUTION_FAILURE as libc::c_int
+        } else {
+            last_command_exit_value
+        };
+    } else if function_value != 0 {
+        return_code = return_catch_value;
+    } else {
+        return_code = execute_command_internal(
+            tcom as *mut COMMAND,
+            asynchronous,
+            NO_PIPE,
+            NO_PIPE,
+            fds_to_close,
+        );
+    }
+    if invert != 0 {
+        return_code = if return_code == EXECUTION_SUCCESS as libc::c_int {
+            EXECUTION_FAILURE as libc::c_int
+        } else {
+            EXECUTION_SUCCESS as libc::c_int
+        };
+    }
+    if user_subshell != 0 && signal_is_trapped(0 ) != 0 {
+        last_command_exit_value = return_code;
+        return_code = run_exit_trap();
+    }
+    return return_code;
+}
 
 
 
