@@ -1547,8 +1547,50 @@ unsafe extern "C" fn execute_in_subshell(
     return return_code;
 }
 
-
-
+#[no_mangle]
+pub static mut sh_coproc: Coproc = {
+    let mut init = coproc {
+        c_name: 0 as *const libc::c_char as *mut libc::c_char,
+        c_pid: -(1 as libc::c_int),
+        c_rfd: -(1 as libc::c_int),
+        c_wfd: -(1 as libc::c_int),
+        c_rsave: 0 as libc::c_int,
+        c_wsave: 0 as libc::c_int,
+        c_flags: 0 as libc::c_int,
+        c_status: 0 as libc::c_int,
+        c_lock: 0 as libc::c_int,
+    };
+    init
+};
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct cpelement {
+    pub next: *mut cpelement,
+    pub coproc: *mut coproc,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct cplist {
+    pub head: *mut cpelement,
+    pub tail: *mut cpelement,
+    pub ncoproc: libc::c_int,
+    pub lock: libc::c_int,
+}
+pub type cplist_t = cplist;
+#[no_mangle]
+pub static mut coproc_list: cplist_t = {
+    let mut init = cplist {
+        head: 0 as *const cpelement as *mut cpelement,
+        tail: 0 as *const cpelement as *mut cpelement,
+        ncoproc: 0 as libc::c_int,
+        lock: 0,
+    };
+    init
+};
+#[no_mangle]
+pub unsafe extern "C" fn getcoprocbypid(mut pid: pid_t) -> *mut coproc {
+    return if pid == sh_coproc.c_pid { &mut sh_coproc } else { 0 as *mut Coproc };
+}
 
 
 
