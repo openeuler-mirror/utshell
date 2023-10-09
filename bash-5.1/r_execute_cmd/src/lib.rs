@@ -1155,9 +1155,202 @@ unsafe extern "C" fn print_formatted_time(
     free(str as *mut c_void);
 }
 
+unsafe extern "C" fn time_command(
+    mut command: *mut COMMAND,
+    mut asynchronous: libc::c_int,
+    mut pipe_in: libc::c_int,
+    mut pipe_out: libc::c_int,
+    mut fds_to_close: *mut fd_bitmap,
+) -> libc::c_int {
+    let mut rv: libc::c_int = 0;
+    let mut posix_time: libc::c_int = 0;
+    let mut old_flags: libc::c_int = 0;
+    let mut nullcmd: libc::c_int = 0;
+    let mut code: libc::c_int = 0;
+    let mut rs: time_t = 0;
+    let mut us: time_t = 0;
+    let mut ss: time_t = 0;
+    let mut rsf: libc::c_int = 0;
+    let mut usf: libc::c_int = 0;
+    let mut ssf: libc::c_int = 0;
+    let mut cpu: libc::c_int = 0;
+    let mut time_format: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut save_top_level: sigjmp_buf = [__jmp_buf_tag {
+        __jmpbuf: [0; 8],
+        __mask_was_saved: 0,
+        __saved_mask: __sigset_t { __val: [0; 16] },
+    }; 1];
+    let mut real: timeval = timeval { tv_sec: 0, tv_usec: 0 };
+    let mut user: timeval = timeval { tv_sec: 0, tv_usec: 0 };
+    let mut sys: timeval = timeval { tv_sec: 0, tv_usec: 0 };
+    let mut before: timeval = timeval { tv_sec: 0, tv_usec: 0 };
+    let mut after: timeval = timeval { tv_sec: 0, tv_usec: 0 };
+    let mut dtz: timezone = timezone {
+        tz_minuteswest: 0,
+        tz_dsttime: 0,
+    };
+    let mut selfb: rusage = rusage {
+        ru_utime: timeval { tv_sec: 0, tv_usec: 0 },
+        ru_stime: timeval { tv_sec: 0, tv_usec: 0 },
+        __bindgen_anon_1: rusage__bindgen_ty_1 { ru_maxrss: 0 },
+        __bindgen_anon_2: rusage__bindgen_ty_2 { ru_ixrss: 0 },
+        __bindgen_anon_3: rusage__bindgen_ty_3 { ru_idrss: 0 },
+        __bindgen_anon_4: rusage__bindgen_ty_4 { ru_isrss: 0 },
+        __bindgen_anon_5: rusage__bindgen_ty_5 { ru_minflt: 0 },
+        __bindgen_anon_6: rusage__bindgen_ty_6 { ru_majflt: 0 },
+        __bindgen_anon_7: rusage__bindgen_ty_7 { ru_nswap: 0 },
+        __bindgen_anon_8: rusage__bindgen_ty_8{ ru_inblock: 0 },
+        __bindgen_anon_9: rusage__bindgen_ty_9 { ru_oublock: 0 },
+        __bindgen_anon_10: rusage__bindgen_ty_10 { ru_msgsnd: 0 },
+        __bindgen_anon_11: rusage__bindgen_ty_11 { ru_msgrcv: 0 },
+        __bindgen_anon_12: rusage__bindgen_ty_12 { ru_nsignals: 0 },
+        __bindgen_anon_13: rusage__bindgen_ty_13 { ru_nvcsw: 0 },
+        __bindgen_anon_14: rusage__bindgen_ty_14 { ru_nivcsw: 0 },
+    };
+    let mut selfa: rusage = rusage {
+        ru_utime: timeval { tv_sec: 0, tv_usec: 0 },
+        ru_stime: timeval { tv_sec: 0, tv_usec: 0 },
+        __bindgen_anon_1: rusage__bindgen_ty_1 { ru_maxrss: 0 },
+        __bindgen_anon_2: rusage__bindgen_ty_2 { ru_ixrss: 0 },
+        __bindgen_anon_3: rusage__bindgen_ty_3 { ru_idrss: 0 },
+        __bindgen_anon_4: rusage__bindgen_ty_4 { ru_isrss: 0 },
+        __bindgen_anon_5: rusage__bindgen_ty_5 { ru_minflt: 0 },
+        __bindgen_anon_6: rusage__bindgen_ty_6 { ru_majflt: 0 },
+        __bindgen_anon_7: rusage__bindgen_ty_7 { ru_nswap: 0 },
+        __bindgen_anon_8: rusage__bindgen_ty_8{ ru_inblock: 0 },
+        __bindgen_anon_9: rusage__bindgen_ty_9 { ru_oublock: 0 },
+        __bindgen_anon_10: rusage__bindgen_ty_10 { ru_msgsnd: 0 },
+        __bindgen_anon_11: rusage__bindgen_ty_11 { ru_msgrcv: 0 },
+        __bindgen_anon_12: rusage__bindgen_ty_12 { ru_nsignals: 0 },
+        __bindgen_anon_13: rusage__bindgen_ty_13 { ru_nvcsw: 0 },
+        __bindgen_anon_14: rusage__bindgen_ty_14 { ru_nivcsw: 0 },
+    };
+    let mut kidsb: rusage = rusage {
+        ru_utime: timeval { tv_sec: 0, tv_usec: 0 },
+        ru_stime: timeval { tv_sec: 0, tv_usec: 0 },
+        __bindgen_anon_1: rusage__bindgen_ty_1 { ru_maxrss: 0 },
+        __bindgen_anon_2: rusage__bindgen_ty_2 { ru_ixrss: 0 },
+        __bindgen_anon_3: rusage__bindgen_ty_3 { ru_idrss: 0 },
+        __bindgen_anon_4: rusage__bindgen_ty_4 { ru_isrss: 0 },
+        __bindgen_anon_5: rusage__bindgen_ty_5 { ru_minflt: 0 },
+        __bindgen_anon_6: rusage__bindgen_ty_6 { ru_majflt: 0 },
+        __bindgen_anon_7: rusage__bindgen_ty_7 { ru_nswap: 0 },
+        __bindgen_anon_8: rusage__bindgen_ty_8{ ru_inblock: 0 },
+        __bindgen_anon_9: rusage__bindgen_ty_9 { ru_oublock: 0 },
+        __bindgen_anon_10: rusage__bindgen_ty_10 { ru_msgsnd: 0 },
+        __bindgen_anon_11: rusage__bindgen_ty_11 { ru_msgrcv: 0 },
+        __bindgen_anon_12: rusage__bindgen_ty_12 { ru_nsignals: 0 },
+        __bindgen_anon_13: rusage__bindgen_ty_13 { ru_nvcsw: 0 },
+        __bindgen_anon_14: rusage__bindgen_ty_14 { ru_nivcsw: 0 },
+    };
+    let mut kidsa: rusage = rusage {
+        ru_utime: timeval { tv_sec: 0, tv_usec: 0 },
+        ru_stime: timeval { tv_sec: 0, tv_usec: 0 },
+        __bindgen_anon_1: rusage__bindgen_ty_1 { ru_maxrss: 0 },
+        __bindgen_anon_2: rusage__bindgen_ty_2 { ru_ixrss: 0 },
+        __bindgen_anon_3: rusage__bindgen_ty_3 { ru_idrss: 0 },
+        __bindgen_anon_4: rusage__bindgen_ty_4 { ru_isrss: 0 },
+        __bindgen_anon_5: rusage__bindgen_ty_5 { ru_minflt: 0 },
+        __bindgen_anon_6: rusage__bindgen_ty_6 { ru_majflt: 0 },
+        __bindgen_anon_7: rusage__bindgen_ty_7 { ru_nswap: 0 },
+        __bindgen_anon_8: rusage__bindgen_ty_8{ ru_inblock: 0 },
+        __bindgen_anon_9: rusage__bindgen_ty_9 { ru_oublock: 0 },
+        __bindgen_anon_10: rusage__bindgen_ty_10 { ru_msgsnd: 0 },
+        __bindgen_anon_11: rusage__bindgen_ty_11 { ru_msgrcv: 0 },
+        __bindgen_anon_12: rusage__bindgen_ty_12 { ru_nsignals: 0 },
+        __bindgen_anon_13: rusage__bindgen_ty_13 { ru_nvcsw: 0 },
+        __bindgen_anon_14: rusage__bindgen_ty_14 { ru_nivcsw: 0 },
+    };
 
+    gettimeofday(&mut before, &mut dtz);
+    getrusage(RUSAGE_SELF, &mut selfb);
+    getrusage(RUSAGE_CHILDREN, &mut kidsb);
 
+    posix_time = (!command.is_null() && (*command).flags & CMD_TIME_POSIX as libc::c_int != 0) as libc::c_int;
+    nullcmd = (command.is_null()
+            || (*command).type_ == command_type_cm_simple
+            && ((*(*command).value.Simple).words).is_null()
+            && ((*(*command).value.Simple).redirects).is_null()) as libc::c_int;
+    if posixly_correct != 0 && nullcmd != 0 {
+        kidsb.ru_stime.tv_sec = 0 as __time_t;
+        selfb.ru_stime.tv_sec = kidsb.ru_stime.tv_sec;
+        kidsb.ru_utime.tv_sec = selfb.ru_stime.tv_sec;
+        selfb.ru_utime.tv_sec = kidsb.ru_utime.tv_sec;
+        kidsb.ru_stime.tv_usec = 0 as __suseconds_t;
+        selfb.ru_stime.tv_usec = kidsb.ru_stime.tv_usec;
+        kidsb.ru_utime.tv_usec = selfb.ru_stime.tv_usec;
+        selfb.ru_utime.tv_usec = kidsb.ru_utime.tv_usec;
+        before = shellstart;
+    }
 
+    old_flags = (*command).flags;
+    COPY_PROCENV!(top_level, save_top_level);
+    (*command).flags &= !(CMD_TIME_PIPELINE as libc::c_int | CMD_TIME_POSIX as libc::c_int);
+    code = setjmp_nosigs!(top_level);
+    if code == NOT_JUMPED as libc::c_int {
+        rv = execute_command_internal(
+            command,
+            asynchronous,
+            pipe_in,
+            pipe_out,
+            fds_to_close,
+        );
+        (*command).flags = old_flags;
+    }
+    COPY_PROCENV!(save_top_level, top_level);
+
+    ss = 0 as time_t;
+    us = ss;
+    rs = us;
+    cpu = 0;
+    ssf = cpu;
+    usf = ssf;
+    rsf = usf;
+
+    gettimeofday(&mut after, &mut dtz);
+
+    getrusage(RUSAGE_SELF, &mut selfa);
+    getrusage(RUSAGE_CHILDREN, &mut kidsa);
+
+    difftimeval(&mut real, &mut before, &mut after);
+    timeval_to_secs(&mut real, &mut rs, &mut rsf);
+
+    addtimeval(
+        &mut user,
+        difftimeval(&mut after, &mut selfb.ru_utime, &mut selfa.ru_utime),
+        difftimeval(&mut before, &mut kidsb.ru_utime, &mut kidsa.ru_utime),
+    );
+    timeval_to_secs(&mut user, &mut us, &mut usf);
+
+    addtimeval(
+        &mut sys,
+        difftimeval(&mut after, &mut selfb.ru_stime, &mut selfa.ru_stime),
+        difftimeval(&mut before, &mut kidsb.ru_stime, &mut kidsa.ru_stime),
+    );
+    timeval_to_secs(&mut sys, &mut ss, &mut ssf);
+
+    cpu = timeval_to_cpu(&mut real, &mut user, &mut sys);
+
+    if posix_time != 0 {
+        time_format = POSIX_TIMEFORMAT!();
+    } else {
+        time_format = get_string_value(b"TIMEFORMAT\0" as *const u8 as *const libc::c_char);
+        if time_format.is_null() {
+            if posixly_correct != 0 && nullcmd != 0 {
+                time_format = b"user\t%2lU\nsys\t%2lS\0" as *const u8 as *mut libc::c_char;
+            } else {
+                time_format = BASH_TIMEFORMAT!();
+            }
+        }
+    }
+    if !time_format.is_null() && *time_format as libc::c_int != 0 {
+        print_formatted_time(stderr, time_format, rs, rsf, us, usf, ss, ssf, cpu);
+    }
+    if code != 0 {
+        siglongjmp(top_level.as_mut_ptr(), code);
+    }
+    return rv;
+}
 
 
 
