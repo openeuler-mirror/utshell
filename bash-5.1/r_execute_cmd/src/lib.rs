@@ -1592,5 +1592,74 @@ pub unsafe extern "C" fn getcoprocbypid(mut pid: pid_t) -> *mut coproc {
     return if pid == sh_coproc.c_pid { &mut sh_coproc } else { 0 as *mut Coproc };
 }
 
+pub unsafe extern "C" fn cpe_alloc(cp:*mut Coproc)-> *mut cpelement
+{
+    let mut cpe:*mut cpelement;
 
+    cpe = malloc(size_of::<cpelement>() as usize) as *mut cpelement;
+    (*cpe).coproc = cp;
+    (*cpe).next = 0 as *mut cpelement;
 
+    return cpe;
+}
+
+pub unsafe extern "C" fn cpe_dispose(cpe:*mut cpelement)
+{
+    free(cpe as *mut c_void);
+}
+
+pub unsafe extern "C" fn cpe_add(cp:*mut Coproc)-> *mut cpelement
+{
+    let mut cpe:*mut cpelement;
+
+    cpe = cpe_alloc(cp);
+
+    if coproc_list.head == 0 as *mut cpelement{
+        coproc_list.tail = cpe; 
+        coproc_list.head = cpe;
+        coproc_list.ncoproc = 0
+    } else {
+        (*coproc_list.tail).next = cpe;
+        coproc_list.tail = cpe;
+    }
+    coproc_list.ncoproc += 1;
+
+    return cpe;
+}
+
+pub unsafe extern "C" fn cpl_delete(pid:pid_t)-> *mut cpelement
+{
+    let mut prev:*mut cpelement;
+    let mut p:*mut cpelement;
+
+    p = coproc_list.head;
+    prev = coproc_list.head;
+    while !p.is_null(){
+        if (*(*p).coproc).c_pid == pid {
+            (*prev).next = (*p).next;
+            break;
+        }
+        prev = p;
+        p = (*p).next;
+    }
+
+    if p==0 as *mut cpelement{
+        return 0 as *mut cpelement;
+    }
+
+    if p == coproc_list.head {
+        coproc_list.head = (*coproc_list.head).next;
+    } else if p == coproc_list.tail{
+        coproc_list.tail = prev;
+    }
+
+    coproc_list.ncoproc -= 1;
+    if coproc_list.ncoproc == 0{
+        coproc_list.head = 0 as *mut cpelement;
+        coproc_list.tail = 0 as *mut cpelement;
+    }else if coproc_list.ncoproc == 1{
+        coproc_list.tail = coproc_list.head;
+    }
+    
+    return p;
+}
