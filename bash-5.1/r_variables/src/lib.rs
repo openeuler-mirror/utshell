@@ -1,3 +1,4 @@
+
 use libc::*;
 use r_bash::*;
 use std::ffi::CStr;
@@ -143,4 +144,25 @@ unsafe extern "C" fn atoi(mut __nptr: *const libc::c_char) -> libc::c_int {
         0 as *mut libc::c_void as *mut *mut libc::c_char,
         10 as libc::c_int,
     ) as libc::c_int;
+}
+
+unsafe extern "C" fn create_variable_tables() {
+    if shell_variables.is_null() {
+        // new_var_context 下面会实现
+        global_variables = new_var_context(
+            0 as *mut libc::c_void as *mut libc::c_char,
+            0 as libc::c_int,
+        );
+        shell_variables = global_variables;
+        (*shell_variables).scope = 0 as libc::c_int;
+        //hash_create  为外部函数
+        (*shell_variables).table = hash_create(VARIABLES_HASH_BUCKETS!() as libc::c_int);
+    }
+    if shell_functions.is_null() {
+        shell_functions = hash_create(FUNCTIONS_HASH_BUCKETS!() as libc::c_int);
+    }
+    // debugger
+    if shell_function_defs.is_null() {
+        shell_function_defs = hash_create(FUNCTIONS_HASH_BUCKETS!() as libc::c_int);
+    }
 }
