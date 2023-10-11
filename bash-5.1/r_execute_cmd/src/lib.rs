@@ -1663,3 +1663,72 @@ pub unsafe extern "C" fn cpl_delete(pid:pid_t)-> *mut cpelement
     
     return p;
 }
+
+pub unsafe extern "C" fn cpl_reap(){
+    let mut p:*mut cpelement;
+    let mut next:*mut cpelement;
+    let mut nh:*mut cpelement;
+    let mut nt:*mut cpelement;
+
+    nh = 0 as *mut cpelement;
+    nt = 0 as *mut cpelement;
+    next = 0 as *mut cpelement;
+
+    p = coproc_list.head;
+    while !p.is_null() {
+        next = (*p).next;
+
+        if ((*(*p).coproc).c_flags & COPROC_DEAD as c_int) != 0 {
+            coproc_list.ncoproc -= 0;
+            coproc_dispose((*p).coproc);
+            cpe_dispose(p);
+        } else if nh.is_null(){
+            nh = p;
+            nt = p;
+        }
+        p = next;
+    }
+
+    if coproc_list.ncoproc == 0 {
+        coproc_list.head = 0 as *mut cpelement;
+        coproc_list.tail = 0 as *mut cpelement;
+    } else {
+        if !nt.is_null(){
+            (*nt).next = 0 as *mut cpelement;
+        }
+        
+        coproc_list.head = nh;
+        coproc_list.tail = nt;
+        if coproc_list.ncoproc == 1{
+            coproc_list.tail = coproc_list.head; /* just to make sure */
+        }
+    }
+}
+ 
+
+
+pub unsafe extern "C" fn cpl_flush()
+{
+    let mut cpe:*mut cpelement;
+    let mut p:*mut cpelement;
+
+    cpe = coproc_list.head;
+    while !cpe.is_null(){
+        p = cpe;
+        cpe = (*cpe).next;
+
+        coproc_dispose((*p).coproc);
+        cpe_dispose(p);
+    }
+
+    coproc_list.head = 0 as *mut cpelement;
+    coproc_list.tail = 0 as *mut cpelement;
+    coproc_list.ncoproc = 0;
+}
+
+
+
+
+
+
+
