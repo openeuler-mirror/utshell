@@ -1765,6 +1765,45 @@ pub unsafe extern "C" fn cpl_search(pid:pid_t)-> *mut cpelement
     return 0 as *mut cpelement;
 }
 
+pub unsafe extern "C" fn cpl_searchbyname(name: *mut c_char)-> *mut cpelement
+{
+    let mut cp:*mut cpelement;
+
+    cp = coproc_list.head;
+    while !cp.is_null() {
+        if STREQ!((*(*cp).coproc).c_name, name) {
+            return cp;
+        }
+        cp = (*cp).next;
+    }
+
+    return 0 as *mut cpelement    
+}
 
 
+pub unsafe extern "C" fn cpl_firstactive()->pid_t
+{
+    let mut cpe:*mut cpelement;
+
+    cpe = coproc_list.head;
+    while !cpe.is_null() {
+        if (*(*cpe).coproc).c_flags & COPROC_DEAD as c_int == 0 {
+            return (*(*cpe).coproc).c_pid;
+        }
+        cpe = (*cpe).next;
+    }
+
+    return NO_PID!() as pid_t;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn getcoprocbyname(mut name: *const libc::c_char) -> *mut coproc {
+    return if !(sh_coproc.c_name).is_null()
+        && STREQ!(sh_coproc.c_name, name)
+    {
+        &mut sh_coproc
+    } else {
+        0 as *mut Coproc
+    };
+}
 
