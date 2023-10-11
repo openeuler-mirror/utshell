@@ -166,3 +166,40 @@ unsafe extern "C" fn create_variable_tables() {
         shell_function_defs = hash_create(FUNCTIONS_HASH_BUCKETS!() as libc::c_int);
     }
 }
+
+unsafe extern "C" fn set_machine_vars() {
+    
+    let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    //set_if_not 下文会实现
+    temp_var = set_if_not(
+        b"HOSTTYPE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        get_host_type() as *mut libc::c_char
+    ); 
+
+    temp_var = set_if_not(
+        b"OSTYPE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        get_os_type() as *mut libc::c_char
+    );
+
+    temp_var = set_if_not(
+        b"MACHTYPE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        get_mach_type() as *mut libc::c_char
+    );
+
+    temp_var = set_if_not(
+        b"HOSTNAME\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        current_host_name
+    );
+
+
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn sh_get_home_dir() -> *mut libc::c_char {
+    
+    if (current_user.home_dir).is_null() {
+        // get_current_user_info  in file of shell.c
+        get_current_user_info();
+    }
+    return current_user.home_dir;
+}
