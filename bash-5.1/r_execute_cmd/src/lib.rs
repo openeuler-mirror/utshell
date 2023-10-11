@@ -1806,4 +1806,39 @@ pub unsafe extern "C" fn getcoprocbyname(mut name: *const libc::c_char) -> *mut 
         0 as *mut Coproc
     };
 }
+#[no_mangle]
+pub unsafe extern "C" fn coproc_init(mut cp: *mut coproc) {
+    (*cp).c_name = 0 as *mut libc::c_char;
+    (*cp).c_pid = NO_PID!();
+    (*cp).c_wfd = -1;
+    (*cp).c_rfd = -1;
+    (*cp).c_wsave = -1;
+    (*cp).c_rsave = -1;
+    (*cp).c_lock = 0 ;
+    (*cp).c_status = 0;
+    (*cp).c_flags = 0;
+}
 
+#[no_mangle]
+pub unsafe extern "C" fn coproc_alloc(
+    mut name: *mut libc::c_char,
+    mut pid: pid_t,
+) -> *mut coproc {
+    let mut cp: *mut coproc = 0 as *mut coproc;
+
+    cp = &mut sh_coproc;
+
+    coproc_init(cp);
+    (*cp).c_lock = 2 ;
+
+    (*cp).c_pid = pid;
+    (*cp).c_name = savestring!(name);
+
+    (*cp).c_lock = 0 ;
+    return cp;
+}
+
+pub unsafe extern "C" fn coproc_free(cp:*mut coproc)
+{
+    free(cp as *mut c_void);
+}
