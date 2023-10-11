@@ -1842,3 +1842,52 @@ pub unsafe extern "C" fn coproc_free(cp:*mut coproc)
 {
     free(cp as *mut c_void);
 }
+
+#[macro_export]
+macro_rules! SIG_BLOCK {
+    () => {
+        0
+    };
+}
+
+#[macro_export]
+macro_rules! SIG_SETMASK {
+    () => {
+        2
+    };
+}
+
+#[macro_export]
+macro_rules! BLOCK_SIGNAL {
+    ($sig:expr, $nvar:expr, $ovar:expr) => {
+        sigemptyset(&mut $nvar);
+        sigaddset(&mut $nvar, $sig as libc::c_int);
+        sigemptyset(&mut $ovar);
+        sigprocmask(SIG_BLOCK!(), &mut $nvar, &mut $ovar);
+    };
+}
+
+#[macro_export]
+macro_rules! UNBLOCK_SIGNAL {
+    ($ovar:expr) => {
+        sigprocmask(SIG_SETMASK!(), &mut $ovar, 0 as *mut sigset_t)
+    };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
