@@ -1874,8 +1874,46 @@ macro_rules! UNBLOCK_SIGNAL {
     };
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn coproc_dispose(mut cp: *mut coproc) {
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+    if cp.is_null() {
+        return;
+    }
+
+    BLOCK_SIGNAL!(SIGCHLD, set, oset);
+    (*cp).c_lock = 3 ;
+    coproc_unsetvars(cp);
+    FREE!((*cp).c_name);
+    coproc_close(cp);
+
+    coproc_init(cp);
+    (*cp).c_lock = 0 ;
+    UNBLOCK_SIGNAL!(oset);
+}
 
 
+#[no_mangle]
+pub unsafe extern "C" fn coproc_flush() {
+    coproc_dispose(&mut sh_coproc);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn coproc_close(mut cp: *mut coproc) {
+    if (*cp).c_rfd >= 0   {
+        close((*cp).c_rfd);
+        (*cp).c_rfd = -1;
+    }
+    if (*cp).c_wfd >= 0 {
+        close((*cp).c_wfd);
+        (*cp).c_wfd = -1;
+    }
+    let ref mut fresh27 = (*cp).c_wsave;
+    (*cp).c_wsave = -1;
+    (*cp).c_rsave = -1;
+}
 
 
 
