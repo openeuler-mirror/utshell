@@ -134,6 +134,28 @@ macro_rules! vc_istempenv {
     }
 }
 
+#[no_mangle]
+pub static mut nameref_invalid_value: SHELL_VAR = SHELL_VAR {
+  
+    name: 0 as *const libc::c_char as *mut libc::c_char,
+    value: 0 as *const libc::c_char as *mut libc::c_char,
+    exportstr: 0 as *const libc::c_char as *mut libc::c_char,
+    dynamic_value: None,
+    assign_func: None,
+    attributes: 0,
+    context: 0,
+
+};
+
+static mut nameref_maxloop_value: SHELL_VAR = SHELL_VAR {
+    name: 0 as *const libc::c_char as *mut libc::c_char,
+    value: 0 as *const libc::c_char as *mut libc::c_char,
+    exportstr: 0 as *const libc::c_char as *mut libc::c_char,
+    dynamic_value: None,
+    assign_func: None,
+    attributes: 0,
+    context: 0,
+};
 static mut last_table_searched: *mut HASH_TABLE = 0 as *const HASH_TABLE
     as *mut HASH_TABLE;  
 
