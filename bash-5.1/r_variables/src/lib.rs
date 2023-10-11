@@ -134,6 +134,29 @@ macro_rules! vc_istempenv {
     }
 }
 
+#[macro_export]
+macro_rules! FV_NODYNAMIC {
+    () => {
+        0x04
+    };
+}
+
+#[macro_export]
+macro_rules! EXECUTION_FAILURE {
+    () => {
+        1 as libc::c_int
+    };
+}
+
+
+#[macro_export]
+macro_rules! DEFAULT_PATH_VALUE {
+    () => {
+        b"/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:.\0" 
+        as *const u8 as *const libc::c_char as *mut libc::c_char
+    }
+}
+
 #[no_mangle]
 pub static mut nameref_invalid_value: SHELL_VAR = SHELL_VAR {
   
@@ -156,6 +179,7 @@ static mut nameref_maxloop_value: SHELL_VAR = SHELL_VAR {
     attributes: 0,
     context: 0,
 };
+
 static mut last_table_searched: *mut HASH_TABLE = 0 as *const HASH_TABLE
     as *mut HASH_TABLE;  
 
@@ -188,6 +212,7 @@ unsafe extern "C" fn create_variable_tables() {
         shell_function_defs = hash_create(FUNCTIONS_HASH_BUCKETS!() as libc::c_int);
     }
 }
+
 
 unsafe extern "C" fn set_machine_vars() {
     
