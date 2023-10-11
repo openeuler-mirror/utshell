@@ -1726,8 +1726,44 @@ pub unsafe extern "C" fn cpl_flush()
     coproc_list.ncoproc = 0;
 }
 
+pub unsafe extern "C" fn cpl_closeall()
+{
+    let mut cpe:*mut cpelement;
 
+    cpe = coproc_list.head;
+    while !cpe.is_null() {
+        coproc_close((*cpe).coproc);
 
+        cpe = (*cpe).next;
+    }
+}
+
+pub unsafe extern "C" fn cpl_fdchk(fd:c_int)
+{
+    let mut cpe:*mut cpelement;
+
+    cpe = coproc_list.head;
+    while !cpe.is_null() {
+        coproc_checkfd((*cpe).coproc, fd);
+
+        cpe = (*cpe).next;
+    }
+}
+
+pub unsafe extern "C" fn cpl_search(pid:pid_t)-> *mut cpelement
+{
+    let mut cpe:*mut cpelement;
+
+    cpe = coproc_list.head;
+    while !cpe.is_null() {
+        if (*(*cpe).coproc).c_pid == pid{
+            return cpe;
+        }
+        cpe = (*cpe).next;
+    }
+
+    return 0 as *mut cpelement;
+}
 
 
 
