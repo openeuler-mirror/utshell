@@ -132,3 +132,15 @@ macro_rules! vc_istempenv {
         ((*$vc).flags & VC_TEMPFLAGS  as libc::c_int) == VC_TEMPFLAGS as libc::c_int
     }
 }
+
+static mut last_table_searched: *mut HASH_TABLE = 0 as *const HASH_TABLE
+    as *mut HASH_TABLE;  
+
+#[inline]
+unsafe extern "C" fn atoi(mut __nptr: *const libc::c_char) -> libc::c_int {
+    return strtol(
+        __nptr,
+        0 as *mut libc::c_void as *mut *mut libc::c_char,
+        10 as libc::c_int,
+    ) as libc::c_int;
+}
