@@ -98,6 +98,17 @@ pub unsafe extern "C" fn bind_variable(
                 );
             }
         }
+        
+        vc = (*vc).down;
+    }
+
+    return bind_variable_internal(
+        name,
+        value,
+        (*global_variables).table,
+        0 as libc::c_int,
+        flags,
+    );
 }
 
 #[derive(Copy, Clone)]
