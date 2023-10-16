@@ -2293,9 +2293,241 @@ unsafe extern "C" fn lastpipe_cleanup(mut s: libc::c_int) {
     set_jobs_list_frozen(s);
 }
 
+unsafe extern "C" fn execute_pipeline(
+    mut command: *mut COMMAND,
+    mut asynchronous: libc::c_int,
+    mut pipe_in: libc::c_int,
+    mut pipe_out: libc::c_int,
+    mut fds_to_close: *mut fd_bitmap,
+) -> libc::c_int {
+    let mut prev: libc::c_int = 0;
+    let mut fildes: [libc::c_int; 2] = [0; 2];
+    let mut new_bitmap_size: libc::c_int = 0;
+    let mut dummyfd: libc::c_int = 0;
+    let mut ignore_return: libc::c_int = 0;
+    let mut exec_result: libc::c_int = 0;
+    let mut lstdin: libc::c_int = 0;
+    let mut lastpipe_flag: libc::c_int = 0;
+    let mut lastpipe_jid: libc::c_int = 0;
+    let mut old_frozen: libc::c_int = 0;
+    let mut cmd: *mut COMMAND = 0 as *mut COMMAND;
+    let mut fd_bitmap: *mut fd_bitmap = 0 as *mut fd_bitmap;
+    let mut lastpid: pid_t = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
+    BLOCK_CHILD(&mut set, &mut oset);
+    ignore_return = ((*command).flags & CMD_IGNORE_RETURN as libc::c_int != 0 )as libc::c_int;
+    
+    prev = pipe_in;
+    cmd = command;
+    
+    while !cmd.is_null()
+        && (*cmd).type_ == command_type_cm_connection 
+        && !((*cmd).value.Connection).is_null()
+        && (*(*cmd).value.Connection).connector == '|' as i32
+    {
+        if pipe(fildes.as_mut_ptr()) < 0  {
+            sys_error(b"pipe error\0" as *const u8 as *const libc::c_char);
+            
+            terminate_current_pipeline();
+            kill_current_pipeline();
+            
+            UNBLOCK_CHILD(&mut oset);
 
+            last_command_exit_value = EXECUTION_FAILURE as c_int;
 
+            throw_to_top_level();
+            return 1;
+        }
+
+        new_bitmap_size = if fildes[0 ] < (*fds_to_close).size {
+            (*fds_to_close).size
+        } else {
+            fildes[0 ] + 8 
+        };
+
+        fd_bitmap = new_fd_bitmap(new_bitmap_size);
+
+        xbcopy((*fds_to_close).bitmap, (*fd_bitmap).bitmap, (*fds_to_close).size);
+        
+        *((*fd_bitmap).bitmap).offset(fildes[0] as isize) = 1 ;
+        
+        begin_unwind_frame(b"pipe-file-descriptors\0" as *const u8 as *mut libc::c_char);
+        
+        add_unwind_protect(
+            transmute::<
+            unsafe extern "C" fn (fdbp:*mut fd_bitmap) -> (),
+            *mut Function,
+            >(dispose_fd_bitmap),
+            fd_bitmap as *mut c_char,
+        );
+
+        add_unwind_protect(
+            transmute::<
+            unsafe extern "C" fn (fdbp:*mut fd_bitmap) -> (),
+            *mut Function,
+            >(close_fd_bitmap),
+            fd_bitmap as *mut c_char,
+        );
+        if prev >= 0 {
+            add_unwind_protect(
+                transmute::<
+                unsafe extern "C" fn (__fd:c_int) -> c_int,
+                *mut Function,
+                >(close),
+                prev as *mut c_char,
+            );
+        }
+        dummyfd = fildes[1 ];
+        add_unwind_protect(
+            transmute::<
+                unsafe extern "C" fn (__fd:c_int) -> c_int,
+                *mut Function,
+                >(close),
+                dummyfd as *mut c_char,
+        );
+
+        add_unwind_protect(
+            transmute::<
+                    unsafe extern "C" fn(*mut sigset_t) -> libc::c_int,
+                    *mut Function,
+                >(restore_signal_mask),
+                transmute::<*mut sigset_t, *mut c_char>(&mut oset),        //这个位置可能会存在问题
+        );
+
+        if ignore_return != 0 && !((*(*cmd).value.Connection).first).is_null() {
+            (*(*(*cmd).value.Connection).first).flags |= CMD_IGNORE_RETURN as libc::c_int;
+        }
+        execute_command_internal(
+            (*(*cmd).value.Connection).first,
+            asynchronous,
+            prev,
+            fildes[1],
+            fd_bitmap,
+        );
+
+        if prev >= 0 {
+            close(prev);
+        }
+
+        prev = fildes[0];
+        close(fildes[1]);
+
+        dispose_fd_bitmap(fd_bitmap);
+        discard_unwind_frame(
+            b"pipe-file-descriptors\0" as *const u8 as *mut libc::c_char,
+        );
+
+        cmd = (*(*cmd).value.Connection).second;
+    }
+
+    lastpid = last_made_pid;
+    if ignore_return != 0 && !cmd.is_null() {
+        (*cmd).flags |= CMD_IGNORE_RETURN as libc::c_int;
+    }
+    lastpipe_flag = 0;
+
+    begin_unwind_frame(
+        b"lastpipe-exec\0" as *const u8 as *mut libc::c_char,
+    );
+    lstdin = -1;
+
+    if lastpipe_opt != 0 && job_control == 0 
+        && asynchronous == 0   && pipe_out == NO_PIPE
+        && prev > 0 
+    {
+        lstdin = move_to_high_fd( 0, 1, -1,);
+        if lstdin > 0 {
+            do_piping(prev, pipe_out);
+            prev = NO_PIPE;
+            add_unwind_protect(
+            transmute::<
+                    unsafe extern "C" fn(libc::c_int) -> (),
+                    *mut Function,
+                >(restore_stdin),
+                lstdin as *mut libc::c_char,
+            );
+            lastpipe_flag = 1 ;
+            old_frozen = freeze_jobs_list();
+            lastpipe_jid = stop_pipeline(
+                0 as libc::c_int,
+                0 as *mut libc::c_void as *mut COMMAND,
+            );
+            add_unwind_protect(
+                transmute::<
+                    unsafe extern "C" fn(libc::c_int) -> (),
+                    *mut Function,
+                >(lastpipe_cleanup),
+                old_frozen as *mut libc::c_char,
+            );
+            UNBLOCK_CHILD(&mut oset);
+        }
+        if !cmd.is_null() {
+            (*cmd).flags |= CMD_LASTPIPE as libc::c_int;
+        }
+    }
+
+    if prev >= 0 {
+        add_unwind_protect(
+            transmute::<
+                unsafe extern "C" fn(libc::c_int) -> c_int,
+                *mut Function,
+            >(close),           
+        prev as *mut libc::c_char,
+        );
+    }
+
+    exec_result = execute_command_internal(
+        cmd,
+        asynchronous,
+        prev,
+        pipe_out,
+        fds_to_close,
+    );
+
+    if lstdin > 0 {
+        restore_stdin(lstdin);
+    }
+
+    if prev >= 0 {
+        close(prev);
+    }
+
+    UNBLOCK_CHILD(&mut oset);
+
+    QUIT!();
+
+    if lastpipe_flag != 0 {
+        if (lastpipe_jid < 0 as libc::c_int || lastpipe_jid >= js.j_jobslots
+            || (*jobs.offset(lastpipe_jid as isize)).is_null()) as libc::c_int
+            == 0 as libc::c_int
+        {
+            append_process(
+                savestring!(the_printed_command_except_trap),
+                dollar_dollar_pid,
+                exec_result,
+                lastpipe_jid,
+            );
+            lstdin = wait_for(lastpid, 0 );
+        } else {
+            lstdin = wait_for_single_pid(lastpid, 0 );
+        }
+        if (lastpipe_jid < 0 || lastpipe_jid >= js.j_jobslots 
+            || (*jobs.offset(lastpipe_jid as isize)).is_null()) as libc::c_int
+            == 0 as libc::c_int
+        {
+            exec_result = job_exit_status(lastpipe_jid);
+        } else if pipefail_opt != 0 {
+            exec_result = exec_result | lstdin;
+        }
+        set_jobs_list_frozen(old_frozen);
+    }
+    discard_unwind_frame(
+        b"lastpipe-exec\0" as *const u8 as *mut libc::c_char,
+    );
+    return exec_result;
+}
 
 
 
