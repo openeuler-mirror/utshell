@@ -2177,6 +2177,106 @@ pub unsafe extern "C" fn coproc_unsetvars(mut cp: *mut coproc) {
    
     free(namevar as *mut c_void);
 }
+unsafe extern "C" fn execute_coproc(
+    mut command: *mut COMMAND,
+    mut pipe_in: libc::c_int,
+    mut pipe_out: libc::c_int,
+    mut fds_to_close: *mut fd_bitmap,
+) -> libc::c_int {
+    let mut rpipe: [libc::c_int; 2] = [0; 2];
+    let mut wpipe: [libc::c_int; 2] = [0; 2];
+    let mut estat: libc::c_int = 0;
+    let mut invert: libc::c_int = 0;
+    let mut coproc_pid: pid_t = 0;
+    let mut cp: *mut Coproc = 0 as *mut Coproc;
+    let mut tcmd: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+    if sh_coproc.c_pid != NO_PID!()
+        && (sh_coproc.c_rfd >= 0  || sh_coproc.c_wfd >= 0 )
+    {
+        internal_warning(
+           b"execute_coproc: coproc [%d:%s] still exists\0" as *const u8 as *mut c_char,
+            sh_coproc.c_pid,
+            sh_coproc.c_name,
+        );
+    }
+    coproc_init(&mut sh_coproc);
+    
+    invert = ((*command).flags & CMD_INVERT_RETURN as libc::c_int != 0 ) as libc::c_int;
+    
+    name = expand_string_unsplit_to_string( (*(*command).value.Coproc).name,0 );
+
+    if legal_identifier(name) == 0 {
+        internal_error(
+            b"`%s': not a valid identifier\0" as *const u8 as *const libc::c_char,
+            name,
+        );
+        return if invert != 0 { 0 } else { 1 };
+    } else {
+        free((*(*command).value.Coproc).name as *mut c_void);
+        (*(*command).value.Coproc).name = name;
+    }
+
+    command_string_index = 0 ;
+    tcmd = make_command_string(command);
+
+    sh_openpipe(&mut rpipe as *mut [libc::c_int; 2] as *mut libc::c_int);
+    sh_openpipe(&mut wpipe as *mut [libc::c_int; 2] as *mut libc::c_int);
+   
+    BLOCK_SIGNAL!(SIGCHLD, set, oset);
+
+    p = savestring!(tcmd);
+    coproc_pid = make_child(p, FORK_ASYNC as libc::c_int);
+
+    if coproc_pid == 0 {
+        close(rpipe[0 as libc::c_int as usize]);
+        close(wpipe[1 as libc::c_int as usize]);
+        
+        FREE!(p);
+    
+        UNBLOCK_SIGNAL!(oset);
+        estat = execute_in_subshell(
+            command,
+            1 ,
+            wpipe[0 ],
+            rpipe[1 ],
+            fds_to_close,
+        );
+        fflush(stdout);
+        fflush(stderr);
+
+        exit(estat);
+    }
+
+    close(rpipe[1 ]);
+    close(wpipe[0 ]);
+
+    cp = coproc_alloc((*(*command).value.Coproc).name, coproc_pid);
+    (*cp).c_rfd = rpipe[0 ];
+    (*cp).c_wfd = wpipe[1 ];
+
+    (*cp).c_flags |= COPROC_RUNNING as libc::c_int;
+
+    fcntl((*cp).c_rfd, 2 as libc::c_int, 1 as libc::c_int);
+    fcntl((*cp).c_wfd, 2 as libc::c_int, 1 as libc::c_int);
+    coproc_setvars(cp);
+
+    UNBLOCK_SIGNAL!(oset);
+
+    close_pipes(pipe_in, pipe_out);
+
+    unlink_fifo_list();
+
+    stop_pipeline(1 , 0 as *mut libc::c_void as *mut COMMAND);
+    DESCRIBE_PID!(coproc_pid);
+    run_pending_traps();
+
+    return if invert != 0 { 1 } else { 0 };
+}
 
 #[macro_export]
 macro_rules! SET_CLOSE_ON_EXEC {
