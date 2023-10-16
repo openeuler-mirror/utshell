@@ -2292,6 +2292,18 @@ unsafe extern "C" fn restore_stdin(mut s: libc::c_int) {
 unsafe extern "C" fn lastpipe_cleanup(mut s: libc::c_int) {
     set_jobs_list_frozen(s);
 }
+#[macro_export]
+macro_rules! get_job_by_jid {
+    ($ind:expr) => {
+        (*jobs).offset($ind as isize)
+    };
+}
+#[macro_export]
+macro_rules! INVALID_JOB {
+    ($j:expr) => {
+        ($j < 0 || $j >= js.j_jobslots || get_job_by_jid!($j) == 0 as *mut job)
+    };
+}
 
 unsafe extern "C" fn execute_pipeline(
     mut command: *mut COMMAND,
@@ -2529,5 +2541,8 @@ unsafe extern "C" fn execute_pipeline(
     return exec_result;
 }
 
-
-
+const FLAG_AND:i32 = '&' as i32;
+const FLAG_SEMICOLON:i32 = ';' as i32;
+const FLAG_OR:i32 = '|' as i32;
+const FLAG_OR_OR:i32 = OR_OR as i32;
+const FLAG_AND_AND:i32 = AND_AND as i32;
