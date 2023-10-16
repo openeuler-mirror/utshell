@@ -2158,6 +2158,44 @@ pub unsafe extern "C" fn coproc_setvars(mut cp: *mut coproc) {
 
     free(namevar as *mut c_void);
 }
+#[no_mangle]
+pub unsafe extern "C" fn coproc_unsetvars(mut cp: *mut coproc) {
+    let mut l: libc::c_int = 0;
+    let mut namevar: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    if ((*cp).c_name).is_null() {
+        return;
+    }
+    l = strlen((*cp).c_name) as libc::c_int;
+
+    namevar = malloc((l + 16) as usize) as *mut c_char;
+    
+    sprintf(namevar, b"%s_PID\0" as *const u8 as *const libc::c_char, (*cp).c_name);
+    unbind_variable_noref(namevar);
+   
+    check_unbind_variable((*cp).c_name);
+   
+    free(namevar as *mut c_void);
+}
+
+#[macro_export]
+macro_rules! SET_CLOSE_ON_EXEC {
+    ($fd:expr) => {
+        fcntl($fd, F_SETFD as libc::c_int, FD_CLOEXEC as libc::c_int);
+    };
+}
+
+unsafe extern "C" fn restore_stdin(mut s: libc::c_int) {
+    dup2(s, 0 );
+    close(s);
+}
+unsafe extern "C" fn lastpipe_cleanup(mut s: libc::c_int) {
+    set_jobs_list_frozen(s);
+}
+
+
+
+
 
 
 
