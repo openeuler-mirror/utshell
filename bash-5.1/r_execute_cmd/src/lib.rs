@@ -2043,8 +2043,47 @@ macro_rules! nameref_cell {
         (*$var).value
     };
 }
+#[macro_export]
+macro_rules! att_readonly {
+    () => {
+        0x0000002
+    };
+}
 
+#[macro_export]
+macro_rules! readonly_p {
+    ($var:expr) => {
+        (*$var).attributes & att_readonly!() 
+    };
+}
 
+#[macro_export]
+macro_rules! att_noassign {
+    () => {
+        0x0004000
+    };
+}
+
+#[macro_export]
+macro_rules! noassign_p {
+    ($var:expr) => {
+        (*$var).attributes & 0x4000 as libc::c_int
+    };
+}
+
+#[macro_export]
+macro_rules! att_array {
+    () => {
+        0x0000004
+    };
+}
+
+#[macro_export]
+macro_rules! array_p {
+    ($var:expr) => {
+        (*$var).attributes & att_array!()
+    };
+}
 
 
 
