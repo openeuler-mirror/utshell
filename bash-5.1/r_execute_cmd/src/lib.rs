@@ -1978,8 +1978,35 @@ pub unsafe extern "C" fn coproc_fdclose(mut cp: *mut coproc, mut fd: libc::c_int
     coproc_setvars(cp);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn coproc_fdsave(mut cp: *mut coproc) {
+    (*cp).c_rsave = (*cp).c_rfd;
+    (*cp).c_wsave = (*cp).c_wfd;
+}
 
+#[no_mangle]
+pub unsafe extern "C" fn coproc_fdrestore(mut cp: *mut coproc) {
+    (*cp).c_rfd = (*cp).c_rsave;
+    (*cp).c_wfd = (*cp).c_wsave;
+}
 
+unsafe extern "C" fn coproc_setstatus(mut cp: *mut coproc, mut status: libc::c_int) {
+    (*cp).c_lock = 4 ;
+    (*cp).c_status = status;
+    (*cp).c_flags |= COPROC_DEAD as libc::c_int;
+    (*cp).c_flags &= !(COPROC_RUNNING as libc::c_int);
+    (*cp).c_lock = 0 as libc::c_int;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn coproc_pidchk(mut pid: pid_t, mut status: libc::c_int) {
+    let mut cp: *mut coproc = 0 as *mut coproc;
+
+    cp = getcoprocbypid(pid);
+    if !cp.is_null() {
+        coproc_setstatus(cp, status);
+    }
+}
 
 
 
