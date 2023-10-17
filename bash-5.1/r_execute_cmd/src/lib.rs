@@ -2007,7 +2007,42 @@ pub unsafe extern "C" fn coproc_pidchk(mut pid: pid_t, mut status: libc::c_int) 
         coproc_setstatus(cp, status);
     }
 }
+#[no_mangle]
+pub unsafe extern "C" fn coproc_active() -> pid_t {
+    return if sh_coproc.c_flags & COPROC_DEAD as libc::c_int != 0 {
+        NO_PID!()
+    } else {
+        sh_coproc.c_pid
+    };
+}
 
+#[macro_export]
+macro_rules! INVALID_NAMEREF_VALUE {
+    () => {
+        &mut nameref_invalid_value as *mut SHELL_VAR 
+    };
+}
+
+#[macro_export]
+macro_rules! att_nameref {
+    () => {
+        0x0000800
+    };
+}
+
+#[macro_export]
+macro_rules! nameref_p {
+    ($var:expr) => {
+        (*$var).attributes & att_nameref!()
+    };
+}
+
+#[macro_export]
+macro_rules! nameref_cell {
+    ($var:expr) => {
+        (*$var).value
+    };
+}
 
 
 
