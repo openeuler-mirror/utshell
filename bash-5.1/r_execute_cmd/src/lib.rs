@@ -1946,8 +1946,37 @@ pub unsafe extern "C" fn coproc_wclose(mut cp: *mut coproc, mut fd: libc::c_int)
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn coproc_checkfd(mut cp: *mut coproc, mut fd: libc::c_int) {
+    let mut update: libc::c_int = 0;
 
+    update = 0  ;
+    if (*cp).c_rfd >= 0  && (*cp).c_rfd == fd {
+        let ref mut fresh28 = (*cp).c_rfd;
+        (*cp).c_rfd = -1;
+        update = -1;
+    }
+    if (*cp).c_wfd >= 0 && (*cp).c_wfd == fd {
+        let ref mut fresh29 = (*cp).c_wfd;
+        (*cp).c_wfd = -1;
+        update = -1;
+    }
+    if update != 0 {
+        coproc_setvars(cp);
+    }
+}
 
+#[no_mangle]
+pub unsafe extern "C" fn coproc_fdchk(mut fd: libc::c_int) {
+    coproc_checkfd(&mut sh_coproc, fd);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn coproc_fdclose(mut cp: *mut coproc, mut fd: libc::c_int) {
+    coproc_rclose(cp, fd);
+    coproc_wclose(cp, fd);
+    coproc_setvars(cp);
+}
 
 
 
