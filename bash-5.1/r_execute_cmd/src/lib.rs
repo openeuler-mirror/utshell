@@ -1915,6 +1915,36 @@ pub unsafe extern "C" fn coproc_close(mut cp: *mut coproc) {
     (*cp).c_rsave = -1;
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn coproc_closeall() {
+    coproc_close(&mut sh_coproc);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn coproc_reap() {
+    let mut cp: *mut coproc = 0 as *mut coproc;
+
+    cp = &mut sh_coproc;
+    if !cp.is_null() && (*cp).c_flags & COPROC_DEAD as libc::c_int != 0 {
+        coproc_dispose(cp);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn coproc_rclose(mut cp: *mut coproc, mut fd: libc::c_int) {
+    if (*cp).c_rfd >= 0 && (*cp).c_rfd == fd {
+        close((*cp).c_rfd);
+        (*cp).c_rfd = -1;
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn coproc_wclose(mut cp: *mut coproc, mut fd: libc::c_int) {
+    if (*cp).c_wfd >= 0 && (*cp).c_wfd == fd {
+        close((*cp).c_wfd);
+        (*cp).c_wfd = -1;
+    }
+}
 
 
 
