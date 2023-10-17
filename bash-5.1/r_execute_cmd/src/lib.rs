@@ -2084,8 +2084,80 @@ macro_rules! array_p {
         (*$var).attributes & att_array!()
     };
 }
+#[no_mangle]
+pub unsafe extern "C" fn coproc_setvars(mut cp: *mut coproc) {
+    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut namevar: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut l: libc::c_int = 0;
+    let mut w: WordDesc = WordDesc {
+        word: 0 as *mut libc::c_char,
+        flags: 0,
+    };
+    let mut ind: arrayind_t = 0;
 
+    if ((*cp).c_name).is_null() {
+        return;
+    }
 
+    w.word = (*cp).c_name;
+    w.flags = 0 ;
+    if check_identifier(&mut w, 1 ) == 0 {
+        return;
+    }
+
+    l = strlen((*cp).c_name) as libc::c_int;
+    namevar = malloc((l+ 16) as usize) as *mut c_char;
+
+    v = find_variable((*cp).c_name);
+
+    if v.is_null() {
+        v = find_variable_nameref_for_create((*cp).c_name, 1);
+        if v == INVALID_NAMEREF_VALUE!()
+        {
+            free(namevar as *mut c_void);
+            return;
+        }
+        if !v.is_null() && nameref_p!(v) != 0   {
+            free((*cp).c_name as *mut c_void);
+            let ref mut fresh30 = (*cp).c_name;
+            (*cp).c_name = savestring!(nameref_cell!(v));
+            v = make_new_array_variable((*cp).c_name);
+        }
+    }
+
+    if !v.is_null() && (readonly_p!(v) != 0 || noassign_p!(v) != 0 )
+    {
+        if readonly_p!(v)  != 0 {
+            err_readonly((*cp).c_name);
+        }
+        free(namevar as *mut c_void);
+        return;
+    }
+    if v.is_null() {
+        v = make_new_array_variable((*cp).c_name);
+    }
+    if array_p!(v) == 0 {
+        v = convert_var_to_array(v);
+    }
+
+    t = itos((*cp).c_rfd as intmax_t);
+    ind = 0 as arrayind_t;
+    v = bind_array_variable((*cp).c_name, ind, t, 0 );
+    free(t as *mut c_void);
+
+    t = itos((*cp).c_wfd as intmax_t);
+    ind = 1 as arrayind_t;
+    v = bind_array_variable((*cp).c_name, ind, t, 0 as libc::c_int);
+    free(t as *mut c_void);
+
+    sprintf(namevar, b"%s_PID\0" as *const u8 as *const libc::c_char, (*cp).c_name);
+    t = itos((*cp).c_pid as intmax_t);
+    v = bind_variable(namevar, t, 0 as libc::c_int);
+    free(t as *mut c_void);
+
+    free(namevar as *mut c_void);
+}
 
 
 
