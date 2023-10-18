@@ -2721,8 +2721,34 @@ unsafe extern "C" fn execute_connection(
     return exec_result;
 }
 
+#[macro_export]
+macro_rules! REAP {
+    () => {
+        if job_control == 0 || interactive_shell == 0 {
+            reap_dead_jobs();   
+        }
+    };
+}
 
+#[macro_export]
+macro_rules! name_cell {
+    ($var:expr) => {
+        ((*$var).name)
+    };
+}
 
+#[macro_export]
+macro_rules! ifsname {
+    ($s:expr) =>  {
+        *$s.offset(0 as libc::c_int as isize) as libc::c_int == 'I' as i32
+        && *$s.offset(1 as libc::c_int as isize) as libc::c_int
+            == 'F' as i32
+        && *$s.offset(2 as libc::c_int as isize) as libc::c_int
+            == 'S' as i32
+        && *$s.offset(3 as libc::c_int as isize) as libc::c_int
+            == '\u{0}' as i32
+    };
+}
 
 
 
