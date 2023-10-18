@@ -2546,3 +2546,206 @@ const FLAG_SEMICOLON:i32 = ';' as i32;
 const FLAG_OR:i32 = '|' as i32;
 const FLAG_OR_OR:i32 = OR_OR as i32;
 const FLAG_AND_AND:i32 = AND_AND as i32;
+
+unsafe extern "C" fn execute_connection(
+    mut command: *mut COMMAND,
+    mut asynchronous: libc::c_int,
+    mut pipe_in: libc::c_int,
+    mut pipe_out: libc::c_int,
+    mut fds_to_close: *mut fd_bitmap,
+) -> libc::c_int {
+    let mut tc: *mut COMMAND = 0 as *mut COMMAND;
+    let mut second: *mut COMMAND = 0 as *mut COMMAND;
+    let mut ignore_return: libc::c_int = 0;
+    let mut exec_result: libc::c_int = 0;
+    let mut was_error_trap: libc::c_int = 0;
+    let mut invert: libc::c_int = 0;
+    let mut save_line_number: libc::c_int = 0;
+
+    ignore_return = ((*command).flags & CMD_IGNORE_RETURN as libc::c_int != 0 ) as libc::c_int;
+    
+
+    match (*(*command).value.Connection).connector{
+        FLAG_AND => {
+            tc = (*(*command).value.Connection).first;
+            if tc.is_null() {
+                return EXECUTION_SUCCESS as libc::c_int;
+            }
+
+            if ignore_return != 0 {
+                (*tc).flags |= CMD_IGNORE_RETURN as libc::c_int;
+            }
+
+            (*tc).flags |= CMD_AMPERSAND as libc::c_int;
+
+            if (subshell_environment != 0 || job_control == 0) && stdin_redir == 0 {
+                (*tc).flags |= CMD_STDIN_REDIR as libc::c_int;
+            }
+            exec_result = execute_command_internal(
+                tc,
+                1 ,
+                pipe_in,
+                pipe_out,
+                fds_to_close,
+            );
+            QUIT!();
+            
+            if (*tc).flags & CMD_STDIN_REDIR as libc::c_int != 0 {
+                (*tc).flags &= !(CMD_STDIN_REDIR as libc::c_int);
+            }
+
+            second = (*(*command).value.Connection).second;
+            if !second.is_null() {
+                if ignore_return != 0 {
+                    (*second).flags |= CMD_IGNORE_RETURN as libc::c_int;
+                }
+                exec_result = execute_command_internal(
+                    second,
+                    asynchronous,
+                    pipe_in,
+                    pipe_out,
+                    fds_to_close,
+                );
+            }
+        }
+        FLAG_SEMICOLON => {
+            if ignore_return != 0 {
+                if !((*(*command).value.Connection).first).is_null() {
+                    (*(*(*command).value.Connection).first).flags |= CMD_IGNORE_RETURN as libc::c_int;
+                }
+                if !((*(*command).value.Connection).second).is_null() {
+                    (*(*(*command).value.Connection).second).flags |= CMD_IGNORE_RETURN as libc::c_int;
+                }
+            }
+            executing_list += 1;
+            QUIT!(); 
+
+            execute_command((*(*command).value.Connection).first);
+
+            QUIT!();
+            optimize_fork(command);
+            exec_result = execute_command_internal(
+                (*(*command).value.Connection).second,
+                asynchronous,
+                pipe_in,
+                pipe_out,
+                fds_to_close,
+            );
+            executing_list -= 1;
+        }
+        FLAG_OR => {
+            was_error_trap = (signal_is_trapped(ERROR_TRAP as c_int) != 0
+                && signal_is_ignored(ERROR_TRAP as libc::c_int) == 0 ) as libc::c_int;
+            invert = ((*command).flags & CMD_INVERT_RETURN as libc::c_int != 0 )
+                as libc::c_int;
+            ignore_return = ((*command).flags & CMD_IGNORE_RETURN as libc::c_int != 0 )
+                as libc::c_int;
+
+            line_number_for_err_trap = line_number;
+            exec_result = execute_pipeline(
+                command,
+                asynchronous,
+                pipe_in,
+                pipe_out,
+                fds_to_close,
+            );
+
+            if asynchronous != 0 {
+                exec_result = EXECUTION_SUCCESS as libc::c_int;
+                invert = 0 as libc::c_int;
+            }
+
+            if was_error_trap != 0 && ignore_return == 0 
+                && invert == 0 && exec_result != EXECUTION_SUCCESS as libc::c_int
+            {
+                last_command_exit_value = exec_result;
+                save_line_number = line_number;
+                line_number = line_number_for_err_trap;
+                run_error_trap();
+                line_number = save_line_number;
+            }
+
+            if ignore_return == 0 && invert == 0 
+                && exit_immediately_on_error != 0 && exec_result != EXECUTION_SUCCESS as libc::c_int
+            {
+                last_command_exit_value = exec_result;
+                run_pending_traps();
+                jump_to_top_level(ERREXIT as libc::c_int);
+            }
+        }
+        FLAG_AND_AND | FLAG_OR_OR => {
+            if asynchronous != 0 {
+                (*command).flags |= CMD_FORCE_SUBSHELL as libc::c_int;
+                exec_result = execute_command_internal(
+                    command,
+                    1 ,
+                    pipe_in,
+                    pipe_out,
+                    fds_to_close,
+                );
+            } else {
+                executing_list += 1;
+                if !((*(*command).value.Connection).first).is_null() {
+                    (*(*(*command).value.Connection).first).flags |= CMD_IGNORE_RETURN as libc::c_int;
+                }
+                exec_result = execute_command((*(*command).value.Connection).first);
+                
+                QUIT!();
+
+                if (*(*command).value.Connection).connector == AND_AND as libc::c_int
+                    && exec_result == EXECUTION_SUCCESS as libc::c_int
+                    || (*(*command).value.Connection).connector == OR_OR as libc::c_int
+                        && exec_result != EXECUTION_SUCCESS as libc::c_int
+                {
+                    optimize_fork(command);
+
+                    second = (*(*command).value.Connection).second;
+                    if ignore_return != 0 && !second.is_null() {
+                        (*second).flags |= CMD_IGNORE_RETURN as libc::c_int;
+                    }
+                    exec_result = execute_command(second);
+                }
+                executing_list -= 1;
+            }
+        }
+        _ => {
+            command_error(
+                b"execute_connection\0" as *const u8 as *const libc::c_char,
+                CMDERR_BADCONN as libc::c_int,
+                (*(*command).value.Connection).connector,
+                0 ,
+            );
+            jump_to_top_level(EXECUTION_FAILURE as libc::c_int);
+        }
+    }
+    return exec_result;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
