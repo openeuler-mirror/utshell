@@ -2879,11 +2879,49 @@ unsafe extern "C" fn execute_for_command(mut for_command: *mut FOR_COM) -> libc:
     discard_unwind_frame(b"for\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
     return retval;
 }
+unsafe extern "C" fn eval_arith_for_expr(
+    mut l: *mut WordList,
+    mut okp: *mut libc::c_int,
+) -> intmax_t {
+    let mut new: *mut WordList = 0 as *mut WordList;
+    let mut expresult: intmax_t = 0;
+    let mut r: libc::c_int = 0;
 
+    new = expand_words_no_vars(l);
+    if !new.is_null() {
+        if echo_command_at_execute != 0 {
+            xtrace_print_arith_cmd(new);
+        }
 
+        this_command_name = b"((\0" as *const u8 as *mut libc::c_char;
 
+        command_string_index = 0 ;
+        print_arith_command(new);
+        if signal_in_progress(DEBUG_TRAP as libc::c_int) == 0 && running_trap == 0 
+        {
+            FREE!(the_printed_command_except_trap);
+            the_printed_command_except_trap = savestring!(the_printed_command);
+        }
 
+        r = run_debug_trap();
+        if debugging_mode == 0 || r == EXECUTION_SUCCESS as libc::c_int {
+            expresult = evalexp((*(*new).word).word, EXP_EXPANDED as libc::c_int, okp);
+        } else {
+            expresult = 0 as intmax_t;
+            if !okp.is_null() {
+                *okp = 1 ;
+            }
+        }
 
+        dispose_words(new);
+    } else {
+        expresult = 0 as intmax_t;
+        if !okp.is_null() {
+            *okp = 1 ;
+        }
+    }
+    return expresult;
+}
 
 
 
