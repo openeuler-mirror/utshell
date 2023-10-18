@@ -2750,8 +2750,135 @@ macro_rules! ifsname {
     };
 }
 
+unsafe extern "C" fn execute_for_command(mut for_command: *mut FOR_COM) -> libc::c_int {
+    let mut releaser: *mut WordList = 0 as *mut WordList;
+    let mut list: *mut WordList = 0 as *mut WordList;
+    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut identifier: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut retval: libc::c_int = 0;
+    let mut save_line_number: libc::c_int = 0;
 
+    save_line_number = line_number;
+    if check_identifier((*for_command).name, 1 ) == 0 {
+        if posixly_correct != 0 && interactive_shell == 0 && rpm_requires == 0 
+        {
+            last_command_exit_value = EX_BADUSAGE as c_int;
+            jump_to_top_level(ERREXIT as libc::c_int);
+        }
+        return EXECUTION_FAILURE as c_int;
+    }
 
+    loop_level += 1;
+    identifier = (*(*for_command).name).word;
+
+    line_number = (*for_command).line;
+    releaser = expand_words_no_vars((*for_command).map_list);
+    list = releaser;
+
+    begin_unwind_frame(
+        b"for\0" as *const u8 as *mut libc::c_char,
+    );
+    add_unwind_protect(
+        transmute::<
+            unsafe extern "C" fn (arg1: *mut WordList),
+            *mut Function,
+        >(dispose_words),
+        releaser as *mut c_char,
+    );
+
+    if (*for_command).flags & CMD_IGNORE_RETURN as libc::c_int != 0 {
+        (*(*for_command).action).flags |= CMD_IGNORE_RETURN as libc::c_int;
+    }
+    
+    retval = EXECUTION_SUCCESS as libc::c_int;
+    while !list.is_null() {
+        QUIT!();
+
+        line_number = (*for_command).line;
+
+        command_string_index = 0 ;
+        print_for_command_head(for_command);
+
+        if echo_command_at_execute != 0 {
+            xtrace_print_for_command_head(for_command);
+        }
+
+        if signal_in_progress(DEBUG_TRAP as c_int) == 0 && running_trap == 0  
+        {
+            FREE!(the_printed_command_except_trap);
+            the_printed_command_except_trap = savestring!(the_printed_command);
+        }
+
+        retval = run_debug_trap();
+
+        if !(debugging_mode != 0 && retval != EXECUTION_SUCCESS as libc::c_int) {
+            this_command_name = 0 as *mut libc::c_char;
+
+            v = find_variable_last_nameref(identifier, 1 );
+            if !v.is_null() && nameref_p!(v) != 0 {
+                if valid_nameref_value((*(*list).word).word, 1 ) == 0  
+                {
+                    sh_invalidid((*(*list).word).word);
+                    v = 0 as *mut SHELL_VAR;
+                } else if readonly_p!(v) != 0{
+                    err_readonly(name_cell!(v));
+                } else {
+                    v = bind_variable_value(
+                        v,
+                        (*(*list).word).word,
+                        ASS_NAMEREF as libc::c_int,
+                    );
+                }
+            } else {
+                v = bind_variable(identifier, (*(*list).word).word, 0  );
+            }
+            if v.is_null() || readonly_p!(v) != 0 || noassign_p!(v) != 0
+            {
+                line_number = save_line_number;
+                if !v.is_null() && readonly_p!(v) != 0
+                    && interactive_shell == 0 && posixly_correct != 0
+                {
+                    last_command_exit_value = EXECUTION_FAILURE as c_int; 
+                    jump_to_top_level(FORCE_EOF as libc::c_int);
+                } else {
+                    dispose_words(releaser);
+                    discard_unwind_frame(b"for\0" as *const u8 as *mut libc::c_char);
+                    loop_level -= 1;
+                    return EXECUTION_FAILURE as libc::c_int;
+                }
+            }
+
+            if ifsname!(identifier)
+            {
+                setifs(v);
+            } else {
+                stupidly_hack_special_variables(identifier);
+            }
+            retval = execute_command((*for_command).action);
+            REAP!();
+            QUIT!();
+           
+            if breaking != 0 {
+                breaking -= 1;
+                break;
+            } else if continuing != 0 {
+                continuing -= 1;
+                if continuing != 0 {
+                    break;
+                }
+            }
+        }
+
+        list = (*list).next;
+    }
+
+    loop_level -= 1;
+    line_number = save_line_number;
+
+    dispose_words(releaser);
+    discard_unwind_frame(b"for\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
+    return retval;
+}
 
 
 
