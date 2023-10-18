@@ -2923,8 +2923,85 @@ unsafe extern "C" fn eval_arith_for_expr(
     return expresult;
 }
 
+unsafe extern "C" fn execute_arith_for_command(
+    mut arith_for_command: *mut ARITH_FOR_COM,
+) -> libc::c_int {
+    let mut expresult: intmax_t = 0;
+    let mut expok: libc::c_int = 0;
+    let mut body_status: libc::c_int = 0;
+    let mut arith_lineno: libc::c_int = 0;
+    let mut save_lineno: libc::c_int = 0;
+    
+    body_status = EXECUTION_SUCCESS as libc::c_int;
+    loop_level += 1;
+    save_lineno = line_number;
 
+    if (*arith_for_command).flags & CMD_IGNORE_RETURN as libc::c_int != 0 {
+        (*(*arith_for_command).action).flags |= CMD_IGNORE_RETURN as libc::c_int;
+    }
 
+    this_command_name = b"((\0" as *const u8 as *mut libc::c_char;
+
+    arith_lineno = (*arith_for_command).line;
+    line_number = arith_lineno;
+    if variable_context != 0 && interactive_shell != 0 && sourcelevel == 0
+    {
+        line_number -= function_line_number - 1 ;
+        if line_number <= 0 {
+            line_number = 1 ;
+        }
+    }
+    expresult = eval_arith_for_expr((*arith_for_command).init, &mut expok);
+    if expok == 0 {
+        line_number = save_lineno;
+        return EXECUTION_FAILURE as libc::c_int;
+    }
+
+    loop {
+        line_number = arith_lineno;
+        expresult = eval_arith_for_expr((*arith_for_command).test, &mut expok);
+        line_number = save_lineno;
+
+        if expok == 0 {
+            body_status = EXECUTION_FAILURE as libc::c_int;
+            break;
+        } else {
+            REAP!();
+            if expresult == 0 {
+                break;
+            }
+
+            QUIT!();
+            body_status = execute_command((*arith_for_command).action);
+            QUIT!();
+
+            if breaking != 0 {
+                breaking -= 1;
+                break;
+            } else {
+                if continuing != 0 {
+                    continuing -= 1;
+                    if continuing != 0 {
+                        break;
+                    }
+                }
+
+                line_number = arith_lineno;
+                expresult = eval_arith_for_expr((*arith_for_command).step, &mut expok);
+                line_number = save_lineno;
+
+                if !(expok == 0 ) {
+                    continue;
+                }
+                body_status = 1 ;
+                break;
+            }
+        }
+    }
+    loop_level -= 1;
+    line_number = save_lineno;
+    return body_status;
+}
 
 
 
