@@ -3272,6 +3272,144 @@ unsafe extern "C" fn select_query(
     };
 }
 
+unsafe extern "C" fn execute_select_command(
+    mut select_command: *mut SELECT_COM,
+) -> libc::c_int {
+    let mut releaser: *mut WordList = 0 as *mut WordList;
+    let mut list: *mut WordList = 0 as *mut WordList;
+    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut identifier: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ps3_prompt: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut selection: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut retval: libc::c_int = 0;
+    let mut list_len: libc::c_int = 0;
+    let mut show_menu: libc::c_int = 0;
+    let mut save_line_number: libc::c_int = 0;
 
+    if check_identifier((*select_command).name, 1 ) == 0 {
+        return EXECUTION_FAILURE as libc::c_int;
+    }
+    save_line_number = line_number;
+    line_number = (*select_command).line;
 
+    command_string_index = 0 ;
+    print_select_command_head(select_command);
+
+    if echo_command_at_execute != 0 {
+        xtrace_print_select_command_head(select_command);
+    }
+
+    if signal_in_progress(DEBUG_TRAP as c_int) == 0  
+        && running_trap == 0 
+    {
+        FREE!(the_printed_command_except_trap);
+        the_printed_command_except_trap = savestring!(the_printed_command);
+    }
+
+    retval = run_debug_trap();
+    if debugging_mode != 0 && retval != EXECUTION_SUCCESS as libc::c_int {
+        return EXECUTION_SUCCESS as libc::c_int;
+    }
+
+    loop_level += 1;
+    identifier = (*(*select_command).name).word;
+
+    releaser = expand_words_no_vars((*select_command).map_list);
+    list = releaser;
+    list_len = list_length(list as *mut GENERIC_LIST);
+    if list.is_null() || list_len == 0 {
+        if !list.is_null() {
+            dispose_words(list);
+        }
+        line_number = save_line_number;
+        return EXECUTION_SUCCESS as libc::c_int;
+    }
+
+    begin_unwind_frame(
+        b"select\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+    );
+    add_unwind_protect(
+        transmute::<
+            unsafe extern "C" fn (arg1: *mut WordList),
+            *mut Function,
+        >(dispose_words),
+        releaser as *mut c_char,
+    );
+
+    if (*select_command).flags & CMD_IGNORE_RETURN as libc::c_int != 0 {
+        (*(*select_command).action).flags |= CMD_IGNORE_RETURN as libc::c_int;
+    }
+
+    retval = EXECUTION_SUCCESS as libc::c_int;
+    show_menu = 1 as libc::c_int;
+
+    loop {
+        line_number = (*select_command).line;
+        ps3_prompt = get_string_value(b"PS3\0" as *const u8 as *const libc::c_char);
+        if ps3_prompt.is_null() {
+            ps3_prompt = b"#? \0" as *const u8 as *mut libc::c_char;
+        }
+
+        QUIT!();
+        selection = select_query(list, list_len, ps3_prompt, show_menu);
+        QUIT!();
+        if selection.is_null() {
+            retval = EXECUTION_FAILURE as libc::c_int;
+            break;
+        } else {
+            v = bind_variable(identifier, selection, 0 );
+            if v.is_null() || readonly_p!(v) != 0 || noassign_p!(v) != 0
+            {
+                if !v.is_null() && readonly_p!(v) != 0
+                    && interactive_shell == 0 && posixly_correct != 0
+                {
+                    last_command_exit_value = EXECUTION_FAILURE as c_int;
+                    jump_to_top_level(FORCE_EOF as libc::c_int);
+                } else {
+                    dispose_words(releaser);
+                    discard_unwind_frame(b"select\0" as *const u8 as *mut libc::c_char);
+                    loop_level -= 1;
+                    line_number = save_line_number;
+                    return EXECUTION_FAILURE as libc::c_int;
+                }
+            }
+
+            stupidly_hack_special_variables(identifier);
+
+            retval = execute_command((*select_command).action);
+
+            REAP!();
+            QUIT!();
+            
+            if breaking != 0 {
+                breaking -= 1;
+                break;
+            } else {
+                if continuing != 0 {
+                    continuing -= 1;
+                    if continuing != 0 {
+                        break;
+                    }
+                }
+
+                show_menu = 0 ;
+                selection = get_string_value(
+                    b"REPLY\0" as *const u8 as *const libc::c_char,
+                );
+                if !selection.is_null() && *selection as libc::c_int == '\u{0}' as i32 {
+                    show_menu = 1 ;
+                }
+            }
+        }
+    }
+
+    loop_level -= 1;
+    line_number = save_line_number;
+
+    dispose_words(releaser);
+    discard_unwind_frame(
+        b"select\0" as *const u8 as *mut libc::c_char,
+    );
+    return retval;
+}
 
