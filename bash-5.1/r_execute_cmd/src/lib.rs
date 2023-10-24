@@ -3099,8 +3099,103 @@ unsafe extern "C" fn indent(mut from: libc::c_int, mut to: libc::c_int) {
     }
 }
 
+#[macro_export]
+macro_rules! NUMBER_LEN {
+    ($s:expr) => {
+        if $s < 10  {
+            1 
+        } else if $s < 100 {
+            2  
+        } else if $s < 1000 {
+            3  
+        } else if $s < 10000  {
+            4  
+        } else if $s < 100000  {
+            5  
+        } else {
+            6  
+        };
+    };
+}
 
+#[macro_export]
+macro_rules! RP_SPACE_LEN {
+    () => {
+        2
+    };
+}
 
+unsafe extern "C" fn print_select_list(
+    mut list: *mut WordList,
+    mut list_len: libc::c_int,
+    mut max_elem_len: libc::c_int,
+    mut indices_len: libc::c_int,
+) {
+    let mut ind: libc::c_int = 0;
+    let mut row: libc::c_int = 0;
+    let mut elem_len: libc::c_int = 0;
+    let mut pos: libc::c_int = 0;
+    let mut cols: libc::c_int = 0;
+    let mut rows: libc::c_int = 0;
+    let mut first_column_indices_len: libc::c_int = 0;
+    let mut other_indices_len: libc::c_int = 0;
+
+    if list.is_null() {
+        putc('\n' as i32, stderr);
+        return;
+    }
+
+    cols = if max_elem_len != 0 { COLS / max_elem_len } else { 1 };
+    if cols == 0 {
+        cols = 1 ;
+    }
+
+    rows = if list_len != 0 {
+        list_len / cols + (list_len % cols != 0 ) as c_int 
+    } else { 
+        1  
+    };
+    cols = if list_len != 0 {
+        list_len / rows + (list_len % rows != 0 ) as c_int
+    } else {
+        1 
+    };
+    if rows == 1 {
+        rows = cols;
+        cols = 1 ;
+    }
+
+    first_column_indices_len = NUMBER_LEN!(rows);
+    other_indices_len = indices_len;
+
+    row = 0 ;
+    while row < rows {
+        ind = row;
+        pos = 0 ;
+        loop {
+            indices_len = if pos == 0 {
+                first_column_indices_len
+            } else {
+                other_indices_len
+            };
+            elem_len = print_index_and_element(
+                indices_len,
+                ind + 1 ,
+                list,
+            );
+            elem_len += indices_len + RP_SPACE_LEN!()  ;
+            ind += rows;
+            if ind >= list_len {
+                break;
+            }
+            indent(pos + elem_len, pos + max_elem_len);
+            pos += max_elem_len;
+        }
+        putc('\n' as i32, stderr);
+
+        row += 1;
+    }
+}
 
 
 
