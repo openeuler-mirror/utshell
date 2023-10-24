@@ -3003,7 +3003,52 @@ unsafe extern "C" fn execute_arith_for_command(
     return body_status;
 }
 
+static mut COLS: libc::c_int = 0;
+static mut tabsize: libc::c_int = 0;
 
+pub type size_t = libc::c_ulong;
+pub type wchar_t = libc::c_int;
+
+#[macro_export]
+macro_rules! STRLEN {
+    ($s:expr) => {
+        if !$s.is_null() && *$s.offset(0 as isize) as libc::c_int != 0 {
+            if *$s.offset(1 as isize) as libc::c_int != 0 {
+                if *$s.offset(2 as isize) as libc::c_int != 0 {
+                    strlen($s)
+                } else {
+                    2 as libc::c_ulong
+                }
+            } else {
+                1 as libc::c_ulong
+            }
+        } else {
+            0 as libc::c_ulong
+        }
+    };
+}
+
+unsafe extern "C" fn displen(mut s: *const libc::c_char) -> libc::c_int {
+    let mut wcstr: *mut wchar_t = 0 as *mut wchar_t;
+    let mut slen: size_t = 0;
+    let mut wclen: libc::c_int = 0;
+
+    wcstr = 0 as *mut wchar_t;
+    slen = mbstowcs(wcstr, s, 0 as size_t);
+    if slen == -(1 as libc::c_int) as libc::c_ulong {
+        slen = 0 as size_t;
+    }
+
+    wcstr = malloc((size_of::<wchar_t>() * (slen + 1) as usize) as usize) as *mut wchar_t;
+    mbstowcs(wcstr, s, (slen + 1) as size_t);
+    wclen = wcswidth(wcstr, slen as usize); 
+    free(wcstr as *mut c_void);
+    return (if wclen < 0 {
+        STRLEN!(s)
+    } else {
+        wclen as libc::c_ulong
+    }) as libc::c_int;
+}
 
 
 
