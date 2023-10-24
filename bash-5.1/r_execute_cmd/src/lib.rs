@@ -3050,8 +3050,54 @@ unsafe extern "C" fn displen(mut s: *const libc::c_char) -> libc::c_int {
     }) as libc::c_int;
 }
 
+unsafe extern "C" fn print_index_and_element(
+    mut len: libc::c_int,
+    mut ind: libc::c_int,
+    mut list: *mut WordList,
+) -> libc::c_int {
+    let mut l: *mut WordList = 0 as *mut WordList;
+    let mut i: libc::c_int = 0;
+
+    if list.is_null() {
+        return 0 ;
+    }
+
+    i = ind;
+    l = list;
+    while !l.is_null()
+        && {
+            i -= 1;
+            i != 0
+        }
+    {
+        l = (*l).next;
+    }
+    if l.is_null() {
+        return 0 ;
+    }
+    fprintf(
+        stderr,
+        b"%*d%s%s\0" as *const u8 as *const libc::c_char,
+        len,
+        ind,
+        b") \0" as *const u8 as *const libc::c_char,
+        (*(*l).word).word,
+    );
+    return displen((*(*l).word).word);
+}
 
 
+unsafe extern "C" fn indent(mut from: libc::c_int, mut to: libc::c_int) {
+    while from < to {
+        if to / tabsize > from / tabsize {
+            putc('\t' as i32, stderr);
+            from += tabsize - from % tabsize;
+        } else {
+            putc(' ' as i32, stderr);
+            from += 1;
+        }
+    }
+}
 
 
 
