@@ -3197,8 +3197,80 @@ unsafe extern "C" fn print_select_list(
     }
 }
 
+unsafe extern "C" fn select_query(
+    mut list: *mut WordList,
+    mut list_len: libc::c_int,
+    mut prompt: *mut libc::c_char,
+    mut print_menu: libc::c_int,
+) -> *mut libc::c_char {
+    let mut max_elem_len: libc::c_int = 0;
+    let mut indices_len: libc::c_int = 0;
+    let mut len: libc::c_int = 0;
+    let mut r: libc::c_int = 0;
+    let mut oe: libc::c_int = 0;
+    let mut reply: intmax_t = 0;
+    let mut l: *mut WordList = 0 as *mut WordList;
+    let mut repl_string: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
 
+    COLS = default_columns();
 
+    tabsize = 8 ;
+    max_elem_len = 0 ;
+    l = list;
+    while !l.is_null() {
+        len = displen((*(*l).word).word);
+        if len > max_elem_len {
+            max_elem_len = len;
+        }
+        l = (*l).next;
+    }
+    indices_len = NUMBER_LEN!(list_len);
+    max_elem_len += indices_len + RP_SPACE_LEN!() + 2 ;
+
+    loop {
+        if print_menu != 0 {
+            print_select_list(list, list_len, max_elem_len, indices_len);
+        }
+        fprintf(stderr, b"%s\0" as *const u8 as *const libc::c_char, prompt);
+        fflush(stderr);
+        QUIT!();
+
+        oe = executing_builtin;
+        executing_builtin = 1 ;
+        r = read_builtin(0 as *mut WordList);
+        executing_builtin = oe;
+        if r != EXECUTION_SUCCESS as libc::c_int {
+            putchar('\n' as i32);
+            return 0 as *mut libc::c_char;
+        }
+        repl_string = get_string_value(b"REPLY\0" as *const u8 as *const libc::c_char);
+        if repl_string.is_null() {
+            return 0 as *mut libc::c_char;
+        }
+        if *repl_string as libc::c_int == 0 {
+            print_menu = 1 ;
+        } else {
+            if legal_number(repl_string, &mut reply) == 0 {
+                return b"\0" as *const u8 as *mut libc::c_char;
+            }
+            if reply < 1 || reply > list_len as libc::c_long
+            {
+                return b"\0" as *const u8 as *mut libc::c_char;
+            }
+            l = list;
+            while !l.is_null()
+                && {
+                    reply -= 1;
+                    reply != 0
+                }
+            {
+                l = (*l).next;
+            }
+            return (*(*l).word).word;
+        }
+    };
+}
 
 
 
