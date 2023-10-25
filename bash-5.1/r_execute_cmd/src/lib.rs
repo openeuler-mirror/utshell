@@ -3413,3 +3413,183 @@ unsafe extern "C" fn execute_select_command(
     return retval;
 }
 
+#[macro_export]
+macro_rules! FNMATCH_EXTFLAG {
+    () => {
+        if extended_glob != 0 {
+            1 << 5
+        } else {0} 
+    };
+}
+
+#[macro_export]
+macro_rules! FNMATCH_IGNCASE {
+    () => {
+        if match_ignore_case != 0 {
+            1 << 4
+        } else {0} 
+    };
+}
+
+
+#[macro_export]
+macro_rules! FNM_NOMATCH {
+    () => {
+        1
+    };
+}
+
+
+unsafe extern "C" fn execute_case_command(
+    mut case_command: *mut CASE_COM,
+) -> libc::c_int {
+    let mut list: *mut WordList = 0 as *mut WordList;
+    let mut wlist: *mut WordList = 0 as *mut WordList;
+    let mut es: *mut WordList = 0 as *mut WordList;
+    let mut clauses: *mut PATTERN_LIST = 0 as *mut PATTERN_LIST;
+    let mut word: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut pattern: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut retval: libc::c_int = 0;
+    let mut match_0: libc::c_int = 0;
+    let mut ignore_return: libc::c_int = 0;
+    let mut save_line_number: libc::c_int = 0;
+    let mut qflags: libc::c_int = 0;
+
+    save_line_number = line_number;
+    line_number = (*case_command).line;
+
+    command_string_index = 0 as libc::c_int;
+    print_case_command_head(case_command);
+
+    if echo_command_at_execute != 0 {
+        xtrace_print_case_command_head(case_command);
+    }
+
+    if signal_in_progress(DEBUG_TRAP as libc::c_int) == 0 && running_trap == 0  
+    {
+        FREE!(the_printed_command_except_trap);
+        the_printed_command_except_trap = savestring!(the_printed_command);
+    }
+
+    retval = run_debug_trap();
+    if debugging_mode != 0 && retval != EXECUTION_SUCCESS as c_int {
+        line_number = save_line_number;
+        return EXECUTION_SUCCESS as libc::c_int;
+    }
+    wlist = expand_word_leave_quoted((*case_command).word, 0 );
+
+    if !wlist.is_null() {
+        let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+        t = string_list(wlist);
+        word = dequote_string(t);
+        free(t as *mut c_void);
+    } else {
+        word = savestring!(b"\0" as *const u8 as *mut c_char);
+    }
+    dispose_words(wlist);
+
+    retval = EXECUTION_SUCCESS as libc::c_int;
+    ignore_return = (*case_command).flags & CMD_IGNORE_RETURN as libc::c_int;
+
+    begin_unwind_frame(
+        b"case\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+    );
+    add_unwind_protect(
+        transmute::<
+        unsafe extern "C" fn (__ptr: *mut ::std::os::raw::c_void),
+        *mut Function,
+        >(free),
+        word,
+    );
+
+    clauses = (*case_command).clauses;
+    's_150: while !clauses.is_null() {
+        QUIT!();
+        list = (*clauses).patterns;
+        while !list.is_null() {
+            es = expand_word_leave_quoted((*list).word, 0 );
+
+            if !es.is_null() && !((*es).word).is_null()
+                && !((*(*es).word).word).is_null()
+                && *(*(*es).word).word as libc::c_int != 0
+            {
+                qflags = QGLOB_CVTNULL as libc::c_int;
+                qflags |= QGLOB_CTLESC as libc::c_int;
+                pattern = quote_string_for_globbing((*(*es).word).word, qflags);
+            } else {
+                pattern = malloc(1 as usize) as *mut c_char;
+                *pattern.offset(0 as isize) = '\u{0}' as i32 as libc::c_char;
+            }
+            match_0 = (strmatch(
+                pattern,
+                word,
+                FNMATCH_EXTFLAG!() | FNMATCH_IGNCASE!()
+            ) != FNM_NOMATCH!() )as c_int;
+            free(pattern as *mut c_void);
+
+            dispose_words(es);
+            if match_0 != 0 {
+                loop {
+                    if !((*clauses).action).is_null() && ignore_return != 0 {
+                        (*(*clauses).action).flags |= CMD_IGNORE_RETURN as libc::c_int;
+                    }
+                    retval = execute_command((*clauses).action);
+                    if !((*clauses).flags & CASEPAT_FALLTHROUGH as libc::c_int != 0
+                        && {
+                            clauses = (*clauses).next;
+                            !clauses.is_null()
+                        })
+                    {
+                        break;
+                    }
+                }
+                if clauses.is_null()
+                    || (*clauses).flags & CASEPAT_TESTNEXT as libc::c_int == 0 
+                {
+                    break 's_150;
+                } else {
+                    break;
+                }
+            } else {
+                QUIT!();
+                list = (*list).next;
+            }
+        }
+        clauses = (*clauses).next;
+    }
+    free(word as *mut c_void);
+    discard_unwind_frame(b"case\0" as *const u8 as *mut libc::c_char);
+    line_number = save_line_number;
+    return retval;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
