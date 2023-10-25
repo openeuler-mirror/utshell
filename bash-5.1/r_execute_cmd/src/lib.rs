@@ -4206,8 +4206,65 @@ unsafe extern "C" fn fix_assignment_words(mut words: *mut WordList) {
     }
 }
 
+#[macro_export]
+macro_rules! ISOPTION {
+    ($s:expr, $c:expr) => {
+        (*$s.offset(0 as isize) as libc::c_int
+            == '-' as i32
+            && *$s.offset(1 as isize) as libc::c_int
+                == $c as i32
+            && *$s.offset(2 as isize) == 0)
+    };
+}
 
 
+
+unsafe extern "C" fn check_command_builtin(
+    mut words: *mut WordList,
+    mut typep: *mut libc::c_int,
+) -> *mut WordList {
+    let mut type_0: libc::c_int = 0;
+    let mut w: *mut WordList = 0 as *mut WordList;
+
+    #[macro_export]
+    macro_rules! RETURN_NOT_COMMAND {
+        () => {
+            if !typep.is_null() {
+                *typep = 0 ;
+            }
+            return words;
+        };
+    }
+
+    w = (*words).next;
+    type_0 = 1 ;
+
+    if !w.is_null() && ISOPTION!((*(*w).word).word, 'p')
+    {
+        if restricted != 0 {
+            RETURN_NOT_COMMAND!();
+        }
+        w = (*w).next;
+        type_0 = 2 ;
+    }
+    if !w.is_null()
+        && ISOPTION!((*(*w).word).word, '-')
+    {
+        w = (*w).next;
+    } else if !w.is_null()
+            && *((*(*w).word).word).offset(0 as isize) as libc::c_int == '-' as i32
+        {
+            RETURN_NOT_COMMAND!();
+    }
+    if w.is_null() || ((*(*w).word).word).is_null() {
+        RETURN_NOT_COMMAND!();
+    }
+
+    if !typep.is_null() {
+        *typep = type_0;
+    }
+    return w;
+}
 
 
 
