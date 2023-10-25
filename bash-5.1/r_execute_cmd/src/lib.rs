@@ -3971,8 +3971,49 @@ unsafe extern "C" fn execute_cond_command(
     return retval;
 }
 
+#[macro_export]
+macro_rules! VUNSETATTR {
+    ($var:expr, $attr:expr) => {
+        (*$var).attributes &= !($attr as libc::c_int);
+    };
+}
 
 
+unsafe extern "C" fn bind_lastarg(mut arg: *mut libc::c_char) {
+    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+
+    if arg.is_null() {
+        arg = b"\0" as *const u8 as *mut libc::c_char;
+    }
+    var = bind_variable(
+        b"_\0" as *const u8 as *const libc::c_char,
+        arg,
+        0 ,
+    );
+
+    if !var.is_null() {
+        VUNSETATTR!(var, att_exported);
+    }
+}
+
+#[macro_export]
+macro_rules! INPUT_REDIRECT {
+    ($ri:expr) => {
+        $ri == r_input_direction as libc::c_uint 
+        || $ri == r_inputa_direction as libc::c_uint 
+        || $ri == r_input_output as libc::c_uint 
+    };
+}
+
+#[macro_export]
+macro_rules! TRANSLATE_REDIRECT {
+    ($ri:expr) => {
+        $ri == r_duplicating_input_word 
+        || $ri == r_duplicating_output_word 
+        || $ri == r_move_input_word 
+        || $ri == r_move_output_word
+    };
+}
 
 
 
