@@ -3563,8 +3563,89 @@ unsafe extern "C" fn execute_case_command(
     return retval;
 }
 
+#[macro_export]
+macro_rules! CMD_WHILE {
+    () => {
+        0
+    };
+}
 
+unsafe extern "C" fn execute_while_command(
+    mut while_command: *mut WHILE_COM,
+) -> libc::c_int {
+    return execute_while_or_until(while_command, CMD_WHILE!());
+}
 
+#[macro_export]
+macro_rules! CMD_UNTIL {
+    () => {
+        1
+    };
+}
+
+unsafe extern "C" fn execute_until_command(
+    mut while_command: *mut WHILE_COM,
+) -> libc::c_int {
+    return execute_while_or_until(while_command, CMD_UNTIL!());
+}
+
+unsafe extern "C" fn execute_while_or_until(
+    mut while_command: *mut WHILE_COM,
+    mut type_0: libc::c_int,
+) -> libc::c_int {
+    let mut return_value: libc::c_int = 0;
+    let mut body_status: libc::c_int = 0;
+
+    body_status = EXECUTION_SUCCESS as libc::c_int;
+    loop_level += 1;
+    (*(*while_command).test).flags |= CMD_IGNORE_RETURN as libc::c_int;
+    if (*while_command).flags & CMD_IGNORE_RETURN as libc::c_int != 0 {
+        (*(*while_command).action).flags |= CMD_IGNORE_RETURN as libc::c_int;
+    }
+
+    loop {
+        return_value = execute_command((*while_command).test);
+        REAP!();
+
+        if type_0 == CMD_WHILE!() && return_value != EXECUTION_SUCCESS as libc::c_int {
+            if breaking != 0 {
+                breaking -= 1;
+            }
+            if continuing != 0 {
+                continuing -= 1;
+            }
+            break;
+        } else if type_0 == CMD_UNTIL!() && return_value == EXECUTION_SUCCESS as libc::c_int {
+            if breaking != 0 {
+                breaking -= 1;
+            }
+            if continuing != 0 {
+                continuing -= 1;
+            }
+            break;
+        } else {
+            QUIT!();
+            body_status = execute_command((*while_command).action);
+            QUIT!();
+
+            if breaking != 0 {
+                breaking -= 1;
+                break;
+            } else {
+                if !(continuing != 0) {
+                    continue;
+                }
+                continuing -= 1;
+                if continuing != 0 {
+                    break;
+                }
+            }
+        }
+    }
+    loop_level -= 1;
+
+    return body_status;
+}
 
 
 
