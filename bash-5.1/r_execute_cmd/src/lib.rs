@@ -4085,8 +4085,126 @@ unsafe extern "C" fn execute_null_command(
     return 0;
 }
 
+unsafe extern "C" fn fix_assignment_words(mut words: *mut WordList) {
+    let mut w: *mut WordList = 0 as *mut WordList;
+    let mut wcmd: *mut WordList = 0 as *mut WordList;
+    let mut b: *mut builtin = 0 as *mut builtin;
+    let mut assoc: libc::c_int = 0;
+    let mut global: libc::c_int = 0;
+    let mut array: libc::c_int = 0;
+    let mut integer: libc::c_int = 0;
 
+    if words.is_null() {
+        return;
+    }
 
+    b = 0 as *mut builtin;
+    integer = 0 ;
+    array = integer;
+    global = array;
+    assoc = global;
+    
+    wcmd = words;
+    wcmd = words;
+    while !wcmd.is_null() {
+        if (*(*wcmd).word).flags & W_ASSIGNMENT as c_int == 0 
+        {
+            break;
+        }
+        wcmd = (*wcmd).next;
+    }
+
+    while posixly_correct != 0 && !wcmd.is_null() && !((*wcmd).word).is_null()
+        && !((*(*wcmd).word).word).is_null()
+        && STREQ!((*(*wcmd).word).word, b"command\0" as *const u8 as *const c_char)
+    {
+        wcmd = (*wcmd).next;
+    }
+    
+    w = wcmd;
+    while !w.is_null() {
+        if (*(*w).word).flags & W_ASSIGNMENT as libc::c_int != 0 {
+            if b.is_null() {
+                b = builtin_address_internal((*(*wcmd).word).word, 0 );
+                if b.is_null() || (*b).flags & ASSIGNMENT_BUILTIN as libc::c_int == 0 {
+                    return
+                } else {
+                    if !b.is_null() && (*b).flags & ASSIGNMENT_BUILTIN as libc::c_int != 0 {
+                        (*(*wcmd).word).flags |= W_ASSNBLTIN as libc::c_int;
+                    }
+                }
+            }
+            (*(*w).word).flags
+                |= (W_NOSPLIT as libc::c_int)  
+                    | (W_NOGLOB as libc::c_int) 
+                    | (W_TILDEEXP as libc::c_int)  
+                    | (W_ASSIGNARG as libc::c_int) ;
+            if assoc != 0 {
+                (*(*w).word).flags |= W_ASSIGNASSOC as libc::c_int;
+            }
+            if array != 0 {
+                (*(*w).word).flags |= W_ASSIGNARRAY as libc::c_int;
+            }
+            if global != 0 {
+                (*(*w).word).flags |= W_ASSNGLOBAL as libc::c_int;
+            }
+
+            if !b.is_null()
+                && (*b).flags & (ASSIGNMENT_BUILTIN as libc::c_int | LOCALVAR_BUILTIN as libc::c_int)
+                    == ASSIGNMENT_BUILTIN as libc::c_int
+            {
+                (*(*w).word).flags
+                    |= W_ASSNGLOBAL as libc::c_int
+                        | W_CHKLOCAL as libc::c_int;
+            } else if !b.is_null() && (*b).flags & ASSIGNMENT_BUILTIN as libc::c_int != 0
+                    && (*b).flags & LOCALVAR_BUILTIN as libc::c_int != 0 && variable_context != 0
+                {
+                (*(*w).word).flags |= W_FORCELOCAL as libc::c_int;
+            }
+        } else if *((*(*w).word).word).offset(0 as isize) as libc::c_int == '-' as i32
+                && !(strpbrk(
+                    ((*(*w).word).word).offset(1 as isize),
+                    b"Aag\0" as *const u8 as *const libc::c_char,
+                )).is_null()
+            {
+            if b.is_null() {
+                b = builtin_address_internal((*(*wcmd).word).word, 0 );
+                if b.is_null() || (*b).flags & ASSIGNMENT_BUILTIN as libc::c_int == 0 {
+                    return
+                } else {
+                    if !b.is_null() && (*b).flags & ASSIGNMENT_BUILTIN as libc::c_int != 0 {
+                        (*(*wcmd).word).flags |= W_ASSNBLTIN as libc::c_int;
+                    }
+                }
+            }
+            if (*(*wcmd).word).flags & W_ASSNBLTIN as libc::c_int != 0
+                && !(strchr(
+                    ((*(*w).word).word).offset(1 as isize),
+                    'A' as i32,
+                )).is_null()
+            {
+                assoc = 1 ;
+            } else if (*(*wcmd).word).flags & W_ASSNBLTIN as libc::c_int
+                    != 0
+                    && !(strchr(
+                        ((*(*w).word).word).offset(1 as libc::c_int as isize),
+                        'a' as i32,
+                    )).is_null()
+                {
+                array = 1 ;
+            }
+            if (*(*wcmd).word).flags & W_ASSNBLTIN as libc::c_int != 0
+                && !(strchr(
+                    ((*(*w).word).word).offset(1 as isize),
+                    'g' as i32,
+                )).is_null()
+            {
+                global = 1 ;
+            }
+        }
+        w = (*w).next;
+    }
+}
 
 
 
