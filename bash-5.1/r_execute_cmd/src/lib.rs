@@ -3679,7 +3679,93 @@ unsafe extern "C" fn execute_if_command(mut if_command: *mut IF_COM) -> libc::c_
     };
 }
 
+unsafe extern "C" fn execute_arith_command(
+    mut arith_command: *mut ARITH_COM,
+) -> libc::c_int {
+    let mut expok: libc::c_int = 0;
+    let mut save_line_number: libc::c_int = 0;
+    let mut retval: libc::c_int = 0;
+    let mut expresult: intmax_t = 0;
+    let mut new: *mut WordList = 0 as *mut WordList;
+    let mut exp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
 
+    expresult = 0 as intmax_t;
+
+    save_line_number = line_number;
+    this_command_name = b"((\0" as *const u8 as *mut libc::c_char;
+    line_number = (*arith_command).line;
+    line_number_for_err_trap = line_number;
+
+    if variable_context != 0 && interactive_shell != 0 && sourcelevel == 0 
+    {
+        line_number -= function_line_number - 1 ;
+        if line_number <= 0 {
+            line_number = 1 ;
+        }
+    }
+
+    command_string_index = 0 ;
+    print_arith_command((*arith_command).exp);
+    
+    if signal_in_progress(DEBUG_TRAP as libc::c_int) == 0 
+        && running_trap == 0 
+    {
+        FREE!(the_printed_command_except_trap);
+        the_printed_command_except_trap = savestring!(the_printed_command);
+    }
+
+    retval = run_debug_trap();
+    if debugging_mode != 0 && retval != EXECUTION_SUCCESS as libc::c_int {
+        line_number = save_line_number;
+        return EXECUTION_SUCCESS as libc::c_int;
+    }
+
+    t = 0 as *mut libc::c_char;
+    new = (*arith_command).exp;
+    if !((*new).next).is_null() {
+        t = string_list(new);
+        exp = t;
+    } else {
+        exp = (*(*new).word).word;
+    }
+
+    exp = expand_arith_string(exp, Q_DOUBLE_QUOTES as libc::c_int | Q_ARITH as libc::c_int);
+    
+    if echo_command_at_execute != 0 {
+        new = make_word_list(
+            make_word(
+                if !exp.is_null() {
+                    exp
+                } else {
+                    b"\0" as *const u8 as *const libc::c_char
+                },
+            ),
+            0 as *mut WordList,
+        );
+        xtrace_print_arith_cmd(new);
+        dispose_words(new);
+    }
+
+    if !exp.is_null() {
+        expresult = evalexp(exp, EXP_EXPANDED as libc::c_int, &mut expok);
+        line_number = save_line_number;
+        free(exp as *mut c_void);
+    } else {
+        expresult = 0 as intmax_t;
+        expok = 1 ;
+    }
+    FREE!(t);
+
+    if expok == 0 {
+        return EXECUTION_FAILURE as c_int ;
+    }
+    return if expresult == 0 {
+        EXECUTION_FAILURE as libc::c_int
+    } else {
+        EXECUTION_SUCCESS as libc::c_int
+    };
+}
 
 
 
