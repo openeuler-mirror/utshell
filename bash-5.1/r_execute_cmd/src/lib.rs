@@ -3933,8 +3933,43 @@ unsafe extern "C" fn execute_cond_node(mut cond: *mut COND_COM) -> libc::c_int {
     return result;
 }
 
+unsafe extern "C" fn execute_cond_command(
+    mut cond_command: *mut COND_COM,
+) -> libc::c_int {
+    let mut retval: libc::c_int = 0;
+    let mut save_line_number: libc::c_int = 0;
 
+    save_line_number = line_number;
+    this_command_name = b"[[\0" as *const u8 as *mut libc::c_char;
+    line_number = (*cond_command).line;
+    line_number_for_err_trap = line_number;
+    if variable_context != 0 && interactive_shell != 0 && sourcelevel == 0 
+    {
+        line_number -= function_line_number - 1 ;
+        if line_number <= 0 {
+            line_number = 1 ;
+        }
+    }
 
+    command_string_index = 0 ;
+    print_cond_command(cond_command);
+    if signal_in_progress( DEBUG_TRAP as libc::c_int) == 0 
+        && running_trap == 0 
+    {
+        FREE!(the_printed_command_except_trap);
+        the_printed_command_except_trap = savestring!(the_printed_command)
+    }
+
+    retval = run_debug_trap();
+    if debugging_mode != 0 && retval != EXECUTION_SUCCESS as libc::c_int {
+        line_number = save_line_number;
+        return EXECUTION_SUCCESS as libc::c_int;
+    }
+    retval = execute_cond_node(cond_command);
+    last_command_exit_value = retval;
+    line_number = save_line_number;
+    return retval;
+}
 
 
 
