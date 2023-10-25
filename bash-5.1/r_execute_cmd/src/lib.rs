@@ -3647,8 +3647,37 @@ unsafe extern "C" fn execute_while_or_until(
     return body_status;
 }
 
+unsafe extern "C" fn execute_if_command(mut if_command: *mut IF_COM) -> libc::c_int {
+    let mut return_value: libc::c_int = 0;
+    let mut save_line_number: libc::c_int = 0;
 
+    save_line_number = line_number;
+    (*(*if_command).test).flags |= CMD_IGNORE_RETURN as libc::c_int;
+    return_value = execute_command((*if_command).test);
+    line_number = save_line_number;
 
+    if return_value == EXECUTION_SUCCESS as libc::c_int {
+        QUIT!();
+
+        if !((*if_command).true_case).is_null()
+            && (*if_command).flags & CMD_IGNORE_RETURN as libc::c_int != 0
+        {
+            (*(*if_command).true_case).flags |= CMD_IGNORE_RETURN as libc::c_int;
+        }
+
+        return execute_command((*if_command).true_case);
+    } else {
+        QUIT!();
+
+        if !((*if_command).false_case).is_null()
+            && (*if_command).flags & CMD_IGNORE_RETURN as libc::c_int != 0
+        {
+            (*(*if_command).false_case).flags |= CMD_IGNORE_RETURN as libc::c_int;
+        }
+
+        return execute_command((*if_command).false_case);
+    };
+}
 
 
 
