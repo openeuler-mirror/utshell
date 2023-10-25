@@ -3767,8 +3767,171 @@ unsafe extern "C" fn execute_arith_command(
     };
 }
 
+static mut nullstr: *mut libc::c_char = b"\0" as *const u8 as *mut libc::c_char;
 
+unsafe extern "C" fn execute_cond_node(mut cond: *mut COND_COM) -> libc::c_int {
+    let mut result: libc::c_int = 0;
+    let mut invert: libc::c_int = 0;
+    let mut patmatch: libc::c_int = 0;
+    let mut rmatch: libc::c_int = 0;
+    let mut mflags: libc::c_int = 0;
+    let mut ignore: libc::c_int = 0;
+    let mut arg1: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut arg2: *mut libc::c_char = 0 as *mut libc::c_char;
 
+    invert = (*cond).flags & CMD_INVERT_RETURN as libc::c_int;
+    ignore = (*cond).flags & CMD_IGNORE_RETURN as libc::c_int;
+    if ignore != 0 {
+        if !((*cond).left).is_null() {
+            (*(*cond).left).flags |= CMD_IGNORE_RETURN as libc::c_int;
+        }
+        if !((*cond).right).is_null() {
+            (*(*cond).right).flags |= CMD_IGNORE_RETURN as libc::c_int;
+        }
+    }
+
+    if (*cond).type_ == COND_EXPR as libc::c_int {
+        result = execute_cond_node((*cond).left);
+    } else if (*cond).type_  == COND_OR as libc::c_int {
+        result = execute_cond_node((*cond).left);
+        if result != EXECUTION_SUCCESS as libc::c_int {
+            result = execute_cond_node((*cond).right);
+        }
+    } else if (*cond).type_  == COND_AND as libc::c_int {
+        result = execute_cond_node((*cond).left);
+        if result == EXECUTION_SUCCESS as libc::c_int {
+            result = execute_cond_node((*cond).right);
+        }
+    } else if (*cond).type_ == COND_UNARY as libc::c_int {
+        if ignore != 0 {
+            comsub_ignore_return += 1;
+        }
+        arg1 = cond_expand_word((*(*cond).left).op, 0 );
+        if ignore != 0 {
+            comsub_ignore_return -= 1;
+        }
+        if arg1.is_null() {
+            arg1 = nullstr;
+        }
+        if echo_command_at_execute != 0 {
+            xtrace_print_cond_term(
+                (*cond).type_ ,
+                invert,
+                (*cond).op,
+                arg1,
+                0 as *mut libc::c_char,
+            );
+        }
+        result = if unary_test((*(*cond).op).word, arg1) != 0 {
+            EXECUTION_SUCCESS as libc::c_int
+        } else {
+            EXECUTION_FAILURE as libc::c_int
+        };
+        if arg1 != nullstr {
+            free(arg1 as *mut c_void);
+        }
+    } else if (*cond).type_  == COND_BINARY as libc::c_int {
+        rmatch = 0 ;
+        patmatch = (*((*(*cond).op).word).offset(1 as isize)
+            as libc::c_int == '=' as i32
+            && *((*(*cond).op).word).offset(2 as isize) as libc::c_int
+                == '\u{0}' as i32
+            && (*((*(*cond).op).word).offset(0 as isize) as libc::c_int
+                == '!' as i32
+                || *((*(*cond).op).word).offset(0 as isize) as libc::c_int
+                    == '=' as i32)
+            || *((*(*cond).op).word).offset(0 as isize) as libc::c_int
+                == '=' as i32
+                && *((*(*cond).op).word).offset(1 as isize) as libc::c_int
+                    == '\u{0}' as i32) as libc::c_int;
+        rmatch = (*((*(*cond).op).word).offset(0 as isize) as libc::c_int
+            == '=' as i32
+            && *((*(*cond).op).word).offset(1 as isize) as libc::c_int
+                == '~' as i32
+            && *((*(*cond).op).word).offset(2 as isize) as libc::c_int
+                == '\u{0}' as i32) as libc::c_int;
+
+        if ignore != 0 {
+            comsub_ignore_return += 1;
+        }
+        arg1 = cond_expand_word((*(*cond).left).op, 0 );
+        if ignore != 0 {
+            comsub_ignore_return -= 1;
+        }
+        if arg1.is_null() {
+            arg1 = nullstr;
+        }
+        if ignore != 0 {
+            comsub_ignore_return += 1;
+        }
+        arg2 = cond_expand_word(
+            (*(*cond).right).op,
+            if rmatch != 0 && shell_compatibility_level > 31 {
+                2 
+            } else if patmatch != 0 {
+                1 
+            } else {
+                0 
+            },
+        );
+        if ignore != 0 {
+            comsub_ignore_return -= 1;
+        }
+        if arg2.is_null() {
+            arg2 = nullstr;
+        }
+
+        if echo_command_at_execute != 0 {
+            xtrace_print_cond_term((*cond).type_ , invert, (*cond).op, arg1, arg2);
+        }
+
+        if rmatch != 0 {
+            mflags = SHMAT_PWARN as libc::c_int;
+            mflags |= SHMAT_SUBEXP as libc::c_int;
+            result = sh_regmatch(arg1, arg2, mflags);
+        } else {
+            let mut oe: libc::c_int = 0;
+
+            oe = extended_glob;
+            extended_glob = 1 ;
+            result = if binary_test(
+                (*(*cond).op).word,
+                arg1,
+                arg2,
+                TEST_PATMATCH as libc::c_int | TEST_ARITHEXP as libc::c_int | TEST_LOCALE as libc::c_int,
+            ) != 0
+            {
+                EXECUTION_SUCCESS as libc::c_int
+            } else {
+                EXECUTION_FAILURE as libc::c_int
+            };
+            extended_glob = oe;
+        }
+        if arg1 != nullstr {
+            free(arg1 as *mut c_void);
+        }
+        if arg2 != nullstr {
+            free(arg2  as *mut c_void);
+        }
+    } else {
+        command_error(
+            b"execute_cond_node\0" as *const u8 as *const libc::c_char,
+            CMDERR_BADTYPE as libc::c_int,
+            (*cond).type_ ,
+            0 ,
+        );
+        jump_to_top_level(DISCARD as libc::c_int);
+        result = EXECUTION_FAILURE  as libc::c_int;
+    }
+    if invert != 0 {
+        result = if result == EXECUTION_FAILURE as libc::c_int {
+            EXECUTION_FAILURE as libc::c_int
+        } else {
+            EXECUTION_SUCCESS as libc::c_int
+        };
+    }
+    return result;
+}
 
 
 
