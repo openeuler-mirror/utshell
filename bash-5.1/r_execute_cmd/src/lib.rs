@@ -4015,8 +4015,75 @@ macro_rules! TRANSLATE_REDIRECT {
     };
 }
 
+unsafe extern "C" fn execute_null_command(
+    mut redirects: *mut REDIRECT,
+    mut pipe_in: libc::c_int,
+    mut pipe_out: libc::c_int,
+    mut async_0: libc::c_int,
+) -> libc::c_int {
+    let mut r: libc::c_int = 0;
+    let mut forcefork: libc::c_int = 0;
+    let mut fork_flags: libc::c_int = 0;
+    let mut rd: *mut REDIRECT = 0 as *mut REDIRECT;
 
+    forcefork = 0 ;
+    rd = redirects;
+    while !rd.is_null() {
+        forcefork += (*rd).rflags & REDIR_VARASSIGN as libc::c_int;
+        forcefork += ((*rd).redirector.dest == 0 
+                   || fd_is_bash_input((*rd).redirector.dest) != 0
+                   && INPUT_REDIRECT!((*rd).instruction)
+                   || TRANSLATE_REDIRECT!((*rd).instruction)
+                   || (*rd).instruction == r_instruction_r_close_this) as c_int;
+        rd = (*rd).next;
+    }
 
+    if forcefork != 0 || pipe_in != NO_PIPE
+        || pipe_out != NO_PIPE || async_0 != 0
+    {
+        fork_flags = if async_0 != 0 { FORK_ASYNC as libc::c_int } else { 0 };
+        if make_child(0 as *mut libc::c_char, fork_flags) == 0 
+        {
+            restore_original_signals();
+            do_piping(pipe_in, pipe_out);
+            coproc_closeall();
+
+            interactive = 0 ;
+
+            subshell_environment = 0 ;
+            if async_0 != 0 {
+                subshell_environment |= SUBSHELL_ASYNC as libc::c_int;
+            }
+            if pipe_in != NO_PIPE || pipe_out != NO_PIPE {
+                subshell_environment |= SUBSHELL_PIPE as libc::c_int;
+            }
+            if do_redirections(redirects, RX_ACTIVE as libc::c_int) == 0 {
+                exit(EXECUTION_SUCCESS as libc::c_int);
+            } else {
+                exit(EXECUTION_FAILURE as libc::c_int);
+            }
+        } else {
+            close_pipes(pipe_in, pipe_out);
+            if pipe_out == NO_PIPE {
+                unlink_fifo_list();
+            }
+            return EXECUTION_SUCCESS as libc::c_int;
+        }
+    } else {
+        r = do_redirections(redirects, RX_ACTIVE as libc::c_int | RX_UNDOABLE as libc::c_int);
+        cleanup_redirects(redirection_undo_list);
+        redirection_undo_list = 0 as *mut REDIRECT;
+
+        if r != 0 {
+            return EXECUTION_FAILURE as libc::c_int
+        } else if last_command_subst_pid != NO_PID!() {
+            return last_command_exit_value
+        } else {
+            return EXECUTION_SUCCESS as libc::c_int
+        }
+    };
+    return 0;
+}
 
 
 
