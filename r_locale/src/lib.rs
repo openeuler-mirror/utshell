@@ -120,3 +120,249 @@ pub unsafe extern "C" fn set_default_locale() {
     );
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn set_default_locale_vars() {
+    let mut val: *mut libc::c_char;
+    val = get_string_value(STR_LC_CTYPE);
+    if val.is_null() && !lc_all.is_null() && *lc_all as libc::c_int != 0 {
+        setlocale(0 as libc::c_int, lc_all);
+        locale_setblanks();
+        locale_mb_cur_max = __ctype_get_mb_cur_max() as libc::c_int;
+        locale_utf8locale = locale_isutf8(lc_all);
+        locale_shiftstates = mblen(
+            0 as *mut libc::c_void as *mut libc::c_char,
+            0 as libc::c_int as libc::size_t,
+        );
+        u32reset();
+    }
+    val = get_string_value(STR_LC_COLLATE);
+    if val.is_null() && !lc_all.is_null() && *lc_all as libc::c_int != 0 {
+        setlocale(3 as libc::c_int, lc_all);
+    }
+    val = get_string_value(STR_LC_MESSAGES);
+    if val.is_null() && !lc_all.is_null() && *lc_all as libc::c_int != 0 {
+        setlocale(5 as libc::c_int, lc_all);
+    }
+    val = get_string_value(STR_LC_NUMERIC);
+    if val.is_null() && !lc_all.is_null() && *lc_all as libc::c_int != 0 {
+        setlocale(1 as libc::c_int, lc_all);
+    }
+    val = get_string_value(STR_LC_TIME);
+    if val.is_null() && !lc_all.is_null() && *lc_all as libc::c_int != 0 {
+        setlocale(2 as libc::c_int, lc_all);
+    }
+    val = get_string_value(STR_TEXTDOMAIN);
+    if !val.is_null() && *val as libc::c_int != 0 {
+        if !default_domain.is_null() {
+            free(default_domain as *mut libc::c_void);
+        }
+        default_domain = 0 as *mut libc::c_char;
+        default_domain = r_shell::savestring!(val);
+        if !default_dir.is_null() && *default_dir as libc::c_int != 0 {
+            bindtextdomain(default_domain, default_dir);
+        }
+    }
+    val = get_string_value(STR_TEXTDOMAINDIR);
+    if !val.is_null() && *val as libc::c_int != 0 {
+        if !default_dir.is_null() {
+            free(default_dir as *mut libc::c_void);
+        }
+        default_dir = 0 as *mut libc::c_char;
+        default_dir = savestring!(val);
+        if !default_domain.is_null() && *default_domain as libc::c_int != 0 {
+            bindtextdomain(default_domain, default_dir);
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn set_locale_var(
+    var: *mut libc::c_char,
+    value: *mut libc::c_char,
+) -> libc::c_int {
+    let r: libc::c_int;
+    let mut x: *mut libc::c_char;
+    x = b"\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+    *__errno_location() = 0 as libc::c_int;
+    if *var.offset(0 as libc::c_int as isize) as libc::c_int == 'T' as i32
+        && *var.offset(10 as libc::c_int as isize) as libc::c_int == 0 as libc::c_int
+    {
+        if !default_domain.is_null() {
+            free(default_domain as *mut libc::c_void);
+        }
+        default_domain = 0 as *mut libc::c_char;
+        default_domain = if !value.is_null() {
+            savestring!(value)
+        } else {
+            0 as *mut libc::c_void as *mut libc::c_char
+        };
+        if !default_dir.is_null() && *default_dir as libc::c_int != 0 {
+            bindtextdomain(default_domain, default_dir);
+        }
+        return 1 as libc::c_int;
+    } else if *var.offset(0 as libc::c_int as isize) as libc::c_int == 'T' as i32 {
+        if !default_dir.is_null() {
+            free(default_dir as *mut libc::c_void);
+        }
+        default_dir = 0 as *mut libc::c_char;
+        default_dir = if !value.is_null() {
+            savestring!(value)
+        } else {
+            0 as *mut libc::c_void as *mut libc::c_char
+        };
+        if !default_domain.is_null() && *default_domain as libc::c_int != 0 {
+            bindtextdomain(default_domain, default_dir);
+        }
+        return 1 as libc::c_int;
+    } else if *var.offset(3 as libc::c_int as isize) as libc::c_int == 'A' as i32 {
+        if !lc_all.is_null() {
+            free(lc_all as *mut libc::c_void);
+        }
+        lc_all = 0 as *mut libc::c_char;
+        if !value.is_null() {
+            lc_all = savestring!(value);
+        } else {
+            lc_all = malloc(1 as libc::c_int as libc::size_t) as *mut libc::c_char;
+            *lc_all.offset(0 as libc::c_int as isize) = '\0' as i32 as libc::c_char;
+        }
+        r = if *lc_all as libc::c_int != 0 {
+            x = setlocale(6 as libc::c_int, lc_all);
+            (x != 0 as *mut libc::c_char) as libc::c_int
+        } else {
+            reset_locale_vars()
+        };
+        if x.is_null() {
+            if *__errno_location() == 0 as libc::c_int {
+                internal_warning(
+                    dcgettext(
+                        0 as *const libc::c_char,
+                        b"setlocale: LC_ALL: cannot change locale (%s)\0" as *const u8
+                            as *const libc::c_char,
+                        5 as libc::c_int,
+                    ),
+                    lc_all,
+                );
+            } else {
+                internal_warning(
+                    dcgettext(
+                        0 as *const libc::c_char,
+                        b"setlocale: LC_ALL: cannot change locale (%s): %s\0"
+                            as *const u8 as *const libc::c_char,
+                        5 as libc::c_int,
+                    ),
+                    lc_all,
+                    strerror(*__errno_location()),
+                );
+            }
+        }
+        locale_setblanks();
+        locale_mb_cur_max = __ctype_get_mb_cur_max() as libc::c_int;
+        if *lc_all as libc::c_int != 0 && !x.is_null() {
+            locale_utf8locale = locale_isutf8(lc_all);
+        }
+        locale_shiftstates = mblen(
+            0 as *mut libc::c_void as *mut libc::c_char,
+            0 as libc::c_int as libc::size_t,
+        );
+        u32reset();
+        return r;
+    } else if *var.offset(3 as libc::c_int as isize) as libc::c_int == 'C' as i32
+        && *var.offset(4 as libc::c_int as isize) as libc::c_int == 'T' as i32
+    { /* LC_CTYPE */
+        if lc_all.is_null() || *lc_all as libc::c_int == '\0' as i32 {
+            x = setlocale(
+                0 as libc::c_int,
+                get_locale_var(
+                    STR_LC_CTYPE as *const u8 as *const libc::c_char
+                        as *mut libc::c_char,
+                ),
+            );
+            locale_setblanks();
+            locale_mb_cur_max = __ctype_get_mb_cur_max() as libc::c_int;
+            if !x.is_null() {
+                locale_utf8locale = locale_isutf8(x);
+            }
+            locale_shiftstates = mblen(
+                0 as *mut libc::c_void as *mut libc::c_char,
+                0 as libc::c_int as size_t,
+            );
+            u32reset();
+        }
+    } else if *var.offset(3 as libc::c_int as isize) as libc::c_int == 'C' as i32
+        && *var.offset(4 as libc::c_int as isize) as libc::c_int == 'O' as i32
+    { /* LC_COLLATE */
+        if lc_all.is_null() || *lc_all as libc::c_int == '\0' as i32 {
+            x = setlocale(
+                3 as libc::c_int,
+                get_locale_var(
+                    b"LC_COLLATE\0" as *const u8 as *const libc::c_char
+                        as *mut libc::c_char,
+                ),
+            );
+        }
+    } else if *var.offset(3 as libc::c_int as isize) as libc::c_int == 'M' as i32
+        && *var.offset(4 as libc::c_int as isize) as libc::c_int == 'E' as i32
+    { /* LC_MESSAGES */
+        if lc_all.is_null() || *lc_all as libc::c_int == '\0' as i32 {
+            x = setlocale(
+                5 as libc::c_int,
+                get_locale_var(
+                    b"LC_MESSAGES\0" as *const u8 as *const libc::c_char
+                        as *mut libc::c_char,
+                ),
+            );
+        }
+    } else if *var.offset(3 as libc::c_int as isize) as libc::c_int == 'N' as i32
+        && *var.offset(4 as libc::c_int as isize) as libc::c_int == 'U' as i32
+    { /* LC_NUMERIC */
+        if lc_all.is_null() || *lc_all as libc::c_int == '\0' as i32 {
+            x = setlocale(
+                1 as libc::c_int,
+                get_locale_var(
+                    b"LC_NUMERIC\0" as *const u8 as *const libc::c_char
+                        as *mut libc::c_char,
+                ),
+            );
+        }
+    } else if *var.offset(3 as libc::c_int as isize) as libc::c_int == 'T' as i32
+        && *var.offset(4 as libc::c_int as isize) as libc::c_int == 'I' as i32
+    {/* LC_TIME */
+
+        if lc_all.is_null() || *lc_all as libc::c_int == '\0' as i32 {
+            x = setlocale(
+                2 as libc::c_int,
+                get_locale_var(
+                    b"LC_TIME\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                ),
+            );
+        }
+    }
+    if x.is_null() {
+        if *__errno_location() == 0 as libc::c_int {
+            internal_warning(
+                dcgettext(
+                    0 as *const libc::c_char,
+                    b"setlocale: %s: cannot change locale (%s)\0" as *const u8
+                        as *const libc::c_char,
+                    5 as libc::c_int,
+                ),
+                var,
+                get_locale_var(var),
+            );
+        } else {
+            internal_warning(
+                dcgettext(
+                    0 as *const libc::c_char,
+                    b"setlocale: %s: cannot change locale (%s): %s\0" as *const u8
+                        as *const libc::c_char,
+                    5 as libc::c_int,
+                ),
+                var,
+                get_locale_var(var),
+                strerror(*__errno_location()),
+            );
+        }
+    }
+    return (x != 0 as *mut libc::c_char) as libc::c_int;
+}
+
