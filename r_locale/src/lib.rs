@@ -605,3 +605,71 @@ pub unsafe extern "C" fn mk_msgstr(
     let fresh9 = r;
     r = r.offset(1);
     *fresh9 = '\0' as i32 as libc::c_char;
+    return result;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn localeexpand(
+    string: *mut libc::c_char,
+    start: libc::c_int,
+    end: libc::c_int,
+    lineno: libc::c_int,
+    lenp: *mut libc::c_int,
+) -> *mut libc::c_char {
+    let mut len: libc::c_int;
+    let mut tlen: libc::c_int;
+    let mut foundnl: libc::c_int;
+    let temp: *mut libc::c_char;
+    let t: *mut libc::c_char;
+    let t2: *mut libc::c_char;
+    temp = malloc((end - start + 1 as libc::c_int) as libc::size_t) as *mut libc::c_char;
+    tlen = 0 as libc::c_int;
+    len = start;
+    while len < end {
+        let fresh10 = len;
+        len = len + 1;
+        let fresh11 = tlen;
+        tlen = tlen + 1;
+        *temp.offset(fresh11 as isize) = *string.offset(fresh10 as isize);
+    }
+    *temp.offset(tlen as isize) = '\0' as i32 as libc::c_char;
+    if dump_translatable_strings != 0 {
+        if dump_po_strings != 0 {
+            foundnl = 0 as libc::c_int;
+            t = mk_msgstr(temp, &mut foundnl);
+            t2 = (if foundnl != 0 {
+                b"\"\"\n\0" as *const u8 as *const libc::c_char
+            } else {
+                b"\0" as *const u8 as *const libc::c_char
+            }) as *mut libc::c_char;
+            printf(
+                b"#: %s:%d\nmsgid %s%s\nmsgstr \"\"\n\0" as *const u8
+                    as *const libc::c_char,
+                yy_input_name(),
+                lineno,
+                t2,
+                t,
+            );
+            free(t as *mut libc::c_void);
+        } else {
+            printf(b"\"%s\"\n\0" as *const u8 as *const libc::c_char, temp);
+        }
+        if !lenp.is_null() {
+            *lenp = tlen;
+        }
+        return temp;
+    } else if *temp != 0 {
+        t = localetrans(temp, tlen, &mut len);
+        free(temp as *mut libc::c_void);
+        if !lenp.is_null() {
+            *lenp = len;
+        }
+        return t;
+    } else {
+        if !lenp.is_null() {
+            *lenp = 0 as libc::c_int;
+        }
+        return temp;
+    };
+}
+
