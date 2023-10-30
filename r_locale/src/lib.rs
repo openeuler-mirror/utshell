@@ -673,3 +673,62 @@ pub unsafe extern "C" fn localeexpand(
     };
 }
 
+unsafe extern "C" fn locale_setblanks() {
+    let mut x: libc::c_int;
+    x = 0 as libc::c_int;
+    while x < sh_syntabsiz {
+        if *(*__ctype_b_loc()).offset(x as libc::c_uchar as libc::c_int as isize)
+            as libc::c_int & _ISblank as libc::c_int as libc::c_ushort as libc::c_int
+            != 0
+        {
+            *sh_syntaxtab.as_mut_ptr().offset(x as isize)
+                |= 0x2 as libc::c_int | 0x2000 as libc::c_int;
+        } else if if x != 0 {
+            (mbschr(b"()<>;&| \t\n\0" as *const u8 as *const libc::c_char, x)
+                != 0 as *mut libc::c_void as *mut libc::c_char) as libc::c_int
+        } else {
+            0 as libc::c_int
+        } != 0
+        {
+            *sh_syntaxtab.as_mut_ptr().offset(x as isize) |= 0x2 as libc::c_int;
+            *sh_syntaxtab.as_mut_ptr().offset(x as isize) &= !(0x2000 as libc::c_int);
+        } else {
+            *sh_syntaxtab.as_mut_ptr().offset(x as isize)
+                &= !(0x2 as libc::c_int | 0x2000 as libc::c_int);
+        }
+        x += 1;
+    }
+}
+
+unsafe extern "C" fn locale_isutf8(mut _lspec: *mut libc::c_char) -> libc::c_int {
+    let cp: *mut libc::c_char;
+    let mut _encoding: *mut libc::c_char = 0 as *mut libc::c_char;
+    cp = nl_langinfo(libc::CODESET as libc::c_int);
+    return (*cp.offset(0 as libc::c_int as isize) as libc::c_int
+        == (*::core::mem::transmute::<
+            &[u8; 6],
+            &[libc::c_char; 6],
+        >(b"UTF-8\0"))[0 as libc::c_int as usize] as libc::c_int
+        && strcmp(cp, b"UTF-8\0" as *const u8 as *const libc::c_char) == 0 as libc::c_int
+        || *cp.offset(0 as libc::c_int as isize) as libc::c_int
+            == (*::core::mem::transmute::<
+                &[u8; 5],
+                &[libc::c_char; 5],
+            >(b"utf8\0"))[0 as libc::c_int as usize] as libc::c_int
+            && strcmp(cp, b"utf8\0" as *const u8 as *const libc::c_char)
+                == 0 as libc::c_int) as libc::c_int;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn locale_decpoint() -> libc::c_int {
+    // let lv: *mut lconv;
+    let lv: *const lconv;
+    lv = localeconv();
+    return if !lv.is_null() && !((*lv).decimal_point).is_null()
+        && *((*lv).decimal_point).offset(0 as libc::c_int as isize) as libc::c_int != 0
+    {
+        *((*lv).decimal_point).offset(0 as libc::c_int as isize) as libc::c_int
+    } else {
+        '.' as i32
+    };
+}
