@@ -5488,8 +5488,117 @@ pub unsafe extern "C" fn execute_shell_function(
     return ret;
 }
 
+unsafe extern "C" fn execute_subshell_builtin_or_function(
+    mut words: *mut WordList,
+    mut redirects: *mut REDIRECT,
+    mut builtin:  sh_builtin_func_t,
+    mut var: *mut SHELL_VAR,
+    mut pipe_in: libc::c_int,
+    mut pipe_out: libc::c_int,
+    mut async_0: libc::c_int,
+    mut fds_to_close: *mut fd_bitmap,
+    mut flags: libc::c_int,
+) {
+    let mut result: libc::c_int = 0;
+    let mut r: libc::c_int = 0;
+    let mut funcvalue: libc::c_int = 0;
+    let mut jobs_hack: libc::c_int = 0;
+    
+    jobs_hack = (builtin
+        == Some(jobs_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int)
+        && (subshell_environment & 0x1 as libc::c_int == 0 as libc::c_int
+            || pipe_out != -(1 as libc::c_int))) as libc::c_int;
+    interactive = 0 as libc::c_int;
+    login_shell = interactive;
+    if builtin
+        == Some(eval_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int)
+    {
+        evalnest = 0 as libc::c_int;
+    } else if builtin
+            == Some(
+                source_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int,
+            )
+        {
+        sourcenest = 0 ;
+    }
+    if async_0 != 0 {
+        subshell_environment |= SUBSHELL_ASYNC as libc::c_int;
+    }
+    if pipe_in != NO_PIPE || pipe_out != NO_PIPE {
+        subshell_environment |= SUBSHELL_PIPE as libc::c_int;
+    }
 
+    maybe_make_export_env();
 
+    if jobs_hack != 0 {
+        kill_current_pipeline();
+    } else {
+        without_job_control();
+    }
+
+    set_sigchld_handler();
+
+    set_sigint_handler();
+
+    if !fds_to_close.is_null() {
+        close_fd_bitmap(fds_to_close);
+    }
+
+    do_piping(pipe_in, pipe_out);
+
+    if do_redirections(redirects, RX_ACTIVE as libc::c_int) != 0 {
+        exit(EXECUTION_FAILURE as libc::c_int);
+    }
+    if builtin.is_some() {
+        result = setjmp_nosigs!(top_level);
+        funcvalue = 0 ;
+        if return_catch_flag != 0
+            && builtin
+                == Some(
+                    return_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int,
+                )
+        {
+            funcvalue = setjmp_nosigs!(return_catch);
+        }
+
+        if result == EXITPROG as libc::c_int {
+            subshell_exit(last_command_exit_value);
+        } else if result != 0 {
+            subshell_exit(EXECUTION_FAILURE as libc::c_int);
+        } else if funcvalue != 0 {
+            subshell_exit(return_catch_value);
+        } else {
+            r = execute_builtin(builtin, words, flags, 1 );
+            fflush(stdout);
+            if r == EX_USAGE as libc::c_int {
+                r = EX_BADUSAGE as libc::c_int;
+            } else if r == EX_DISKFALLBACK as libc::c_int {
+                let mut command_line: *mut libc::c_char = 0 as *mut libc::c_char;
+                savestring!(
+                    if !the_printed_command_except_trap.is_null() 
+                    { the_printed_command_except_trap }
+                    else{
+                        b"\0" as *const u8 as *mut c_char } 
+                    );
+                r = execute_disk_command(
+                    words,
+                    0 as *mut REDIRECT,
+                    command_line,
+                    -1,
+                    -1,
+                    async_0,
+                    0 as *mut fd_bitmap,
+                    flags | CMD_NO_FORK as libc::c_int,
+                );
+            }
+            subshell_exit(r);
+        }
+    } else {
+        r = execute_function(var, words, flags, fds_to_close, async_0, 1 );
+        fflush(stdout);
+        subshell_exit(r);
+    };
+}
 
 
 
