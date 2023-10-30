@@ -4304,4 +4304,521 @@ macro_rules! EX_DISKFALLBACK {
     };
 }
 
+unsafe extern "C" fn execute_simple_command(
+    mut simple_command: *mut SIMPLE_COM,
+    mut pipe_in: libc::c_int,
+    mut pipe_out: libc::c_int,
+    mut async_0: libc::c_int,
+    mut fds_to_close: *mut fd_bitmap,
+) -> libc::c_int {
+    let mut current_block: u64;
+    let mut words: *mut WordList = 0 as *mut WordList;
+    let mut lastword: *mut WordList = 0 as *mut WordList;
+    let mut command_line: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut lastarg: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut first_word_quoted: libc::c_int = 0;
+    let mut result: libc::c_int = 0;
+    let mut builtin_is_special: libc::c_int = 0;
+    let mut already_forked: libc::c_int = 0;
+    let mut dofork: libc::c_int = 0;
+    let mut fork_flags: libc::c_int = 0;
+    let mut cmdflags: libc::c_int = 0;
+    let mut old_last_async_pid: pid_t = 0;
+    let mut builtin: sh_builtin_func_t = None;
+    let mut func: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut old_builtin: libc::c_int = 0;
+    let mut old_command_builtin: libc::c_int = 0;
 
+    result = EXECUTION_SUCCESS as c_int ;
+    builtin_is_special = 0 ;
+    special_builtin_failed = builtin_is_special;
+    command_line = 0 as *mut libc::c_char;
+
+    QUIT!();
+
+    if variable_context != 0 && interactive_shell != 0 && sourcelevel == 0  
+    {
+        line_number -= function_line_number - 1 ;
+        if line_number <= 0 {
+            line_number = 1 ;
+        }
+    }
+
+    command_string_index = 0 ;
+    print_simple_command(simple_command);
+
+    if signal_in_progress( DEBUG_TRAP as c_int) == 0 
+        && running_trap == 0  
+    {
+        if !the_printed_command_except_trap.is_null() {
+            FREE!(the_printed_command_except_trap);
+        }
+        the_printed_command_except_trap = if !the_printed_command.is_null() {
+            savestring!(the_printed_command)
+        } else {
+            0 as *mut libc::c_char
+        };
+    }
+
+    result = run_debug_trap();
+
+    if debugging_mode != 0 && result != EXECUTION_SUCCESS as libc::c_int {
+        return EXECUTION_SUCCESS as libc::c_int;
+    }
+
+    cmdflags = (*simple_command).flags;
+
+    first_word_quoted = if !((*simple_command).words).is_null() {
+        (*(*(*simple_command).words).word).flags & W_QUOTED as c_int
+    } else {
+        0 
+    };
+
+    last_command_subst_pid = NO_PID!();
+    old_last_async_pid = last_asynchronous_pid;
+
+    already_forked = 0 ;
+
+    dofork = (pipe_in != NO_PIPE as c_int || pipe_out != NO_PIPE as libc::c_int
+        || async_0 != 0) as libc::c_int;
+
+    if dofork != 0 && pipe_in == NO_PIPE as libc::c_int && pipe_out == NO_PIPE as libc::c_int
+        && !((*simple_command).words).is_null()
+        && !((*(*simple_command).words).word).is_null()
+        && !((*(*(*simple_command).words).word).word).is_null()
+        && *((*(*(*simple_command).words).word).word).offset(0 as isize)
+            as libc::c_int == '%' as i32
+    {
+        dofork = 0 ;
+    }
+
+    if dofork != 0 {
+        let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+
+        maybe_make_export_env();
+
+        fork_flags = if async_0 != 0 { FORK_ASYNC as libc::c_int } else { 0 };
+        p = savestring!(the_printed_command_except_trap);
+        if make_child(p, fork_flags) == 0 {
+            already_forked = 1 ;
+            cmdflags |= CMD_NO_FORK as libc::c_int;
+
+            subshell_environment = SUBSHELL_FORK as libc::c_int;
+            if pipe_in != NO_PIPE as libc::c_int || pipe_out != NO_PIPE as libc::c_int {
+                subshell_environment |= SUBSHELL_PIPE as libc::c_int;
+            }
+            if async_0 != 0 {
+                subshell_environment |= SUBSHELL_ASYNC as libc::c_int;
+            }
+
+            if !fds_to_close.is_null() {
+                close_fd_bitmap(fds_to_close);
+            }
+
+            stdin_redir |= (pipe_in != NO_PIPE as libc::c_int) as libc::c_int;
+
+            do_piping(pipe_in, pipe_out);
+            pipe_out = NO_PIPE as libc::c_int;
+            pipe_in = pipe_out;
+
+            coproc_closeall();
+            last_asynchronous_pid = old_last_async_pid;
+
+            if async_0 != 0 {
+                subshell_level += 1;
+            }
+            FREE!(p);
+        } else {
+            if pipe_out != NO_PIPE as libc::c_int {
+                result = last_command_exit_value;
+            }
+            close_pipes(pipe_in, pipe_out);
+            command_line = 0 as *mut libc::c_char;
+            return result;
+        }
+    }
+
+    QUIT!();
+
+    if cmdflags & CMD_INHIBIT_EXPANSION as libc::c_int == 0 {
+        current_fds_to_close = fds_to_close;
+        fix_assignment_words((*simple_command).words);
+
+        if cmdflags & CMD_IGNORE_RETURN as libc::c_int != 0 {
+            comsub_ignore_return += 1;
+        }
+
+        words = expand_words((*simple_command).words);
+        if cmdflags & CMD_IGNORE_RETURN as libc::c_int != 0 {
+            comsub_ignore_return -= 1;
+        }
+        current_fds_to_close = 0 as *mut fd_bitmap;
+    } else {
+        words = copy_word_list((*simple_command).words);
+    }
+
+    if words.is_null() {
+        this_command_name = 0 as *mut libc::c_char;
+        result = execute_null_command(
+            (*simple_command).redirects,
+            pipe_in,
+            pipe_out,
+            if already_forked != 0 { 0 } else { async_0 },
+        );
+
+        if already_forked != 0 {
+            sh_exit(result);
+        } else {
+            bind_lastarg(0 as *mut libc::c_char);
+            set_pipestatus_from_exit(result);
+            return result;
+        }
+    }
+
+    lastarg = 0 as *mut libc::c_char;
+    begin_unwind_frame(
+        b"simple-command\0" as *const u8 as *mut libc::c_char,
+    );
+
+    if echo_command_at_execute != 0
+        && cmdflags & CMD_COMMAND_BUILTIN as libc::c_int == 0 
+    {
+        xtrace_print_word_list(words, 1 );
+    }
+    
+    builtin = None;
+    
+    func = 0 as *mut SHELL_VAR;
+
+    if cmdflags & CMD_NO_FUNCTIONS as libc::c_int == 0 {
+        if posixly_correct != 0 {
+            builtin = find_special_builtin((*(*words).word).word);
+            if builtin.is_some() {
+                builtin_is_special = 1 ;
+            }
+        }
+        if builtin.is_none() {
+            func = find_function((*(*words).word).word);
+        }
+    }
+
+    if posixly_correct != 0 && builtin_is_special != 0
+        && interactive_shell == 0 && tempenv_assign_error != 0
+    {
+        last_command_exit_value = EXECUTION_FAILURE as c_int;
+        jump_to_top_level(ERREXIT as libc::c_int);
+    }
+    tempenv_assign_error = 0 ;
+    old_command_builtin = -1;
+
+    if builtin.is_none() && func.is_null() {
+        let mut disposer: *mut WordList = 0 as *mut WordList;
+        let mut l: *mut WordList = 0 as *mut WordList;
+        let mut cmdtype: libc::c_int = 0;
+
+        builtin =  find_shell_builtin((*(*words).word).word);
+    
+        while builtin == Some(command_builtin)   
+        {
+            disposer = words;
+            cmdtype = 0;
+            words = check_command_builtin(words, &mut cmdtype);
+            if !(cmdtype > 0 ) {
+                break;
+            }
+            l = disposer;
+            while (*l).next != words {
+                l = (*l).next;
+            }
+            
+            (*l).next = 0 as *mut WordList;
+            dispose_words(disposer);
+            cmdflags |= CMD_COMMAND_BUILTIN as libc::c_int | CMD_NO_FUNCTIONS as libc::c_int;
+            if cmdtype == 2 {
+                cmdflags |= CMD_STDPATH as libc::c_int;
+            }
+            builtin = find_shell_builtin((*(*words).word).word);
+        }
+        if cmdflags & CMD_COMMAND_BUILTIN as libc::c_int != 0 {
+            old_command_builtin = executing_command_builtin;
+            unwind_protect_mem(
+                &mut executing_command_builtin as *mut libc::c_int as *mut libc::c_char,
+                ::std::mem::size_of::<libc::c_int>() as libc::c_ulong as libc::c_int,
+            );
+            executing_command_builtin |= 1 ;
+        }
+        builtin = None;
+    }
+    add_unwind_protect(
+        transmute::<
+        unsafe extern "C" fn (arg1: *mut WordList),
+        *mut Function,
+        >(dispose_words),
+        words as *mut c_char,
+    );
+
+    QUIT!();
+
+    lastword = words;
+    while !((*lastword).next).is_null() {
+        lastword = (*lastword).next;
+    }
+
+    lastarg = (*(*lastword).word).word;
+
+    if *((*(*words).word).word).offset(0 as isize) as libc::c_int
+        == '%' as i32 && already_forked == 0  
+    {
+        this_command_name = (if async_0 != 0 {
+            b"bg\0" as *const u8 as *const libc::c_char
+        } else {
+            b"fg\0" as *const u8 as *const libc::c_char
+        }) as *mut libc::c_char;
+
+        last_shell_builtin = this_shell_builtin;
+        this_shell_builtin = builtin_address(this_command_name);
+        result = (Some(this_shell_builtin.expect("non-null function pointer")))
+            .expect("non-null function pointer")(words);
+    } else {
+        if job_control != 0 && already_forked == 0
+            && async_0 == 0 && first_word_quoted == 0
+            && ((*words).next).is_null()
+            && *((*(*words).word).word).offset(0 as isize) as libc::c_int
+                != 0 && ((*simple_command).redirects).is_null()
+            && pipe_in == NO_PIPE as libc::c_int && pipe_out == NO_PIPE as libc::c_int
+            && {
+                temp = get_string_value(
+                    b"auto_resume\0" as *const u8 as *const libc::c_char,
+                );
+                !temp.is_null()
+            }
+        {
+            let mut job: libc::c_int = 0;
+            let mut jflags: libc::c_int = 0;
+            let mut started_status: libc::c_int = 0;
+
+            jflags = JM_STOPPED as libc::c_int | JM_FIRSTMATCH as libc::c_int;
+            if STREQ!(temp, b"exact" as *const u8 as *mut c_char)
+            {
+                jflags |= JM_EXACT as libc::c_int;
+            } else if STREQ!(temp, b"substring" as *const u8 as *mut c_char)
+            {
+                jflags |= JM_SUBSTRING as libc::c_int;
+            } else {
+                jflags |= JM_PREFIX as libc::c_int;
+            }
+            job = get_job_by_name((*(*words).word).word, jflags);
+            if job != NO_JOB  {
+                run_unwind_frame(
+                    b"simple-command\0" as *const u8 as *mut libc::c_char,
+                );
+                this_command_name = b"fg\0" as *const u8 as *mut libc::c_char;
+                last_shell_builtin = this_shell_builtin;
+                this_shell_builtin = builtin_address(
+                    b"fg\0" as *const u8 as *mut libc::c_char,
+                );
+
+                started_status = start_job(job, 1 );
+                return if started_status < 0 {
+                    EXECUTION_FAILURE as libc::c_int
+                } else {
+                    started_status
+                };
+            }
+        }
+        loop {
+            this_command_name = (*(*words).word).word;
+
+            QUIT!();
+
+            if func.is_null() && builtin.is_none() {
+                builtin = find_shell_builtin(this_command_name);
+            }
+
+            last_shell_builtin = this_shell_builtin;
+            this_shell_builtin = builtin;
+
+            if builtin.is_some() || !func.is_null() {
+                if builtin.is_some() {
+                    old_builtin = executing_builtin;
+                    unwind_protect_mem(
+                        &mut executing_builtin as *mut libc::c_int as *mut libc::c_char,
+                        ::std::mem::size_of::<libc::c_int>() as libc::c_ulong
+                            as libc::c_int,
+                    );
+                    if old_command_builtin == -1 {
+                        old_command_builtin = executing_command_builtin;
+                        unwind_protect_mem(
+                            &mut executing_command_builtin as *mut libc::c_int
+                                as *mut libc::c_char,
+                            ::std::mem::size_of::<libc::c_int>() as libc::c_ulong
+                                as libc::c_int,
+                        );
+                    }
+                }
+                if already_forked != 0 {
+                    reset_signal_handlers();
+                    subshell_environment |= SUBSHELL_RESETTRAP as libc::c_int;
+                    if async_0 != 0 {
+                        if cmdflags & CMD_STDIN_REDIR as libc::c_int != 0
+                            && pipe_in == NO_PIPE 
+                            && stdin_redirects((*simple_command).redirects)
+                                == 0 
+                        {
+                            async_redirect_stdin();
+                        }
+                        setup_async_signals();
+                    }
+                    if async_0 == 0 {
+                        subshell_level += 1;
+                    }
+                    execute_subshell_builtin_or_function(
+                        words,
+                        (*simple_command).redirects,
+                         builtin,
+                        func,
+                        pipe_in,
+                        pipe_out,
+                        async_0,
+                        fds_to_close,
+                        cmdflags,
+                    );
+                    subshell_level -= 1;
+                } else {
+                    result = execute_builtin_or_function(
+                        words,
+                        builtin,
+                        func,
+                        (*simple_command).redirects,
+                        fds_to_close,
+                        cmdflags,
+                    );
+                    if builtin.is_some() {
+                        current_block = 2525024825076287515;
+                        break;
+                    } else {
+                        current_block = 2149547614657787525;
+                        break;
+                    }
+                }
+            }
+            if !(autocd != 0 && interactive != 0 && !((*words).word).is_null()
+                && is_dirname((*(*words).word).word) != 0)
+            {
+                current_block = 5373862753408874748;
+                break;
+            }
+            words = make_word_list(
+                make_word(b"--\0" as *const u8 as *const libc::c_char),
+                words,
+            );
+            words = make_word_list(
+                make_word(b"cd\0" as *const u8 as *const libc::c_char),
+                words,
+            );
+            xtrace_print_word_list(words, 0 as libc::c_int);
+            func = find_function(b"cd\0" as *const u8 as *const libc::c_char);
+        }
+        match current_block {
+            2525024825076287515 => {
+                if result > EX_SHERRBASE as libc::c_int {
+                    match result {
+                        EX_REDIRFAIL!() | EX_BADASSIGN!() | EX_EXPFAIL!() => {
+                            if posixly_correct != 0 && builtin_is_special != 0
+                                && interactive_shell == 0 
+                            {
+                                last_command_exit_value = EXECUTION_FAILURE as c_int;
+                                jump_to_top_level(ERREXIT as libc::c_int);
+                            }
+                            current_block = 5872168878400681860;
+                        }
+                        EX_DISKFALLBACK!() => {
+                            executing_builtin = old_builtin;
+                            executing_command_builtin = old_command_builtin;
+                            builtin = None;
+                            current_block = 5373862753408874748;
+                        }
+                        _ => {
+                            current_block = 5872168878400681860;
+                        }
+                    }
+                    match current_block {
+                        5373862753408874748 => {}
+                        _ => {
+                            result = builtin_status(result);
+                            if builtin_is_special != 0 {
+                                special_builtin_failed = 1 as libc::c_int;
+                            }
+                            current_block = 8487579351791723214;
+                        }
+                    }
+                } else {
+                    current_block = 8487579351791723214;
+                }
+                match current_block {
+                    5373862753408874748 => {}
+                    _ => {
+                        if posixly_correct != 0 && builtin_is_special != 0
+                            && !temporary_env.is_null()
+                        {
+                            merge_temporary_env();
+                        }
+                        current_block = 11272946706888692785;
+                    }
+                }
+            }
+            2149547614657787525 => {
+                if result == EX_USAGE as libc::c_int {
+                    result = EX_BADUSAGE as libc::c_int;
+                } else if result > EX_SHERRBASE as libc::c_int {
+                    result = builtin_status(result);
+                }
+                current_block = 11272946706888692785;
+            }
+            _ => {}
+        }
+        match current_block {
+            11272946706888692785 => {
+                set_pipestatus_from_exit(result);
+            }
+            _ => {
+                if command_line.is_null() {
+                    command_line = savestring!(if !the_printed_command_except_trap.is_null() {
+                        the_printed_command_except_trap
+                    } else {
+                        b"\0" as *const u8 as *const libc::c_char
+                    });
+                }
+                if already_forked == 0 as libc::c_int
+                    && cmdflags & 0x40 as libc::c_int != 0
+                    && fifos_pending() > 0 as libc::c_int
+                {
+                    cmdflags &= !(0x40 as libc::c_int);
+                }
+                result = execute_disk_command(
+                    words,
+                    (*simple_command).redirects,
+                    command_line,
+                    pipe_in,
+                    pipe_out,
+                    async_0,
+                    fds_to_close,
+                    cmdflags,
+                );
+            }
+        }
+    }
+    bind_lastarg(lastarg);
+    FREE!(command_line);
+    dispose_words(words);
+    if builtin.is_some() {
+        executing_builtin = old_builtin;
+        executing_command_builtin = old_command_builtin;
+    }
+    discard_unwind_frame(
+        b"simple-command\0" as *const u8 as *mut libc::c_char,
+    );
+    this_command_name = 0 as *mut libc::c_char;
+    return result;
+}
