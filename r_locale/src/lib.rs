@@ -673,3 +673,30 @@ pub unsafe extern "C" fn localeexpand(
     };
 }
 
+unsafe extern "C" fn locale_setblanks() {
+    let mut x: libc::c_int;
+    x = 0 as libc::c_int;
+    while x < sh_syntabsiz {
+        if *(*__ctype_b_loc()).offset(x as libc::c_uchar as libc::c_int as isize)
+            as libc::c_int & _ISblank as libc::c_int as libc::c_ushort as libc::c_int
+            != 0
+        {
+            *sh_syntaxtab.as_mut_ptr().offset(x as isize)
+                |= 0x2 as libc::c_int | 0x2000 as libc::c_int;
+        } else if if x != 0 {
+            (mbschr(b"()<>;&| \t\n\0" as *const u8 as *const libc::c_char, x)
+                != 0 as *mut libc::c_void as *mut libc::c_char) as libc::c_int
+        } else {
+            0 as libc::c_int
+        } != 0
+        {
+            *sh_syntaxtab.as_mut_ptr().offset(x as isize) |= 0x2 as libc::c_int;
+            *sh_syntaxtab.as_mut_ptr().offset(x as isize) &= !(0x2000 as libc::c_int);
+        } else {
+            *sh_syntaxtab.as_mut_ptr().offset(x as isize)
+                &= !(0x2 as libc::c_int | 0x2000 as libc::c_int);
+        }
+        x += 1;
+    }
+}
+
