@@ -5078,8 +5078,41 @@ unsafe extern "C" fn execute_builtin(
     return result;
 }
 
+unsafe extern "C" fn maybe_restore_getopt_state(mut gs: *mut sh_getopt_state_t) {
+    if (*gs).gs_flags & 1 != 0 {
+        sh_getopt_restore_istate(gs);
+    } else {
+        free(gs as *mut c_void);
+    };
+}
 
+#[macro_export]
+macro_rules! array_pop {
+    ($a:expr) => {
+        array_dispose_element(
+            array_shift(($a), 1  , 0 ),
+        );
+    };
+}
 
+#[macro_export]
+macro_rules! array_cell {
+    ($var:expr) => {
+        (*$var).value as *mut ARRAY
+    };
+}
+
+#[macro_export]
+macro_rules! GET_ARRAY_FROM_VAR {
+    ($n:expr, $v:expr, $a:expr) => {
+        $v = find_variable($n);
+        $a = if !$v.is_null() && array_p!($v) != 0 {
+            array_cell!($v)
+        } else {
+            0 as *mut ARRAY
+        }
+    };
+}
 
 
 
