@@ -5114,8 +5114,41 @@ macro_rules! GET_ARRAY_FROM_VAR {
     };
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn restore_funcarray_state(mut fa: *mut func_array_state) {
+    let mut nfv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut funcname_a: *mut ARRAY = 0 as *mut ARRAY;
 
+    array_pop!((*fa).source_a);
+    array_pop!((*fa).lineno_a);
 
+    GET_ARRAY_FROM_VAR!(b"FUNCNAME\0" as *const u8 as *const libc::c_char, nfv, funcname_a);
+    if nfv == (*fa).funcname_v {
+        array_pop!(funcname_a);
+    }
+    free(fa as *mut c_void);
+}
+
+// #[macro_export]
+// macro_rules! USE_VAR {
+//     ($x:expr) => {
+//         (&mut $x) as c_void
+//     };
+// }
+
+#[macro_export]
+macro_rules! trace_p {
+    ($var:expr) => {
+        (*$var).attributes & att_trace as i32
+    };
+}
+
+#[macro_export]
+macro_rules! array_push {
+    ($a:expr, $v:expr) => {
+        array_rshift($a, 1, $v)
+    };
+}
 
 
 
