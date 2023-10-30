@@ -365,4 +365,52 @@ pub unsafe extern "C" fn set_locale_var(
     }
     return (x != 0 as *mut libc::c_char) as libc::c_int;
 }
-
+#[no_mangle]
+pub unsafe extern "C" fn set_lang(
+    mut _var: *mut libc::c_char,
+    value: *mut libc::c_char,
+) -> libc::c_int {
+    if !lang.is_null() {
+        free(lang as *mut libc::c_void);
+    }
+    lang = 0 as *mut libc::c_char;
+    if !value.is_null() {
+        lang = savestring!(value);
+    } else {
+        lang = malloc(1 as libc::c_int as libc::size_t) as *mut libc::c_char;
+        *lang.offset(0 as libc::c_int as isize) = '\0' as i32 as libc::c_char;
+    }
+    return if lc_all.is_null() || *lc_all as libc::c_int == 0 as libc::c_int {
+        reset_locale_vars()
+    } else {
+        0 as libc::c_int
+    };
+}
+#[no_mangle]
+pub unsafe extern "C" fn set_default_lang() {
+    let mut v: *mut libc::c_char;
+    v = get_string_value(b"LC_ALL\0" as *const u8 as *const libc::c_char);
+    set_locale_var(
+        b"LC_ALL\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        v,
+    );
+    v = get_string_value(b"LANG\0" as *const u8 as *const libc::c_char);
+    set_lang(b"LANG\0" as *const u8 as *const libc::c_char as *mut libc::c_char, v);
+}
+#[no_mangle]
+pub unsafe extern "C" fn get_locale_var(
+    var: *mut libc::c_char,
+) -> *mut libc::c_char {
+    let mut locale: *mut libc::c_char;
+    locale = lc_all;
+    if locale.is_null() || *locale as libc::c_int == 0 as libc::c_int {
+        locale = get_string_value(var);
+    }
+    if locale.is_null() || *locale as libc::c_int == 0 as libc::c_int {
+        locale = lang;
+    }
+    if locale.is_null() || *locale as libc::c_int == 0 as libc::c_int {
+        locale = b"\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+    }
+    return locale;
+}
