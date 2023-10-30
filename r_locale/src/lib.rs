@@ -475,3 +475,133 @@ unsafe extern "C" fn reset_locale_vars() -> libc::c_int {
     return 1 as libc::c_int;
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn localetrans(
+    string: *mut libc::c_char,
+    len: libc::c_int,
+    lenp: *mut libc::c_int,
+) -> *mut libc::c_char {
+    let locale: *mut libc::c_char;
+    let t: *mut libc::c_char;
+    let translated: *mut libc::c_char;
+    let tlen: libc::c_int;
+    if string.is_null() || *string as libc::c_int == 0 as libc::c_int {
+        if !lenp.is_null() {
+            *lenp = 0 as libc::c_int;
+        }
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+    locale = get_locale_var(
+        b"LC_MESSAGES\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+    );
+    if locale.is_null()
+        || *locale.offset(0 as libc::c_int as isize) as libc::c_int == '\0' as i32
+        || *locale.offset(0 as libc::c_int as isize) as libc::c_int == 'C' as i32
+            && *locale.offset(1 as libc::c_int as isize) as libc::c_int == '\0' as i32
+        || *locale.offset(0 as libc::c_int as isize) as libc::c_int
+            == (*::core::mem::transmute::<
+                &[u8; 6],
+                &[libc::c_char; 6],
+            >(b"POSIX\0"))[0 as libc::c_int as usize] as libc::c_int
+            && strcmp(locale, b"POSIX\0" as *const u8 as *const libc::c_char)
+                == 0 as libc::c_int
+    {
+        t = malloc((len + 1 as libc::c_int) as libc::size_t) as *mut libc::c_char;
+        strcpy(t, string);
+        if !lenp.is_null() {
+            *lenp = len;
+        }
+        return t;
+    }
+    if !default_domain.is_null() && *default_domain as libc::c_int != 0 {
+        translated = dcgettext(default_domain, string, 5 as libc::c_int);
+    } else {
+        translated = string;
+    }
+    if translated == string {
+        t = malloc((len + 1 as libc::c_int) as libc::size_t) as *mut libc::c_char;
+        strcpy(t, string);
+        if !lenp.is_null() {
+            *lenp = len;
+        }
+    } else {
+        tlen = strlen(translated) as libc::c_int;
+        t = malloc((tlen + 1 as libc::c_int) as libc::size_t) as *mut libc::c_char;
+        strcpy(t, translated);
+        if !lenp.is_null() {
+            *lenp = tlen;
+        }
+    }
+    return t;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn mk_msgstr(
+    string: *mut libc::c_char,
+    foundnlp: *mut libc::c_int,
+) -> *mut libc::c_char {
+    let mut c: libc::c_int = 0;
+    let mut len: libc::c_int;
+    let result: *mut libc::c_char;
+    let mut r: *mut libc::c_char;
+    let mut s: *mut libc::c_char;
+    len = 0 as libc::c_int;
+    s = string;
+    while !s.is_null() && *s as libc::c_int != 0 {
+        len += 1;
+        if *s as libc::c_int == '"' as i32 || *s as libc::c_int == '\\' as i32 {
+            len += 1;
+        } else if *s as libc::c_int == '\n' as i32 {
+            len += 5 as libc::c_int;
+        }
+        s = s.offset(1);
+    }
+    result = malloc((len + 3 as libc::c_int) as libc::size_t) as *mut libc::c_char;
+    r = result;
+    let fresh0 = r;
+    r = r.offset(1);
+    *fresh0 = '"' as i32 as libc::c_char;
+    s = string;
+    while !s.is_null()
+        && {
+            c = *s as libc::c_int;
+            c != 0
+        }
+    {
+        if c == '\n' as i32 {
+            let fresh1 = r;
+            r = r.offset(1);
+            *fresh1 = '\\' as i32 as libc::c_char;
+            let fresh2 = r;
+            r = r.offset(1);
+            *fresh2 = 'n' as i32 as libc::c_char;
+            let fresh3 = r;
+            r = r.offset(1);
+            *fresh3 = '"' as i32 as libc::c_char;
+            let fresh4 = r;
+            r = r.offset(1);
+            *fresh4 = '\n' as i32 as libc::c_char;
+            let fresh5 = r;
+            r = r.offset(1);
+            *fresh5 = '"' as i32 as libc::c_char;
+            if !foundnlp.is_null() {
+                *foundnlp = 1 as libc::c_int;
+            }
+        } else {
+            if c == '"' as i32 || c == '\\' as i32 {
+                let fresh6 = r;
+                r = r.offset(1);
+                *fresh6 = '\\' as i32 as libc::c_char;
+            }
+            let fresh7 = r;
+            r = r.offset(1);
+            *fresh7 = c as libc::c_char;
+        }
+        s = s.offset(1);
+    }
+    let fresh8 = r;
+    r = r.offset(1);
+    *fresh8 = '"' as i32 as libc::c_char;
+    let fresh9 = r;
+    r = r.offset(1);
+    *fresh9 = '\0' as i32 as libc::c_char;
