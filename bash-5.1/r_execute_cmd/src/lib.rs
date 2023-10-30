@@ -5451,8 +5451,42 @@ unsafe extern "C" fn execute_function(
     return result;
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn execute_shell_function(
+    mut var: *mut SHELL_VAR,
+    mut words: *mut WordList,
+) -> libc::c_int {
+    let mut ret: libc::c_int = 0;
+    let mut bitmap: *mut fd_bitmap = 0 as *mut fd_bitmap;
 
+    bitmap = new_fd_bitmap(FD_BITMAP_DEFAULT_SIZE!());
+    begin_unwind_frame(
+        b"execute-shell-function\0" as *const u8 as *mut libc::c_char,
+    );
+    add_unwind_protect(
+        transmute::<
+        unsafe extern "C" fn (fdbp: *mut fd_bitmap),
+            *mut Function,
+        >(dispose_fd_bitmap),
+        bitmap as *mut libc::c_char,
+    );
 
+    ret = execute_function(
+        var,
+        words,
+        0 ,
+        bitmap,
+        0 ,
+        0 ,
+    );
+
+    dispose_fd_bitmap(bitmap);
+    discard_unwind_frame(
+        b"execute-shell-function\0" as *const u8 as *const libc::c_char
+            as *mut libc::c_char,
+    );
+    return ret;
+}
 
 
 
