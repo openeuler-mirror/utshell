@@ -70,3 +70,53 @@ pub struct lconv {
     pub int_p_sign_posn: libc::c_char,
     pub int_n_sign_posn: libc::c_char,
 }
+pub const _ISblank: libc::c_uint = 1;
+
+#[no_mangle]
+pub static mut locale_utf8locale: libc::c_int = 0;
+#[no_mangle]
+pub static mut locale_mb_cur_max: libc::c_int = 0;
+#[no_mangle]
+pub static mut locale_shiftstates: libc::c_int = 0 as libc::c_int;
+static mut default_locale: *mut libc::c_char = 0 as *const libc::c_char
+    as *mut libc::c_char;
+static mut default_domain: *mut libc::c_char = 0 as *const libc::c_char
+    as *mut libc::c_char;
+static mut default_dir: *mut libc::c_char = 0 as *const libc::c_char
+    as *mut libc::c_char;
+static mut lc_all: *mut libc::c_char = 0 as *const libc::c_char as *mut libc::c_char;
+static mut lang: *mut libc::c_char = 0 as *const libc::c_char as *mut libc::c_char;
+
+pub const LC_ALL          : libc::c_int = 6;
+pub const STR_LC_ALL      : *const libc::c_char = b"LC_ALL\0" as *const u8 as *const libc::c_char;
+pub const STR_LC_CTYPE    : *const libc::c_char = b"LC_CTYPE\0" as *const u8 as *const libc::c_char;
+pub const STR_LC_COLLATE  : *const libc::c_char = b"LC_COLLATE\0" as *const u8 as *const libc::c_char;
+pub const STR_LC_MESSAGES : *const libc::c_char = b"LC_MESSAGES\0" as *const u8 as *const libc::c_char;
+pub const STR_LC_NUMERIC  : *const libc::c_char = b"LC_NUMERIC\0" as *const u8 as *const libc::c_char;
+pub const STR_LC_TIME     : *const libc::c_char = b"LC_TIME\0" as *const u8 as *const libc::c_char;
+
+pub const STR_TEXTDOMAIN     : *const libc::c_char = b"TEXTDOMAIN\0" as *const u8 as *const libc::c_char;
+pub const STR_TEXTDOMAINDIR     : *const libc::c_char = b"TEXTDOMAINDIR\0" as *const u8 as *const libc::c_char;
+
+pub const STR_PACKAGE : *const libc::c_char = b"utshell\0" as *const u8 as *const libc::c_char;
+pub const STR_LOCALEDIR : *const libc::c_char = b"/usr/local/share/locale\0" as *const u8 as *const libc::c_char;
+
+#[no_mangle]
+pub unsafe extern "C" fn set_default_locale() {
+    default_locale = setlocale(
+        LC_ALL,
+        b"\0" as *const u8 as *const libc::c_char,
+    );
+    bindtextdomain(
+        STR_PACKAGE,
+        STR_LOCALEDIR
+    );
+    textdomain(STR_PACKAGE);
+    locale_mb_cur_max = __ctype_get_mb_cur_max() as libc::c_int;
+    locale_utf8locale = locale_isutf8(default_locale);
+    locale_shiftstates = mblen(
+        0 as *mut libc::c_void as *mut libc::c_char,
+        0 as libc::c_int as libc::size_t,
+    );
+}
+
