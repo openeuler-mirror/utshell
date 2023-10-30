@@ -4822,3 +4822,88 @@ unsafe extern "C" fn execute_simple_command(
     this_command_name = 0 as *mut libc::c_char;
     return result;
 }
+
+unsafe extern "C" fn builtin_status(mut result: libc::c_int) -> libc::c_int {
+    let mut r: libc::c_int = 0;
+
+    match result as libc::c_uint{
+        EX_USAGE | EX_BADSYNTAX => {
+            r = EX_BADUSAGE as libc::c_int;
+        }
+        EX_REDIRFAIL | EX_BADASSIGN | EX_EXPFAIL => {
+            r = EXECUTION_FAILURE as libc::c_int;
+        }
+        _ => {
+            r = if result > EX_SHERRBASE as libc::c_int {
+                EXECUTION_FAILURE as libc::c_int
+            } else {
+                0 as libc::c_int
+            };
+        }
+    }
+    return r;
+}
+
+
+
+#[macro_export]
+macro_rules! TRAP_STRING {
+    ($s:expr) => {
+        if signal_is_trapped($s) != 0
+            && signal_is_ignored($s) == 0
+        {
+            *trap_list
+                .as_mut_ptr()
+                .offset(
+                    ($s) as isize,
+                )
+        } else {
+            0 as *mut libc::c_char
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! unwind_protect_int {
+    ($var:expr) => {
+        unwind_protect_mem(
+            &mut $var as *mut libc::c_int as *mut libc::c_char,
+            ::std::mem::size_of::<libc::c_int>() as libc::c_ulong as libc::c_int,
+        );
+    };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
