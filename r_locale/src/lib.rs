@@ -414,3 +414,64 @@ pub unsafe extern "C" fn get_locale_var(
     }
     return locale;
 }
+unsafe extern "C" fn reset_locale_vars() -> libc::c_int {
+    let x: *mut libc::c_char;
+    if lang.is_null() || *lang as libc::c_int == '\0' as i32 {
+        maybe_make_export_env();
+    }
+    if (setlocale(
+        6 as libc::c_int,
+        if !lang.is_null() {
+            lang as *const libc::c_char
+        } else {
+            b"\0" as *const u8 as *const libc::c_char
+        },
+    ))
+        .is_null()
+    {
+        return 0 as libc::c_int;
+    }
+    // x = 0 as *mut libc::c_char;
+    x = setlocale(
+        0 as libc::c_int,
+        get_locale_var(
+            b"LC_CTYPE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        ),
+    );
+    setlocale(
+        3 as libc::c_int,
+        get_locale_var(
+            b"LC_COLLATE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        ),
+    );
+    setlocale(
+        5 as libc::c_int,
+        get_locale_var(
+            b"LC_MESSAGES\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        ),
+    );
+    setlocale(
+        1 as libc::c_int,
+        get_locale_var(
+            b"LC_NUMERIC\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        ),
+    );
+    setlocale(
+        2 as libc::c_int,
+        get_locale_var(
+            b"LC_TIME\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        ),
+    );
+    locale_setblanks();
+    locale_mb_cur_max = __ctype_get_mb_cur_max() as libc::c_int;
+    if !x.is_null() {
+        locale_utf8locale = locale_isutf8(x);
+    }
+    locale_shiftstates = mblen(
+        0 as *mut libc::c_void as *mut libc::c_char,
+        0 as libc::c_int as libc::size_t,
+    );
+    u32reset();
+    return 1 as libc::c_int;
+}
+
