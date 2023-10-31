@@ -5894,8 +5894,53 @@ unsafe extern "C" fn execute_disk_command(
     return result;
 }
 
+#[macro_export]
+macro_rules! whitespace {
+    ($c:expr) => {
+        $c as libc::c_int == ' ' as i32
+            || $c as libc::c_int == '\t' as i32
+    };
+}
 
 
+
+unsafe extern "C" fn getinterp(
+    mut sample: *mut libc::c_char,
+    mut sample_len: libc::c_int,
+    mut endp: *mut libc::c_int,
+) -> *mut libc::c_char {
+    let mut i: libc::c_int = 0;
+    let mut execname: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut start: libc::c_int = 0;
+
+
+    #[macro_export]
+    macro_rules! STRINGCHAR {
+        ($ind:expr) => {
+            $ind < sample_len 
+            && !whitespace!(sample.offset($ind as isize )) 
+            && $ind as libc::c_int != '\n' as i32
+        };
+    }
+
+
+    i = 2 ;
+    while i < sample_len
+        && whitespace!(*sample.offset(i as isize))
+    {
+        i += 1;
+    }
+    start = i;
+    while STRINGCHAR!(i)
+    {
+        i += 1;
+    }
+    execname = substring(sample, start, i);
+    if !endp.is_null() {
+        *endp = i;
+    }
+    return execname;
+}
 
 
 
