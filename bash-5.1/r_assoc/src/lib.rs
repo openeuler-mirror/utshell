@@ -28,6 +28,41 @@ macro_rules! ALL_ELEMENT_SUB {
     }
 }
 
+#[macro_export]
+macro_rules! STRLEN {
+    ($s:expr) => {
+        if !$s.is_null()
+        && *$s.offset(0 as libc::c_int as isize) as libc::c_int != 0 {
+            if *$s.offset(1 as libc::c_int as isize) as libc::c_int != 0 {
+                if *$s.offset(2 as libc::c_int as isize) as libc::c_int != 0 {
+                    libc::strlen($s) as libc::c_int
+                } else {
+                    2 as libc::c_int 
+                }
+            } 
+            else {
+                1 as libc::c_int 
+            }
+        } 
+        else {
+        0 as libc::c_int 
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! RESIZE_MALLOCED_BUFFER {
+    ($str:expr,$cind:expr,$room:expr,$csize:expr,$sincr:expr) => {
+        if $cind + $room >= $csize
+        {
+            while $cind + $room >= $csize {
+                $csize += $sincr;
+            }   
+            $str = xrealloc ($str as *mut c_void , $csize as usize) as *mut libc::c_char;
+        } 
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn assoc_dispose(mut hash: *mut HASH_TABLE) {
     if !hash.is_null() {
@@ -67,3 +102,18 @@ pub unsafe extern "C" fn assoc_insert(
     }) as *mut libc::c_void;
     return 0 as libc::c_int;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn assoc_remove(
+    mut hash: *mut HASH_TABLE,
+    mut string: *mut libc::c_char,
+) {
+    let mut b: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    b = hash_remove(string, hash, 0 as libc::c_int);
+    if !b.is_null() {
+        libc::free((*b).data as *mut libc::c_char as *mut libc::c_void);
+        libc::free((*b).key as *mut libc::c_void);
+        libc::free(b as *mut libc::c_void);
+    }
+}
+
