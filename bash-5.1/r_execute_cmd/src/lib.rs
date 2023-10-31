@@ -5725,8 +5725,27 @@ unsafe extern "C" fn execute_builtin_or_function(
     return result;
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn setup_async_signals() {
+    if job_control == 0 {
+        get_original_signal(SIGINT as libc::c_int);
+        set_signal_handler(
+            SIGINT as libc::c_int,
+            SIG_IGN!());
+        get_original_signal(SIGQUIT as libc::c_int);
+        set_signal_handler(
+            SIGQUIT as libc::c_int,
+            SIG_IGN!());
+    }
+}
 
 
+#[macro_export]
+macro_rules! NOTFOUND_HOOK {
+    () => {
+        b"command_not_found_handle\0" as *const u8 as *const libc::c_char
+    };
+}
 
 
 
