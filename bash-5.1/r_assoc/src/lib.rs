@@ -63,6 +63,19 @@ macro_rules! RESIZE_MALLOCED_BUFFER {
     }
 }
 
+#[macro_export]
+macro_rules! REVERSE_LIST {
+    ($list:expr,$type:ty) => {
+        if !$list.is_null() && !((*$list).next).is_null() {
+            list_reverse($list as *mut GENERIC_LIST) as $type
+        }
+        else {
+            $list as $type
+        }
+    }
+
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn assoc_dispose(mut hash: *mut HASH_TABLE) {
     if !hash.is_null() {
@@ -116,4 +129,22 @@ pub unsafe extern "C" fn assoc_remove(
         libc::free(b as *mut libc::c_void);
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn assoc_reference(
+    mut hash: *mut HASH_TABLE,
+    mut string: *mut libc::c_char,
+) -> *mut libc::c_char {
+    let mut b: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    if hash.is_null() {
+        return 0 as *mut libc::c_char;
+    }
+    b = hash_search(string, hash, 0 as libc::c_int);
+    return if !b.is_null() {
+        (*b).data as *mut libc::c_char
+    } else {
+        0 as *mut libc::c_char
+    };
+}
+#[no_mangle]
 
