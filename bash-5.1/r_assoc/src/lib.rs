@@ -87,6 +87,33 @@ macro_rules! hash_items {
     }
 }
 
+extern "C" {
+    fn hash_flush(_: *mut HASH_TABLE, _: Option::<sh_free_func_t>);
+    fn hash_dispose(_: *mut HASH_TABLE);
+    fn malloc(_: size_t) -> *mut libc::c_void;
+    fn xrealloc(_: *mut libc::c_void, _: size_t) -> *mut libc::c_void;
+    fn hash_search(
+        _: *const libc::c_char,
+        _: *mut HASH_TABLE,
+        _: libc::c_int,
+    ) -> *mut BUCKET_CONTENTS;
+    fn hash_remove(
+        _: *const libc::c_char,
+        _: *mut HASH_TABLE,
+        _: libc::c_int,
+    ) -> *mut BUCKET_CONTENTS;
+    fn dispose_words(_: *mut WORD_LIST);
+    fn string_list_pos_params(
+        _: libc::c_int,
+        _: *mut WORD_LIST,
+        _: libc::c_int,
+        _: libc::c_int,
+    ) -> *mut libc::c_char;
+    fn list_reverse(list:*mut GENERIC_LIST) -> *mut GENERIC_LIST;
+    fn make_bare_word(_: *const libc::c_char) -> *mut WORD_DESC;
+    fn make_word_list(_: *mut WORD_DESC, _: *mut WORD_LIST) -> *mut WORD_LIST;
+
+}
 #[no_mangle]
 pub unsafe extern "C" fn assoc_dispose(mut hash: *mut HASH_TABLE) {
     if !hash.is_null() {
@@ -183,4 +210,31 @@ pub unsafe extern "C" fn assoc_quote(mut h: *mut HASH_TABLE) -> *mut HASH_TABLE 
     }
     return h;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn assoc_quote_escapes(mut h: *mut HASH_TABLE) -> *mut HASH_TABLE {
+    let mut i: libc::c_int = 0;
+    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    if h.is_null() ||  assoc_empty!(h)  {
+        return 0 as *mut libc::c_void as *mut HASH_TABLE;
+    }
+    i = 0 as libc::c_int;
+    while i < (*h).nbuckets {
+        tlist = hash_items!(i,h);
+        while !tlist.is_null() {
+            t = quote_escapes((*tlist).data as *mut libc::c_char);
+            if !((*tlist).data).is_null() {
+                libc::free((*tlist).data);
+            }
+            (*tlist).data = 0 as *mut libc::c_void;
+            (*tlist).data = t as *mut libc::c_void;
+            tlist = (*tlist).next;
+        }
+        i += 1;
+        i;
+    }
+    return h;
+}
+
 
