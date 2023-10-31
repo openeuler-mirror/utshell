@@ -291,3 +291,86 @@ pub unsafe extern "C" fn assoc_dequote_escapes(
     return h;
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn assoc_remove_quoted_nulls(
+    mut h: *mut HASH_TABLE,
+) -> *mut HASH_TABLE {
+    let mut i: libc::c_int = 0;
+    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    if h.is_null() || assoc_empty!(h) {
+        return 0 as *mut libc::c_void as *mut HASH_TABLE;
+    }
+    i = 0 as libc::c_int;
+    while i < (*h).nbuckets {
+        tlist = hash_items!(i,h);
+        while !tlist.is_null() {
+            t = remove_quoted_nulls((*tlist).data as *mut libc::c_char);
+            (*tlist).data = t as *mut libc::c_void;
+            tlist = (*tlist).next;
+        }
+        i += 1;
+        i;
+    }
+    return h;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn assoc_subrange(
+    mut hash: *mut HASH_TABLE,
+    mut start: arrayind_t,
+    mut nelem: arrayind_t,
+    mut starsub: libc::c_int,
+    mut quoted: libc::c_int,
+    mut pflags: libc::c_int,
+) -> *mut libc::c_char {
+    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut save: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut h: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut t: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut i: libc::c_int = 0;
+    let mut j: libc::c_int = 0;
+    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
+    if assoc_empty!(hash) {
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+    l = assoc_to_word_list(hash);
+    save = l;
+
+    if save.is_null() {
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+    i = 1 as libc::c_int;
+
+    while !l.is_null() && (i as libc::c_long) < start {
+        l = (*l).next;
+        i += 1;
+        i;
+    }
+    if l.is_null() {
+        dispose_words(save);
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+    j = 0 as libc::c_int;
+    t = l;
+    h = t;
+    while !l.is_null() && (j as libc::c_long) < nelem {
+        t = l;
+        l = (*l).next;
+        j += 1;
+        j;
+    }
+    (*t).next = 0 as *mut libc::c_void as *mut WORD_LIST;
+    ret = string_list_pos_params(
+        if starsub != 0 { '*' as i32 } else { '@' as i32 },
+        h,
+        quoted,
+        pflags,
+    );
+    if t != l {
+        (*t).next = l;
+    }
+    dispose_words(save);
+    return ret;
+}
+
