@@ -76,6 +76,17 @@ macro_rules! REVERSE_LIST {
 
 }
 
+#[macro_export]
+macro_rules! hash_items {
+    ($bucket:expr,$table:expr) => {
+        if !$table.is_null() && $bucket < (*$table).nbuckets {
+            *((*$table).bucket_array).offset($bucket as isize)
+        } else {
+            0 as *mut libc::c_void as *mut BUCKET_CONTENTS
+        };
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn assoc_dispose(mut hash: *mut HASH_TABLE) {
     if !hash.is_null() {
@@ -146,5 +157,30 @@ pub unsafe extern "C" fn assoc_reference(
         0 as *mut libc::c_char
     };
 }
+
 #[no_mangle]
+pub unsafe extern "C" fn assoc_quote(mut h: *mut HASH_TABLE) -> *mut HASH_TABLE {
+    let mut i: libc::c_int = 0;
+    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    if h.is_null() ||  assoc_empty!(h)  {
+        return 0 as *mut libc::c_void as *mut HASH_TABLE;
+    }
+    i = 0 as libc::c_int;
+    while i < (*h).nbuckets {
+        tlist = hash_items!(i,h);
+        while !tlist.is_null() {
+            t = quote_string((*tlist).data as *mut libc::c_char);
+            if !((*tlist).data).is_null() {
+                libc::free((*tlist).data);
+            }
+            (*tlist).data = 0 as *mut libc::c_void;
+            (*tlist).data = t as *mut libc::c_void;
+            tlist = (*tlist).next;
+        }
+        i += 1;
+        i;
+    }
+    return h;
+}
 
