@@ -374,3 +374,103 @@ pub unsafe extern "C" fn assoc_subrange(
     return ret;
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn assoc_patsub(
+    mut h: *mut HASH_TABLE,
+    mut pat: *mut libc::c_char,
+    mut rep: *mut libc::c_char,
+    mut mflags: libc::c_int,
+) -> *mut libc::c_char {
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut pchar: libc::c_int = 0;
+    let mut qflags: libc::c_int = 0;
+    let mut pflags: libc::c_int = 0;
+    let mut wl: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut save: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    if h.is_null() || assoc_empty!(h) {
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+    wl = assoc_to_word_list(h);
+    if wl.is_null() {
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+    save = wl;
+    while !wl.is_null() {
+        t = pat_subst((*(*wl).word).word, pat, rep, mflags);
+        if !((*(*wl).word).word).is_null() {
+            libc::free((*(*wl).word).word as *mut libc::c_void);
+        }
+        (*(*wl).word).word = 0 as *mut libc::c_char;
+        (*(*wl).word).word = t;
+        wl = (*wl).next;
+    }
+    pchar = if mflags & MATCH_STARSUB as libc::c_int == MATCH_STARSUB as libc::c_int {
+        '*' as i32
+    } else {
+        '@' as i32
+    };
+    qflags = if mflags & MATCH_QUOTED as libc::c_int == MATCH_QUOTED as libc::c_int {
+        Q_DOUBLE_QUOTES as libc::c_int
+    } else {
+        0 as libc::c_int
+    };
+    pflags = if mflags & MATCH_ASSIGNRHS as libc::c_int == MATCH_ASSIGNRHS as libc::c_int {
+        PF_ASSIGNRHS
+         as libc::c_int
+    } else {
+        0 as libc::c_int
+    };
+    t = string_list_pos_params(pchar, save, qflags, pflags);
+    dispose_words(save);
+    return t;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn assoc_modcase(
+    mut h: *mut HASH_TABLE,
+    mut pat: *mut libc::c_char,
+    mut modop: libc::c_int,
+    mut mflags: libc::c_int,
+) -> *mut libc::c_char {
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut pchar: libc::c_int = 0;
+    let mut qflags: libc::c_int = 0;
+    let mut pflags: libc::c_int = 0;
+    let mut wl: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut save: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    if h.is_null() || (*h).nentries == 0 as libc::c_int {
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+    wl = assoc_to_word_list(h);
+    if wl.is_null() {
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+    save = wl;
+    while !wl.is_null() {
+        t = sh_modcase((*(*wl).word).word, pat, modop);
+        if !((*(*wl).word).word).is_null() {
+            libc::free((*(*wl).word).word as *mut libc::c_void);
+        }
+        (*(*wl).word).word = 0 as *mut libc::c_char;
+        (*(*wl).word).word = t;
+        wl = (*wl).next;
+    }
+    pchar = if mflags & MATCH_STARSUB as libc::c_int == MATCH_STARSUB as libc::c_int {
+        '*' as i32
+    } else {
+        '@' as i32
+    };
+    qflags = if mflags & MATCH_QUOTED as libc::c_int == MATCH_QUOTED as libc::c_int {
+        Q_DOUBLE_QUOTES as libc::c_int
+    } else {
+        0 as libc::c_int
+    };
+    pflags = if mflags & MATCH_ASSIGNRHS as libc::c_int == MATCH_ASSIGNRHS as libc::c_int {
+        PF_ASSIGNRHS as libc::c_int
+    } else {
+        0 as libc::c_int
+    };
+    t = string_list_pos_params(pchar, save, qflags, pflags);
+    dispose_words(save);
+    return t;
+}
