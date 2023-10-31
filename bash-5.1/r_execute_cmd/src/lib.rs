@@ -5747,8 +5747,152 @@ macro_rules! NOTFOUND_HOOK {
     };
 }
 
+unsafe extern "C" fn execute_disk_command(
+    mut words: *mut WordList,
+    mut redirects: *mut REDIRECT,
+    mut command_line: *mut libc::c_char,
+    mut pipe_in: libc::c_int,
+    mut pipe_out: libc::c_int,
+    mut async_0: libc::c_int,
+    mut fds_to_close: *mut fd_bitmap,
+    mut cmdflags: libc::c_int,
+) -> libc::c_int {
+    let mut pathname: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut command: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut args: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut nofork: libc::c_int = 0;
+    let mut stdpath: libc::c_int = 0;
+    let mut result: libc::c_int = 0;
+    let mut fork_flags: libc::c_int = 0;
+    let mut pid: pid_t = 0;
+    let mut hookf: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut wl: *mut WordList = 0 as *mut WordList;
+    
+    // stdpath = cmdflags & 0x4000 as libc::c_int;
+    nofork = cmdflags & CMD_NO_FORK as libc::c_int;
+    pathname = (*(*words).word).word;
 
+    p = 0 as *mut libc::c_char;
+    result = EXECUTION_SUCCESS as libc::c_int;
+    command = 0 as *mut libc::c_char;
+    if restricted != 0 && !(mbschr(pathname, '/' as i32)).is_null() {
+        internal_error(b"%s: restricted: cannot specify `/' in command names\0" as *const u8 as *mut c_char,
+            pathname,
+        );
+        last_command_exit_value = EXECUTION_FAILURE as c_int;
+        result = last_command_exit_value;
 
+        if nofork != 0 && pipe_in == NO_PIPE && pipe_out == NO_PIPE
+        {
+            exit(last_command_exit_value);
+        }
+    } else {
+        command = search_for_command(
+            pathname,
+            CMDSRCH_HASH as libc::c_int
+                | (if stdpath != 0 { CMDSRCH_STDPATH as libc::c_int } else { 0 }),
+        );
+        QUIT!();
+
+        if !command.is_null() {
+            if nofork != 0 && pipe_in == NO_PIPE
+                && pipe_out == NO_PIPE
+            {
+                adjust_shell_level(-1);
+            }
+            maybe_make_export_env();
+            put_command_name_into_env(command);
+        }
+
+        if nofork != 0 && pipe_in == NO_PIPE && pipe_out == NO_PIPE
+        {
+            pid = 0 ;
+        } else {
+            fork_flags = if async_0 != 0 { FORK_ASYNC as libc::c_int } else { 0 };
+            p = savestring!(command_line);
+            pid = make_child(p, fork_flags);
+        }
+
+        if pid == 0 {
+            let mut old_interactive: libc::c_int = 0;
+
+            reset_terminating_signals();
+            restore_original_signals();
+
+            FREE!(p);
+
+            if async_0 != 0 {
+                if cmdflags & CMD_STDIN_REDIR as libc::c_int != 0 && pipe_in == NO_PIPE
+                    && stdin_redirects(redirects) == 0 
+                {
+                    async_redirect_stdin();
+                }
+                setup_async_signals();
+            }
+
+            if !fds_to_close.is_null() {
+                close_fd_bitmap(fds_to_close);
+            }
+
+            do_piping(pipe_in, pipe_out);
+
+            old_interactive = interactive;
+
+            if async_0 != 0 {
+                interactive = 0 ;
+            }
+
+            subshell_environment |= SUBSHELL_FORK as libc::c_int;
+
+            if !redirects.is_null()
+                && do_redirections(redirects, RX_ACTIVE as libc::c_int) != 0 
+            {
+                unlink_fifo_list();
+                exit(EXECUTION_FAILURE as libc::c_int);
+            }
+
+            if async_0 != 0 {
+                interactive = old_interactive;
+            }
+
+            if command.is_null() {
+                hookf = find_function(NOTFOUND_HOOK!());
+                if hookf.is_null() {
+                    pathname = printable_filename(pathname, 0 );
+                    internal_error(b"%s: command not found\0" as *const u8 as *mut c_char,   
+                        pathname as *mut c_char,
+                    );
+                    exit(127 as libc::c_int);
+                }
+
+                without_job_control();
+
+                set_sigchld_handler();
+
+                wl = make_word_list(
+                    make_word(
+                        NOTFOUND_HOOK!()
+                    ),
+                    words,
+                );
+                exit(execute_shell_function(hookf, wl));
+            }
+            args = strvec_from_word_list(
+                words,
+                0 ,
+                0 ,
+                0 as *mut libc::c_int,
+            );
+            exit(shell_execve(command, args, export_env));
+        }
+    }
+    QUIT!();
+
+    close_pipes(pipe_in, pipe_out);
+    FREE!(command);
+    return result;
+}
 
 
 
