@@ -4266,7 +4266,42 @@ unsafe extern "C" fn check_command_builtin(
     return w;
 }
 
+unsafe extern "C" fn is_dirname(mut pathname: *mut libc::c_char) -> libc::c_int {
+    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ret: libc::c_int = 0;
 
+    temp = search_for_command(pathname, 0 );
+    ret = if !temp.is_null() { file_isdir(temp) } else { file_isdir(pathname) };
+    free(temp as *mut c_void);
+    return ret;
+}
 
+#[macro_export]
+macro_rules! EX_REDIRFAIL {
+    () => {
+        259
+    };
+}
+
+#[macro_export]
+macro_rules! EX_BADASSIGN {
+    () => {
+        260
+    };
+}
+
+#[macro_export]
+macro_rules! EX_EXPFAIL {
+    () => {
+        261
+    };
+}
+
+#[macro_export]
+macro_rules! EX_DISKFALLBACK {
+    () => {
+        262
+    };
+}
 
 
