@@ -5600,8 +5600,130 @@ unsafe extern "C" fn execute_subshell_builtin_or_function(
     };
 }
 
+unsafe extern "C" fn execute_builtin_or_function(
+    mut words: *mut WordList,
+    mut builtin: sh_builtin_func_t,
+    mut var: *mut SHELL_VAR,
+    mut redirects: *mut REDIRECT,
+    mut fds_to_close: *mut fd_bitmap,
+    mut flags: libc::c_int,
+) -> libc::c_int {
+    let mut result: libc::c_int = 0;
+    let mut saved_undo_list: *mut REDIRECT = 0 as *mut REDIRECT;
+    let mut ofifo: libc::c_int = 0;
+    let mut nfifo: libc::c_int = 0;
+    let mut osize: libc::c_int = 0;
+    let mut ofifo_list: *mut libc::c_void = 0 as *mut libc::c_void;
 
+    begin_unwind_frame(
+        b"saved_fifos\0" as *const u8 as *mut libc::c_char,
+    );
+    ofifo = num_fifos();
+    ofifo_list = copy_fifo_list(&mut osize);
+    if !ofifo_list.is_null() {
+        add_unwind_protect(
+            transmute::<
+                unsafe extern "C" fn (arg1: *mut ::std::os::raw::c_void),
+                *mut Function,
+            >(xfree),
+            ofifo_list as *mut c_char,
+        );
+    }
+    
+    if do_redirections(redirects, RX_ACTIVE as libc::c_int | RX_UNDOABLE as libc::c_int) != 0 
+    {
+        undo_partial_redirects();
+        dispose_exec_redirects();
+        free(ofifo_list as *mut c_void);
+        return EX_REDIRFAIL as libc::c_int;
+    }
+    saved_undo_list = redirection_undo_list;
+    if builtin
+        == Some(exec_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int)
+    {
+        dispose_redirects(saved_undo_list);
+        saved_undo_list = exec_redirection_undo_list;
+        exec_redirection_undo_list = 0 as *mut REDIRECT;
+    } else {
+        dispose_exec_redirects();
+    }
+    
+    if !saved_undo_list.is_null() {
+        begin_unwind_frame(
+            b"saved-redirects\0" as *const u8 as *mut libc::c_char,
+        );
+        add_unwind_protect(
+            transmute::<
+                unsafe extern "C" fn(*mut REDIRECT) -> (),
+                *mut Function,
+            >(cleanup_redirects),
+            
+            saved_undo_list as *mut libc::c_char,
+        );
+    }
+    
+    redirection_undo_list = 0 as *mut REDIRECT;
 
+    if builtin.is_some() {      //tab键出现问题的地方
+        result = execute_builtin(builtin, words, flags, 0 );
+    } else {
+        result = execute_function(
+            var,
+            words,
+            flags,
+            fds_to_close,
+            0 ,
+            0 ,
+        );
+    }
+    
+    fflush(stdout);
+    fpurge(stdout);
+    if ferror(stdout) != 0 {
+        clearerr(stdout);
+    }
+    if builtin
+        == Some(command_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int)
+        && this_shell_builtin
+            == Some(exec_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int)
+    {
+        let mut discard: libc::c_int = 0;
+
+        discard = 0 ;
+        if !saved_undo_list.is_null() {
+            dispose_redirects(saved_undo_list);
+            discard = 1 ;
+        }
+        redirection_undo_list = exec_redirection_undo_list;
+        exec_redirection_undo_list = 0 as *mut REDIRECT;
+        saved_undo_list = exec_redirection_undo_list;
+        if discard != 0 {
+            discard_unwind_frame(
+                b"saved-redirects\0" as *const u8 as *mut libc::c_char,
+            );
+        }
+    }
+    if !saved_undo_list.is_null() {
+        redirection_undo_list = saved_undo_list;
+        discard_unwind_frame(
+            b"saved-redirects\0" as *const u8 as *mut libc::c_char,
+        );
+    }
+   
+    undo_partial_redirects();
+
+    nfifo = num_fifos();
+    if nfifo > ofifo {
+        close_new_fifos(ofifo_list, osize);
+    }
+    if !ofifo_list.is_null() {
+        free(ofifo_list as *mut c_void);
+    }
+    discard_unwind_frame(
+        b"saved_fifos\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+    );
+    return result;
+}
 
 
 
