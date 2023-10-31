@@ -4822,3 +4822,290 @@ unsafe extern "C" fn execute_simple_command(
     this_command_name = 0 as *mut libc::c_char;
     return result;
 }
+
+unsafe extern "C" fn builtin_status(mut result: libc::c_int) -> libc::c_int {
+    let mut r: libc::c_int = 0;
+
+    match result as libc::c_uint{
+        EX_USAGE | EX_BADSYNTAX => {
+            r = EX_BADUSAGE as libc::c_int;
+        }
+        EX_REDIRFAIL | EX_BADASSIGN | EX_EXPFAIL => {
+            r = EXECUTION_FAILURE as libc::c_int;
+        }
+        _ => {
+            r = if result > EX_SHERRBASE as libc::c_int {
+                EXECUTION_FAILURE as libc::c_int
+            } else {
+                0 as libc::c_int
+            };
+        }
+    }
+    return r;
+}
+
+
+
+#[macro_export]
+macro_rules! TRAP_STRING {
+    ($s:expr) => {
+        if signal_is_trapped($s) != 0
+            && signal_is_ignored($s) == 0
+        {
+            *trap_list
+                .as_mut_ptr()
+                .offset(
+                    ($s) as isize,
+                )
+        } else {
+            0 as *mut libc::c_char
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! unwind_protect_int {
+    ($var:expr) => {
+        unwind_protect_mem(
+            &mut $var as *mut libc::c_int as *mut libc::c_char,
+            ::std::mem::size_of::<libc::c_int>() as libc::c_ulong as libc::c_int,
+        );
+    };
+}
+
+unsafe extern "C" fn execute_builtin(
+    // mut builtin: Option::<sh_builtin_func_t>,
+    mut builtin: sh_builtin_func_t,
+    mut words: *mut WordList,
+    mut flags: libc::c_int,
+    mut subshell: libc::c_int,
+) -> libc::c_int {
+    let mut result: libc::c_int = 0;
+    let mut eval_unwind: libc::c_int = 0;
+    let mut ignexit_flag: libc::c_int = 0;
+    let mut isbltinenv: libc::c_int = 0;
+    let mut should_keep: libc::c_int = 0;
+    let mut error_trap: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    error_trap = 0 as *mut libc::c_char;
+    should_keep = 0 as libc::c_int;
+
+    
+    if subshell == 0 && flags & CMD_IGNORE_RETURN as libc::c_int != 0
+    && (builtin
+        == Some(eval_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int)
+        || flags & 0x800 as libc::c_int != 0
+        || builtin
+            == Some(
+                source_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int,
+            ))
+    {
+        begin_unwind_frame(
+            b"eval_builtin\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        );
+        unwind_protect_mem(
+            &mut exit_immediately_on_error as *mut libc::c_int as *mut libc::c_char,
+            ::std::mem::size_of::<libc::c_int>() as libc::c_ulong as libc::c_int,
+        );
+        unwind_protect_mem(
+            &mut builtin_ignoring_errexit as *mut libc::c_int as *mut libc::c_char,
+            ::std::mem::size_of::<libc::c_int>() as libc::c_ulong as libc::c_int,
+        );
+        error_trap = TRAP_STRING!(ERROR_TRAP as c_int);
+        if !error_trap.is_null() { 
+            error_trap = savestring!(error_trap);
+            add_unwind_protect(transmute::<
+                unsafe extern "C" fn (arg1: *mut ::std::os::raw::c_void),
+                *mut Function,
+                >(xfree),
+                error_trap,
+            );
+            add_unwind_protect(transmute::<
+                unsafe extern "C" fn (arg1: *mut ::std::os::raw::c_char),
+                *mut Function,
+                >(set_error_trap),
+                error_trap,
+            );
+            restore_default_signal(ERROR_TRAP as c_int);
+        }
+        exit_immediately_on_error = 0 ;
+        ignexit_flag = builtin_ignoring_errexit;
+        builtin_ignoring_errexit = 1 ;
+        eval_unwind = 1 ;
+    } else {
+        eval_unwind = 0 ;
+    }
+    
+    isbltinenv = (builtin
+        == Some(source_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int)
+        || builtin
+            == Some(eval_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int)
+        || builtin
+            == Some(unset_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int)
+        || builtin
+            == Some(
+                mapfile_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int,
+            )) as libc::c_int;
+    should_keep = (isbltinenv != 0
+        && builtin
+            != Some(
+                mapfile_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int,
+            )) as libc::c_int;
+    if builtin == Some(fc_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int)
+        || builtin
+        == Some(read_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int)
+    {
+        isbltinenv = 1 ;
+        should_keep = 0 ;
+    }
+    
+    if isbltinenv != 0 {
+        if subshell == 0 {
+            begin_unwind_frame(
+                b"builtin_env\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+            );
+        }
+        if !temporary_env.is_null() {
+            push_scope(VC_BLTNENV as libc::c_int, temporary_env);
+            if flags & CMD_COMMAND_BUILTIN as libc::c_int != 0 {
+                should_keep = 0 ;
+            }
+            if subshell == 0 {
+                add_unwind_protect(transmute::<
+                    unsafe extern "C" fn (arg1: ::std::os::raw::c_int),
+                    *mut Function,
+                >(pop_scope),
+                    if should_keep != 0 {
+                        b"1\0" as *const u8 as *mut libc::c_char
+                    } else {
+                        0 as *mut libc::c_char
+                    },
+                );
+            }
+            temporary_env = 0 as *mut HASH_TABLE;
+        }
+    }
+
+    if subshell == 0 
+    && builtin
+        == Some(eval_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int)
+    {
+        if evalnest_max > 0 && evalnest >= evalnest_max {
+            internal_error(b"eval: maximum eval nesting level exceeded (%d)\0" as *const u8 as *mut c_char,
+                evalnest,
+            );
+            evalnest = 0 ;
+            jump_to_top_level(DISCARD as libc::c_int);
+        }
+        unwind_protect_int!(evalnest);
+        evalnest += 1;
+    } else if subshell == 0 
+    && builtin
+        == Some(
+            source_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int,
+        )
+        {
+        if sourcenest_max > 0 && sourcenest >= sourcenest_max {
+            internal_error(
+                b"%s: maximum source nesting level exceeded (%d)\0" as *const u8 as *mut c_char,     
+                this_command_name,
+                sourcenest,
+            );
+            sourcenest = 0 ;
+            jump_to_top_level(DISCARD as libc::c_int);
+        }
+        unwind_protect_int!(sourcenest);
+        sourcenest += 1;
+    }
+    
+    if posixly_correct != 0 && subshell == 0  
+        && builtin
+            == Some(
+                return_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int,
+            ) && flags & 0x800 as libc::c_int == 0 as libc::c_int
+        && !temporary_env.is_null()
+    {
+        begin_unwind_frame(
+            b"return_temp_env\0" as *const u8 as *mut libc::c_char,
+        );
+        add_unwind_protect(transmute::<
+                unsafe extern "C" fn (),
+                *mut Function,
+            >(merge_temporary_env),
+            0 as *mut libc::c_char,
+        );
+    }
+    
+    executing_builtin += 1;
+    executing_command_builtin
+        |= (builtin
+            == Some(
+                command_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int,
+            )) as libc::c_int;
+
+    result = r_exec_cmd((*(*words).word).word, (*words).next);
+
+    if posixly_correct != 0 && subshell == 0 
+    && builtin
+        == Some(
+            return_builtin as unsafe extern "C" fn(*mut WordList) -> libc::c_int,
+        ) && !temporary_env.is_null()
+    {
+        discard_unwind_frame(
+            b"return_temp_env\0" as *const u8 as *mut libc::c_char,
+        );
+    }
+    if subshell == 0 && isbltinenv != 0 {
+        run_unwind_frame(
+            b"builtin_env\0" as *const u8 as *mut libc::c_char,
+        );
+    }
+    if eval_unwind != 0 {
+        builtin_ignoring_errexit = ignexit_flag;
+        exit_immediately_on_error = if builtin_ignoring_errexit != 0 {
+            0  
+        } else {
+            errexit_flag
+        };
+        if !error_trap.is_null() {
+            set_error_trap(error_trap);
+            free(error_trap as *mut c_void);
+        }
+        discard_unwind_frame(
+            b"eval_builtin\0" as *const u8 as *mut libc::c_char,
+        );
+    }
+    return result;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
