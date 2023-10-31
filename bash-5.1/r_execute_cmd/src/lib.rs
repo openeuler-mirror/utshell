@@ -5980,4 +5980,61 @@ unsafe extern "C" fn initialize_subshell() {
     }
 }
 
+#[macro_export]
+macro_rules! ENOEXEC {
+    () => {
+        8
+    };
+}
 
+#[macro_export]
+macro_rules! ENOENT {
+    () => {
+        2
+    };
+}
+
+#[macro_export]
+macro_rules! E2BIG {
+    () => {
+        7
+    };
+}
+
+#[macro_export]
+macro_rules! ENOMEM {
+    () => {
+        12
+    };
+}
+
+#[macro_export]
+macro_rules! EISDIR {
+    () => {
+        21
+    };
+}
+
+#[macro_export]
+macro_rules! HASH_BANG_BUFSIZ {
+    () => {
+        128
+    };
+} 
+
+#[macro_export]
+macro_rules! READ_SAMPLE_BUF {
+    ($file:expr, $buf:expr, $len:expr) => {
+        let mut fd_0 = open($file, O_RDONLY as libc::c_int);
+        if fd_0 >= 0  {
+            $len = read(
+                fd_0,
+                $buf.as_mut_ptr() as *mut libc::c_void,
+                HASH_BANG_BUFSIZ!() as libc::c_int as usize,
+            ) as libc::c_int;
+            close(fd_0);
+        } else {
+            $len = -1;
+        }
+    };
+}
