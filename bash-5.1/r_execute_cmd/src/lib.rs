@@ -5942,7 +5942,42 @@ unsafe extern "C" fn getinterp(
     return execname;
 }
 
+#[macro_export]
+macro_rules! vc_isbltnenv {
+    ($vc:expr) => {
+        (*$vc).flags & VC_BLTNENV as libc::c_int != 0 
+    };
+}
 
+unsafe extern "C" fn initialize_subshell() {
+    delete_all_aliases();
+    history_lines_this_session = 0 ;
 
+    without_job_control();
+
+    set_sigchld_handler();
+    init_job_stats();
+
+    reset_shell_flags();
+    reset_shell_options();
+    reset_shopt_options();
+
+    if vc_isbltnenv!(shell_variables) {
+        shell_variables = (*shell_variables).down;
+    }
+
+    clear_unwind_protect_list(0 );
+    parse_and_execute_level = 0 ;
+    sourcenest = 0 ;
+    evalnest = sourcenest;
+    funcnest = evalnest;
+    return_catch_flag = funcnest;
+    variable_context = return_catch_flag;
+
+    executing_list = 0 ;
+    if interactive_shell == 0 {
+        unset_bash_input(0 );
+    }
+}
 
 
