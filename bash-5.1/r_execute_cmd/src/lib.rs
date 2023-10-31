@@ -5150,8 +5150,306 @@ macro_rules! array_push {
     };
 }
 
+unsafe extern "C" fn execute_function(
+    mut var: *mut SHELL_VAR,
+    mut words: *mut WordList,
+    mut flags: libc::c_int,
+    mut fds_to_close: *mut fd_bitmap,
+    mut async_0: libc::c_int,
+    mut subshell: libc::c_int,
+) -> libc::c_int {
+    let mut return_val: libc::c_int = 0;
+    let mut result: libc::c_int = 0;
+    let mut tc: *mut COMMAND = 0 as *mut COMMAND;
+    let mut fc: *mut COMMAND = 0 as *mut COMMAND;
+    let mut save_current: *mut COMMAND = 0 as *mut COMMAND;
+    let mut debug_trap: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut error_trap: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut return_trap: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut funcname_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut bash_source_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut bash_lineno_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut funcname_a: *mut ARRAY = 0 as *mut ARRAY;
+    let mut bash_source_a: *mut ARRAY = 0 as *mut ARRAY;
+    let mut bash_lineno_a: *mut ARRAY = 0 as *mut ARRAY;
+    let mut fa: *mut func_array_state = 0 as *mut func_array_state;
+    let mut shell_fn: *mut FUNCTION_DEF = 0 as *mut FUNCTION_DEF;
+    let mut sfile: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut gs: *mut sh_getopt_state_t = 0 as *mut sh_getopt_state_t;
+    let mut gv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
 
+    // USE_VAR!(fc);
 
+    if funcnest_max > 0 && funcnest >= funcnest_max {
+        internal_error(
+            b"%s: maximum function nesting level exceeded (%d)\0" as *const u8 as *mut c_char,
+            (*var).name,
+            funcnest,
+        );
+        funcnest = 0 ;
+        jump_to_top_level(DISCARD as libc::c_int);
+    }
+
+    GET_ARRAY_FROM_VAR!(b"FUNCNAME\0" as *const u8 as *const libc::c_char,funcname_v, funcname_a);
+    GET_ARRAY_FROM_VAR!(b"BASH_SOURCE" as *const u8 as *const libc::c_char, bash_source_v, bash_source_a);
+    GET_ARRAY_FROM_VAR!(b"BASH_LINENO" as *const u8 as *const libc::c_char, bash_lineno_v, bash_lineno_a);
+    
+    tc = copy_command((*var).value as *mut COMMAND);
+    if !tc.is_null() && flags & CMD_IGNORE_RETURN as libc::c_int != 0 {
+        (*tc).flags |= CMD_IGNORE_RETURN as libc::c_int;
+    }
+
+    if !tc.is_null() && flags & CMD_NO_FORK as libc::c_int != 0
+        && subshell_environment & SUBSHELL_COMSUB as libc::c_int != 0
+    {
+        optimize_shell_function(tc);
+    }
+
+    gs = sh_getopt_save_istate();
+    if subshell == 0 {
+        begin_unwind_frame(
+            b"function_calling\0" as *const u8 as *mut libc::c_char,
+        );
+        push_context((*var).name, subshell, temporary_env);
+
+        add_unwind_protect(
+            transmute::<
+                unsafe extern "C" fn(*mut sh_getopt_state_t) -> (),
+                *mut Function,
+            >(maybe_restore_getopt_state),
+            gs as *mut c_char,
+        );
+        add_unwind_protect(
+            transmute::<
+                unsafe extern "C" fn  (),
+                *mut Function,
+            >(pop_context),
+            0 as *mut libc::c_char,
+        );
+        unwind_protect_int!(line_number);
+        unwind_protect_int!(line_number_for_err_trap);
+        unwind_protect_int!(function_line_number);
+        unwind_protect_int!(return_catch_flag);
+
+        unwind_protect_mem(
+            &mut return_catch as *mut sigjmp_buf as *mut libc::c_char,
+            ::std::mem::size_of::<sigjmp_buf>() as libc::c_ulong as libc::c_int,
+        );
+
+        add_unwind_protect(
+            transmute::<
+                unsafe extern "C" fn (arg1: *mut COMMAND),
+                *mut Function,
+            >(dispose_command),
+            tc as *mut libc::c_char,
+        );
+        unwind_protect_mem(
+            &mut this_shell_function as *mut *mut SHELL_VAR as *mut libc::c_char,
+            ::std::mem::size_of::<*mut SHELL_VAR>() as libc::c_ulong as libc::c_int,
+        );
+        unwind_protect_int!(funcnest);
+        unwind_protect_int!(loop_level);
+    } else {
+        push_context((*var).name, subshell, temporary_env);
+    }
+
+    temporary_env = 0 as *mut HASH_TABLE;
+
+    this_shell_function = var;
+    make_funcname_visible(1 );
+
+    debug_trap = TRAP_STRING!(DEBUG_TRAP as c_int);
+    error_trap = TRAP_STRING!(ERROR_TRAP as c_int);
+    return_trap = TRAP_STRING!(RETURN_TRAP as c_int);
+
+    if !debug_trap.is_null()
+        && (trace_p!(var) == 0
+            && function_trace_mode == 0 )
+    {
+        if subshell == 0 {
+            debug_trap = savestring!(debug_trap);
+            add_unwind_protect(
+                transmute::<
+                    unsafe extern "C" fn (arg1: *mut ::std::os::raw::c_void),
+                    *mut Function,
+                >(xfree),
+                debug_trap,
+            );
+            add_unwind_protect(
+                transmute::<
+                unsafe extern "C" fn (arg1: *mut ::std::os::raw::c_char),
+                    *mut Function,
+                >(maybe_set_debug_trap),
+                debug_trap,
+            );
+        }
+        restore_default_signal(DEBUG_TRAP as libc::c_int);
+    }
+
+    if !error_trap.is_null() && error_trace_mode == 0 {
+        if subshell == 0  {
+            error_trap = savestring!(error_trap);
+            add_unwind_protect(
+                transmute::<
+                unsafe extern "C" fn (arg1: *mut ::std::os::raw::c_void),
+                    *mut Function,
+                >(xfree), 
+                error_trap);
+            add_unwind_protect(
+                transmute::<
+                    unsafe extern "C" fn (arg1: *mut ::std::os::raw::c_char),
+                    *mut Function,
+                >(maybe_set_error_trap),
+                error_trap
+            );
+        }
+        restore_default_signal(ERROR_TRAP as libc::c_int);
+    }
+
+    if !return_trap.is_null()
+        && (signal_in_progress(DEBUG_TRAP as libc::c_int) != 0
+            || trace_p!(var) == 0
+                && function_trace_mode == 0 )
+    {
+        if subshell == 0 {
+            return_trap = savestring!(return_trap);
+            add_unwind_protect(
+                transmute::<
+                unsafe extern "C" fn (arg1: *mut ::std::os::raw::c_void),
+                    *mut Function,
+                >(xfree), 
+                return_trap);
+            add_unwind_protect(
+                transmute::<
+                    unsafe extern "C" fn (arg1: *mut ::std::os::raw::c_char),
+                    *mut Function,
+                >(maybe_set_return_trap),
+                return_trap
+            );
+        }
+        restore_default_signal( RETURN_TRAP as libc::c_int);
+    }
+
+    funcnest += 1;
+
+    shell_fn = find_function_def((*this_shell_function).name);
+    sfile = (if !shell_fn.is_null() {
+        (*shell_fn).source_file
+    } else {
+        b"\0" as *const u8 as *const libc::c_char
+    }) as *mut libc::c_char;
+    array_push!(funcname_a, (*this_shell_function).name);
+    array_push!(bash_source_a, sfile);
+    t = itos(executing_line_number() as intmax_t);
+    array_push!(bash_lineno_a, t);
+    free(t as *mut c_void);
+
+    fa = xmalloc(size_of::<func_array_state>()) as *mut func_array_state;
+    (*fa).source_a = bash_source_a as *mut ARRAY;
+    (*fa).source_v = bash_source_v;
+    (*fa).lineno_a = bash_lineno_a as *mut ARRAY;
+    (*fa).lineno_v = bash_lineno_v;
+    (*fa).funcname_a = funcname_a;
+    (*fa).funcname_v = funcname_v;
+
+    if subshell == 0 as libc::c_int {
+        add_unwind_protect(
+            transmute::<
+                unsafe extern "C" fn(*mut func_array_state) -> (),
+                *mut Function,
+                >(restore_funcarray_state),
+            fa as *mut c_char,
+        );
+    }
+
+    if debugging_mode != 0 || shell_compatibility_level <= 44 {
+        init_bash_argv();
+    }
+
+    remember_args((*words).next, 1 );
+
+    if debugging_mode != 0 {
+        push_args((*words).next);
+        if subshell == 0 {
+            add_unwind_protect(
+                transmute::<
+                    unsafe extern "C" fn(),
+                    *mut Function,
+                >(pop_args),
+                0 as *mut c_char,
+            );
+        }
+    }
+
+    function_line_number = (*tc).line;
+    line_number = function_line_number;
+
+    if subshell != 0 {
+        stop_pipeline(async_0, 0 as *mut COMMAND);
+    }
+    if shell_compatibility_level > 43 {
+        loop_level = 0 ;
+    }
+
+    fc = tc;
+
+    from_return_trap = 0;
+
+    return_catch_flag += 1;
+    return_val = setjmp_nosigs!(return_catch);
+    
+    if return_val != 0 {
+        result = return_catch_value;
+        save_current = currently_executing_command;
+        if from_return_trap == 0 {
+            run_return_trap();
+        }
+        currently_executing_command = save_current;
+    } else {
+        showing_function_line = 1 ;
+        save_current = currently_executing_command;
+        result = run_debug_trap();
+        if debugging_mode == 0 || result == EXECUTION_SUCCESS as c_int {
+            showing_function_line = 0 ;
+            currently_executing_command = save_current;
+            result = execute_command_internal(
+                fc,
+                0 ,
+                NO_PIPE,
+                NO_PIPE,
+                fds_to_close,
+            );
+
+            save_current = currently_executing_command;
+            run_return_trap();
+            currently_executing_command = save_current;
+        }
+
+        showing_function_line = 0 ;
+    }
+    gv = find_variable(b"OPTIND\0" as *const u8 as *const libc::c_char);
+    if !gv.is_null() && (*gv).context == variable_context {
+        (*gs).gs_flags |= 1 ;
+    }
+
+    if subshell == 0 {
+        run_unwind_frame(
+            b"function_calling\0" as *const u8 as *const libc::c_char
+                as *mut libc::c_char,
+        );
+    } else {
+        restore_funcarray_state(fa);
+        if debugging_mode != 0 {
+            pop_args();
+        }
+    }
+    if variable_context == 0 || this_shell_function.is_null() {
+        make_funcname_visible(0 );
+        unlink_fifo_list();
+    }
+    return result;
+}
 
 
 
