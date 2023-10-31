@@ -474,3 +474,103 @@ pub unsafe extern "C" fn assoc_modcase(
     dispose_words(save);
     return t;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn assoc_to_kvpair(
+    mut hash: *mut HASH_TABLE,
+    mut quoted: libc::c_int,
+) -> *mut libc::c_char {
+    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut istr: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut vstr: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut i: libc::c_int = 0;
+    let mut rsize: libc::c_int = 0;
+    let mut rlen: libc::c_int = 0;
+    let mut elen: libc::c_int = 0;
+    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+
+    if hash.is_null() || assoc_empty!(hash)  {
+        return 0 as *mut libc::c_char;
+    }
+    rsize = 128 as libc::c_int;
+    ret = malloc(rsize as size_t) as *mut libc::c_char;
+    rlen = 0 as libc::c_int;
+    *ret.offset(rlen as isize) = '\0' as i32 as libc::c_char;
+    i = 0 as libc::c_int;
+    while i < (*hash).nbuckets {
+        tlist =  hash_items!(i, hash);
+        while !tlist.is_null() {
+            if ansic_shouldquote((*tlist).key) != 0 {
+                istr = ansic_quote(
+                    (*tlist).key,
+                    0 as libc::c_int,
+                    0 as *mut libc::c_int,
+                );
+            } else if sh_contains_shell_metas((*tlist).key) != 0 {
+                istr = sh_double_quote((*tlist).key);
+            } else if ALL_ELEMENT_SUB!(*((*tlist).key) as i32 ) 
+                && *((*tlist).key).offset(1 as libc::c_int as isize) as libc::c_int
+                    == '\0' as i32
+            {
+                istr = sh_double_quote((*tlist).key);
+            } else {
+                istr = (*tlist).key;
+            }
+            vstr = if !((*tlist).data).is_null() {
+                if ansic_shouldquote((*tlist).data as *mut libc::c_char) != 0 {
+                    ansic_quote(
+                        (*tlist).data as *mut libc::c_char,
+                        0 as libc::c_int,
+                        0 as *mut libc::c_int,
+                    )
+                } else {
+                    sh_double_quote((*tlist).data as *mut libc::c_char)
+                }
+            } else {
+                0 as *mut libc::c_char
+            };
+            elen = STRLEN!(istr) + 4 as libc::c_int + STRLEN!(vstr);
+            RESIZE_MALLOCED_BUFFER!(ret , rlen, (elen+1), rsize, rsize);
+            libc::strcpy (ret.offset(rlen as isize), istr);
+            rlen += STRLEN !(istr);
+            *ret.offset(rlen as isize) = ' ' as i32 as libc::c_char;
+            rlen +=  1;
+            if !vstr.is_null() {
+                libc::strcpy(ret.offset(rlen as isize), vstr);
+                rlen += STRLEN!(vstr);
+            } else {
+                libc::strcpy(
+                    ret.offset(rlen as isize),
+                    b"\"\"\0" as *const u8 as *const libc::c_char,
+                );
+                rlen += 2 as libc::c_int;
+            }
+            *ret.offset(rlen as isize) = ' ' as i32 as libc::c_char;
+            rlen += 1;
+
+            if istr != (*tlist).key {
+                if !istr.is_null() {
+                    libc::free(istr as *mut libc::c_void);
+                }
+                istr = 0 as *mut libc::c_char;
+            }
+            if !vstr.is_null() {
+                libc::free(vstr as *mut libc::c_void);
+            }
+            vstr = 0 as *mut libc::c_char;
+            tlist = (*tlist).next;
+        }
+        i += 1;
+        i;
+    }
+
+    RESIZE_MALLOCED_BUFFER!(ret , rlen, 1 as libc::c_int , rsize, 8 as libc::c_int  );
+    *ret.offset(rlen as isize) = '\0' as i32 as libc::c_char;
+
+    if quoted != 0 {
+        vstr = sh_single_quote(ret);
+        libc::free(ret as *mut libc::c_void);
+        ret = vstr;
+    }
+    return ret;
+}
