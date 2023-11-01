@@ -34,7 +34,94 @@ macro_rules! ST_INT {
         1 as libc::c_int
     }
 }
+#[macro_export] 
+macro_rules! ST_CHAR {
+    () =>{
+        2 as libc::c_int
+    }
+}
 
+#[macro_export] 
+macro_rules! ST_ZINT {
+    () =>{
+        3 as libc::c_int
+    }
+}
+
+#[macro_export] 
+macro_rules! INTMAX_MIN{
+    () =>{
+        -(9223372036854775807 as libc::c_long) - 1 as libc::c_int as libc::c_long
+    }
+}
+
+#[macro_export] 
+macro_rules! INTMAX_MAX{
+    () =>{
+        9223372036854775807 as libc::c_long - 2 as libc::c_int as libc::c_long
+    }
+}
+
+#[macro_export] 
+macro_rules! ERANGE{
+    () =>{
+        34 as libc::c_int
+    }
+}
+#[macro_export] 
+macro_rules! BRACE_SEQ_SPECIFIER{
+    () =>{
+       b"..\0"  as *const u8 as *const libc::c_char
+    }
+}
+
+#[macro_export] 
+macro_rules! INT_MAX{
+    () =>{
+        2147483647 as libc::c_int as libc::c_long
+    }
+}
+
+#[macro_export] 
+macro_rules! INT_MIN{
+    () =>{
+        (-(2147483647 as libc::c_int) - 1 as libc::c_int ) as libc::c_long
+    }
+}
+
+#[macro_export] 
+macro_rules! sh_imaxabs{
+    ($x:expr) =>{
+        if $x >= 0 as libc::c_int as libc::c_long {
+            $x
+        } else {
+           -$x
+        }       
+    }
+}
+
+#[macro_export]
+macro_rules! savestring {
+    ($name:expr) => {
+        libc::strcpy(
+            xmalloc((1 as libc::c_int + libc::strlen($name) as libc::c_int) as size_t) as *mut libc::c_char,
+            $name )
+    }
+}
+
+#[macro_export]
+macro_rules! SIZEOF_fUNC {
+    ($t:ty) => {
+        std::mem::size_of::<$t>() 
+    };
+}
+
+#[macro_export]
+macro_rules! TYPE_WIDTH {
+    ($t:ty) => {
+        (SIZEOF_fUNC!($t) * CHAR_BIT as usize)  as $t
+    }
+}
 #[inline]
 unsafe extern "C" fn strtoimax(
     mut nptr: *const libc::c_char,
