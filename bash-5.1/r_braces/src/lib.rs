@@ -122,6 +122,57 @@ macro_rules! TYPE_WIDTH {
         (SIZEOF_fUNC!($t) * CHAR_BIT as usize)  as $t
     }
 }
+#[macro_export]
+macro_rules! ISDIGIT{
+    ($c:expr) => {
+        IN_CTYPE_DOMAIN!($c) && isdigit!($c) != 0 as libc::c_int
+    }
+}
+
+#[macro_export]
+macro_rules! isalpha{
+    ($c:expr) => {
+        __isctype_f!($c,_ISalpha)
+    }
+}
+
+#[macro_export]
+macro_rules! isdigit{
+    ($c:expr) => {
+        __isctype_f!($c,_ISdigit)
+    }
+}
+
+#[macro_export]
+macro_rules! __isctype_f{
+    ($c:expr,$type:expr) => {
+        *(*__ctype_b_loc()).offset($c as libc::c_int as isize) as libc::c_int
+        & ($type as libc::c_int as libc::c_ushort as libc::c_int)
+    }
+}
+
+
+
+#[macro_export]
+macro_rules! IN_CTYPE_DOMAIN{
+    ($c:expr) => {
+        1 as libc::c_int!= 0 as libc::c_int
+    }
+}
+
+#[inline]
+unsafe extern "C" fn mbrlen(
+    mut __s: *const libc::c_char,
+    mut __n: size_t,
+    mut __ps: *mut mbstate_t,
+) -> size_t {
+    return if !__ps.is_null() {
+        mbrtowc(0 as *mut libc::wchar_t, __s, __n, __ps)
+    } else {
+        __mbrlen(__s, __n, 0 as *mut mbstate_t)
+    };
+}
+
 #[inline]
 unsafe extern "C" fn strtoimax(
     mut nptr: *const libc::c_char,
