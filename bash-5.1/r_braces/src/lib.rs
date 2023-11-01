@@ -63,3 +63,157 @@ unsafe extern "C" fn is_basic(mut c: libc::c_char) -> libc::c_int {
 }
 static mut brace_arg_separator: libc::c_int = ',' as i32;
 
+#[no_mangle]
+pub unsafe extern "C" fn brace_expand(
+    mut text: *mut libc::c_char,
+) -> *mut *mut libc::c_char {
+    let mut start: libc::c_int = 0;
+    let mut tlen: size_t = 0;
+    let mut preamble: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut postamble: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut amble: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut alen: size_t = 0;
+    let mut tack: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+    let mut result: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+    let mut i: libc::c_int = 0;
+    let mut j: libc::c_int = 0;
+    let mut c: libc::c_int = 0;
+    let mut c1: libc::c_int = 0;
+    /////////////////////////////////////////////////////////////
+
+    let mut state: mbstate_t = mbstate_t {
+        __count: 0,
+        __value: __mbstate_t__bindgen_ty_1 { __wch: 0 },
+    };
+    libc::memset(
+        &mut state as *mut mbstate_t as *mut libc::c_void,
+        '\0' as i32,
+        std::mem::size_of::<mbstate_t>() as usize,
+    );
+
+    tlen = libc::strlen(text);
+    i = 0 as libc::c_int;
+
+    loop {
+  
+        c = brace_gobbler(text, tlen, &mut i, '{' as i32);
+        c1 = c ;
+        if c != 0 {  
+            j = i + 1 as libc::c_int;
+            start = j;
+            c = brace_gobbler(text, tlen, &mut j, '}' as i32);
+            if c == 0 as libc::c_int {
+                i += 1;
+                c = c1;
+                continue;
+            }
+            else 
+            {
+                c = c1;
+                break;
+            }
+        }
+        else {
+            break;
+        }
+    }
+    preamble = xmalloc((i + 1 as libc::c_int) as size_t) as *mut libc::c_char;
+    
+    if i > 0 as libc::c_int {
+        libc::strncpy(preamble, text, i as usize);
+    }
+    
+    *preamble.offset(i as isize) = '\0' as i32 as libc::c_char;
+    
+    result = xmalloc(
+        (2 as libc::c_int as size_t)
+            *(std::mem::size_of::<*mut libc::c_char>() as size_t)
+    ) as *mut *mut libc::c_char;
+
+    *result.offset(0 as libc::c_int as isize) = preamble;
+    *result.offset(1 as libc::c_int as isize) = 0 as *mut libc::c_void as *mut libc::c_char;
+    
+    if c != '{' as i32 {
+        return result;
+    }
+
+    i += 1;
+    start = i;
+
+    c = brace_gobbler(text, tlen, &mut i, '}' as i32);
+    if c == 0 as libc::c_int {
+        libc::free(preamble as *mut libc::c_void);
+        *result.offset(0 as libc::c_int as isize) =  savestring!(text);
+        return result;
+    }
+    amble = substring(text, start, i);
+    alen = (i - start) as size_t;
+
+    libc::memset(
+        &mut state as *mut mbstate_t as *mut libc::c_void,
+        '\0' as i32,
+        std::mem::size_of::<mbstate_t>() as size_t,
+    );
+    j = 0 as libc::c_int;
+
+    loop  {
+        if *amble.offset(j as isize) == 0 {
+            break ;
+        }
+        if *amble.offset(j as isize) as libc::c_int == '\\' as i32 {
+            j += 1;
+            ADVANCE_CHAR!(amble, alen, j);
+            continue ;       
+        }
+        if *amble.offset(j as isize) as libc::c_int == brace_arg_separator {
+            break ;
+        }
+        ADVANCE_CHAR!(amble, alen, j);
+    }
+    loop  {
+        if *amble.offset(j as isize) as libc::c_int == 0 as libc::c_int  {
+            tack = expand_seqterm (amble, alen);
+            if tack.is_null() {
+                break;
+            }
+            else if !text.offset((i+1) as isize).is_null() {
+                tack = strvec_create(2 as libc::c_int);
+                *tack = savestring!(text
+                    .offset((start-1) as isize) as *mut libc::c_char);
+                *(*tack.offset((i-start+2) as isize)) = '\0' as i32 as libc::c_char;
+                *tack.offset(1 as isize) = 0 as *mut libc::c_char;
+                break;
+            }
+            else {
+                libc::free(amble as *mut libc::c_void);
+                libc::free(preamble as *mut libc::c_void);
+                 *result.offset(0 as libc::c_int as isize) 
+                 = libc::strcpy(
+                    xmalloc(
+                        (1 as libc::c_int as usize).wrapping_add(libc::strlen(text)),
+                    ) as *mut libc::c_char,
+                    text,
+                );
+                return result;
+            }
+        }
+	    tack = expand_amble (amble, alen, 0);   
+        break ;
+    }
+    result = array_concat(result, tack);
+    libc::free(amble as *mut libc::c_void);
+    if tack != result {
+        strvec_dispose(tack);
+    }
+    postamble = text.offset(i as isize).offset(1 as libc::c_int as isize);
+    if !postamble.is_null() && *postamble as libc::c_int != 0 {
+        tack = brace_expand(postamble);
+        result = array_concat(result, tack);
+        if tack != result {
+            strvec_dispose(tack);
+        }
+    }
+    return result;
+    
+}
+
