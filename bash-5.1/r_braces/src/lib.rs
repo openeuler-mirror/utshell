@@ -390,6 +390,84 @@ unsafe extern "C" fn expand_amble(
     i = 0 as libc::c_int;
     start = i;
     c = 1 as libc::c_int;
-   
+    while c != 0 {
+        c = brace_gobbler(text, tlen, &mut i, brace_arg_separator);
+        tem = substring(text, start, i);
+        partial = brace_expand(tem);
+        if result.is_null() {
+            result = partial;
+        } else {
+            let mut lr: libc::c_int = 0;
+            let mut lp: libc::c_int = 0;
+            let mut j: libc::c_int = 0;
+            lr = strvec_len(result);
+            lp = strvec_len(partial);
+            tresult = strvec_mresize(result, lp + lr + 1 as libc::c_int);
+            if tresult.is_null() {
+                internal_error(
+                b"brace expansion: cannot allocate memory for %s\0" as *const u8 as *mut libc::c_char,
+                    tem
+                );
+                libc::free(tem as *mut libc::c_void);
+                strvec_dispose(partial);
+                strvec_dispose(result);
+                result = 0 as *mut libc::c_void as *mut *mut libc::c_char;
+                return result;
+            } else {
+                result = tresult;
+            }
+            j = 0 as libc::c_int;
+            while j < lp {
+               *result.offset((lr + j) as isize) = *partial.offset(j as isize);
+                j += 1;
+                j;
+            }
+            *result.offset((lr + j) as isize) = 0 as *mut libc::c_void as *mut libc::c_char;
+            libc::free(partial as *mut libc::c_void);
+        }
+        libc::free(tem as *mut libc::c_void);
+        if locale_mb_cur_max > 1 as libc::c_int {
+            let mut state_bak: mbstate_t = mbstate_t {
+                __count: 0,
+                __value: __mbstate_t__bindgen_ty_1 { __wch: 0 },
+            };
+            let mut mblength: size_t = 0;
+            let mut _f: libc::c_int = 0;
+            _f = is_basic(*text.offset(i as isize));
+            if _f != 0 {
+                mblength = 1 as libc::c_int as size_t;
+            } else if locale_utf8locale != 0
+                && *text.offset(i as isize) as libc::c_int & 0x80 as libc::c_int
+                    == 0 as libc::c_int
+            {
+                mblength = (*text.offset(i as isize) as libc::c_int != 0 as libc::c_int)
+                    as libc::c_int as size_t;
+            } else {
+                state_bak = state;
+                mblength = mbrlen(
+                    text.offset(i as isize),
+                    tlen.wrapping_sub(i as usize),
+                    &mut state,
+                );
+            }
+            if mblength == -(2 as libc::c_int) as size_t
+                || mblength == -(1 as libc::c_int) as size_t
+            {
+                state = state_bak;
+                i += 1;
+                i;
+            } else if mblength == 0 as libc::c_int as usize {
+                i += 1;
+                i;
+            } else {
+                i = (i as usize).wrapping_add(mblength) as libc::c_int
+                    as libc::c_int;
+            }
+        } else {
+            i += 1;
+            i;
+        }
+        start = i;
+    }
     return result;
 }
