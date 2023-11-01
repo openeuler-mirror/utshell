@@ -122,6 +122,14 @@ macro_rules! TYPE_WIDTH {
         (SIZEOF_fUNC!($t) * CHAR_BIT as usize)  as $t
     }
 }
+
+#[macro_export]
+macro_rules! ISALPHA{
+    ($c:expr) => {
+        IN_CTYPE_DOMAIN!($c) && isalpha!($c) != 0 as libc::c_int
+    }
+}
+
 #[macro_export]
 macro_rules! ISDIGIT{
     ($c:expr) => {
@@ -355,3 +363,33 @@ pub unsafe extern "C" fn brace_expand(
     
 }
 
+unsafe extern "C" fn expand_amble(
+    mut text: *mut libc::c_char,
+    mut tlen: size_t,
+    mut flags: libc::c_int,
+) -> *mut *mut libc::c_char {
+    let mut result: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+    let mut partial: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+    let mut tresult: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+    let mut tem: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut start: libc::c_int = 0;
+    let mut i: libc::c_int = 0;
+    let mut c: libc::c_int = 0;
+
+    let mut state: mbstate_t = mbstate_t {
+        __count: 0,
+        __value: __mbstate_t__bindgen_ty_1 { __wch: 0 },
+    };
+    libc::memset(
+        &mut state as *mut mbstate_t as *mut libc::c_void,
+        '\0' as i32,
+        std::mem::size_of::<mbstate_t>() as usize,
+    );
+
+    result = 0 as *mut libc::c_void as *mut *mut libc::c_char;
+    i = 0 as libc::c_int;
+    start = i;
+    c = 1 as libc::c_int;
+   
+    return result;
+}
