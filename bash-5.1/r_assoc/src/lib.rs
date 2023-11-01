@@ -676,3 +676,47 @@ pub unsafe extern "C" fn assoc_to_assign(
     }
     return ret;
 }
+
+unsafe extern "C" fn assoc_to_word_list_internal(
+    mut h: *mut HASH_TABLE,
+    mut t: libc::c_int,
+) -> *mut WORD_LIST {
+    let mut list: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut i: libc::c_int = 0;
+    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let mut w: *mut libc::c_char = 0 as *mut libc::c_char;
+    if h.is_null() || assoc_empty!(h) {
+        return 0 as *mut libc::c_void as *mut WORD_LIST;
+    }
+    list = 0 as *mut libc::c_void as *mut WORD_LIST;
+    i = 0 as libc::c_int;
+    while i < (*h).nbuckets {
+        tlist = hash_items!(i,h);
+        while !tlist.is_null() {
+            w = if t == 0 as libc::c_int {
+                (*tlist).data as *mut libc::c_char
+            } else {
+                (*tlist).key
+            };
+            list = make_word_list(make_bare_word(w), list);
+            tlist = (*tlist).next;
+        }
+        i += 1;
+        i;
+    }
+    return REVERSE_LIST!(list,*mut WORD_LIST);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn assoc_to_word_list(mut h: *mut HASH_TABLE) -> *mut WORD_LIST {
+    return assoc_to_word_list_internal(h, 0 as libc::c_int);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn assoc_keys_to_word_list(
+    mut h: *mut HASH_TABLE,
+) -> *mut WORD_LIST {
+    return assoc_to_word_list_internal(h, 1 as libc::c_int);
+}
+
+
