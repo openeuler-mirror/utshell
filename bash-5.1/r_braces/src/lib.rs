@@ -136,6 +136,31 @@ macro_rules! TYPE_SIGNED {
 }
 
 #[macro_export]
+macro_rules! INT_STRLEN_BOUND {
+    ($t:ty) => {
+        (std::mem::size_of::<$t>() * CHAR_BIT as usize)  
+         - TYPE_SIGNED!($t) as usize * 302 as usize / 1000  as usize
+        + 1 as usize + TYPE_SIGNED!($t) as usize
+    }
+}
+
+#[macro_export]
+macro_rules! SUBOVERFLOW {
+    ($a:expr,$b:expr,$minv:expr,$maxv:expr) => {
+     ($b > 0 as libc::c_long &&  $a < ($minv + $b)) ||
+     ($b < 0 as libc::c_long &&  $a < ($maxv + $b))
+    }
+}
+
+#[macro_export]
+macro_rules! ADDOVERFLOW {
+    ($a:expr,$b:expr,$minv:expr,$maxv:expr) => {
+        ($a > 0 as libc::c_long &&  $b > ($maxv - $a)) ||
+        ($a < 0 as libc::c_long &&  $b < ($minv + $a))
+    }
+}
+
+#[macro_export]
 macro_rules! ADVANCE_CHAR {
     ($str:expr, $strsize:expr, $i:expr) => {
         $i += 1;
@@ -956,5 +981,79 @@ unsafe extern "C" fn brace_gobbler(
 
     *indx = i;
     return c;
+}
+
+unsafe extern "C" fn array_concat(
+    mut arr1: *mut *mut libc::c_char,
+    mut arr2: *mut *mut libc::c_char,
+) -> *mut *mut libc::c_char {
+    let mut i: libc::c_int = 0;
+    let mut j: libc::c_int = 0;
+    let mut len: libc::c_int = 0;
+    let mut len1: libc::c_int = 0;
+    let mut len2: libc::c_int = 0;
+    let mut result: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+
+    if arr1.is_null() {
+        return arr2;
+    }
+
+    if arr2.is_null() {
+        return arr1;
+    }
+
+    if !(*arr1.offset(0 as libc::c_int as isize)).is_null()
+        && *(*arr1.offset(0 as libc::c_int as isize)).offset(0 as libc::c_int as isize)
+            as libc::c_int == 0 as libc::c_int
+        && (*arr1.offset(1 as libc::c_int as isize)).is_null()
+    {
+        strvec_dispose(arr1);
+        return arr2;
+    }
+    if !(*arr2.offset(0 as libc::c_int as isize)).is_null()
+        && *(*arr2.offset(0 as libc::c_int as isize)).offset(0 as libc::c_int as isize)
+            as libc::c_int == 0 as libc::c_int
+        && (*arr2.offset(1 as libc::c_int as isize)).is_null()
+    {
+        return arr1;
+    }
+
+    len1 = strvec_len(arr1);
+    len2 = strvec_len(arr2);
+    result = xmalloc(
+        ((1 as libc::c_int + len1 * len2) as usize)
+            .wrapping_mul(std::mem::size_of::<*mut libc::c_char>() as usize),
+    ) as *mut *mut libc::c_char;
+    if result.is_null() {
+        return result;
+    }
+
+    len = 0 as libc::c_int;
+    i = 0 as libc::c_int;
+
+    while i < len1 {
+        let mut strlen_1: libc::c_int = libc::strlen(*arr1.offset(i as isize)) as libc::c_int;
+        j = 0 as libc::c_int;
+        while j < len2 
+        {
+            *result.offset(len as isize)= 
+            xmalloc((1 as libc::c_int + strlen_1 
+                + libc::strlen(*arr2.offset(j as isize)) as libc::c_int) 
+                as size_t)  as *mut libc::c_char;
+
+            libc::strcpy(*result.offset(len as isize), *arr1.offset(i as isize));
+            libc::strcpy(
+                (*result.offset(len as isize)).offset(strlen_1 as isize),
+                *arr2.offset(j as isize),
+                );
+                len += 1;
+                j += 1;
+            }
+            libc::free(*arr1.offset(i as isize) as *mut libc::c_void);
+            i += 1
+    }
+    libc::free(arr1 as *mut libc::c_void);
+    *result.offset(len as isize) = 0 as *mut libc::c_void as *mut libc::c_char;
+    return result;
 }
 
