@@ -136,6 +136,23 @@ macro_rules! TYPE_SIGNED {
 }
 
 #[macro_export]
+macro_rules! ADVANCE_CHAR {
+    ($str:expr, $strsize:expr, $i:expr) => {
+        $i += 1;
+    }
+}
+
+#[macro_export]
+macro_rules! brace_whitespace{
+    ($c:expr) => {
+        $c == 0
+        || $c as libc::c_int == ' ' as i32
+        || $c  as libc::c_int == '\t' as i32
+        || $c as libc::c_int == '\n' as i32
+    }
+}
+
+#[macro_export]
 macro_rules! ISALPHA{
     ($c:expr) => {
         IN_CTYPE_DOMAIN!($c) && isalpha!($c) != 0 as libc::c_int
@@ -778,4 +795,48 @@ unsafe extern "C" fn expand_seqterm(
     libc::free(rhs as *mut libc::c_void);
     return result;
 }
+
+unsafe extern "C" fn brace_gobbler(
+    mut text: *mut libc::c_char,
+    mut tlen: size_t,
+    mut indx: *mut libc::c_int,
+    mut satisfy: libc::c_int,
+) -> libc::c_int {
+    let mut i: libc::c_int = 0;
+    let mut c: libc::c_int = 0;
+    let mut quoted: libc::c_int = 0;
+    let mut level: libc::c_int = 0;
+    let mut commas: libc::c_int = 0;
+    let mut pass_next: libc::c_int = 0;
+    let mut si: libc::c_int = 0;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut Flag  = false;
+
+    let mut state: mbstate_t = mbstate_t {
+        __count: 0,
+        __value: __mbstate_t__bindgen_ty_1 { __wch: 0 },
+    };
+    libc::memset(
+        &mut state as *mut mbstate_t as *mut libc::c_void,
+        '\0' as i32,
+        std::mem::size_of::<mbstate_t>() as usize,
+    );
+
+    pass_next = 0 as libc::c_int;
+    quoted = pass_next;
+    level = quoted;
+    commas = if satisfy == '}' as i32 
+    { 
+        0 as libc::c_int 
+    } 
+    else 
+    { 
+        1 as libc::c_int 
+    };
+    i = *indx;
+    libc::free(arr1 as *mut libc::c_void);
+    *result.offset(len as isize) = 0 as *mut libc::c_void as *mut libc::c_char;
+    return result;
+}
+
 
