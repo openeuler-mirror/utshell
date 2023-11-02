@@ -543,6 +543,75 @@ unsafe extern "C" fn mkseq(
     }
     i = 0 as libc::c_int;
     n = start;
+    loop {
+        if interrupt_state != 0 as libc::c_int {
+             *result.offset(i as isize) = 0 as *mut libc::c_void as *mut libc::c_char;
+            strvec_dispose(result);
+            result = 0 as *mut libc::c_void as *mut *mut libc::c_char;
+        }
+        if terminating_signal != 0 {
+            termsig_handler(terminating_signal);
+        }
+        if interrupt_state != 0 {
+            throw_to_top_level();
+        }
+        if type_0 == ST_INT!() {
+            t = itos(n);
+            *result.offset(i as isize) = t;
+            i +=  1;
+    
+        }else if type_0 == ST_ZINT!() {
+            let mut len: libc::c_int = 0;
+            let mut arg: libc::c_int = 0;
+            arg = n as libc::c_int;
+            len = asprintf(
+                &mut t as *mut *mut libc::c_char,
+                b"%0*d\0" as *const u8 as *const libc::c_char,
+                width,
+                arg,
+            );
+            *result.offset(i as isize) = t;
+            i +=  1;
+        } else {
+            t = xmalloc(2 as libc::c_int as usize) as *mut libc::c_char;
+            if !t.is_null() {
+                *t.offset(0 as libc::c_int as isize) = n as libc::c_char;
+                *t.offset(1 as libc::c_int as isize) = '\0' as i32 as libc::c_char;
+            }
+            *result.offset(i as isize) = t;
+            i = i + 1;
+        }
+        if t.is_null() {
+            let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+            let mut lbuf: [libc::c_char; INT_STRLEN_BOUND!(intmax_t) + 1 as usize] 
+                    = [0;INT_STRLEN_BOUND!(intmax_t) + 1 as usize ];
+            p = inttostr(
+                n,
+                lbuf.as_mut_ptr(),
+                std::mem::size_of::<
+                [libc::c_char;INT_STRLEN_BOUND!(intmax_t) + 1 as usize]>() as usize,
+            );
+            internal_error(
+                b"brace expansion: failed to allocate memory for '%s'\0" as *const u8
+                        as *const libc::c_char,
+                p,
+            );
+            strvec_dispose(result);
+            return 0 as *mut libc::c_void as *mut *mut libc::c_char;
+        }
+       
+        if ADDOVERFLOW!(n, incr, INTMAX_MIN!(), INTMAX_MAX!()){
+            break;
+        }
+        n += incr;
+        if incr < 0 as libc::c_int as libc::c_long && n < end
+        || incr > 0 as libc::c_int as libc::c_long && n > end
+        {
+            break;
+        }
+    }
+    *result.offset(i as isize) =  0 as *mut libc::c_char;
+    return (result);
 }
 
 
