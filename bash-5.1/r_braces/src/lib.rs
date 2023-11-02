@@ -124,6 +124,18 @@ macro_rules! TYPE_WIDTH {
 }
 
 #[macro_export]
+macro_rules! TYPE_SIGNED {
+    ($t:ty) => {
+        if 0 as $t < (-1) as libc::c_int as $t {
+            0 as $t
+        }
+        else {
+            1 as $t
+        } 
+    }
+}
+
+#[macro_export]
 macro_rules! ISALPHA{
     ($c:expr) => {
         IN_CTYPE_DOMAIN!($c) && isalpha!($c) != 0 as libc::c_int
@@ -471,3 +483,67 @@ unsafe extern "C" fn expand_amble(
     }
     return result;
 }
+
+unsafe extern "C" fn mkseq(
+    mut start: intmax_t,
+    mut end: intmax_t,
+    mut incr: intmax_t,
+    mut type_0: libc::c_int,
+    mut width: libc::c_int,
+) -> *mut *mut libc::c_char {
+    let mut n: intmax_t = 0;
+    let mut prevn: intmax_t = 0;
+    let mut i: libc::c_int = 0;
+    let mut nelem: libc::c_int = 0;
+    let mut result: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    
+    if incr == 0 as libc::c_int as libc::c_long {
+        incr = 1 as libc::c_int as intmax_t;
+    }
+    
+    if start > end && incr > 0 as libc::c_int as libc::c_long {
+        incr = -incr;
+    }
+    else if start < end && incr < 0 as libc::c_int as libc::c_long {
+        if incr == INTMAX_MIN!(){
+            return 0 as *mut *mut libc::c_void as *mut *mut libc::c_char;
+        }
+        incr = -incr;
+    } 
+    if  SUBOVERFLOW!(end, start, INTMAX_MIN!() + 3, INTMAX_MAX!()-2)
+    {
+        return 0 as *mut libc::c_void as *mut *mut libc::c_char;
+    }
+    prevn = sh_imaxabs!(end - start);
+
+    if INT_MAX!() == INTMAX_MAX!() && 
+            ADDOVERFLOW!(prevn, 2, INT_MIN!(), INT_MAX!())
+    {
+        return 0 as *mut libc::c_void as *mut *mut libc::c_char;
+    }
+    else if ADDOVERFLOW!((prevn/sh_imaxabs!(incr)), 1, INTMAX_MIN!(), INTMAX_MAX!())
+    {
+        return 0 as *mut libc::c_void as *mut *mut libc::c_char;
+    }
+
+    if (prevn / sh_imaxabs!(incr)) > INT_MAX!() - 3 as libc::c_int as libc::c_long {
+        return 0 as *mut libc::c_void as *mut *mut libc::c_char;
+    } 
+    nelem = (prevn / sh_imaxabs!(incr)) as libc::c_int + 1  as libc::c_int;
+    result = strvec_mcreate (nelem + 1);
+
+    if result.is_null() {
+        internal_error(
+        b"brace expansion: failed to allocate memory for %u elements\0"
+            as *const u8 as *const libc::c_char,
+            nelem as libc::c_uint,
+        );
+        return 0 as *mut libc::c_void as *mut *mut libc::c_char;
+    }
+    i = 0 as libc::c_int;
+    n = start;
+}
+
+
+
