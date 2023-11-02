@@ -614,5 +614,168 @@ unsafe extern "C" fn mkseq(
     return (result);
 }
 
+unsafe extern "C" fn expand_seqterm(
+    mut text: *mut libc::c_char,
+    mut tlen: size_t,
+) -> *mut *mut libc::c_char {
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut lhs: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut rhs: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut lhs_t: libc::c_int = 0;
+    let mut rhs_t: libc::c_int = 0;
+    let mut lhs_l: libc::c_int = 0;
+    let mut rhs_l: libc::c_int = 0;
+    let mut width: libc::c_int = 0;
+    let mut lhs_v: intmax_t = 0;
+    let mut rhs_v: intmax_t = 0;
+    let mut incr: intmax_t = 0;
+    let mut tl: intmax_t = 0;
+    let mut tr: intmax_t = 0;
+    let mut result: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+    let mut ep: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut oep: *mut libc::c_char = 0 as *mut libc::c_char;
 
+    t = libc::strstr(text, b"..\0" as *const u8 as *const libc::c_char);
+    
+    if t.is_null() {
+        return 0 as *mut libc::c_void as *mut *mut libc::c_char;
+    }
+    lhs_l = t.offset_from(text) as libc::c_long as libc::c_int;
+    
+    lhs = substring(text, 0 as libc::c_int, lhs_l);
+    rhs = substring(
+        text,
+        (lhs_l + std::mem::size_of::<[libc::c_char; 3]> as libc::c_int - 1 as libc::c_int ),
+        tlen as libc::c_int,
+    );    
+    if *lhs.offset(0 as libc::c_int as isize) as libc::c_int == 0 as libc::c_int
+        || *rhs.offset(0 as libc::c_int as isize) as libc::c_int == 0 as libc::c_int
+    {
+        libc::free(lhs as *mut libc::c_void);
+        libc::free(rhs as *mut libc::c_void);
+        return 0 as *mut libc::c_void as *mut *mut libc::c_char;
+    }
+
+    lhs_t = if legal_number(lhs, &mut tl) != 0 {
+       ST_INT!()
+    } else if ISALPHA!(*lhs)
+        && *lhs.offset(1 as libc::c_int as isize) as libc::c_int == 0 as libc::c_int
+    {
+        ST_CHAR!() as libc::c_int
+    } else {
+        ST_BAD!() as libc::c_int
+    };
+
+    ep = 0 as *mut libc::c_char;
+
+    if ISDIGIT!(*rhs) || ((*rhs as libc::c_int == '+' as libc::c_int 
+    || *rhs as libc::c_int  == '-' as libc::c_int ) 
+    && ISDIGIT! (*rhs.offset(1 as isize)))
+    {
+        rhs_t = ST_INT!() as libc::c_int;
+        errno = 0 as libc::c_int;
+        tr = strtoimax(rhs, &mut ep, 10 as libc::c_int);
+        if errno == ERANGE!()
+            || !ep.is_null() && *ep as libc::c_int != 0 as libc::c_int
+                && *ep as libc::c_int != '.' as i32
+        {
+            rhs_t = ST_BAD!() as libc::c_int;
+        }
+
+    }
+    else if ISALPHA!(*rhs) && *rhs.offset(1 as isize) == 0 
+    || *rhs.offset(1 as isize) as libc::c_int == '.' as libc::c_int
+    {
+      rhs_t = ST_CHAR!();
+      ep = rhs.offset(1 as libc::c_int as isize);
+    }
+    else {
+      rhs_t = ST_BAD!();
+      ep = 0 as *mut libc::c_char;
+    }
+    incr = 1 as libc::c_int as intmax_t;
+    if rhs_t != ST_BAD!() {
+        oep = ep;
+        errno = 0 as libc::c_int;
+
+        if !ep.is_null() && *ep as libc::c_int == '.' as i32
+            && *ep.offset(1 as libc::c_int as isize) as libc::c_int == '.' as i32
+            && *ep.offset(2 as libc::c_int as isize) as libc::c_int != 0
+        {
+            incr = strtoimax(
+                ep.offset(2 as libc::c_int as isize),
+                &mut ep,
+                10 as libc::c_int,
+            );
+        }
+        if *ep as libc::c_int != 0 as libc::c_int
+            || errno == ERANGE!() 
+        {
+            rhs_t = ST_BAD!();
+        }
+        tlen = (tlen as usize)
+            .wrapping_sub(ep.offset_from(oep) as libc::c_long as usize) as size_t
+            as size_t;
+    }
+
+    if lhs_t != rhs_t || lhs_t == ST_BAD!() as libc::c_int || rhs_t == ST_BAD!() as libc::c_int {
+        libc::free(lhs as *mut libc::c_void);
+        libc::free(rhs as *mut libc::c_void);
+        return 0 as *mut libc::c_void as *mut *mut libc::c_char;
+    }
+
+    if lhs_t == ST_CHAR!() as libc::c_int {
+        lhs_v = *lhs.offset(0 as libc::c_int as isize) as libc::c_uchar as intmax_t;
+        rhs_v = *rhs.offset(0 as libc::c_int as isize) as libc::c_uchar as intmax_t;
+        width = 1 as libc::c_int;
+    }
+
+    else {
+        lhs_v = tl;
+        rhs_v = tr;
+        rhs_l = tlen as libc::c_int - lhs_l as libc::c_int- 
+        std::mem::size_of::<[libc::c_char; 3]>() as libc::c_int 
+        + 1 as libc::c_int;
+
+        width = 0;
+        if lhs_l > 1 as libc::c_int
+            && *lhs.offset(0 as libc::c_int as isize) as libc::c_int == '0' as i32
+        {
+            width = lhs_l;
+            lhs_t = ST_ZINT!() ;
+        }
+        if lhs_l > 2 as libc::c_int
+            && *lhs.offset(0 as libc::c_int as isize) as libc::c_int == '-' as i32
+            && *lhs.offset(1 as libc::c_int as isize) as libc::c_int == '0' as i32
+        {
+            width = lhs_l;
+            lhs_t = ST_ZINT!() ;
+        }
+        if rhs_l > 1 as libc::c_int
+            && *rhs.offset(0 as libc::c_int as isize) as libc::c_int == '0' as i32
+            && width < rhs_l
+        {
+            width = rhs_l;
+            lhs_t = ST_ZINT!() ;
+        }
+        if rhs_l > 2 as libc::c_int
+            && *rhs.offset(0 as libc::c_int as isize) as libc::c_int == '-' as i32
+            && *rhs.offset(1 as libc::c_int as isize) as libc::c_int == '0' as i32
+            && width < rhs_l
+        {
+            width = rhs_l;
+            lhs_t =  ST_ZINT!() ;
+        }  
+        if width < lhs_l && lhs_t == ST_ZINT!() {
+            width = lhs_l;
+        }
+        if width < rhs_l && lhs_t == ST_ZINT!() {
+            width = rhs_l;
+        }
+    }
+    result = mkseq(lhs_v, rhs_v, incr, lhs_t, width);
+    libc::free(lhs as *mut libc::c_void);
+    libc::free(rhs as *mut libc::c_void);
+    return result;
+}
 
