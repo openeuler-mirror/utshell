@@ -834,9 +834,127 @@ unsafe extern "C" fn brace_gobbler(
         1 as libc::c_int 
     };
     i = *indx;
-    libc::free(arr1 as *mut libc::c_void);
-    *result.offset(len as isize) = 0 as *mut libc::c_void as *mut libc::c_char;
-    return result;
-}
 
+    'outer: loop {
+        Flag = false;
+        c = *text.offset(i as isize) as libc::c_int;
+        if (c == 0) {
+
+            break 'outer;
+        }
+        if pass_next != 0 {
+            pass_next = 0 as libc::c_int;
+            ADVANCE_CHAR!(text, tlen, i);
+            continue 'outer;
+	    }
+        if c == '\\'  as i32
+        && (quoted == 0 || quoted == '"' as i32
+         || quoted == '`'  as i32
+        ){
+
+            pass_next = 1;
+            i += 1;
+            continue 'outer;
+	    } 
+        if c == '$' as i32
+        && *text.offset((i + 1 as libc::c_int) as isize) as libc::c_int == '{' as i32
+        && quoted != '\'' as i32
+        {
+            pass_next = 1 as libc::c_int;
+            i += 1;
+            if quoted == 0 as libc::c_int {
+                level += 1;
+            }
+            continue 'outer;
+        } 
+        'inner: loop { 
+            if quoted != 0 {
+                if c == quoted {
+                    quoted = 0 as libc::c_int;
+                }
+                if quoted == '"' as i32 && c == '$' as i32
+                && *text.offset((i + 1 as libc::c_int) as isize) as libc::c_int
+                    == '(' as i32
+                {
+                    Flag = true;
+                    break 'inner;
+                }
+                ADVANCE_CHAR!(text, tlen, i);
+                continue 'outer;
+            }
+            if c == '"' as libc::c_int 
+            || c == '\'' as libc::c_int 
+            || c == '`' as libc::c_int
+            {
+              quoted = c;
+              i+= 1;
+              continue 'outer;
+            }
+            else if (c == '$' as libc::c_int 
+              || c == '<' as libc::c_int 
+              || c == '>' as libc::c_int ) &&
+              *text.offset((i + 1 as libc::c_int) as isize) as libc::c_int
+              == '(' as libc::c_int 		/* ) */
+            {
+                si = i + 2 as libc::c_int;
+                t = extract_command_subst(text, &mut si, 0 as libc::c_int);
+                i = si;
+                libc::free(t as *mut libc::c_void);
+                i += 1;
+                continue 'outer;
+            }
+            break 'inner;
+        }
+       
+        if  Flag {
+            si = i + 2 as libc::c_int;
+            t = extract_command_subst(text, &mut si, 0 as libc::c_int);
+            i = si;
+            libc::free(t as *mut libc::c_void);
+            i += 1;
+            continue 'outer;
+        }
+
+        if (c == satisfy
+            && level == 0 as libc::c_int 
+            && quoted == 0 as libc::c_int 
+            && commas > 0 as libc::c_int)
+        {
+            /* We ignore an open brace surrounded by whitespace, and also
+                an open brace followed immediately by a close brace preceded
+                by whitespace.  */
+            if c == '{' as libc::c_int &&
+                ((i == 0
+                || brace_whitespace!(*text.offset((i - 1 as libc::c_int) as isize)))
+                &&
+                (brace_whitespace!(*text.offset((i + 1 as libc::c_int) as isize))
+                || *text.offset((i + 1 as libc::c_int) as isize)
+                as libc::c_int == '}' as i32 ))
+            {
+                i += 1;
+                continue 'outer;
+            }
+            break 'outer;
+        }
+
+        if c == '{' as i32 {
+            level += 1;
+        } else if c == '}' as i32 && level != 0 {
+            level -= 1;
+        } else if satisfy == '}' as i32 && c == brace_arg_separator
+            && level == 0 as libc::c_int
+        {
+            commas += 1;
+        } else if satisfy == '}' as i32 
+        && STREQN(text.offset(i as libc::c_int as isize) , BRACE_SEQ_SPECIFIER!(), 2)  
+        && *text.offset((i + 2 as libc::c_int) as isize) as libc::c_int != satisfy
+        && level == 0 as libc::c_int {
+            commas += 1;
+        }
+        ADVANCE_CHAR!(text, tlen, i);
+    }
+
+    *indx = i;
+    return c;
+}
 
