@@ -6038,3 +6038,190 @@ macro_rules! READ_SAMPLE_BUF {
         }
     };
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn shell_execve(
+    mut command: *mut libc::c_char,
+    mut args: *mut *mut libc::c_char,
+    mut env: *mut *mut libc::c_char,
+) -> libc::c_int {
+    let mut larray: libc::c_int = 0;
+    let mut i: libc::c_int = 0;
+    let mut fd: libc::c_int = 0;
+    let mut sample: [libc::c_char; 128] = [0; 128];
+    let mut sample_len: libc::c_int = 0;
+
+    //缺少SETOSTYPE(0); 语句，因为找到宏定义的地方发现是没有展开的
+    execve(command, args as *const *mut libc::c_char, env as *const *mut libc::c_char);
+    i = errno!();
+    CHECK_TERMSIG!();
+
+    if i != ENOEXEC!() {
+        last_command_exit_value = 
+            if i == ENOENT!() as libc::c_int { EX_NOTFOUND as libc::c_int } else { EX_NOEXEC as libc::c_int };
+        if file_isdir(command) != 0 {
+            internal_error( b"%s: %s\0" as *const u8 as *mut libc::c_char,
+                command as *mut c_char,
+                strerror(EISDIR!() ),
+            );
+        } else if executable_file(command) == 0 {
+            errno!() = i;
+            file_error(command);
+        } else if i == E2BIG!() || i == ENOMEM!() {
+            errno!() = i;
+            file_error(command);
+        } else {
+            let mut fd_0: libc::c_int = open(command, O_RDONLY as libc::c_int);
+            
+            if fd_0 >= 0 {
+                sample_len = read(
+                    fd_0,
+                    sample.as_mut_ptr() as *mut libc::c_void,
+                    ::std::mem::size_of::<[libc::c_char; 128]>() as usize,
+                ) as libc::c_int;
+            } else {
+                sample_len = -1;
+            }
+
+            READ_SAMPLE_BUF!(command, sample, sample_len);      //有可能存在问题，如果存在问题就不用宏了
+            if sample_len > 0 {
+                sample[(sample_len - 1 )
+                    as usize] = '\u{0}' as i32 as libc::c_char;
+            }
+            if sample_len > 2  
+                && sample[0 ] as libc::c_int == '#' as i32
+                && sample[1 ] as libc::c_int == '!' as i32
+            {
+                let mut interp: *mut libc::c_char = 0 as *mut libc::c_char;
+                let mut ilen: libc::c_int = 0;
+
+                close(fd_0);
+                interp = getinterp(
+                    sample.as_mut_ptr(),
+                    sample_len,
+                    0 as *mut libc::c_int,
+                );
+                ilen = strlen(interp) as libc::c_int;
+                errno!() = i;
+                if *interp.offset((ilen - 1 ) as isize) as libc::c_int
+                    == '\r' as i32
+                {
+                    interp = realloc(interp as *mut c_void, (ilen + 2) as usize) as *mut libc::c_char;
+                    *interp.offset((ilen - 1 as libc::c_int) as isize) = '^' as i32 as libc::c_char;
+                    *interp.offset(ilen as isize) = 'M' as i32 as libc::c_char;
+                    *interp.offset((ilen + 1 as libc::c_int) as isize) = '\u{0}' as i32 as libc::c_char;
+                }
+                sys_error(b"%s: %s: bad interpreter\0" as *const u8 as *mut libc::c_char,
+                    command,
+                    if !interp.is_null() {
+                        interp
+                    } else {
+                        b"\0" as *const u8 as *const libc::c_char
+                    },
+                );
+                FREE!(interp);
+                return EX_NOEXEC as libc::c_int;
+            }
+
+            if fd_0 >= 0 {
+                close(fd_0);
+            }
+            errno!() = i;
+            file_error(command);
+        }
+        return last_command_exit_value;
+    }
+
+    READ_SAMPLE_BUF!(command, sample, sample_len);
+
+    if sample_len == 0 {
+        return EXECUTION_SUCCESS as libc::c_int;
+    }
+
+    if sample_len > 0 {
+        if check_binary_file(sample.as_mut_ptr(), sample_len) != 0 {
+            internal_error(
+                b"%s: cannot execute binary file: %s\0" as *const u8 as *mut c_char,
+                command,
+                strerror(i),
+            );
+            errno!() = i;
+            return EX_BINARY_FILE as libc::c_int;
+        }
+    }
+
+    reset_parser();
+    initialize_subshell();
+
+    set_sigint_handler();
+
+    larray = strvec_len(args) + 1 ;
+    args = strvec_resize(args, larray + 1 );
+
+    i = larray - 1 ;
+    while i != 0 {
+        *args.offset(i as isize) = *args.offset((i - 1 ) as isize);
+        i -= 1;
+    }
+
+    *args.offset(0 as isize) = shell_name;
+    *args.offset(1 as isize) = command;
+    *args.offset(larray as isize) = 0 as *mut libc::c_char;
+
+    if *(*args.offset(0 as isize)).offset(0 as isize)
+        as libc::c_int == '-' as i32
+    {
+        *args.offset(0 as isize) = *args.offset(1);
+    }
+    if restricted != 0 {
+        change_flag('r' as i32, '+' as i32);
+    }
+
+    if !subshell_argv.is_null() {
+        i = 1 ;
+        while i < subshell_argc {
+            free(subshell_argv.offset(i as isize) as *mut c_void);
+            i += 1;
+        }
+        free(subshell_argv as *mut c_void);
+    }
+    dispose_command(currently_executing_command);
+    currently_executing_command = 0 as *mut libc::c_void as *mut COMMAND;
+
+    subshell_argc = larray;
+    subshell_argv = args;
+    subshell_envp = env;
+
+    unbind_args();
+
+    clear_fifo_list();
+
+    siglongjmp(subshell_top_level.as_mut_ptr(), 1 );
+    return 0;   //这个地方c是没有返回值的，如果不加会报错，不清楚加0 是否正确
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
