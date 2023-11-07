@@ -17,6 +17,25 @@ extern "C" {
 }
 
 #[no_mangle] 
+pub unsafe extern "C" fn bind_spcial_variable(
+    mut name: *const libc::c_char,
+    mut value: *mut libc::c_char
+) -> *mut libc::c_char
+{
+    if libc::strcmp(name,b"PS1\0" as * const u8 as *mut libc::c_char) == 0 {
+        if  value.is_null() {
+            if current_user.euid == 0 {
+                value = Root_PS1_Value!();
+            }
+            else {
+                value = PS1_Value!();
+            }
+        }
+    }
+    return value;
+}
+
+#[no_mangle] 
 pub unsafe extern "C" fn bind_variable(
     mut name: *const libc::c_char,
     mut value: *mut libc::c_char,
@@ -27,7 +46,7 @@ pub unsafe extern "C" fn bind_variable(
     let mut vc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
     let mut nvc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
 
-   
+    value = bind_spcial_variable(name,value);
     if shell_variables.is_null() {
         create_variable_tables();
     }
@@ -89,6 +108,7 @@ pub unsafe extern "C" fn bind_variable(
                     v = nv;
                 }
             }
+        
             if !v.is_null() {
                 return bind_variable_internal(
                     (*v).name,
@@ -195,21 +215,38 @@ unsafe extern "C" fn atoi(mut __nptr: *const libc::c_char) -> libc::c_int {
 unsafe extern "C" fn create_variable_tables() {
     if shell_variables.is_null() {
         // new_var_context 下面会实现
+
         global_variables = new_var_context(
             0 as *mut libc::c_void as *mut libc::c_char,
             0 as libc::c_int,
         );
+
         shell_variables = global_variables;
         (*shell_variables).scope = 0 as libc::c_int;
         //hash_create  为外部函数
+
         (*shell_variables).table = hash_create(VARIABLES_HASH_BUCKETS!() as libc::c_int);
     }
     if shell_functions.is_null() {
+
         shell_functions = hash_create(FUNCTIONS_HASH_BUCKETS!() as libc::c_int);
     }
     // debugger
     if shell_function_defs.is_null() {
         shell_function_defs = hash_create(FUNCTIONS_HASH_BUCKETS!() as libc::c_int);
+    }
+}
+
+
+unsafe extern "C" fn set_home_var() {
+    let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    // find_variable  下文会实现
+    temp_var = find_variable(b"HOME\0" as *const u8 as *const libc::c_char);
+    if temp_var.is_null() {
+        temp_var =bind_variable(
+            b"HOME\0" as *const u8 as *const libc::c_char,
+            sh_get_home_dir(),
+            0 as libc::c_int);
     }
 }
 
