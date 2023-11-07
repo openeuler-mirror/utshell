@@ -73,6 +73,124 @@ extern "C" {
     static mut rl_filename_quoting_function: Option::<rl_quote_func_t>;
 
 }
+unsafe extern "C" fn really_munge_braces(
+    mut array: *mut *mut libc::c_char,
+    mut real_start: libc::c_int,
+    mut real_end: libc::c_int,
+    mut gcd_zero: libc::c_int,
+) -> *mut libc::c_char {
+    let mut start: libc::c_int = 0;
+    let mut end: libc::c_int = 0;
+    let mut gcd: libc::c_int = 0;
+    let mut result: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut subterm: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut x: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut result_size: libc::c_int = 0;
+    let mut flag: libc::c_int = 0;
+    let mut tlen: libc::c_int = 0;
+    flag = 0 as libc::c_int;
+    if real_start == real_end {
+        x = if !(*array.offset(real_start as isize)).is_null() {
+            sh_backslash_quote(
+                (*array.offset(real_start as isize)).offset(gcd_zero as isize),
+                0 as *const libc::c_char,
+                0 as libc::c_int,
+            )
+        } else {
+            sh_backslash_quote(
+                *array,
+                0 as *const libc::c_char,
+                0 as libc::c_int,
+            )
+        };
+        return x;
+    }
+    result_size = 16 as libc::c_int;
+    result = xmalloc(result_size as usize) as *mut libc::c_char;
+    *result = '\0' as i32 as libc::c_char;
+    start = real_start;
+    while start < real_end {
+        gcd = strlen(*array.offset(start as isize)) as libc::c_int;
+        end = start + 1 as libc::c_int;
+        while end < real_end {
+            let mut temp: libc::c_int = 0;
+            temp = string_gcd(
+                *array.offset(start as isize),
+                *array.offset(end as isize),
+            );
+            if temp <= gcd_zero {
+                break;
+            }
+            gcd = temp;
+            end += 1;
+        }
+        end -= 1;
+        if gcd_zero == 0 as libc::c_int && start == real_start
+            && end != real_end - 1 as libc::c_int
+        {
+            result_size += 1 as libc::c_int;
+            result = xrealloc(result as *mut libc::c_void, result_size as usize)
+                as *mut libc::c_char;
+            *result.offset(0 as libc::c_int as isize) = '{' as i32 as libc::c_char;
+            *result.offset(1 as libc::c_int as isize) = '\0' as i32 as libc::c_char;
+            flag += 1;
+            flag;
+        }
+        if start == end {
+            x = savestring!((*array.offset(start as isize)).offset(gcd_zero as isize));
+            subterm = sh_backslash_quote(x, 0 as *const libc::c_char, 0 as libc::c_int);
+            free(x as *mut libc::c_void);
+        } else {
+            tlen = gcd - gcd_zero;
+            x = xmalloc((tlen + 1 as libc::c_int) as usize) as *mut libc::c_char;
+            strncpy(
+                x,
+                (*array.offset(start as isize)).offset(gcd_zero as isize),
+                tlen as usize,
+            );
+            *x.offset(tlen as isize) = '\0' as i32 as libc::c_char;
+            subterm = sh_backslash_quote(x, 0 as *const libc::c_char, 0 as libc::c_int);
+            free(x as *mut libc::c_void);
+            result_size += strlen(subterm) as libc::c_int + 1 as libc::c_int;
+            result = xrealloc(result as *mut libc::c_void, result_size as usize)
+                as *mut libc::c_char;
+            strcat(result, subterm);
+            free(subterm as *mut libc::c_void);
+            strcat(result, b"{\0" as *const u8 as *const libc::c_char);
+            subterm = really_munge_braces(array, start, end + 1 as libc::c_int, gcd);
+            *subterm
+                .offset(
+                    (strlen(subterm) + 1 as libc::c_ulong) as isize,
+                ) = '}' as i32 as libc::c_char;
+        }
+        result_size += strlen(subterm) as libc::c_int +1 as libc::c_int;
+        result = xrealloc(result as *mut libc::c_void, result_size as usize)
+            as *mut libc::c_char;
+        strcat(result, subterm);
+        strcat(result, b",\0" as *const u8 as *const libc::c_char);
+        free(subterm as *mut libc::c_void);
+        start = end + 1 as libc::c_int;
+    }
+    if gcd_zero == 0 as libc::c_int {
+        *result
+            .offset(
+                (strlen(result) - 1 as libc::c_ulong) as isize,
+            ) = (if flag != 0 { '}' as i32 } else { '\0' as i32 }) as libc::c_char;
+    }
+    return result;
+}
+
+unsafe extern "C" fn _strcompare(
+    mut s1: *mut *mut libc::c_char,
+    mut s2: *mut *mut libc::c_char,
+) -> libc::c_int {
+    let mut result: libc::c_int = 0;
+    result = **s1 as libc::c_int - **s2 as libc::c_int;
+    if result == 0 as libc::c_int {
+        result = strcmp(*s1, *s2);
+    }
+    return result;
+}
 
 unsafe extern "C" fn hack_braces_completion(
     mut names: *mut *mut libc::c_char,
