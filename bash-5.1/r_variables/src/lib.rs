@@ -452,3 +452,40 @@ pub unsafe extern "C" fn set_ppid() {
 
 }
 
+unsafe extern "C" fn uidset() {
+    // INT_STRLEN_BOUND(uid_t) + 1
+    let mut buff: [libc::c_char; (INT_STRLEN_BOUND!(uid_t) +1) as usize] = [0;(INT_STRLEN_BOUND!(uid_t) +1) as usize ];
+    let mut b: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+
+    b = inttostr(
+        current_user.uid as intmax_t,
+        buff.as_mut_ptr(),
+        std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(uid_t) +1) as usize]>() as libc::c_ulong as size_t
+    );
+    v = find_variable(b"UID\0" as *const u8 as *const libc::c_char);
+    if v.is_null() {
+        v = bind_variable(
+            b"UID\0" as *const u8 as *const libc::c_char,
+            b,
+            0 as libc::c_int,
+        );
+        VSETATTR!(v,(att_readonly | att_integer) as libc::c_int);
+    }
+    if current_user.euid != current_user.uid {
+        b = inttostr(
+            current_user.euid as intmax_t,
+            buff.as_mut_ptr(),
+            std::mem::size_of::< [libc::c_char; (INT_STRLEN_BOUND!(uid_t) +1) as usize]>() as libc::c_ulong  as size_t
+        );
+    }
+    v = find_variable(b"EUID\0" as *const u8 as *const libc::c_char);
+    if v.is_null() {
+        v = bind_variable(
+            b"EUID\0" as *const u8 as *const libc::c_char,
+            b,
+            0 as libc::c_int,
+        );
+        VSETATTR!(v,(att_readonly | att_integer));
+    }
+}
