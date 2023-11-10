@@ -262,20 +262,6 @@ unsafe extern "C" fn create_variable_tables() {
 
 }
 
-
-unsafe extern "C" fn set_home_var() {
-    let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    // find_variable  下文会实现
-    temp_var = find_variable(b"HOME\0" as *const u8 as *const libc::c_char);
-    if temp_var.is_null() {
-        temp_var =bind_variable(
-            b"HOME\0" as *const u8 as *const libc::c_char,
-            sh_get_home_dir(),
-            0 as libc::c_int);
-    }
-}
-
-
 unsafe extern "C" fn set_machine_vars() {
     
     let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
@@ -339,4 +325,86 @@ unsafe extern "C" fn set_shell_var() {
             current_user.shell,
             0 as libc::c_int);
     }
+}
+
+unsafe extern "C" fn get_bash_name() -> *mut libc::c_char 
+{
+    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
+    
+    if login_shell == 1 as libc::c_int && RELPATH!(shell_name)
+    {
+        if (current_user.shell).is_null() 
+        {
+            // get_current_user_info  in file of shell.c
+            get_current_user_info();
+        }
+        name = savestring!(current_user.shell);
+    } 
+    else if ABSPATH!(shell_name)
+    {
+        name = savestring!(shell_name);
+    }
+    else if *shell_name.offset(0 as libc::c_int as isize) as libc::c_int == '.' as i32
+    && *shell_name.offset(1 as libc::c_int as isize) as libc::c_int == '/' as i32 
+    { 
+        let mut cdir: *mut libc::c_char = 0 as *mut libc::c_char;
+        let mut len: libc::c_int = 0;
+
+        //get_string_value  下文会实现
+        cdir = get_string_value(b"PWD\0" as *const u8 as *const libc::c_char);
+        if !cdir.is_null() 
+        {
+            len = strlen(cdir) as libc::c_int;
+            name = libc::malloc(
+                (len as isize + strlen(shell_name) as isize + 1 as libc::c_int as isize).try_into().unwrap()
+            ) as *mut libc::c_char ;
+            strcpy(name, cdir);
+            strcpy(
+                name.offset(len as isize) ,
+                shell_name.offset(1 as libc::c_int as isize) 
+            );
+        } 
+        else {
+            name = savestring!(shell_name);
+        }
+    }
+    else 
+    {
+        let mut tname: *mut libc::c_char = 0 as *mut libc::c_char;
+        let mut s: libc::c_int = 0;
+        tname = find_user_command(shell_name);
+        if tname.is_null() {
+            s = file_status(shell_name);
+            if s & FS_EXECABLE as libc::c_int != 0 {
+                tname = make_absolute(
+                    shell_name,
+                    get_string_value(b"PWD\0" as *const u8 as *const libc::c_char),
+                );
+                if *shell_name as libc::c_int == '.' as i32 {
+
+                    //sh_canonpath in extern file
+                    name = sh_canonpath(tname, (PATH_CHECKDOTDOT|PATH_CHECKEXISTS) as libc::c_int);
+                    if name.is_null() {
+                        name = tname;
+                    } else {
+                        free(tname as *mut libc::c_void);
+                    }
+                } else {
+                    name = tname;
+                }
+            }else {
+                if (current_user.shell).is_null() {
+                    // get_current_user_info  in file of shell.c
+                    get_current_user_info();
+                }
+                name = savestring!(current_user.shell);
+            }
+        } else {
+            name = full_pathname(tname);
+            free(tname as *mut libc::c_void);
+        }
+    }
+    return name;
+
+}
 
