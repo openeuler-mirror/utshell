@@ -2,9 +2,10 @@
 use libc::*;
 use r_bash::*;
 use std::ffi::CStr;
+use rcommon::WordList as WORD_LIST;
+use rcommon::WordDesc as WORD_DESC;
 
 extern "C" {
-    fn xmalloc(_: size_t) -> *mut libc::c_void;
     fn hash_create(_: libc::c_int) -> *mut HASH_TABLE;
     static mut shell_start_time: time_t;
     static mut shellstart: timeval;
@@ -134,6 +135,33 @@ pub unsafe extern "C" fn bind_variable(
 
 #[derive(Copy, Clone)]
 #[repr(C)]
+pub struct timezone {
+    pub tz_minuteswest: libc::c_int,
+    pub tz_dsttime: libc::c_int,
+}
+pub type __timezone_ptr_t = *mut timezone;
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct timeval {
+    pub tv_sec: __time_t,
+    pub tv_usec: __suseconds_t,
+}
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct name_and_function {
+    pub name: *mut libc::c_char,
+    pub function: Option::<sh_sv_func_t>,
+}
+
+#[no_mangle]
+pub static mut global_variables: *mut VAR_CONTEXT = 0 as *const libc::c_void
+    as *mut libc::c_void as *mut VAR_CONTEXT;
+
+
+#[derive(Copy, Clone)]
+#[repr(C)]
 pub struct saved_dollar_vars {
     pub first_ten: *mut *mut libc::c_char,
     pub rest: *mut WORD_LIST,
@@ -231,10 +259,7 @@ unsafe extern "C" fn create_variable_tables() {
 
         shell_functions = hash_create(FUNCTIONS_HASH_BUCKETS!() as libc::c_int);
     }
-    // debugger
-    if shell_function_defs.is_null() {
-        shell_function_defs = hash_create(FUNCTIONS_HASH_BUCKETS!() as libc::c_int);
-    }
+
 }
 
 
@@ -287,3 +312,31 @@ pub unsafe extern "C" fn sh_get_home_dir() -> *mut libc::c_char {
     }
     return current_user.home_dir;
 }
+
+unsafe extern "C" fn set_home_var() {
+    let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    // find_variable  下文会实现
+    temp_var = find_variable(b"HOME\0" as *const u8 as *const libc::c_char);
+    if temp_var.is_null() {
+        temp_var =bind_variable(
+            b"HOME\0" as *const u8 as *const libc::c_char,
+            sh_get_home_dir(),
+            0 as libc::c_int);
+    }
+}
+
+unsafe extern "C" fn set_shell_var() {
+    let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    // find_variable  下文会实现
+    temp_var = find_variable(b"SHELL\0" as *const u8 as *const libc::c_char);
+    if temp_var.is_null() {
+        if (current_user.shell).is_null() {
+            // get_current_user_info  in file of shell.c
+            get_current_user_info();
+        }
+        temp_var =bind_variable(
+            b"SHELL\0" as *const u8 as *const libc::c_char,
+            current_user.shell,
+            0 as libc::c_int);
+    }
+
