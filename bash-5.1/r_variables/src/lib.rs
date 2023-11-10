@@ -159,6 +159,14 @@ pub struct name_and_function {
 pub static mut global_variables: *mut VAR_CONTEXT = 0 as *const libc::c_void
     as *mut libc::c_void as *mut VAR_CONTEXT;
 
+#[no_mangle]
+pub static mut export_env: *mut *mut libc::c_char = 0 as *const libc::c_void
+    as *mut libc::c_void as *mut *mut libc::c_char;
+
+static mut export_env_index: libc::c_int = 0;
+static mut export_env_size: libc::c_int = 0;
+static mut winsize_assignment: libc::c_int = 0;
+const CHAR_BIT : libc::c_int = 8 as libc::c_int;
 
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -487,5 +495,43 @@ unsafe extern "C" fn uidset() {
             0 as libc::c_int,
         );
         VSETATTR!(v,(att_readonly | att_integer));
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn print_var_list(mut list: *mut *mut SHELL_VAR) {
+
+    let mut i: libc::c_int = 0 as libc::c_int;
+    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+
+    while !list.is_null()
+        && {
+            var = *list.offset(i as isize);
+            !var.is_null()
+        }
+    {
+        if invisible_p!(var) == 0 {
+            print_assignment(var);
+        } 
+        i += 1 ;
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn print_func_list(mut list: *mut *mut SHELL_VAR) {
+    let mut i: libc::c_int = 0;
+    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    i = 0 as libc::c_int;
+
+    while !list.is_null()
+        && {
+            var = *list.offset(i as isize);
+            !var.is_null()
+        }
+    {
+        libc::printf(b"%s \0" as *const u8 as *const libc::c_char, (*var).name);
+        print_var_function(var);
+        libc::printf(b"\n\0" as *const u8 as *const libc::c_char);
+        i += 1;
     }
 }
