@@ -117,3 +117,55 @@ unsafe extern "C" fn hack_braces_completion(
     return 0 as libc::c_int;
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn bash_brace_completion(
+    mut count: libc::c_int,
+    mut ignore: libc::c_int,
+) -> libc::c_int {
+    let mut orig_ignore_func: Option::<rl_compignore_func_t> = None;
+    let mut orig_entry_func: Option::<rl_compentry_func_t> = None;
+    let mut orig_quoting_func: Option::<rl_quote_func_t> = None;
+    let mut orig_attempt_func: Option::<rl_completion_func_t> = None;
+    let mut orig_quoting_desired: libc::c_int = 0;
+    let mut r: libc::c_int = 0;
+    orig_ignore_func = rl_ignore_some_completions_function;
+    orig_attempt_func = rl_attempted_completion_function;
+    orig_entry_func = rl_completion_entry_function;
+    orig_quoting_func = rl_filename_quoting_function;
+    orig_quoting_desired = rl_filename_quoting_desired;
+    rl_completion_entry_function = Some(
+        rl_filename_completion_function
+            as unsafe extern "C" fn(
+                *const libc::c_char,
+                libc::c_int,
+            ) -> *mut libc::c_char,
+    );
+    rl_attempted_completion_function = ::core::mem::transmute::<
+        *mut libc::c_void,
+        Option::<rl_completion_func_t>,
+    >(0 as *mut libc::c_void);
+    rl_ignore_some_completions_function = ::core::mem::transmute::<
+        Option::<unsafe extern "C" fn() -> libc::c_int>,
+        Option::<rl_compignore_func_t>,
+    >(
+        Some(
+            ::core::mem::transmute::<
+                unsafe extern "C" fn(*mut *mut libc::c_char) -> libc::c_int,
+                unsafe extern "C" fn() -> libc::c_int,
+            >(hack_braces_completion),
+        ),
+    );
+    rl_filename_quoting_function = ::core::mem::transmute::<
+        *mut libc::c_void,
+        Option::<rl_quote_func_t>,
+    >(0 as *mut libc::c_void);
+    rl_filename_quoting_desired = 0 as libc::c_int;
+    r = rl_complete_internal('\t' as i32);
+    rl_ignore_some_completions_function = orig_ignore_func;
+    rl_attempted_completion_function = orig_attempt_func;
+    rl_completion_entry_function = orig_entry_func;
+    rl_filename_quoting_function = orig_quoting_func;
+    rl_filename_quoting_desired = orig_quoting_desired;
+    return r;
+}
+
