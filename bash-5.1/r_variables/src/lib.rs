@@ -183,6 +183,20 @@ macro_rules! vc_istempenv {
 }
 
 #[macro_export]
+macro_rules! FV_FORCETEMPENV {
+    () => {
+        0x01
+    };
+}
+
+#[macro_export]
+macro_rules! FV_SKIPINVISIBLE {
+    () => {
+        0x02
+    };
+}
+
+#[macro_export]
 macro_rules! FV_NODYNAMIC {
     () => {
         0x04
@@ -405,6 +419,36 @@ unsafe extern "C" fn get_bash_name() -> *mut libc::c_char
         }
     }
     return name;
+
+}
+
+unsafe extern "C" fn initialize_shell_level() {
+    adjust_shell_level(1 as libc::c_int);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn set_ppid() {
+    // 暂时定义的宏 有问题 还得修改
+    let mut namebuf: [libc::c_char; (INT_STRLEN_BOUND!(uid_t) +1) as usize] = [0; (INT_STRLEN_BOUND!(uid_t) +1) as usize];
+    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut temp_var : *mut SHELL_VAR;
+
+    name = inttostr(
+        getppid() as intmax_t,
+        namebuf.as_mut_ptr(),
+        std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(uid_t) +1) as usize]>() as libc::c_ulong as size_t
+    );
+    temp_var = find_variable (b"PPID\0" as *const u8 as *const libc::c_char);
+    if !temp_var.is_null() {
+        VUNSETATTR!(temp_var,(att_readonly|att_exported));
+    }
+
+    temp_var = bind_variable (
+        b"PPID\0" as *const u8 as *const libc::c_char,
+        name,
+        0 as libc::c_int);
+
+    VSETATTR!(temp_var,(att_readonly | att_integer)) ;
 
 }
 
