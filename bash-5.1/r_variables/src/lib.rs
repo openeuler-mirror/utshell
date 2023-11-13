@@ -639,6 +639,71 @@ pub unsafe extern "C" fn print_func_list(mut list: *mut *mut SHELL_VAR) {
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn print_assignment(var: *mut SHELL_VAR) {
+
+    if !var_isset!(var) {
+        return;
+    }
+    if function_p!(var) != 0 {
+        libc::printf(b"%s\0" as *const u8 as *const libc::c_char, (*var).name);
+        print_var_function(var);
+        libc::printf(b"\n\0" as *const u8 as *const libc::c_char);
+    } 
+    else if array_p!(var) != 0
+     {        
+        print_array_assignment(var, 0 as libc::c_int);
+    } else if assoc_p!(var)!= 0 {
+        print_assoc_assignment(var, 0 as libc::c_int);
+    } 
+    else {
+        libc::printf(b"%s=\0" as *const u8 as *const libc::c_char, (*var).name);
+        print_var_value(var, 1 as libc::c_int);
+        libc::printf(b"\n\0" as *const u8 as *const libc::c_char);
+    }
+}
+
+pub unsafe extern "C" fn print_var_value(
+    mut var: *mut SHELL_VAR,
+    mut quote: libc::c_int)
+{
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    if !var_isset!(var)
+    {
+        return;
+    }
+    if quote != 0 && posixly_correct == 0 as libc::c_int
+        && ansic_shouldquote(value_cell!(var)) != 0
+    {
+        t = ansic_quote(value_cell!(var), 0 as libc::c_int, 0 as *mut libc::c_int);
+        libc::printf(b"%s\0" as *const u8 as *const libc::c_char, t);
+        if !t.is_null() {
+            libc::free(t as *mut libc::c_void);
+        }
+    } else if quote != 0 && sh_contains_shell_metas(value_cell!(var)) != 0 {
+        t = sh_single_quote(value_cell!(var));
+        libc::printf(b"%s\0" as *const u8 as *const libc::c_char, t);
+        if !t.is_null() {
+            libc::free(t as *mut libc::c_void);
+        }
+    } else {
+        libc::printf(b"%s\0" as *const u8 as *const libc::c_char, value_cell!(var));
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn print_var_function(mut var: *mut SHELL_VAR) {
+    let mut x: *mut libc::c_char = 0 as *mut libc::c_char;
+    if function_p!(var) != 0 as libc::c_int && var_isset!(var) {
+        x = named_function_string(
+            0 as *mut libc::c_void as *mut libc::c_char,
+            function_cell!(var),
+            (FUNC_MULTILINE|FUNC_EXTERNAL) as libc::c_int
+        );
+        libc::printf(b"%s\0" as *const u8 as *const libc::c_char, x);
+    }
+}
+
 unsafe extern "C" fn null_assign(
     mut self_0: *mut SHELL_VAR,
     mut value: *mut libc::c_char,
