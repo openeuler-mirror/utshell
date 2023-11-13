@@ -926,3 +926,53 @@ unsafe extern "C" fn assign_seconds(
     shell_start_time = shellstart.tv_sec;
     return self_0;
 }
+
+unsafe extern "C" fn get_seconds(mut var: *mut SHELL_VAR) -> *mut SHELL_VAR {
+    
+    let mut time_since_start: time_t = 0;
+    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut tv: timeval = timeval { tv_sec: 0, tv_usec: 0 };
+
+    gettimeofday(&mut tv, 0 as *mut timezone);
+    time_since_start = tv.tv_sec - shell_start_time;
+
+    p = itos(seconds_value_assigned + time_since_start);
+    if !(value_cell!(var).is_null()) {
+        libc::free(value_cell!(var) as *mut libc::c_void);
+    }
+    VSETATTR!(var, att_integer);
+    var_setvalue!(var,p);
+    return var;
+}
+
+unsafe extern "C" fn init_seconds_var() -> *mut SHELL_VAR {
+    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    
+    v = find_variable(b"SECONDS\0" as *const u8 as *const libc::c_char);
+
+    if !v.is_null() {
+        if legal_number(value_cell!(v),
+         &mut seconds_value_assigned) == 0 as libc::c_int {
+            seconds_value_assigned = 0 as libc::c_int as intmax_t;
+        }
+    }
+    if !v.is_null() {
+        INIT_DYNAMIC_VAR!(
+            v,
+            b"SECONDS\0" as *const u8 as *const libc::c_char,
+            value_cell!(v),
+            Some(get_seconds), 
+            Some(assign_seconds)
+        );
+    }
+    else {
+        INIT_DYNAMIC_VAR!(
+            v,
+            b"SECONDS\0" as *const u8 as *const libc::c_char,
+            0 as *mut libc::c_void as *mut libc::c_char,
+            Some(get_seconds), 
+            Some(assign_seconds)
+        );
+    }
+    return v;
+}
