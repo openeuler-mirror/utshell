@@ -601,6 +601,82 @@ unsafe extern "C" fn uidset() {
     }
 }
 
+unsafe extern "C" fn make_vers_array() {
+
+    let mut vv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut av: *mut ARRAY = 0 as *mut ARRAY;
+
+    let mut s: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut d: [libc::c_char; 32] = [0; 32];
+
+    const b: [libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize]
+     = [ 0 as libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize];
+    unbind_variable_noref(b"BASH_VERSINFO\0" as *const u8 as *const libc::c_char);
+    
+    vv = make_new_array_variable (
+        b"BASH_VERSINFO\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+    );
+    av = array_cell!(vv) ;
+    strcpy(d.as_mut_ptr(), dist_version);
+    s = libc::strchr(d.as_mut_ptr(), '.' as i32);
+    if !s.is_null() {
+        *s = '\0' as i32 as libc::c_char;
+        s = s.offset(1 as isize);
+    }
+    array_insert(av, 0 as libc::c_int as arrayind_t, d.as_mut_ptr());
+    array_insert(av, 1 as libc::c_int as arrayind_t, s);
+    
+    s = inttostr(
+        patch_level as intmax_t,
+        b.as_mut_ptr(),
+        std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize]>() as libc::c_ulong as usize
+    );
+    array_insert(av, 2 as libc::c_int as arrayind_t, s);
+    s = inttostr(
+        build_version as intmax_t,
+        b.as_mut_ptr(),
+        std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize]>() as libc::c_ulong as usize
+    );
+    array_insert(av, 3 as libc::c_int as arrayind_t, s);
+    array_insert(av, 4 as libc::c_int as arrayind_t, release_status);
+    array_insert(
+        av,
+        5 as libc::c_int as arrayind_t,
+        get_mach_type() 
+    );
+    VSETATTR!(vv, att_readonly);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn sh_set_lines_and_columns(
+    mut lines: libc::c_int,
+    mut cols: libc::c_int
+) {
+    let mut val: [libc::c_char; (INT_STRLEN_BOUND!(libc::c_int)+1) as usize] 
+    = [0 as libc::c_char; (INT_STRLEN_BOUND!(libc::c_int)+1) as usize];
+
+    let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
+    if winsize_assignment != 0 {
+        return;
+    }
+
+    v = inttostr(
+        lines as intmax_t,
+        val.as_mut_ptr(),
+        std::mem::size_of::<[libc::c_char;(INT_STRLEN_BOUND!(libc::c_int)+1) as usize]>() as libc::c_ulong as usize
+    );
+
+    bind_variable( b"LINES\0" as *const u8 as *const libc::c_char,
+                    v, 0 as libc::c_int);
+    v = inttostr(
+        cols as intmax_t,
+        val.as_mut_ptr(),
+        std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(libc::c_int)+1) as usize]>() as libc::c_ulong as usize
+    );
+    bind_variable(b"COLUMNS\0" as *const u8 as *const libc::c_char,
+                    v, 0 as libc::c_int);
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn print_var_list(mut list: *mut *mut SHELL_VAR) {
 
