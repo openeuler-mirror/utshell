@@ -160,6 +160,25 @@ pub static mut global_variables: *mut VAR_CONTEXT = 0 as *const libc::c_void
     as *mut libc::c_void as *mut VAR_CONTEXT;
 
 #[no_mangle]
+pub static mut shell_variables: *mut VAR_CONTEXT = 0 as *const libc::c_void
+    as *mut libc::c_void as *mut VAR_CONTEXT;
+    
+#[no_mangle]
+pub static mut shell_functions: *mut HASH_TABLE = 0 as *const libc::c_void
+    as *mut libc::c_void as *mut HASH_TABLE;
+
+#[no_mangle]
+pub static mut invalid_env: *mut HASH_TABLE = 0 as *const libc::c_void
+    as *mut libc::c_void as *mut HASH_TABLE;
+
+#[no_mangle]
+pub static mut shell_function_defs: *mut HASH_TABLE = 0 as *const libc::c_void
+    as *mut libc::c_void as *mut HASH_TABLE;
+
+#[no_mangle]
+pub static mut temporary_env: *mut HASH_TABLE = 0 as *const libc::c_void
+    as *mut libc::c_void as *mut HASH_TABLE ; 
+#[no_mangle]
 pub static mut export_env: *mut *mut libc::c_char = 0 as *const libc::c_void
     as *mut libc::c_void as *mut *mut libc::c_char;
 
@@ -174,6 +193,55 @@ pub struct saved_dollar_vars {
     pub first_ten: *mut *mut libc::c_char,
     pub rest: *mut WORD_LIST,
     pub count: libc::c_int,
+}
+
+#[macro_export] 
+macro_rules! propagate_p {
+    ($var:expr) => {
+        (*$var).attributes & att_propagate  as libc::c_int
+    }
+}
+
+#[macro_export] 
+macro_rules! VC_FUNCENV {
+    () => {
+        0x04
+    }
+}
+
+#[macro_export] 
+macro_rules! capcase_p {
+    ($vc:expr) => {
+        (*$vc).attributes & att_capcase  as libc::c_int
+    }
+}
+
+#[macro_export] 
+macro_rules! uppercase_p {
+    ($vc:expr) => {
+        (*$vc).attributes & att_uppercase  as libc::c_int
+    }
+}
+
+#[macro_export] 
+macro_rules! IN_CTYPE_DOMAIN {
+    ($c:expr) => {
+        1 as libc::c_int
+    }
+}
+
+#[macro_export] 
+macro_rules! ISDIGIT {
+    ($c:expr) => {
+        (IN_CTYPE_DOMAIN!($c) !=0 ) && (libc::isdigit($c  as libc::c_int ) != 0)
+    }
+}
+
+#[macro_export] 
+macro_rules! lowercase_p {
+    ($vc:expr) => {
+        (*$vc).attributes & att_lowercase  as libc::c_int
+    }
 }
 
 #[macro_export] 
@@ -534,4 +602,13 @@ pub unsafe extern "C" fn print_func_list(mut list: *mut *mut SHELL_VAR) {
         libc::printf(b"\n\0" as *const u8 as *const libc::c_char);
         i += 1;
     }
+}
+
+unsafe extern "C" fn null_assign(
+    mut self_0: *mut SHELL_VAR,
+    mut value: *mut libc::c_char,
+    mut unused: arrayind_t,
+    mut key: *mut libc::c_char,
+) -> *mut SHELL_VAR {
+    return self_0;
 }
