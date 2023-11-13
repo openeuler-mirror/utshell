@@ -976,3 +976,51 @@ unsafe extern "C" fn init_seconds_var() -> *mut SHELL_VAR {
     }
     return v;
 }
+  
+#[no_mangle]
+pub static mut last_random_value: libc::c_int = 0;
+static mut seeded_subshell: libc::c_int = 0 as libc::c_int;
+
+unsafe extern "C" fn assign_random(
+    mut self_0: *mut SHELL_VAR,
+    mut value: *mut libc::c_char,
+    mut unused: arrayind_t,
+    mut key: *mut libc::c_char,
+) -> *mut SHELL_VAR {
+    let mut seedval: intmax_t = 0;
+    let mut expok: libc::c_int = 0;
+    if integer_p!(self_0) != 0 {
+        seedval = evalexp(value, 0 as libc::c_int, &mut expok);
+    } else {
+        expok = legal_number(value, &mut seedval);
+    }
+    if expok == 0 as libc::c_int {
+        return self_0;
+    }
+    sbrand(seedval as libc::c_ulong);
+    if subshell_environment != 0 {
+        seeded_subshell = getpid();
+    }
+    return self_0;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn get_random_number() -> libc::c_int {
+    let mut rv: libc::c_int = 0;
+    let mut pid: libc::c_int = 0;
+
+    pid = getpid();
+    if subshell_environment != 0 && seeded_subshell != pid {
+        seedrand();
+        seeded_subshell = pid;
+    }
+    loop {
+        rv = brand();
+        if rv == last_random_value {
+            break;
+        }
+    }
+    last_random_value = rv;
+    return last_random_value;
+}
+
