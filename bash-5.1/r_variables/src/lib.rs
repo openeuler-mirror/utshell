@@ -1069,3 +1069,41 @@ unsafe extern "C" fn assign_lineno(
     line_number = line_number_base;
     return var;
 }
+
+unsafe extern "C" fn get_lineno(mut var: *mut SHELL_VAR) -> *mut SHELL_VAR {
+    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ln: libc::c_int = 0;
+    ln = executing_line_number();
+    p = itos(ln as intmax_t);
+    if !(value_cell!(var).is_null()) {
+        free(value_cell!(var) as *mut libc::c_void);
+    }
+    var_setvalue!(var,p);
+    return var;
+}
+
+unsafe extern "C" fn assign_subshell(
+    mut var: *mut SHELL_VAR,
+    mut value: *mut libc::c_char,
+    mut unused: arrayind_t,
+    mut key: *mut libc::c_char,
+) -> *mut SHELL_VAR {
+    let mut new_value: intmax_t = 0;
+    if value.is_null() || *value as libc::c_int == '\0' as i32
+        || legal_number(value, &mut new_value) == 0 as libc::c_int
+    {
+        new_value = 0 as libc::c_int as intmax_t;
+    }
+    subshell_level = new_value as libc::c_int;
+    return var;
+}
+
+unsafe extern "C" fn get_subshell(mut var: *mut SHELL_VAR) -> *mut SHELL_VAR {
+    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    p = itos(subshell_level as intmax_t);
+    if !(value_cell!(var).is_null()) {
+        libc::free(value_cell!(var) as *mut libc::c_void);
+    }
+    var_setvalue!(var,p);
+    return var;
+}
