@@ -259,6 +259,41 @@ macro_rules! vc_istempenv {
 }
 
 #[macro_export]
+macro_rules! TEMPENV_HASH_BUCKETS {
+    () => {
+        4
+    };
+}
+
+#[macro_export]
+macro_rules! BASHFUNC_PREFIX {
+    () => {
+        b"BASH_FUNC_\0" as *const u8 as *const libc::c_char as *mut libc::c_char
+    };
+}
+
+#[macro_export]
+macro_rules! BASHFUNC_PREFLEN {
+    () => {
+        10 as libc::c_int
+    };
+}
+
+#[macro_export]
+macro_rules! BASHFUNC_SUFFIX {
+    () => {
+        b"%%\0" as *const u8 as *const libc::c_char as *mut libc::c_char
+    };
+}
+
+
+#[macro_export]
+macro_rules! BASHFUNC_SUFFLEN {
+    () => {
+        2 as libc::c_int
+    };
+}
+#[macro_export]
 macro_rules! FV_FORCETEMPENV {
     () => {
         0x01
@@ -612,3 +647,35 @@ unsafe extern "C" fn null_assign(
 ) -> *mut SHELL_VAR {
     return self_0;
 }
+
+unsafe extern "C" fn null_array_assign(
+    mut self_0: *mut SHELL_VAR,
+    mut value: *mut libc::c_char,
+    mut ind: arrayind_t,
+    mut key: *mut libc::c_char,
+) -> *mut SHELL_VAR {
+    return self_0;
+}
+
+unsafe extern "C" fn get_self(mut self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
+    return self_0;
+}
+
+unsafe extern "C" fn init_dynamic_array_var(
+    mut name: *mut libc::c_char,
+    mut getfunc: sh_var_value_func_t,
+    mut setfunc: sh_var_assign_func_t,
+    mut attrs: libc::c_int
+) -> *mut SHELL_VAR {
+    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    v = find_variable(name);
+    if !v.is_null() {
+        return v;
+    }
+    INIT_DYNAMIC_ARRAY_VAR!(v,name,getfunc,setfunc);
+    if attrs != 0 {
+        VSETATTR!(v,attrs);
+    }
+    return v;
+}
+
