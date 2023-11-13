@@ -533,6 +533,67 @@ unsafe extern "C" fn get_bash_name() -> *mut libc::c_char
 
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn adjust_shell_level(mut change: libc::c_int) {
+
+    let mut new_level: [libc::c_char; 5] = [0; 5];
+    let mut old_SHLVL: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut old_level: intmax_t = 0;
+    let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+
+    old_SHLVL = get_string_value(b"SHLVL\0" as *const u8 as *const libc::c_char);
+    if old_SHLVL.is_null() || *old_SHLVL as libc::c_int == '\0' as i32
+        || legal_number(old_SHLVL, &mut old_level) == 0 as libc::c_int
+    {
+        old_level = 0 as libc::c_int as intmax_t ;
+    }
+    shell_level = (old_level + change as libc::c_long) as libc::c_int;
+    if shell_level < 0 as libc::c_int {
+        shell_level = 0 as libc::c_int;
+    } else if shell_level >= 1000 as libc::c_int {
+        internal_warning(
+                0 as *const libc::c_char,
+                b"shell level (%d) too high, resetting to 1\0" as *const u8
+                    as *const libc::c_char,
+            shell_level
+        );
+        shell_level = 1 as libc::c_int;
+    }
+    if shell_level < 10 as libc::c_int {
+        new_level[0 as libc::c_int
+            as usize] = (shell_level + '0' as i32) as libc::c_char;
+        new_level[1 as libc::c_int as usize] = '\0' as i32 as libc::c_char;
+    } 
+    else if shell_level < 100 as libc::c_int {
+        new_level[0 as libc::c_int
+            as usize] = (shell_level / 10 as libc::c_int + '0' as i32) as libc::c_char;
+        new_level[1 as libc::c_int
+            as usize] = (shell_level % 10 as libc::c_int + '0' as i32) as libc::c_char;
+        new_level[2 as libc::c_int as usize] = '\0' as i32 as libc::c_char;
+    }
+    else if shell_level < 1000 as libc::c_int {
+        new_level[0 as libc::c_int
+            as usize] = (shell_level / 100 as libc::c_int + '0' as i32) as libc::c_char;
+        old_level = (shell_level % 100 as libc::c_int) as intmax_t;
+        new_level[1 as libc::c_int
+            as usize] = (old_level / 10 as libc::c_int as libc::c_long
+            + '0' as i32 as libc::c_long) as libc::c_char;
+        new_level[2 as libc::c_int
+            as usize] = (old_level % 10 as libc::c_int as libc::c_long
+            + '0' as i32 as libc::c_long) as libc::c_char;
+        new_level[3 as libc::c_int as usize] = '\0' as i32 as libc::c_char;
+    }
+
+    temp_var = bind_variable(
+        b"SHLVL\0" as *const u8 as *const libc::c_char,
+        new_level.as_mut_ptr(),
+        0 as libc::c_int,
+    );
+
+    set_auto_export!(temp_var);
+
+}
+
 unsafe extern "C" fn initialize_shell_level() {
     adjust_shell_level(1 as libc::c_int);
 }
