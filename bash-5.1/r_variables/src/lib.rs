@@ -881,3 +881,48 @@ unsafe extern "C" fn init_dynamic_array_var(
     return v;
 }
 
+unsafe extern "C" fn init_dynamic_assoc_var(
+    mut name: *mut libc::c_char,
+    mut getfunc:sh_var_value_func_t,
+    mut setfunc:sh_var_assign_func_t,
+    mut attrs: libc::c_int,
+) -> *mut SHELL_VAR {
+    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    v = find_variable(name);
+    if !v.is_null() {
+        return v;
+    }
+
+    INIT_DYNAMIC_ASSOC_VAR!(v,name,getfunc,setfunc);
+    
+    if attrs != 0 {
+        VSETATTR!(v,attrs);
+    }
+    return v;
+}
+
+static mut seconds_value_assigned: intmax_t = 0;
+
+unsafe extern "C" fn assign_seconds(
+    mut self_0: *mut SHELL_VAR,
+    mut value: *mut libc::c_char,
+    mut unused: arrayind_t,
+    mut key: *mut libc::c_char,
+) -> *mut SHELL_VAR {
+
+    let mut nval: intmax_t = 0;
+    let mut expok: libc::c_int = 0;
+    if  integer_p!(self_0) != 0 as libc::c_int {
+        nval = evalexp(value, 0 as libc::c_int, &mut expok);
+    } else {
+        expok = legal_number(value, &mut nval);
+    }
+    seconds_value_assigned = if expok != 0 {
+        nval
+    } else {
+        0 as libc::c_int as libc::c_long
+    };
+    gettimeofday(&mut shellstart, 0 as *mut timezone);
+    shell_start_time = shellstart.tv_sec;
+    return self_0;
+}
