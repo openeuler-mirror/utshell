@@ -1,0 +1,6 @@
+9deb052d6d1550428a89a7c8a6ef49d7  bin/bash-static
+7ea655bf93e6d4ea93d5f4d9b68d36c4  usr/share/doc/bash-static/changelog.Debian.gz
+fdb28ed4f0ae3628e732bd4bfd86b417  usr/share/doc/bash-static/changelog.gz
+9632d707e9eca8b3ba2b1a98c1c3fdce  usr/share/doc/bash-static/copyright
+caeb5b6580bd771900e2babe4a05622b  usr/share/lintian/overrides/bash-static
+b3da2a5522496f6ca42d5c00a4e65d74  usr/share/man/man1/bash-static.1.gz

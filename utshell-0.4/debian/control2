@@ -1,0 +1,13 @@
+Source: utshell
+Section: unknown
+Priority: required
+Maintainer: liutong <liutonga@uniontech.org>
+Build-Depends: debhelper (>=10)
+Standards-Version: 4.0.0
+Homepage: <insert the upstream URL, if relevant>
+
+Package: gentoo
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>

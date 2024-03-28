@@ -1,0 +1,25 @@
+bash50-001.diff
+bash50-002.diff
+bash50-003.diff
+bashbug-editor.diff
+deb-bash-config.diff
+deb-examples.diff
+man-arithmetic.diff
+man-fignore.diff
+man-bashrc.diff
+man-bashlogout.diff
+man-nocaseglob.diff
+man-test.diff
+man-test2.diff
+rbash-manpage.diff
+bash-default-editor.diff
+input-err.diff
+exec-redirections-doc.diff
+bash-aliases-repeat.diff
+# no-brk-caching.diff
+use-system-texi2html.diff
+bzero.diff
+man-macro-warnings.diff
+po-de-fix.diff
+man-vx-opts.diff
+wait-builtin-avoid-hanging-on-inherited-children.diff

@@ -1,0 +1,17 @@
+[package]
+name = "r_mailcheck"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libc = '*'
+#stdext = "0.3.1"
+#rcommon = {path = "../builtins_rust/common"}
+r_bash = {path = "../r_bash"}
+
+[lib]
+name = "r_mailcheck"
+crate-type = ["staticlib"]
+

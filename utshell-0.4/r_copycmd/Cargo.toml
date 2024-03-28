@@ -1,0 +1,18 @@
+[package]
+name = "r_copycmd"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libc = "*"
+nix = "0.25.0"
+rcommon = {path = "../builtins_rust/common"}
+r_shell= {path = "../r_shell"}
+r_bash = {path = "../r_bash"}
+
+[lib]
+name = "r_copycmd"
+crate-type = ["rlib", "staticlib"]
+
