@@ -1,0 +1,5 @@
+utshell (0.4.11) unstable; urgency=medium
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- utshell <liutonga@uniontech.com>  Mon, 13 Feb 2023 15:25:37 +0800

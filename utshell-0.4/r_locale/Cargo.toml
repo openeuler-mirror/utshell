@@ -1,0 +1,14 @@
+[package]
+name = "r_locale"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libc = '*'
+r_shell = {path = "../r_shell"}
+
+[lib]
+name = 'r_locale'
+crate-type = ["rlib", "staticlib"]

@@ -1,0 +1,16 @@
+[package]
+name = "r_nojobs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libc = "*"
+r_bash = {path = "../r_bash"}
+
+
+[lib]
+name = "r_nojobs"
+crate-type = ["rlib", "staticlib"]
+

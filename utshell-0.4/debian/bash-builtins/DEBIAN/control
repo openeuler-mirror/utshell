@@ -1,0 +1,13 @@
+Package: bash-builtins
+Source: bash
+Version: 5.0.1-1+deepin
+Architecture: amd64
+Maintainer: Matthias Klose <liutong@uniontech.com>
+Installed-Size: 888
+Depends: bash (= 5.0.1-1+deepin)
+Section: utils
+Priority: optional
+Homepage: http://tiswww.case.edu/php/chet/bash/bashtop.html
+Description: Bash loadable builtins - headers & examples
+ Bash can dynamically load new builtin commands.  Included are the
+ necessary headers to compile your own builtins and lots of examples.
