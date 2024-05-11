@@ -95,7 +95,8 @@ members=[
  "r_pcomplib",
  "r_array",
  "r_bracecomp",
- "r_variables"
+ "r_variables",
+ "r_arrayfunc"
 ]
 
 [dependencies]
