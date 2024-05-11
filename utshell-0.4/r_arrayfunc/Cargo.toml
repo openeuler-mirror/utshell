@@ -6,3 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+libc = "*"
+rcommon = {path = "../builtins_rust/common"}
+r_bash = {path = "../r_bash"}
+
+[lib]
+name = "r_arrayfunc"
+crate-type = ["staticlib","rlib"]
