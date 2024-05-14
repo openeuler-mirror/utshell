@@ -88,3 +88,42 @@ pub unsafe extern "C" fn file_error(mut filename: *const libc::c_char) {
         strerror(*__errno_location()),
     );
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn programming_error(
+    mut format: *const libc::c_char,
+    mut args: ...
+) {
+    let mut args_0: ::std::ffi::VaListImpl;
+    let mut h: *mut libc::c_char = 0 as *mut libc::c_char;
+    give_terminal_to(shell_pgrp, 0 as libc::c_int);
+    args_0 = args.clone();
+    vfprintf(stderr, format, args_0.as_va_list());
+    fprintf(stderr, b"\n\0" as *const u8 as *const libc::c_char);
+    if remember_on_history != 0 {
+        h = last_history_line();
+        fprintf(
+            stderr,
+            dcgettext(
+                0 as *const libc::c_char,
+                b"last command: %s\n\0" as *const u8 as *const libc::c_char,
+                5 as libc::c_int,
+            ),
+            if !h.is_null() {
+                h
+            } else {
+                b"(null)\0" as *const u8 as *const libc::c_char
+            },
+        );
+    }
+    fprintf(
+        stderr,
+        dcgettext(
+            0 as *const libc::c_char,
+            b"Aborting...\0" as *const u8 as *const libc::c_char,
+            5 as libc::c_int,
+        ),
+    );
+    fflush(stderr);
+    abort();
+}
