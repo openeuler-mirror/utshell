@@ -479,3 +479,44 @@ pub static mut bash_badsub_errmsg: *const libc::c_char =
 
 /* Convert a shell variable to an array variable.  The original value is
 saved as array[0]. */
+#[no_mangle]
+pub unsafe extern "C" fn convert_var_to_array(mut var: *mut SHELL_VAR) -> *mut SHELL_VAR {
+    let mut oldval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut array: *mut ARRAY = 0 as *mut ARRAY;
+
+    oldval = value_cell!(var);
+    array = array_create();
+    if !oldval.is_null() {
+        array_insert(array, 0 as libc::c_int as arrayind_t, oldval);
+    }
+    FREE!(value_cell!(var));
+    var_setarray!(var, array);
+
+    /* these aren't valid anymore */
+    (*var).dynamic_value = ::core::mem::transmute::<*mut libc::c_void, Option<sh_var_value_func_t>>(
+        0 as *mut libc::c_void,
+    );
+    (*var).assign_func = ::core::mem::transmute::<*mut libc::c_void, Option<sh_var_assign_func_t>>(
+        0 as *mut libc::c_void,
+    );
+
+    INVALIDATE_EXPORTSTR!(var);
+
+    if exported_p!(var) != 0 {
+        array_needs_making += 1;
+        array_needs_making;
+    }
+
+    VSETATTR!(var, att_array);
+    if !oldval.is_null() {
+        VUNSETATTR!(var, att_invisible);
+    }
+
+    /* Make sure it's not marked as an associative array any more */
+    VUNSETATTR!(var, att_assoc);
+
+    /* Since namerefs can't be array variables, turn off nameref attribute */
+    VUNSETATTR!(var, att_nameref);
+
+    return var;
+}
