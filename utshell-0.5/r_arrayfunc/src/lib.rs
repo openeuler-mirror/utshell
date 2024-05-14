@@ -520,3 +520,51 @@ pub unsafe extern "C" fn convert_var_to_array(mut var: *mut SHELL_VAR) -> *mut S
 
     return var;
 }
+
+/* Convert a shell variable to an array variable.  The original value is
+saved as array[0]. */
+#[no_mangle]
+pub unsafe extern "C" fn convert_var_to_assoc(mut var: *mut SHELL_VAR) -> *mut SHELL_VAR {
+    let mut oldval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut hash: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
+
+    oldval = value_cell!(var);
+    hash = assoc_create!(0);
+    if !oldval.is_null() {
+        assoc_insert(
+            hash,
+            savestring!(b"0\0" as *const u8 as *const libc::c_char),
+            oldval,
+        );
+    }
+
+    FREE!(value_cell!(var));
+    var_setassoc!(var, hash);
+
+    /* these aren't valid anymore */
+    (*var).dynamic_value = ::core::mem::transmute::<*mut libc::c_void, Option<sh_var_value_func_t>>(
+        0 as *mut libc::c_void,
+    );
+    (*var).assign_func = ::core::mem::transmute::<*mut libc::c_void, Option<sh_var_assign_func_t>>(
+        0 as *mut libc::c_void,
+    );
+
+    INVALIDATE_EXPORTSTR!(var);
+
+    if exported_p!(var) != 0 {
+        array_needs_making += 1;
+        array_needs_making;
+    }
+
+    VSETATTR!(var, att_assoc);
+    if !oldval.is_null() {
+        VUNSETATTR!(var, att_invisible);
+    }
+
+    /* Make sure it's not marked as an indexed array any more */
+    VUNSETATTR!(var, att_array);
+
+    /* Since namerefs can't be array variables, turn off nameref attribute */
+    VUNSETATTR!(var, att_nameref);
+    return var;
+}
