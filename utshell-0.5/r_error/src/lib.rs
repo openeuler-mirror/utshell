@@ -52,3 +52,39 @@ unsafe extern "C" fn error_prolog(mut print_lineno: libc::c_int) {
         fprintf(stderr, b"%s: \0" as *const u8 as *const libc::c_char, ename);
     };
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn get_name_for_error() -> *mut libc::c_char {
+    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut bash_source_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut bash_source_a: *mut ARRAY = 0 as *mut ARRAY;
+    name = 0 as *mut libc::c_void as *mut libc::c_char;
+    if interactive_shell == 0 as libc::c_int {
+        bash_source_v = find_variable(b"BASH_SOURCE\0" as *const u8 as *const libc::c_char);
+        if !bash_source_v.is_null() && (*bash_source_v).attributes & 0x4 as libc::c_int != 0 && {
+            bash_source_a = (*bash_source_v).value as *mut ARRAY;
+            !bash_source_a.is_null()
+        } {
+            name = array_reference(bash_source_a, 0 as libc::c_int as arrayind_t);
+        }
+        if name.is_null() || *name as libc::c_int == '\u{0}' as i32 {
+            name = *dollar_vars.as_mut_ptr().offset(0 as libc::c_int as isize);
+        }
+    }
+    if name.is_null() && !shell_name.is_null() && *shell_name as libc::c_int != 0 {
+        name = base_pathname(shell_name);
+    }
+    if name.is_null() {
+        name = b"bash\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+    }
+    return name;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn file_error(mut filename: *const libc::c_char) {
+    report_error(
+        b"%s: %s\0" as *const u8 as *const libc::c_char,
+        filename,
+        strerror(*__errno_location()),
+    );
+}
