@@ -648,3 +648,32 @@ unsafe extern "C" fn bind_assoc_var_internal(
     /* check mark_modified_variables if we ever want to export array vars */
     return entry;
 }
+
+/* Perform ENTRY[IND]=VALUE or ENTRY[KEY]=VALUE. This is not called for every
+assignment to an associative array; see assign_compound_array_list below. */
+unsafe extern "C" fn bind_array_var_internal(
+    mut entry: *mut SHELL_VAR,
+    mut ind: arrayind_t,
+    mut key: *mut libc::c_char,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut SHELL_VAR {
+    let mut newval: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    newval = make_array_variable_value(entry, ind, key, value, flags);
+
+    if ((*entry).assign_func).is_some() {
+        (Some(((*entry).assign_func).expect("non-null function pointer")))
+            .expect("non-null function pointer")(entry, newval, ind, key);
+    } else if assoc_p!(entry) != 0 {
+        assoc_insert(assoc_cell!(entry), key, newval);
+    } else {
+        array_insert(array_cell!(entry), ind, newval);
+    }
+    FREE!(newval);
+
+    VUNSETATTR!(entry, att_invisible); /* no longer invisible */
+
+    /* check mark_modified_variables if we ever want to export array vars */
+    return entry;
+}
