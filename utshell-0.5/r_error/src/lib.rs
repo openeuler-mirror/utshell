@@ -154,3 +154,31 @@ pub unsafe extern "C" fn fatal_error(mut format: *const libc::c_char, mut args: 
     fprintf(stderr, b"\n\0" as *const u8 as *const libc::c_char);
     sh_exit(2 as libc::c_int);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn internal_error(mut format: *const libc::c_char, mut args: ...) {
+    let mut args_0: ::std::ffi::VaListImpl;
+    error_prolog(1 as libc::c_int);
+    args_0 = args.clone();
+    vfprintf(stderr, format, args_0.as_va_list());
+    fprintf(stderr, b"\n\0" as *const u8 as *const libc::c_char);
+}
+#[no_mangle]
+pub unsafe extern "C" fn internal_warning(
+    mut format: *const libc::c_char,
+    mut args: ...
+) {
+    let mut args_0: ::std::ffi::VaListImpl;
+    error_prolog(1 as libc::c_int);
+    fprintf(
+        stderr,
+        dcgettext(
+            0 as *const libc::c_char,
+            b"warning: \0" as *const u8 as *const libc::c_char,
+            5 as libc::c_int,
+        ),
+    );
+    args_0 = args.clone();
+    vfprintf(stderr, format, args_0.as_va_list());
+    fprintf(stderr, b"\n\0" as *const u8 as *const libc::c_char);
+}
