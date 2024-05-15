@@ -610,3 +610,41 @@ pub unsafe extern "C" fn make_array_variable_value(
 
     return newval;
 }
+
+/* Assign HASH[KEY]=VALUE according to FLAGS. ENTRY is an associative array
+variable; HASH is the hash table to assign into. HASH may or may not be
+the hash table associated with ENTRY; if it's not, the caller takes care
+of it.
+XXX - make sure that any dynamic associative array variables recreate the
+hash table on each assignment. BASH_CMDS and BASH_ALIASES already do this */
+unsafe extern "C" fn bind_assoc_var_internal(
+    mut entry: *mut SHELL_VAR,
+    mut hash: *mut HASH_TABLE,
+    mut key: *mut libc::c_char,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut SHELL_VAR {
+    let mut newval: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    /* Use the existing array contents to expand the value */
+    newval = make_array_variable_value(entry, 0 as libc::c_int as arrayind_t, key, value, flags);
+
+    if ((*entry).assign_func).is_some() {
+        (Some(((*entry).assign_func).expect("non-null function pointer")))
+            .expect("non-null function pointer")(
+            entry,
+            newval,
+            0 as libc::c_int as arrayind_t,
+            key,
+        );
+    } else {
+        assoc_insert(hash, key, newval);
+    }
+
+    FREE!(newval);
+
+    VUNSETATTR!(entry, att_invisible); /* no longer invisible */
+
+    /* check mark_modified_variables if we ever want to export array vars */
+    return entry;
+}
