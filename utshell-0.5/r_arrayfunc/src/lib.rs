@@ -568,3 +568,45 @@ pub unsafe extern "C" fn convert_var_to_assoc(mut var: *mut SHELL_VAR) -> *mut S
     VUNSETATTR!(var, att_nameref);
     return var;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn make_array_variable_value(
+    mut entry: *mut SHELL_VAR,
+    mut ind: arrayind_t,
+    mut key: *mut libc::c_char,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut libc::c_char {
+    let mut dentry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut newval: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    /* If we're appending, we need the old value of the array reference, so
+    fake out make_variable_value with a dummy SHELL_VAR */
+    if flags & ASS_APPEND as libc::c_int != 0 {
+        dentry = libc::malloc(::core::mem::size_of::<SHELL_VAR>() as libc::c_ulong as usize)
+            as *mut SHELL_VAR;
+        (*dentry).name = savestring!((*entry).name);
+        if assoc_p!(entry) != 0 {
+            newval = assoc_reference(assoc_cell!(entry), key);
+        } else {
+            newval = array_reference(array_cell!(entry), ind);
+        }
+        if !newval.is_null() {
+            (*dentry).value = savestring!(newval);
+        } else {
+            (*dentry).value = libc::malloc(1 as libc::c_int as usize) as *mut libc::c_char;
+            *((*dentry).value).offset(0 as libc::c_int as isize) = '\0' as i32 as libc::c_char;
+        }
+        (*dentry).exportstr = 0 as *mut libc::c_char;
+        (*dentry).attributes = (*entry).attributes
+            & !(att_array as libc::c_int | att_assoc as libc::c_int | att_exported as libc::c_int);
+        /* Leave the rest of the members uninitialized; the code doesn't look
+        at them. */
+        newval = make_variable_value(dentry, value, flags);
+        dispose_variable(dentry);
+    } else {
+        newval = make_variable_value(entry, value, flags);
+    }
+
+    return newval;
+}
