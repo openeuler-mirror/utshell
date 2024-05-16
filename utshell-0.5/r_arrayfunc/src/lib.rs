@@ -722,3 +722,33 @@ pub unsafe extern "C" fn bind_array_variable(
     /* ENTRY is an array variable, and ARRAY points to the value. */
     return bind_array_var_internal(entry, ind, 0 as *mut libc::c_char, value, flags);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn bind_array_element(
+    mut entry: *mut SHELL_VAR,
+    mut ind: arrayind_t,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut SHELL_VAR {
+    return bind_array_var_internal(entry, ind, 0 as *mut libc::c_char, value, flags);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bind_assoc_variable(
+    mut entry: *mut SHELL_VAR,
+    mut name: *mut libc::c_char,
+    mut key: *mut libc::c_char,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut SHELL_VAR {
+    if readonly_p!(entry) != 0 && flags & ASS_FORCE as libc::c_int == 0 as libc::c_int
+        || noassign_p!(entry) != 0
+    {
+        if readonly_p!(entry) != 0 {
+            err_readonly(name);
+        }
+        return entry;
+    }
+
+    return bind_assoc_var_internal(entry, assoc_cell!(entry), key, value, flags);
+}
