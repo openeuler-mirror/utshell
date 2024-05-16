@@ -752,3 +752,48 @@ pub unsafe extern "C" fn bind_assoc_variable(
 
     return bind_assoc_var_internal(entry, assoc_cell!(entry), key, value, flags);
 }
+
+/* Parse NAME, a lhs of an assignment statement of the form v[s], and
+assign VALUE to that array element by calling bind_array_variable().
+Flags are ASS_ assignment flags */
+#[no_mangle]
+pub unsafe extern "C" fn assign_array_element(
+    mut name: *mut libc::c_char,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut SHELL_VAR {
+    let mut sub: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut vname: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut sublen: libc::c_int = 0;
+    let mut isassoc: libc::c_int = 0;
+    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+
+    vname = array_variable_name(
+        name,
+        (flags & ASS_NOEXPAND as libc::c_int != 0 as libc::c_int) as libc::c_int,
+        &mut sub,
+        &mut sublen,
+    );
+
+    if vname.is_null() {
+        return 0 as *mut libc::c_void as *mut SHELL_VAR;
+    }
+
+    entry = find_variable(vname);
+    isassoc = (!entry.is_null() && assoc_p!(entry) != 0) as libc::c_int;
+
+    if (isassoc == 0 as libc::c_int || flags & ASS_NOEXPAND as libc::c_int == 0 as libc::c_int)
+        && (ALL_ELEMENT_SUB!(sub.offset(0 as libc::c_int as isize) as libc::c_int)
+            && *sub.offset(1 as libc::c_int as isize) as libc::c_int == ']' as i32)
+        || sublen <= 1 as libc::c_int
+    {
+        libc::free(vname as *mut libc::c_void);
+        err_badarraysub(name);
+        return 0 as *mut libc::c_void as *mut SHELL_VAR;
+    }
+
+    entry = assign_array_element_internal(entry, name, vname, sub, sublen, value, flags);
+
+    libc::free(vname as *mut libc::c_void);
+    return entry;
+}
