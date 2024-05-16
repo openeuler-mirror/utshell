@@ -677,3 +677,48 @@ unsafe extern "C" fn bind_array_var_internal(
     /* check mark_modified_variables if we ever want to export array vars */
     return entry;
 }
+
+/* Perform an array assignment name[ind]=value.  If NAME already exists and
+is not an array, and IND is 0, perform name=value instead.  If NAME exists
+and is not an array, and IND is not 0, convert it into an array with the
+existing value as name[0].
+
+If NAME does not exist, just create an array variable, no matter what
+IND's value may be. */
+#[no_mangle]
+pub unsafe extern "C" fn bind_array_variable(
+    mut name: *mut libc::c_char,
+    mut ind: arrayind_t,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut SHELL_VAR {
+    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+
+    entry = find_shell_variable(name);
+
+    if entry.is_null() {
+        /* Is NAME a nameref variable that points to an unset variable? */
+        entry = find_variable_nameref_for_create(name, 0 as libc::c_int);
+        if entry == INVALID_NAMEREF_VALUE!() {
+            return 0 as *mut SHELL_VAR;
+        }
+        if !entry.is_null() && nameref_p!(entry) != 0 {
+            entry = make_new_array_variable(nameref_cell!(entry));
+        }
+    }
+    if entry.is_null() {
+        entry = make_new_array_variable(name);
+    } else if readonly_p!(entry) != 0 && flags & ASS_FORCE as libc::c_int == 0 as libc::c_int
+        || noassign_p!(entry) != 0
+    {
+        if readonly_p!(entry) != 0 {
+            err_readonly(name);
+        }
+        return entry;
+    } else if array_p!(entry) == 0 as libc::c_int {
+        entry = convert_var_to_array(entry);
+    }
+
+    /* ENTRY is an array variable, and ARRAY points to the value. */
+    return bind_array_var_internal(entry, ind, 0 as *mut libc::c_char, value, flags);
+}
