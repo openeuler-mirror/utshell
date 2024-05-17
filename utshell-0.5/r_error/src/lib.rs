@@ -88,7 +88,7 @@ pub unsafe extern "C" fn file_error(mut filename: *const libc::c_char) {
         strerror(*__errno_location()),
     );
 }
-
+/* 
 #[no_mangle]
 pub unsafe extern "C" fn programming_error(
     mut format: *const libc::c_char,
@@ -295,7 +295,7 @@ pub unsafe extern "C" fn parser_error(
         );
     }
 }
-
+*/
 static mut cmd_error_table: [*const libc::c_char; 5] = [
     b"unknown command error\0" as *const u8 as *const libc::c_char,
     b"bad command type\0" as *const u8 as *const libc::c_char,
@@ -354,6 +354,18 @@ pub unsafe extern "C" fn err_unboundvar(mut s: *const libc::c_char) {
         dcgettext(
             0 as *const libc::c_char,
             b"%s: unbound variable\0" as *const u8 as *const libc::c_char,
+            5 as libc::c_int,
+        ),
+        s,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn err_readonly(mut s: *const libc::c_char) {
+    report_error(
+        dcgettext(
+            0 as *const libc::c_char,
+            b"%s: readonly variable\0" as *const u8 as *const libc::c_char,
             5 as libc::c_int,
         ),
         s,
