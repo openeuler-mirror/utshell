@@ -845,3 +845,75 @@ unsafe extern "C" fn assign_array_element_internal(
 
     return entry;
 }
+
+/* Find the array variable corresponding to NAME.  If there is no variable,
+create a new array variable.  If the variable exists but is not an array,
+convert it to an indexed array.  If FLAGS&1 is non-zero, an existing
+variable is checked for the readonly or noassign attribute in preparation
+for assignment (e.g., by the `read' builtin).  If FLAGS&2 is non-zero, we
+create an associative array. */
+#[no_mangle]
+pub unsafe extern "C" fn find_or_make_array_variable(
+    mut name: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut SHELL_VAR {
+    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+
+    var = find_variable(name);
+    if var.is_null() {
+        /* See if we have a nameref pointing to a variable that hasn't been
+        created yet. */
+        var = find_variable_last_nameref(name, 1 as libc::c_int);
+        if !var.is_null() && nameref_p!(var) != 0 && invisible_p!(var) != 0 {
+            internal_warning(
+                dcgettext(
+                    0 as *const libc::c_char,
+                    b"%s: removing nameref attribute\0" as *const u8 as *const libc::c_char,
+                    5 as libc::c_int,
+                ),
+                name,
+            );
+            VUNSETATTR!(var, att_nameref);
+        }
+        if !var.is_null() && nameref_p!(var) != 0 {
+            if valid_nameref_value(nameref_cell!(var), 2 as libc::c_int) == 0 as libc::c_int {
+                sh_invalidid(nameref_cell!(var));
+                return 0 as *mut libc::c_void as *mut SHELL_VAR;
+            }
+            var = if flags & 2 as libc::c_int != 0 {
+                make_new_assoc_variable(nameref_cell!(var))
+            } else {
+                make_new_array_variable(nameref_cell!(var))
+            };
+        }
+    }
+
+    if var.is_null() {
+        var = if flags & 2 as libc::c_int != 0 {
+            make_new_assoc_variable(name)
+        } else {
+            make_new_array_variable(name)
+        };
+    } else if flags & 1 as libc::c_int != 0 && (readonly_p!(var) != 0 || noassign_p!(var) != 0) {
+        if readonly_p!(var) != 0 {
+            err_readonly(name);
+        }
+        return 0 as *mut libc::c_void as *mut SHELL_VAR;
+    } else if flags & 2 as libc::c_int != 0 && array_p!(var) != 0 {
+        set_exit_status(EXECUTION_FAILURE as libc::c_int);
+        report_error(
+            dcgettext(
+                0 as *const libc::c_char,
+                b"%s: cannot convert indexed to associative array\0" as *const u8
+                    as *const libc::c_char,
+                5 as libc::c_int,
+            ),
+            name,
+        );
+        return 0 as *mut libc::c_void as *mut SHELL_VAR;
+    } else if array_p!(var) == 0 as libc::c_int && assoc_p!(var) == 0 as libc::c_int {
+        var = convert_var_to_array(var);
+    }
+
+    return var;
+}
