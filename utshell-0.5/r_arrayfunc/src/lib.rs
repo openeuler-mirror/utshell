@@ -797,3 +797,51 @@ pub unsafe extern "C" fn assign_array_element(
     libc::free(vname as *mut libc::c_void);
     return entry;
 }
+
+unsafe extern "C" fn assign_array_element_internal(
+    mut entry: *mut SHELL_VAR,
+    mut name: *mut libc::c_char, /* only used for error messages */
+    mut vname: *mut libc::c_char,
+    mut sub: *mut libc::c_char,
+    mut sublen: libc::c_int,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut SHELL_VAR {
+    let mut akey: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ind: arrayind_t = 0;
+
+    if !entry.is_null() && assoc_p!(entry) as libc::c_int != 0 {
+        *sub.offset((sublen - 1 as libc::c_int) as isize) = '\0' as i32 as libc::c_char;
+        if flags & ASS_NOEXPAND as libc::c_int == 0 as libc::c_int {
+            akey = expand_assignment_string_to_string(sub, 0 as libc::c_int);
+        } else {
+            akey = savestring!(sub);
+        }
+        *sub.offset((sublen - 1 as libc::c_int) as isize) = ']' as i32 as libc::c_char;
+        if akey.is_null() || *akey as libc::c_int == 0 as libc::c_int {
+            err_badarraysub(name);
+            FREE!(akey);
+            return 0 as *mut libc::c_void as *mut SHELL_VAR;
+        }
+        entry = bind_assoc_variable(entry, vname, akey, value, flags);
+    } else {
+        ind = array_expand_index(entry, sub, sublen, 0 as libc::c_int);
+        /* negative subscripts to indexed arrays count back from end */
+        if !entry.is_null() && ind < 0 as libc::c_int as libc::c_long {
+            ind = (if array_p!(entry) != 0 {
+                array_max_index!(array_cell!(entry))
+            } else {
+                0 as libc::c_int as libc::c_long
+            }) + 1 as libc::c_int as libc::c_long
+                + ind;
+        }
+
+        if ind < 0 as libc::c_int as libc::c_long {
+            err_badarraysub(name);
+            return 0 as *mut libc::c_void as *mut SHELL_VAR;
+        }
+        entry = bind_array_variable(vname, ind, value, flags);
+    }
+
+    return entry;
+}
