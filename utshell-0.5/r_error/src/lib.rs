@@ -182,3 +182,117 @@ pub unsafe extern "C" fn internal_warning(
     vfprintf(stderr, format, args_0.as_va_list());
     fprintf(stderr, b"\n\0" as *const u8 as *const libc::c_char);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn internal_inform(
+    mut format: *const libc::c_char,
+    mut args: ...
+) {
+    let mut args_0: ::std::ffi::VaListImpl;
+    error_prolog(1 as libc::c_int);
+    fprintf(
+        stderr,
+        dcgettext(
+            0 as *const libc::c_char,
+            b"INFORM: \0" as *const u8 as *const libc::c_char,
+            5 as libc::c_int,
+        ),
+    );
+    args_0 = args.clone();
+    vfprintf(stderr, format, args_0.as_va_list());
+    fprintf(stderr, b"\n\0" as *const u8 as *const libc::c_char);
+}
+#[no_mangle]
+pub unsafe extern "C" fn sys_error(mut format: *const libc::c_char, mut args: ...) {
+    let mut e: libc::c_int = 0;
+    let mut args_0: ::std::ffi::VaListImpl;
+    e = *__errno_location();
+    error_prolog(0 as libc::c_int);
+    args_0 = args.clone();
+    vfprintf(stderr, format, args_0.as_va_list());
+    fprintf(stderr, b": %s\n\0" as *const u8 as *const libc::c_char, strerror(e));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn parser_error(
+    mut lineno: libc::c_int,
+    mut format: *const libc::c_char,
+    mut args: ...
+) {
+    let mut args_0: ::std::ffi::VaListImpl;
+    let mut ename: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut iname: *mut libc::c_char = 0 as *mut libc::c_char;
+    ename = get_name_for_error();
+    iname = yy_input_name();
+    if interactive != 0 {
+        fprintf(stderr, b"%s: \0" as *const u8 as *const libc::c_char, ename);
+    } else if interactive_shell != 0 {
+        fprintf(
+            stderr,
+            b"%s: %s:%s%d: \0" as *const u8 as *const libc::c_char,
+            ename,
+            iname,
+            if gnu_error_format != 0 {
+                b"\0" as *const u8 as *const libc::c_char
+            } else {
+                dcgettext(
+                    0 as *const libc::c_char,
+                    b" line \0" as *const u8 as *const libc::c_char,
+                    5 as libc::c_int,
+                )
+            },
+            lineno,
+        );
+    } else if *ename.offset(0 as libc::c_int as isize) as libc::c_int
+            == *iname.offset(0 as libc::c_int as isize) as libc::c_int
+            && strcmp(ename, iname) == 0 as libc::c_int
+        {
+        fprintf(
+            stderr,
+            b"%s:%s%d: \0" as *const u8 as *const libc::c_char,
+            ename,
+            if gnu_error_format != 0 {
+                b"\0" as *const u8 as *const libc::c_char
+            } else {
+                dcgettext(
+                    0 as *const libc::c_char,
+                    b" line \0" as *const u8 as *const libc::c_char,
+                    5 as libc::c_int,
+                )
+            },
+            lineno,
+        );
+    } else {
+        fprintf(
+            stderr,
+            b"%s: %s:%s%d: \0" as *const u8 as *const libc::c_char,
+            ename,
+            iname,
+            if gnu_error_format != 0 {
+                b"\0" as *const u8 as *const libc::c_char
+            } else {
+                dcgettext(
+                    0 as *const libc::c_char,
+                    b" line \0" as *const u8 as *const libc::c_char,
+                    5 as libc::c_int,
+                )
+            },
+            lineno,
+        );
+    }
+    args_0 = args.clone();
+    vfprintf(stderr, format, args_0.as_va_list());
+    fprintf(stderr, b"\n\0" as *const u8 as *const libc::c_char);
+    if exit_immediately_on_error != 0 {
+        ::std::ptr::write_volatile(
+            &mut last_command_exit_value as *mut libc::c_int,
+            2 as libc::c_int,
+        );
+        exit_shell(
+            ::std::ptr::read_volatile::<
+                libc::c_int,
+            >(&last_command_exit_value as *const libc::c_int),
+        );
+    }
+}
+*/
