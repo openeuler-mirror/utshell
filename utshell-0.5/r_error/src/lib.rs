@@ -295,4 +295,67 @@ pub unsafe extern "C" fn parser_error(
         );
     }
 }
-*/
+
+static mut cmd_error_table: [*const libc::c_char; 5] = [
+    b"unknown command error\0" as *const u8 as *const libc::c_char,
+    b"bad command type\0" as *const u8 as *const libc::c_char,
+    b"bad connector\0" as *const u8 as *const libc::c_char,
+    b"bad jump\0" as *const u8 as *const libc::c_char,
+    0 as *const libc::c_char,
+];
+#[no_mangle]
+pub unsafe extern "C" fn command_error(
+    mut func: *const libc::c_char,
+    mut code: libc::c_int,
+    mut e: libc::c_int,
+    mut flags: libc::c_int,
+) {
+    if code > CMDERR_LAST.try_into().unwrap() {
+        code = CMDERR_DEFAULT as i32;
+    }
+    programming_error(
+        b"%s: %s: %d\0" as *const u8 as *const libc::c_char,
+        func,
+        dcgettext(
+            0 as *const libc::c_char,
+            cmd_error_table[code as usize],
+            5 as libc::c_int,
+        ),
+        e,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn command_errstr(mut code: libc::c_int) -> *mut libc::c_char {
+    if code > CMDERR_LAST.try_into().unwrap() {
+        code = CMDERR_DEFAULT as i32;
+    }
+    return dcgettext(
+        0 as *const libc::c_char,
+        cmd_error_table[code as usize],
+        5 as libc::c_int,
+    );
+}
+#[no_mangle]
+pub unsafe extern "C" fn err_badarraysub(mut s: *const libc::c_char) {
+    report_error(
+        b"%s: %s\0" as *const u8 as *const libc::c_char,
+        s,
+        dcgettext(
+            0 as *const libc::c_char,
+            bash_badsub_errmsg,
+            5 as libc::c_int,
+        ),
+    );
+}
+#[no_mangle]
+pub unsafe extern "C" fn err_unboundvar(mut s: *const libc::c_char) {
+    report_error(
+        dcgettext(
+            0 as *const libc::c_char,
+            b"%s: unbound variable\0" as *const u8 as *const libc::c_char,
+            5 as libc::c_int,
+        ),
+        s,
+    );
+}
