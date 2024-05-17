@@ -917,3 +917,65 @@ pub unsafe extern "C" fn find_or_make_array_variable(
 
     return var;
 }
+
+/* Perform a compound assignment statement for array NAME, where VALUE is
+the text between the parens:  NAME=( VALUE ) */
+#[no_mangle]
+pub unsafe extern "C" fn assign_array_from_string(
+    mut name: *mut libc::c_char,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut SHELL_VAR {
+    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut vflags: libc::c_int = 0;
+
+    vflags = 1 as libc::c_int;
+    if flags & ASS_MKASSOC as libc::c_int != 0 {
+        vflags |= 2 as libc::c_int;
+    }
+
+    var = find_or_make_array_variable(name, vflags);
+    if var.is_null() {
+        return 0 as *mut libc::c_void as *mut SHELL_VAR;
+    }
+
+    return assign_array_var_from_string(var, value, flags);
+}
+
+/* Sequentially assign the indices of indexed array variable VAR from the
+words in LIST. */
+#[no_mangle]
+pub unsafe extern "C" fn assign_array_var_from_word_list(
+    mut var: *mut SHELL_VAR,
+    mut list: *mut WORD_LIST,
+    mut flags: libc::c_int,
+) -> *mut SHELL_VAR {
+    let mut i: arrayind_t = 0;
+    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut a: *mut ARRAY = 0 as *mut ARRAY;
+
+    a = array_cell!(var);
+    i = if flags & ASS_APPEND as libc::c_int != 0 {
+        array_max_index!(a) + 1 as libc::c_int as libc::c_long
+    } else {
+        0 as libc::c_int as libc::c_long
+    };
+
+    l = list;
+    while !l.is_null() {
+        bind_array_var_internal(
+            var,
+            i,
+            0 as *mut libc::c_char,
+            (*(*l).word).word,
+            flags & !(ASS_APPEND as libc::c_int),
+        );
+        l = (*l).next;
+        i += 1;
+        i;
+    }
+
+    VUNSETATTR!(var, att_invisible); /* no longer invisible */
+
+    return var;
+}
