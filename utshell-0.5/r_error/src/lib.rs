@@ -182,3 +182,33 @@ pub unsafe extern "C" fn internal_warning(
     vfprintf(stderr, format, args_0.as_va_list());
     fprintf(stderr, b"\n\0" as *const u8 as *const libc::c_char);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn internal_inform(
+    mut format: *const libc::c_char,
+    mut args: ...
+) {
+    let mut args_0: ::std::ffi::VaListImpl;
+    error_prolog(1 as libc::c_int);
+    fprintf(
+        stderr,
+        dcgettext(
+            0 as *const libc::c_char,
+            b"INFORM: \0" as *const u8 as *const libc::c_char,
+            5 as libc::c_int,
+        ),
+    );
+    args_0 = args.clone();
+    vfprintf(stderr, format, args_0.as_va_list());
+    fprintf(stderr, b"\n\0" as *const u8 as *const libc::c_char);
+}
+#[no_mangle]
+pub unsafe extern "C" fn sys_error(mut format: *const libc::c_char, mut args: ...) {
+    let mut e: libc::c_int = 0;
+    let mut args_0: ::std::ffi::VaListImpl;
+    e = *__errno_location();
+    error_prolog(0 as libc::c_int);
+    args_0 = args.clone();
+    vfprintf(stderr, format, args_0.as_va_list());
+    fprintf(stderr, b": %s\n\0" as *const u8 as *const libc::c_char, strerror(e));
+}
