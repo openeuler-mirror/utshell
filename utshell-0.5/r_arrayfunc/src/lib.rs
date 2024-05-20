@@ -1049,3 +1049,62 @@ pub unsafe extern "C" fn expand_compound_array_assignment(
     return nlist;
 }
 
+unsafe extern "C" fn assign_assoc_from_kvlist(
+    mut var: *mut SHELL_VAR,
+    mut nlist: *mut WORD_LIST,
+    mut h: *mut HASH_TABLE,
+    mut flags: libc::c_int,
+) {
+    let mut list: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut akey: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut aval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut k: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut free_aval: libc::c_int = 0;
+
+    list = nlist;
+    while !list.is_null() {
+        free_aval = 0 as libc::c_int;
+
+        k = (*(*list).word).word;
+        v = if !((*list).next).is_null() {
+            (*(*(*list).next).word).word
+        } else {
+            0 as *mut libc::c_char
+        };
+
+        if !((*list).next).is_null() {
+            list = (*list).next;
+        }
+
+        akey = expand_assignment_string_to_string(k, 0 as libc::c_int);
+        aval = expand_assignment_string_to_string(v, 0 as libc::c_int);
+
+        if akey.is_null() || *akey as libc::c_int == 0 as libc::c_int {
+            err_badarraysub(k);
+            FREE!(akey);
+        } else {
+            if aval.is_null() {
+                aval = libc::malloc(1 as libc::c_int as usize) as *mut libc::c_char;
+                *aval.offset(0 as libc::c_int as isize) = '\0' as i32 as libc::c_char; /* like do_assignment_internal */
+                free_aval = 1 as libc::c_int;
+            }
+
+            bind_assoc_var_internal(var, h, akey, aval, flags);
+            if free_aval != 0 {
+                libc::free(aval as *mut libc::c_void);
+            }
+        }
+        list = (*list).next;
+    }
+}
+
+/* Return non-zero if L appears to be a key-value pair associative array
+compound assignment. */
+#[no_mangle]
+pub unsafe extern "C" fn kvpair_assignment_p(mut l: *mut WORD_LIST) -> libc::c_int {
+    return (!l.is_null()
+        && (*(*l).word).flags & W_ASSIGNMENT == 0 as libc::c_int
+        && *((*(*l).word).word).offset(0 as libc::c_int as isize) as libc::c_int != '[' as i32)
+        as libc::c_int;
+}
