@@ -79,3 +79,36 @@ pub const GT: libc::c_char = '>' as libc::c_char;
 pub const LT: libc::c_char = '<' as libc::c_char;
 pub const BAND: libc::c_char = '&' as libc::c_char;
 pub const BOR: libc::c_char = '|' as libc::c_char;
+
+extern "C" {
+    static bash_badsub_errmsg: *const libc::c_char;
+}
+
+static mut assigntok: libc::c_int = 0;
+static mut expression: *mut libc::c_char = 0 as *const libc::c_char as *mut libc::c_char;
+static mut expr_depth: libc::c_int = 0;
+static mut tokstr: *mut libc::c_char = 0 as *const libc::c_char as *mut libc::c_char;
+static mut evalbuf: sigjmp_buf = [__jmp_buf_tag {
+    __jmpbuf: [0; 8],
+    __mask_was_saved: 0,
+    __saved_mask: __sigset_t { __val: [0; 16] },
+}; 1];
+static mut noeval: libc::c_int = 0;
+static mut already_expanded: libc::c_int = 0;
+static mut expr_stack: *mut *mut EXPR_CONTEXT =
+    0 as *const *mut EXPR_CONTEXT as *mut *mut EXPR_CONTEXT;
+static mut lasttok: libc::c_int = 0;
+static mut curtok: libc::c_int = 0;
+static mut tp: *mut libc::c_char = 0 as *const libc::c_char as *mut libc::c_char;
+static mut tokval: intmax_t = 0;
+static mut expr_stack_size: libc::c_int = 0;
+static mut lasttp: *mut libc::c_char = 0 as *const libc::c_char as *mut libc::c_char;
+static mut lastlval: lvalue = {
+    let mut init = lvalue {
+        tokstr: 0 as *const libc::c_char as *mut libc::c_char,
+        tokval: 0 as libc::c_int as intmax_t,
+        tokvar: 0 as *const SHELL_VAR as *mut SHELL_VAR,
+        ind: -(1 as libc::c_int) as intmax_t,
+    };
+    init
+};
