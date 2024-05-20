@@ -96,8 +96,10 @@ members=[
  "r_array",
  "r_bracecomp",
  "r_variables",
- "r_arrayfunc"
-, "r_error"]
+ "r_arrayfunc",
+ "r_error", 
+ "r_expr",
+]
 
 [dependencies]
  libc = "*"
@@ -174,5 +176,8 @@ members=[
  r_bracecomp = {path = "./r_bracecomp"}
  r_variables = {path = "./r_variables"}
  r_error = {path = "./r_error"}
+ r_expr = {path = "./r_expr"}
+
+
 intl_pluralrules = "7.0.2"
 tinystr = "=0.7.1"
