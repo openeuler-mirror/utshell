@@ -979,3 +979,73 @@ pub unsafe extern "C" fn assign_array_var_from_word_list(
 
     return var;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn expand_compound_array_assignment(
+    mut var: *mut SHELL_VAR,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut WORD_LIST {
+    let mut list: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut nlist: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut val: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ni: libc::c_int = 0;
+
+    /* This condition is true when invoked from the declare builtin with a
+     command like
+    declare -a d='([1]="" [2]="bdef" [5]="hello world" "test")' */
+    if *value as libc::c_int == '(' as i32 {
+        ni = 1 as libc::c_int;
+        val = extract_array_assignment_list(value, &mut ni);
+        if val.is_null() {
+            return 0 as *mut libc::c_void as *mut WORD_LIST;
+        }
+    } else {
+        val = value;
+    }
+
+    /* Expand the value string into a list of words, performing all the
+    shell expansions including pathname generation and word splitting. */
+    /* First we split the string on whitespace, using the shell parser
+    (ksh93 seems to do this). */
+    list = parse_string_to_word_list(
+        val,
+        1 as libc::c_int,
+        b"array assign\0" as *const u8 as *const libc::c_char,
+    );
+
+    /* Note that we defer expansion of the assignment statements for associative
+    arrays here, so we don't have to scan the subscript and find the ending
+    bracket twice. See the caller below. */
+    if !var.is_null() && assoc_p!(var) != 0 {
+        if val != value {
+            libc::free(val as *mut libc::c_void);
+        }
+        return list;
+    }
+
+    /* If we're using [subscript]=value, we need to quote each [ and ] to
+    prevent unwanted filename expansion.  This doesn't need to be done
+    for associative array expansion, since that uses a different expansion
+    function (see assign_compound_array_list below). */
+    if !list.is_null() {
+        quote_array_assignment_chars(list);
+    }
+
+    /* Now that we've split it, perform the shell expansions on each
+    word in the list. */
+    nlist = if !list.is_null() {
+        expand_words_no_vars(list)
+    } else {
+        0 as *mut libc::c_void as *mut WORD_LIST
+    };
+
+    dispose_words(list);
+
+    if val != value {
+        libc::free(val as *mut libc::c_void);
+    }
+
+    return nlist;
+}
+
