@@ -1108,3 +1108,280 @@ pub unsafe extern "C" fn kvpair_assignment_p(mut l: *mut WORD_LIST) -> libc::c_i
         && *((*(*l).word).word).offset(0 as libc::c_int as isize) as libc::c_int != '[' as i32)
         as libc::c_int;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn expand_and_quote_kvpair_word(
+    mut w: *mut libc::c_char,
+) -> *mut libc::c_char {
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut r: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    t = if !w.is_null() {
+        expand_assignment_string_to_string(w, 0 as libc::c_int)
+    } else {
+        0 as *mut libc::c_char
+    };
+    r = sh_single_quote(if !t.is_null() {
+        t as *const libc::c_char
+    } else {
+        b"\0" as *const u8 as *const libc::c_char
+    });
+    libc::free(t as *mut libc::c_void);
+    return r;
+}
+
+/* Callers ensure that VAR is not NULL. Associative array assignments have not
+been expanded when this is called, or have been expanded once and single-
+quoted, so we don't have to scan through an unquoted expanded subscript to
+find the ending bracket; indexed array assignments have been expanded and
+possibly single-quoted to prevent further expansion.
+
+If this is an associative array, we perform the assignments into NHASH and
+set NHASH to be the value of VAR after processing the assignments in NLIST */
+#[no_mangle]
+pub unsafe extern "C" fn assign_compound_array_list(
+    mut var: *mut SHELL_VAR,
+    mut nlist: *mut WORD_LIST,
+    mut flags: libc::c_int,
+) {
+    let mut a: *mut ARRAY = 0 as *mut ARRAY;
+    let mut h: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
+    let mut nhash: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
+    let mut list: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut w: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut val: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut nval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut savecmd: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut len: libc::c_int = 0;
+    let mut iflags: libc::c_int = 0;
+    let mut free_val: libc::c_int = 0;
+    let mut ind: arrayind_t = 0;
+    let mut last_ind: arrayind_t = 0;
+    let mut akey: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    a = if !var.is_null() && array_p!(var) != 0 {
+        array_cell!(var)
+    } else {
+        0 as *mut ARRAY
+    };
+    h = if !var.is_null() && assoc_p!(var) != 0 {
+        assoc_cell!(var)
+    } else {
+        0 as *mut HASH_TABLE
+    };
+    nhash = h;
+
+    akey = 0 as *mut libc::c_char;
+    ind = 0 as libc::c_int as arrayind_t;
+
+    /* Now that we are ready to assign values to the array, kill the existing
+    value. */
+    if flags & ASS_APPEND as libc::c_int == 0 as libc::c_int {
+        if !a.is_null() && array_p!(var) != 0 {
+            array_flush(a);
+        } else if !h.is_null() && assoc_p!(var) != 0 {
+            nhash = assoc_create!((*h).nbuckets);
+        }
+    }
+
+    last_ind = if !a.is_null() && flags & ASS_APPEND as libc::c_int != 0 {
+        array_max_index!(a) + 1 as libc::c_int as libc::c_long
+    } else {
+        0 as libc::c_int as libc::c_long
+    };
+
+    if assoc_p!(var) != 0 && kvpair_assignment_p(nlist) != 0 {
+        iflags = flags & !(ASS_APPEND as libc::c_int);
+        assign_assoc_from_kvlist(var, nlist, nhash, iflags);
+        if !nhash.is_null() && nhash != h {
+            h = assoc_cell!(var);
+            var_setassoc!(var, nhash);
+            assoc_dispose(h);
+        }
+        return;
+    }
+
+    list = nlist;
+    loop {
+        if list.is_null() {
+            break;
+        }
+        /* Don't allow var+=(values) to make assignments in VALUES append to
+        existing values by default. */
+        iflags = flags & !(ASS_APPEND as libc::c_int);
+        w = (*(*list).word).word;
+        /* We have a word of the form [ind]=value */
+        if (*(*list).word).flags & W_ASSIGNMENT != 0
+            && *w.offset(0 as libc::c_int as isize) as libc::c_int == '[' as i32
+        {
+            /* Don't have to handle embedded quotes specially any more, since
+            associative array subscripts have not been expanded yet (see
+            above). */
+            len = skipsubscript(w, 0 as libc::c_int, 0 as libc::c_int);
+
+            /* XXX - changes for `+=' */
+            if *w.offset(len as isize) as libc::c_int != ']' as i32
+                || *w.offset((len + 1 as libc::c_int) as isize) as libc::c_int != '=' as i32
+                    && (*w.offset((len + 1 as libc::c_int) as isize) as libc::c_int != '+' as i32
+                        || *w.offset((len + 2 as libc::c_int) as isize) as libc::c_int
+                            != '=' as i32)
+            {
+                if assoc_p!(var) != 0 {
+                    err_badarraysub(w);
+                    list = (*list).next;
+                    continue;
+                }
+                nval = make_variable_value(var, w, flags);
+                if ((*var).assign_func).is_some() {
+                    (Some(((*var).assign_func).expect("non-null function pointer")))
+                        .expect("non-null function pointer")(
+                        var,
+                        nval,
+                        last_ind,
+                        0 as *mut libc::c_char,
+                    );
+                } else {
+                    array_insert(a, last_ind, nval);
+                }
+                FREE!(nval);
+                last_ind += 1;
+                last_ind;
+                list = (*list).next;
+                continue;
+            }
+
+            if len == 1 as libc::c_int {
+                err_badarraysub(w);
+                list = (*list).next;
+                continue;
+            }
+
+            if ALL_ELEMENT_SUB!(*w.offset(1 as libc::c_int as isize) as libc::c_int)
+                && len == 2 as libc::c_int
+            {
+                set_exit_status(EXECUTION_FAILURE as libc::c_int);
+                if assoc_p!(var) != 0 {
+                    report_error(
+                        dcgettext(
+                            0 as *const libc::c_char,
+                            b"%s: invalid associative array key\0" as *const u8
+                                as *const libc::c_char,
+                            5 as libc::c_int,
+                        ),
+                        w,
+                    );
+                } else {
+                    report_error(
+                        dcgettext(
+                            0 as *const libc::c_char,
+                            b"%s: cannot assign to non-numeric index\0" as *const u8
+                                as *const libc::c_char,
+                            5 as libc::c_int,
+                        ),
+                        w,
+                    );
+                }
+                list = (*list).next;
+                continue;
+            }
+
+            if array_p!(var) != 0 {
+                ind = array_expand_index(
+                    var,
+                    w.offset(1 as libc::c_int as isize),
+                    len,
+                    0 as libc::c_int,
+                );
+                /* negative subscripts to indexed arrays count back from end */
+                if ind < 0 as libc::c_int as libc::c_long {
+                    ind =
+                        array_max_index!(array_cell!(var)) + 1 as libc::c_int as libc::c_long + ind;
+                }
+                if ind < 0 as libc::c_int as libc::c_long {
+                    err_badarraysub(w);
+                    list = (*list).next;
+                    continue;
+                }
+
+                last_ind = ind;
+            } else if assoc_p!(var) != 0 {
+                /* This is not performed above, see expand_compound_array_assignment */
+                *w.offset(len as isize) = '\0' as i32 as libc::c_char; /*[*/
+                akey = expand_assignment_string_to_string(
+                    w.offset(1 as libc::c_int as isize),
+                    0 as libc::c_int,
+                );
+                *w.offset(len as isize) = ']' as i32 as libc::c_char;
+                /* And we need to expand the value also, see below */
+                if akey.is_null() || *akey as libc::c_int == 0 as libc::c_int {
+                    err_badarraysub(w);
+                    FREE!(akey);
+                    list = (*list).next;
+                    continue;
+                }
+            }
+
+            /* XXX - changes for `+=' -- just accept the syntax.  ksh93 doesn't do this */
+            if *w.offset((len + 1 as libc::c_int) as isize) as libc::c_int == '+' as i32
+                && *w.offset((len + 2 as libc::c_int) as isize) as libc::c_int == '=' as i32
+            {
+                iflags |= ASS_APPEND as libc::c_int;
+                val = w.offset(len as isize).offset(3 as libc::c_int as isize);
+            } else {
+                val = w.offset(len as isize).offset(2 as libc::c_int as isize);
+            }
+        } else if assoc_p!(var) != 0 {
+            set_exit_status(EXECUTION_FAILURE as libc::c_int);
+            report_error(
+                dcgettext(
+                    0 as *const libc::c_char,
+                    b"%s: %s: must use subscript when assigning associative array\0" as *const u8
+                        as *const libc::c_char,
+                    5 as libc::c_int,
+                ),
+                (*var).name,
+                w,
+            );
+            list = (*list).next;
+            continue;
+        } else {
+            /* No [ind]=value, just a stray `=' */
+            ind = last_ind;
+            val = w;
+        }
+        free_val = 0 as libc::c_int;
+        /* See above; we need to expand the value here */
+        if assoc_p!(var) != 0 {
+            val = expand_assignment_string_to_string(val, 0 as libc::c_int);
+            if val.is_null() {
+                val = libc::malloc(1 as libc::c_int as usize) as *mut libc::c_char;
+                *val.offset(0 as libc::c_int as isize) = '\0' as i32 as libc::c_char;
+            }
+            free_val = 1 as libc::c_int;
+        }
+        savecmd = this_command_name;
+        if integer_p!(var) != 0 {
+            this_command_name = 0 as *mut libc::c_void as *mut libc::c_char;
+        }
+        if assoc_p!(var) != 0 {
+            bind_assoc_var_internal(var, nhash, akey, val, iflags);
+        } else {
+            bind_array_var_internal(var, ind, akey, val, iflags);
+        }
+        last_ind += 1;
+        last_ind;
+        this_command_name = savecmd;
+
+        if free_val != 0 {
+            libc::free(val as *mut libc::c_void);
+        }
+
+        list = (*list).next;
+    }
+
+    if assoc_p!(var) != 0 && !nhash.is_null() && nhash != h {
+        h = assoc_cell!(var);
+        var_setassoc!(var, nhash);
+        assoc_dispose(h);
+    }
+}
