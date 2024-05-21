@@ -1385,3 +1385,145 @@ pub unsafe extern "C" fn assign_compound_array_list(
         assoc_dispose(h);
     }
 }
+
+/* Perform a compound array assignment:  VAR->name=( VALUE ).  The
+VALUE has already had the parentheses stripped. */
+#[no_mangle]
+pub unsafe extern "C" fn assign_array_var_from_string(
+    mut var: *mut SHELL_VAR,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut SHELL_VAR {
+    let mut nlist: *mut WORD_LIST = 0 as *mut WORD_LIST;
+
+    if value.is_null() {
+        return var;
+    }
+
+    nlist = expand_compound_array_assignment(var, value, flags);
+    assign_compound_array_list(var, nlist, flags);
+
+    if !nlist.is_null() {
+        dispose_words(nlist);
+    }
+
+    if !var.is_null() {
+        VUNSETATTR!(var, att_invisible); /* no longer invisible */
+    }
+
+    return var;
+}
+
+/* Quote globbing chars and characters in $IFS before the `=' in an assignment
+statement (usually a compound array assignment) to protect them from
+unwanted filename expansion or word splitting. */
+unsafe extern "C" fn quote_assign(mut string: *const libc::c_char) -> *mut libc::c_char {
+    let mut slen: size_t = 0;
+    let mut saw_eq: libc::c_int = 0;
+    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut subs: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut s: *const libc::c_char = 0 as *const libc::c_char;
+    let mut send: *const libc::c_char = 0 as *const libc::c_char;
+    let mut ss: libc::c_int = 0;
+    let mut se: libc::c_int = 0;
+    let mut state: mbstate_t = mbstate_t {
+        __count: 0,
+        __value: C2RustUnnamed { __wch: 0 },
+    };
+    memset(
+        &mut state as *mut mbstate_t as *mut libc::c_void,
+        '\0' as i32,
+        ::core::mem::size_of::<mbstate_t>() as libc::c_ulong,
+    );
+
+    slen = strlen(string);
+    send = string.offset(slen as isize);
+
+    temp = libc::malloc(
+        slen.wrapping_mul(2 as libc::c_int as libc::c_ulong)
+            .wrapping_add(1 as libc::c_int as libc::c_ulong) as usize,
+    ) as *mut libc::c_char;
+    t = temp;
+    saw_eq = 0 as libc::c_int;
+    s = string;
+    while *s != 0 {
+        if *s as libc::c_int == '=' as i32 {
+            saw_eq = 1 as libc::c_int;
+        }
+        /* looks like a subscript */
+        if saw_eq == 0 as libc::c_int && *s as libc::c_int == '[' as i32 {
+            ss = s.offset_from(string) as libc::c_long as libc::c_int;
+            se = skipsubscript(string, ss, 0 as libc::c_int);
+            subs = substring(s, ss, se);
+            let fresh0 = t;
+            t = t.offset(1);
+            *fresh0 = '\\' as i32 as libc::c_char;
+            strcpy(t, subs);
+            t = t.offset((se - ss) as isize);
+            let fresh1 = t;
+            t = t.offset(1);
+            *fresh1 = '\\' as i32 as libc::c_char;
+            let fresh2 = t;
+            t = t.offset(1);
+            *fresh2 = ']' as i32 as libc::c_char;
+            s = s.offset((se + 1 as libc::c_int) as isize);
+            libc::free(subs as *mut libc::c_void);
+        }
+        if saw_eq == 0 as libc::c_int && (glob_char_p(s) != 0 || isifs!(*s) != 0 as libc::c_int) {
+            let fresh3 = t;
+            t = t.offset(1);
+            *fresh3 = '\\' as i32 as libc::c_char;
+        }
+
+        if locale_mb_cur_max > 1 as libc::c_int {
+            let mut state_bak: mbstate_t = mbstate_t {
+                __count: 0,
+                __value: C2RustUnnamed { __wch: 0 },
+            };
+            let mut mblength: size_t = 0;
+            let mut _k: libc::c_int = 0;
+            _k = is_basic(*s);
+            if _k != 0 {
+                mblength = 1 as libc::c_int as size_t;
+            } else if locale_utf8locale != 0
+                && *s as libc::c_int & 0x80 as libc::c_int == 0 as libc::c_int
+            {
+                mblength = (*s as libc::c_int != 0 as libc::c_int) as libc::c_int as size_t;
+            } else {
+                state_bak = state;
+                mblength = mbrlen(s, send.offset_from(s) as libc::c_long as size_t, &mut state);
+            }
+            if mblength == -(2 as libc::c_int) as size_t
+                || mblength == -(1 as libc::c_int) as size_t
+            {
+                state = state_bak;
+                mblength = 1 as libc::c_int as size_t;
+            } else {
+                mblength = if mblength < 1 as libc::c_int as libc::c_ulong {
+                    1 as libc::c_int as libc::c_ulong
+                } else {
+                    mblength
+                };
+            }
+            _k = 0 as libc::c_int;
+            while (_k as libc::c_ulong) < mblength {
+                let fresh4 = s;
+                s = s.offset(1);
+                let fresh5 = t;
+                t = t.offset(1);
+                *fresh5 = *fresh4;
+                _k += 1;
+                _k;
+            }
+        } else {
+            let fresh6 = s;
+            s = s.offset(1);
+            let fresh7 = t;
+            t = t.offset(1);
+            *fresh7 = *fresh6;
+        }
+    }
+    *t = '\0' as i32 as libc::c_char;
+    return temp;
+}
