@@ -1527,3 +1527,67 @@ unsafe extern "C" fn quote_assign(mut string: *const libc::c_char) -> *mut libc:
     *t = '\0' as i32 as libc::c_char;
     return temp;
 }
+
+/* Take a word W of the form [IND]=VALUE and transform it to ['IND']='VALUE'
+to prevent further expansion. This is called for compound assignments to
+indexed arrays. W has already undergone word expansions. If W has no [IND]=,
+just single-quote and return it. */
+unsafe extern "C" fn quote_compound_array_word(
+    mut w: *mut libc::c_char,
+    mut type_0: libc::c_int,
+) -> *mut libc::c_char {
+    let mut nword: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut sub: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ind: libc::c_int = 0;
+    let mut wlen: libc::c_int = 0;
+    let mut i: libc::c_int = 0;
+
+    //LBRACK  RBRACK
+    if *w.offset(0 as libc::c_int as isize) as libc::c_int != LBRACK!() as i32 {
+        return sh_single_quote(w);
+    }
+    ind = skipsubscript(w, 0 as libc::c_int, 0 as libc::c_int);
+    if *w.offset(ind as isize) as libc::c_int != RBRACK!() as i32 {
+        return sh_single_quote(w);
+    }
+
+    wlen = strlen(w) as libc::c_int;
+    *w.offset(ind as isize) = '\0' as i32 as libc::c_char;
+    sub = sh_single_quote(w.offset(1 as libc::c_int as isize));
+    *w.offset(ind as isize) = RBRACK!() as i32 as libc::c_char;
+
+    nword =
+        libc::malloc((wlen * 4 as libc::c_int + 5 as libc::c_int) as usize) as *mut libc::c_char; /* wlen*4 is max single quoted length */
+    *nword.offset(0 as libc::c_int as isize) = LBRACK!() as i32 as libc::c_char;
+    i = STRLEN!(sub);
+    memcpy(
+        nword.offset(1 as libc::c_int as isize) as *mut libc::c_void,
+        sub as *const libc::c_void,
+        i as libc::c_ulong,
+    );
+    i += 1;
+    i; /* accommodate the opening LBRACK */
+    let fresh8 = ind;
+    ind = ind + 1;
+    let fresh9 = i;
+    i = i + 1;
+    *nword.offset(fresh9 as isize) = *w.offset(fresh8 as isize); /* RBRACK */
+    if *w.offset(ind as isize) as libc::c_int == '+' as i32 {
+        let fresh10 = ind;
+        ind = ind + 1;
+        let fresh11 = i;
+        i = i + 1;
+        *nword.offset(fresh11 as isize) = *w.offset(fresh10 as isize);
+    }
+    let fresh12 = ind;
+    ind = ind + 1;
+    let fresh13 = i;
+    i = i + 1;
+    *nword.offset(fresh13 as isize) = *w.offset(fresh12 as isize);
+    value = sh_single_quote(w.offset(ind as isize));
+    strcpy(nword.offset(i as isize), value);
+
+    return nword;
+}
