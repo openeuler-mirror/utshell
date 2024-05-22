@@ -145,3 +145,25 @@ static mut curlval: lvalue = {
     };
     init
 };
+
+#[no_mangle]
+unsafe extern "C" fn expr_bind_variable(mut lhs: *mut libc::c_char, mut rhs: *mut libc::c_char) {
+    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut aflags: libc::c_int = 0;
+    if lhs.is_null() || *lhs as libc::c_int == 0 as libc::c_int {
+        return;
+    }
+    aflags = if assoc_expand_once != 0 && already_expanded != 0 {
+        ASS_NOEXPAND as libc::c_int
+    } else {
+        0 as libc::c_int
+    };
+    v = bind_int_variable(lhs, rhs, aflags);
+    if !v.is_null()
+        && ((*v).attributes & 0x2 as libc::c_int != 0
+            || (*v).attributes & 0x4000 as libc::c_int != 0)
+    {
+        siglongjmp(evalbuf.as_mut_ptr(), 1 as libc::c_int);
+    }
+    stupidly_hack_special_variables(lhs);
+}
