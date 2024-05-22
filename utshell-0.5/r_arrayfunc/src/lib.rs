@@ -1591,3 +1591,154 @@ unsafe extern "C" fn quote_compound_array_word(
 
     return nword;
 }
+
+/* Expand the key and value in W, which is of the form [KEY]=VALUE, and
+reconstruct W with the expanded and single-quoted version:
+['expanded-key']='expanded-value'. If there is no [KEY]=, single-quote the
+word and return it. Very similar to previous function, but does not assume
+W has already been expanded, and expands the KEY and VALUE separately.
+Used for compound assignments to associative arrays that are arguments to
+declaration builtins (declare -A a=( list )). */
+#[no_mangle]
+pub unsafe extern "C" fn expand_and_quote_assoc_word(
+    mut w: *mut libc::c_char,
+    mut type_0: libc::c_int,
+) -> *mut libc::c_char {
+    let mut nword: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut key: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ind: libc::c_int = 0;
+    let mut wlen: libc::c_int = 0;
+    let mut i: libc::c_int = 0;
+
+    if *w.offset(0 as libc::c_int as isize) as libc::c_int != LBRACK!() as i32 {
+        return sh_single_quote(w);
+    }
+    ind = skipsubscript(w, 0 as libc::c_int, 0 as libc::c_int);
+    if *w.offset(ind as isize) as libc::c_int != RBRACK!() as i32 {
+        return sh_single_quote(w);
+    }
+
+    *w.offset(ind as isize) = '\0' as i32 as libc::c_char;
+    t = expand_assignment_string_to_string(w.offset(1 as libc::c_int as isize), 0 as libc::c_int);
+    *w.offset(ind as isize) = RBRACK!() as i32 as libc::c_char;
+
+    key = sh_single_quote(if !t.is_null() {
+        t as *const libc::c_char
+    } else {
+        b"\0" as *const u8 as *const libc::c_char
+    });
+    libc::free(t as *mut libc::c_void);
+
+    wlen = STRLEN!(key);
+    nword = libc::malloc((wlen + 5 as libc::c_int) as usize) as *mut libc::c_char;
+    *nword.offset(0 as libc::c_int as isize) = LBRACK!() as i32 as libc::c_char;
+    memcpy(
+        nword.offset(1 as libc::c_int as isize) as *mut libc::c_void,
+        key as *const libc::c_void,
+        wlen as libc::c_ulong,
+    );
+    i = wlen + 1 as libc::c_int; /* accommodate the opening LBRACK */
+
+    let fresh14 = ind; /* RBRACK */
+    ind = ind + 1;
+    let fresh15 = i;
+    i = i + 1;
+    *nword.offset(fresh15 as isize) = *w.offset(fresh14 as isize);
+    if *w.offset(ind as isize) as libc::c_int == '+' as i32 {
+        let fresh16 = ind;
+        ind = ind + 1;
+        let fresh17 = i;
+        i = i + 1;
+        *nword.offset(fresh17 as isize) = *w.offset(fresh16 as isize);
+    }
+    let fresh18 = ind;
+    ind = ind + 1;
+    let fresh19 = i;
+    i = i + 1;
+    *nword.offset(fresh19 as isize) = *w.offset(fresh18 as isize);
+
+    t = expand_assignment_string_to_string(w.offset(ind as isize), 0 as libc::c_int);
+    value = sh_single_quote(if !t.is_null() {
+        t as *const libc::c_char
+    } else {
+        b"\0" as *const u8 as *const libc::c_char
+    });
+    libc::free(t as *mut libc::c_void);
+    nword = libc::realloc(
+        nword as *mut libc::c_void,
+        ((wlen + 5 as libc::c_int) as libc::c_ulong).wrapping_add(STRLEN!(value) as libc::c_ulong)
+            as usize,
+    ) as *mut libc::c_char;
+    strcpy(nword.offset(i as isize), value);
+
+    libc::free(key as *mut libc::c_void);
+    libc::free(value as *mut libc::c_void);
+
+    return nword;
+}
+
+/* For each word in a compound array assignment, if the word looks like
+[ind]=value, single-quote ind and value, but leave the brackets and
+the = sign (and any `+') alone. If it's not an assignment, just single-
+quote the word. This is used for indexed arrays. */
+#[no_mangle]
+pub unsafe extern "C" fn quote_compound_array_list(
+    mut list: *mut WORD_LIST,
+    mut type_0: libc::c_int,
+) {
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
+
+    l = list;
+    while !l.is_null() {
+        if !(((*l).word).is_null() || ((*(*l).word).word).is_null()) {
+            if (*(*l).word).flags & W_ASSIGNMENT == 0 as libc::c_int {
+                t = sh_single_quote((*(*l).word).word);
+            } else {
+                t = quote_compound_array_word((*(*l).word).word, type_0);
+            }
+            libc::free((*(*l).word).word as *mut libc::c_void);
+            (*(*l).word).word = t;
+        }
+        l = (*l).next;
+    }
+}
+
+/* For each word in a compound array assignment, if the word looks like
+[ind]=value, quote globbing chars and characters in $IFS before the `='. */
+unsafe extern "C" fn quote_array_assignment_chars(mut list: *mut WORD_LIST) {
+    let mut nword: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
+
+    l = list;
+    while !l.is_null() {
+        if ((*l).word).is_null()
+            || ((*(*l).word).word).is_null()
+            || *((*(*l).word).word).offset(0 as libc::c_int as isize) as libc::c_int == '\0' as i32
+        {
+            l = (*l).next;
+            continue; /* should not happen, but just in case... */
+        }
+        /* Don't bother if it hasn't been recognized as an assignment or
+        doesn't look like [ind]=value */
+        if (*(*l).word).flags & W_ASSIGNMENT == 0 as libc::c_int {
+            l = (*l).next;
+            continue;
+        }
+        /* ] */
+        if *((*(*l).word).word).offset(0 as libc::c_int as isize) as libc::c_int != '[' as i32
+            || (mbschr((*(*l).word).word, '=' as i32)).is_null()
+        {
+            l = (*l).next;
+            continue;
+        }
+        nword = quote_assign((*(*l).word).word);
+        libc::free((*(*l).word).word as *mut libc::c_void);
+        (*(*l).word).word = nword;
+        (*(*l).word).flags |= W_NOGLOB as libc::c_int; /* XXX - W_NOSPLIT also? */
+
+        l = (*l).next;
+    }
+}
