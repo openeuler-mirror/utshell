@@ -1742,3 +1742,113 @@ unsafe extern "C" fn quote_array_assignment_chars(mut list: *mut WORD_LIST) {
         l = (*l).next;
     }
 }
+
+/* skipsubscript moved to subst.c to use private functions. 2009/02/24. */
+
+/* This function is called with SUB pointing to just after the beginning
+`[' of an array subscript and removes the array element to which SUB
+expands from array VAR.  A subscript of `*' or `@' unsets the array. */
+/* If FLAGS&1 we don't expand the subscript; we just use it as-is. */
+#[no_mangle]
+pub unsafe extern "C" fn unbind_array_element(
+    mut var: *mut SHELL_VAR,
+    mut sub: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> libc::c_int {
+    let mut len: libc::c_int = 0;
+    let mut ind: arrayind_t = 0;
+    let mut akey: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ae: *mut ARRAY_ELEMENT = 0 as *mut ARRAY_ELEMENT;
+
+    len = skipsubscript(
+        sub,
+        0 as libc::c_int,
+        (flags & 1 as libc::c_int != 0 || !var.is_null() && assoc_p!(var) != 0) as libc::c_int,
+    ); /* XXX */
+    if *sub.offset(len as isize) as libc::c_int != ']' as i32 || len == 0 as libc::c_int {
+        builtin_error(
+            b"%s[%s: %s\0" as *const u8 as *const libc::c_char,
+            (*var).name,
+            sub,
+            dcgettext(
+                0 as *const libc::c_char,
+                bash_badsub_errmsg,
+                5 as libc::c_int,
+            ),
+        );
+        return -(1 as libc::c_int);
+    }
+    *sub.offset(len as isize) = '\0' as i32 as libc::c_char;
+
+    if ALL_ELEMENT_SUB!(*sub.offset(0 as libc::c_int as isize) as libc::c_int)
+        && *sub.offset(1 as libc::c_int as isize) as libc::c_int == 0 as libc::c_int
+    {
+        if array_p!(var) != 0 || assoc_p!(var) != 0 {
+            unbind_variable((*var).name); /* XXX -- {array,assoc}_flush ? */
+            return 0 as libc::c_int;
+        } else {
+            return -(2 as libc::c_int); /* don't allow this to unset scalar variables */
+        }
+    }
+
+    if assoc_p!(var) != 0 {
+        akey = if flags & 1 as libc::c_int != 0 {
+            sub
+        } else {
+            expand_assignment_string_to_string(sub, 0 as libc::c_int)
+        };
+        if akey.is_null() || *akey as libc::c_int == 0 as libc::c_int {
+            builtin_error(
+                b"[%s]: %s\0" as *const u8 as *const libc::c_char,
+                sub,
+                dcgettext(
+                    0 as *const libc::c_char,
+                    bash_badsub_errmsg,
+                    5 as libc::c_int,
+                ),
+            );
+            FREE!(akey);
+            return -(1 as libc::c_int);
+        }
+
+        assoc_remove(assoc_cell!(var), akey);
+        if akey != sub {
+            libc::free(akey as *mut libc::c_void);
+        }
+    } else if array_p!(var) != 0 {
+        ind = array_expand_index(var, sub, len + 1 as libc::c_int, 0 as libc::c_int);
+        /* negative subscripts to indexed arrays count back from end */
+        if ind < 0 as libc::c_int as libc::c_long {
+            ind = array_max_index!(array_cell!(var)) + 1 as libc::c_int as libc::c_long + ind;
+        }
+        if ind < 0 as libc::c_int as libc::c_long {
+            builtin_error(
+                b"[%s]: %s\0" as *const u8 as *const libc::c_char,
+                sub,
+                dcgettext(
+                    0 as *const libc::c_char,
+                    bash_badsub_errmsg,
+                    5 as libc::c_int,
+                ),
+            );
+            return -(1 as libc::c_int);
+        }
+        ae = array_remove((*var).value as *mut ARRAY, ind);
+        if !ae.is_null() {
+            array_dispose_element(ae);
+        }
+    } else {
+        /* array_p (var) == 0 && assoc_p (var) == 0 */
+        akey = this_command_name;
+        ind = array_expand_index(var, sub, len + 1 as libc::c_int, 0 as libc::c_int);
+        this_command_name = akey;
+        if ind == 0 as libc::c_int as libc::c_long {
+            unbind_variable((*var).name);
+            return 0 as libc::c_int;
+        } else {
+            return -(2 as libc::c_int); /* any subscript other than 0 is invalid with scalar variables */
+        }
+    }
+
+    return 0 as libc::c_int;
+}
