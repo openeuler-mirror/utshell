@@ -167,3 +167,105 @@ unsafe extern "C" fn expr_bind_variable(mut lhs: *mut libc::c_char, mut rhs: *mu
     }
     stupidly_hack_special_variables(lhs);
 }
+
+#[no_mangle]
+unsafe extern "C" fn expr_streval(
+    mut tok: *mut libc::c_char,
+    mut e: libc::c_int,
+    mut lvalue: *mut lvalue,
+) -> intmax_t {
+    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut tval: intmax_t = 0;
+    let mut initial_depth: libc::c_int = 0;
+    let mut ind: arrayind_t = 0;
+    let mut tflag: libc::c_int = 0;
+    let mut aflag: libc::c_int = 0;
+    if noeval != 0 {
+        return 0 as libc::c_int as intmax_t;
+    }
+    initial_depth = expr_depth;
+    tflag = (assoc_expand_once != 0 && already_expanded != 0) as libc::c_int;
+    aflag = if tflag != 0 {
+        AV_NOEXPAND as libc::c_int
+    } else {
+        0 as libc::c_int
+    };
+    v = if e == ']' as i32 {
+        array_variable_part(
+            tok,
+            tflag,
+            0 as *mut *mut libc::c_char,
+            0 as *mut libc::c_int,
+        )
+    } else {
+        find_variable(tok)
+    };
+    if v.is_null() && e != ']' as i32 {
+        v = find_variable_last_nameref(tok, 0 as libc::c_int);
+    }
+    if (v.is_null() || (*v).attributes & 0x1000 as libc::c_int != 0) && unbound_vars_is_error != 0 {
+        value = if e == ']' as i32 {
+            array_variable_name(
+                tok,
+                tflag,
+                0 as *mut *mut libc::c_char,
+                0 as *mut libc::c_int,
+            )
+        } else {
+            tok
+        };
+        set_exit_status(EXECUTION_FAILURE as libc::c_int);
+        err_unboundvar(value);
+        if e == ']' as i32 {
+            if !value.is_null() {
+                sh_xfree(
+                    value as *mut libc::c_void,
+                    b"../expr.c\0" as *const u8 as *const libc::c_char,
+                    1188 as libc::c_int,
+                );
+            }
+        }
+        if no_longjmp_on_fatal_error != 0 && interactive_shell != 0 {
+            siglongjmp(evalbuf.as_mut_ptr(), 1 as libc::c_int);
+        }
+        if interactive_shell != 0 {
+            expr_unwind();
+            top_level_cleanup();
+            jump_to_top_level(DISCARD as libc::c_int);
+        } else {
+            jump_to_top_level(FORCE_EOF as libc::c_int);
+        }
+    }
+    ind = -(1 as libc::c_int) as arrayind_t;
+    value = if e == ']' as i32 {
+        get_array_value(
+            tok,
+            aflag,
+            0 as *mut libc::c_void as *mut libc::c_int,
+            &mut ind,
+        )
+    } else {
+        get_variable_value(v)
+    };
+    if expr_depth < initial_depth {
+        if no_longjmp_on_fatal_error != 0 && interactive_shell != 0 {
+            siglongjmp(evalbuf.as_mut_ptr(), 1 as libc::c_int);
+        }
+        return 0 as libc::c_int as intmax_t;
+    }
+    tval = if !value.is_null() && *value as libc::c_int != 0 {
+        subexpr(value)
+    } else {
+        0 as libc::c_int as libc::c_long
+    };
+    if !lvalue.is_null() {
+        let ref mut fresh9 = (*lvalue).tokstr;
+        *fresh9 = tok;
+        (*lvalue).tokval = tval;
+        let ref mut fresh10 = (*lvalue).tokvar;
+        *fresh10 = v;
+        (*lvalue).ind = ind;
+    }
+    return tval;
+}
