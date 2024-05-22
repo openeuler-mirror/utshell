@@ -370,3 +370,141 @@ unsafe extern "C" fn exp1() -> intmax_t {
     }
     return val;
 }
+
+#[no_mangle]
+unsafe extern "C" fn exp0() -> intmax_t {
+    let mut val: intmax_t = 0 as libc::c_int as intmax_t;
+    let mut v2: intmax_t = 0;
+    let mut vincdec: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut stok: libc::c_int = 0;
+    let mut ec: EXPR_CONTEXT = EXPR_CONTEXT {
+        curtok: 0,
+        lasttok: 0,
+        expression: 0 as *mut libc::c_char,
+        tp: 0 as *mut libc::c_char,
+        lasttp: 0 as *mut libc::c_char,
+        tokval: 0,
+        tokstr: 0 as *mut libc::c_char,
+        noeval: 0,
+        lval: lvalue {
+            tokstr: 0 as *mut libc::c_char,
+            tokval: 0,
+            tokvar: 0 as *mut SHELL_VAR,
+            ind: 0,
+        },
+    };
+    if curtok == PREINC as libc::c_int || curtok == PREDEC as libc::c_int {
+        lasttok = curtok;
+        stok = lasttok;
+        readtok();
+        if curtok != STR as libc::c_int {
+            evalerror(dcgettext(
+                0 as *const libc::c_char,
+                b"identifier expected after pre-increment or pre-decrement\0" as *const u8
+                    as *const libc::c_char,
+                5 as libc::c_int,
+            ));
+        }
+        v2 = tokval
+            + (if stok == PREINC as libc::c_int {
+                1 as libc::c_int
+            } else {
+                -(1 as libc::c_int)
+            }) as libc::c_long;
+        vincdec = itos(v2);
+        if noeval == 0 as libc::c_int {
+            if curlval.ind != -(1 as libc::c_int) as libc::c_long {
+                expr_bind_array_element(curlval.tokstr, curlval.ind, vincdec);
+            } else if !tokstr.is_null() {
+                expr_bind_variable(tokstr, vincdec);
+            }
+        }
+        sh_xfree(
+            vincdec as *mut libc::c_void,
+            b"../expr.c\0" as *const u8 as *const libc::c_char,
+            1043 as libc::c_int,
+        );
+        val = v2;
+        curtok = NUM as libc::c_int;
+        readtok();
+    } else if curtok == '(' as i32 {
+        readtok();
+        val = expcomma();
+        if curtok != ')' as i32 {
+            evalerror(dcgettext(
+                0 as *const libc::c_char,
+                b"missing `)'\0" as *const u8 as *const libc::c_char,
+                5 as libc::c_int,
+            ));
+        }
+        readtok();
+    } else if curtok == NUM as libc::c_int || curtok == STR as libc::c_int {
+        val = tokval;
+        if curtok == STR as libc::c_int {
+            ec.curtok = curtok;
+            ec.lasttok = lasttok;
+            ec.tp = tp;
+            ec.lasttp = lasttp;
+            ec.tokval = tokval;
+            ec.tokstr = tokstr;
+            ec.noeval = noeval;
+            ec.lval = curlval;
+            tokstr = 0 as *mut libc::c_void as *mut libc::c_char;
+            noeval = 1 as libc::c_int;
+            readtok();
+            stok = curtok;
+            if stok == POSTINC as libc::c_int || stok == POSTDEC as libc::c_int {
+                tokstr = ec.tokstr;
+                noeval = ec.noeval;
+                curlval = ec.lval;
+                lasttok = 5 as libc::c_int;
+                v2 = val
+                    + (if stok == POSTINC as libc::c_int {
+                        1 as libc::c_int
+                    } else {
+                        -(1 as libc::c_int)
+                    }) as libc::c_long;
+                vincdec = itos(v2);
+                if noeval == 0 as libc::c_int {
+                    if curlval.ind != -(1 as libc::c_int) as libc::c_long {
+                        expr_bind_array_element(curlval.tokstr, curlval.ind, vincdec);
+                    } else {
+                        expr_bind_variable(tokstr, vincdec);
+                    }
+                }
+                sh_xfree(
+                    vincdec as *mut libc::c_void,
+                    b"../expr.c\0" as *const u8 as *const libc::c_char,
+                    1092 as libc::c_int,
+                );
+                curtok = 6 as libc::c_int;
+            } else {
+                if stok == 5 as libc::c_int {
+                    if !tokstr.is_null() {
+                        sh_xfree(
+                            tokstr as *mut libc::c_void,
+                            b"../expr.c\0" as *const u8 as *const libc::c_char,
+                            1099 as libc::c_int,
+                        );
+                    }
+                }
+                curtok = ec.curtok;
+                lasttok = ec.lasttok;
+                tp = ec.tp;
+                lasttp = ec.lasttp;
+                tokval = ec.tokval;
+                tokstr = ec.tokstr;
+                noeval = ec.noeval;
+                curlval = ec.lval;
+            }
+        }
+        readtok();
+    } else {
+        evalerror(dcgettext(
+            0 as *const libc::c_char,
+            b"syntax error: operand expected\0" as *const u8 as *const libc::c_char,
+            5 as libc::c_int,
+        ));
+    }
+    return val;
+}
