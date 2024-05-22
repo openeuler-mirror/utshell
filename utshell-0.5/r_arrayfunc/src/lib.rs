@@ -1852,3 +1852,59 @@ pub unsafe extern "C" fn unbind_array_element(
 
     return 0 as libc::c_int;
 }
+
+/* Format and output an array assignment in compound form VAR=(VALUES),
+suitable for re-use as input. */
+#[no_mangle]
+pub unsafe extern "C" fn print_array_assignment(mut var: *mut SHELL_VAR, mut quoted: libc::c_int) {
+    let mut vstr: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    vstr = array_to_assign(array_cell!(var), quoted);
+
+    if vstr.is_null() {
+        printf(
+            b"%s=%s\n\0" as *const u8 as *const libc::c_char,
+            (*var).name,
+            if quoted != 0 {
+                b"'()'\0" as *const u8 as *const libc::c_char
+            } else {
+                b"()\0" as *const u8 as *const libc::c_char
+            },
+        );
+    } else {
+        printf(
+            b"%s=%s\n\0" as *const u8 as *const libc::c_char,
+            (*var).name,
+            vstr,
+        );
+        libc::free(vstr as *mut libc::c_void);
+    };
+}
+
+/* Format and output an associative array assignment in compound form
+VAR=(VALUES), suitable for re-use as input. */
+#[no_mangle]
+pub unsafe extern "C" fn print_assoc_assignment(mut var: *mut SHELL_VAR, mut quoted: libc::c_int) {
+    let mut vstr: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    vstr = assoc_to_assign(assoc_cell!(var), quoted);
+
+    if vstr.is_null() {
+        printf(
+            b"%s=%s\n\0" as *const u8 as *const libc::c_char,
+            (*var).name,
+            if quoted != 0 {
+                b"'()'\0" as *const u8 as *const libc::c_char
+            } else {
+                b"()\0" as *const u8 as *const libc::c_char
+            },
+        );
+    } else {
+        printf(
+            b"%s=%s\n\0" as *const u8 as *const libc::c_char,
+            (*var).name,
+            vstr,
+        );
+        libc::free(vstr as *mut libc::c_void);
+    };
+}
