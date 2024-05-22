@@ -112,3 +112,36 @@ static mut lastlval: lvalue = {
     };
     init
 };
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct EXPR_CONTEXT {
+    pub curtok: libc::c_int,
+    pub lasttok: libc::c_int,
+    pub expression: *mut libc::c_char,
+    pub tp: *mut libc::c_char,
+    pub lasttp: *mut libc::c_char,
+    pub tokval: intmax_t,
+    pub tokstr: *mut libc::c_char,
+    pub noeval: libc::c_int,
+    pub lval: lvalue,
+}
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct lvalue {
+    pub tokstr: *mut libc::c_char,
+    pub tokval: intmax_t,
+    pub tokvar: *mut SHELL_VAR,
+    pub ind: intmax_t,
+}
+
+static mut curlval: lvalue = {
+    let mut init = lvalue {
+        tokstr: 0 as *const libc::c_char as *mut libc::c_char,
+        tokval: 0 as libc::c_int as intmax_t,
+        tokvar: 0 as *const SHELL_VAR as *mut SHELL_VAR,
+        ind: -(1 as libc::c_int) as intmax_t,
+    };
+    init
+};
