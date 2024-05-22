@@ -269,3 +269,65 @@ unsafe extern "C" fn expr_streval(
     }
     return tval;
 }
+
+#[no_mangle]
+unsafe extern "C" fn init_lvalue(mut lv: *mut lvalue) {
+    let ref mut fresh6 = (*lv).tokstr;
+    *fresh6 = 0 as *mut libc::c_char;
+    let ref mut fresh7 = (*lv).tokvar;
+    *fresh7 = 0 as *mut SHELL_VAR;
+    let ref mut fresh8 = (*lv).ind;
+    *fresh8 = -(1 as libc::c_int) as intmax_t;
+    (*lv).tokval = *fresh8;
+}
+
+#[no_mangle]
+unsafe extern "C" fn expr_bind_array_element(
+    mut tok: *mut libc::c_char,
+    mut ind: arrayind_t,
+    mut rhs: *mut libc::c_char,
+) {
+    let mut lhs: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut vname: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut llen: size_t = 0;
+    let mut ibuf: [libc::c_char; 22] = [0; 22];
+    let mut istr: *mut libc::c_char = 0 as *mut libc::c_char;
+    istr = fmtumax(
+        ind as uintmax_t,
+        10 as libc::c_int,
+        ibuf.as_mut_ptr(),
+        ::std::mem::size_of::<[libc::c_char; 22]>() as usize,
+        0 as libc::c_int,
+    );
+    vname = array_variable_name(
+        tok,
+        0 as libc::c_int,
+        0 as *mut libc::c_void as *mut *mut libc::c_char,
+        0 as *mut libc::c_void as *mut libc::c_int,
+    );
+    llen = (strlen(vname))
+        .wrapping_add(::std::mem::size_of::<[libc::c_char; 22]>() as libc::c_ulong)
+        .wrapping_add(3 as libc::c_int as libc::c_ulong) as usize;
+    lhs = sh_xmalloc(
+        llen as libc::c_ulong,
+        b"../expr.c\0" as *const u8 as *const libc::c_char,
+        380 as libc::c_int,
+    ) as *mut libc::c_char;
+    sprintf(
+        lhs,
+        b"%s[%s]\0" as *const u8 as *const libc::c_char,
+        vname,
+        istr,
+    );
+    expr_bind_variable(lhs, rhs);
+    sh_xfree(
+        vname as *mut libc::c_void,
+        b"../expr.c\0" as *const u8 as *const libc::c_char,
+        386 as libc::c_int,
+    );
+    sh_xfree(
+        lhs as *mut libc::c_void,
+        b"../expr.c\0" as *const u8 as *const libc::c_char,
+        387 as libc::c_int,
+    );
+}
