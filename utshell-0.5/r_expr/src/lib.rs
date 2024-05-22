@@ -331,3 +331,42 @@ unsafe extern "C" fn expr_bind_array_element(
         387 as libc::c_int,
     );
 }
+
+#[no_mangle]
+unsafe extern "C" fn ipow(mut base: intmax_t, mut exp: intmax_t) -> intmax_t {
+    let mut result: intmax_t = 0;
+    result = 1 as libc::c_int as intmax_t;
+    while exp != 0 {
+        if exp & 1 as libc::c_int as libc::c_long != 0 {
+            result *= base;
+        }
+        exp >>= 1 as libc::c_int;
+        base *= base;
+    }
+    return result;
+}
+
+#[no_mangle]
+unsafe extern "C" fn exp1() -> intmax_t {
+    let mut val: intmax_t = 0;
+    if curtok == '!' as i32 {
+        readtok();
+        val = (exp1() == 0) as libc::c_int as intmax_t;
+        lasttok = 6 as libc::c_int;
+    } else if curtok == '~' as i32 {
+        readtok();
+        val = !exp1();
+        lasttok = 6 as libc::c_int;
+    } else if curtok == '-' as i32 {
+        readtok();
+        val = -exp1();
+        lasttok = 6 as libc::c_int;
+    } else if curtok == '+' as i32 {
+        readtok();
+        val = exp1();
+        lasttok = 6 as libc::c_int;
+    } else {
+        val = exp0();
+    }
+    return val;
+}
