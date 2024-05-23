@@ -2010,3 +2010,81 @@ pub unsafe extern "C" fn array_expand_index(
     }
     return val;
 }
+
+/* Return the name of the variable specified by S without any subscript.
+If SUBP is non-null, return a pointer to the start of the subscript
+in *SUBP. If LENP is non-null, the length of the subscript is returned
+in *LENP.  This returns newly-allocated memory. */
+#[no_mangle]
+pub unsafe extern "C" fn array_variable_name(
+    mut s: *const libc::c_char,
+    mut flags: libc::c_int,
+    mut subp: *mut *mut libc::c_char,
+    mut lenp: *mut libc::c_int,
+) -> *mut libc::c_char {
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ind: libc::c_int = 0;
+    let mut ni: libc::c_int = 0;
+
+    t = mbschr(s, '[' as i32);
+    if t.is_null() {
+        if !subp.is_null() {
+            *subp = t;
+        }
+        if !lenp.is_null() {
+            *lenp = 0 as libc::c_int;
+        }
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+    ind = t.offset_from(s) as libc::c_long as libc::c_int;
+    ni = skipsubscript(s, ind, flags); /* XXX - was 0 not flags */
+    if ni <= ind + 1 as libc::c_int || *s.offset(ni as isize) as libc::c_int != ']' as i32 {
+        err_badarraysub(s);
+        if !subp.is_null() {
+            *subp = t;
+        }
+        if !lenp.is_null() {
+            *lenp = 0 as libc::c_int;
+        }
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+
+    *t = '\0' as i32 as libc::c_char;
+    ret = savestring!(s);
+    let fresh20 = t;
+    t = t.offset(1);
+    *fresh20 = '[' as i32 as libc::c_char; /* ] */
+
+    if !subp.is_null() {
+        *subp = t;
+    }
+    if !lenp.is_null() {
+        *lenp = ni - ind;
+    }
+
+    return ret;
+}
+
+/* Return the variable specified by S without any subscript.  If SUBP is
+non-null, return a pointer to the start of the subscript in *SUBP.
+If LENP is non-null, the length of the subscript is returned in *LENP. */
+#[no_mangle]
+pub unsafe extern "C" fn array_variable_part(
+    mut s: *const libc::c_char,
+    mut flags: libc::c_int,
+    mut subp: *mut *mut libc::c_char,
+    mut lenp: *mut libc::c_int,
+) -> *mut SHELL_VAR {
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    t = array_variable_name(s, flags, subp, lenp);
+
+    if t.is_null() {
+        return 0 as *mut libc::c_void as *mut SHELL_VAR;
+    }
+    var = find_variable(t); /* XXX - handle namerefs here? */
+
+    libc::free(t as *mut libc::c_void);
+    return var; /* now return invisible variables; caller must handle */
+}
