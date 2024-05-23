@@ -508,3 +508,30 @@ unsafe extern "C" fn exp0() -> intmax_t {
     }
     return val;
 }
+
+#[no_mangle]
+unsafe extern "C" fn exppower() -> intmax_t {
+    let mut val1: intmax_t = 0;
+    let mut val2: intmax_t = 0;
+    let mut c: intmax_t = 0;
+    val1 = exp1();
+    while curtok == POWER as libc::c_int {
+        readtok();
+        val2 = exppower();
+        lasttok = NUM as libc::c_int;
+        if val2 == 0 as libc::c_int as libc::c_long {
+            return 1 as libc::c_int as intmax_t;
+        }
+        if val2 < 0 as libc::c_int as libc::c_long {
+            evalerror(dcgettext(
+                0 as *const libc::c_char,
+                b"exponent less than 0\0" as *const u8 as *const libc::c_char,
+                5 as libc::c_int,
+            ));
+        }
+        val1 = ipow(val1, val2);
+    }
+    return val1;
+}
+
+
