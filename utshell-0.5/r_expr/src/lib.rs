@@ -613,6 +613,24 @@ unsafe extern "C" fn exp3() -> intmax_t {
     return val1;
 }
 
+#[no_mangle]
+unsafe extern "C" fn expshift() -> intmax_t {
+    let mut val1: intmax_t = 0;
+    let mut val2: intmax_t = 0;
+    val1 = exp3();
+    while curtok == LSH as libc::c_int || curtok == RSH as libc::c_int {
+        let mut op: libc::c_int = curtok;
+        readtok();
+        val2 = exp3();
+        if op == LSH as libc::c_int {
+            val1 = val1 << val2;
+        } else {
+            val1 = val1 >> val2;
+        }
+        lasttok = NUM as libc::c_int;
+    }
+    return val1;
+}
 
 
 
