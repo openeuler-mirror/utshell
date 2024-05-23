@@ -534,4 +534,63 @@ unsafe extern "C" fn exppower() -> intmax_t {
     return val1;
 }
 
+#[no_mangle]
+unsafe extern "C" fn expmuldiv() -> intmax_t {
+    let mut val1: intmax_t = 0;
+    let mut val2: intmax_t = 0;
+    let mut idiv: imaxdiv_t = imaxdiv_t { quot: 0, rem: 0 };
+    val1 = exppower();
+    while curtok == '*' as i32 || curtok == '/' as i32 || curtok == '%' as i32 {
+        let mut op: libc::c_int = curtok;
+        let mut stp: *mut libc::c_char = 0 as *mut libc::c_char;
+        let mut sltp: *mut libc::c_char = 0 as *mut libc::c_char;
+        stp = tp;
+        readtok();
+        val2 = exppower();
+        if (op == '/' as i32 || op == '%' as i32) && val2 == 0 as libc::c_int as libc::c_long {
+            if noeval == 0 as libc::c_int {
+                sltp = lasttp;
+                lasttp = stp;
+                while !lasttp.is_null()
+                    && *lasttp as libc::c_int != 0
+                    && (*lasttp as libc::c_int == ' ' as i32
+                        || *lasttp as libc::c_int == '\t' as i32)
+                {
+                    lasttp = lasttp.offset(1);
+                }
+                evalerror(dcgettext(
+                    0 as *const libc::c_char,
+                    b"division by 0\0" as *const u8 as *const libc::c_char,
+                    5 as libc::c_int,
+                ));
+                lasttp = sltp;
+            } else {
+                val2 = 1 as libc::c_int as intmax_t;
+            }
+        } else if op == '%' as i32
+            && val1 == -(9223372036854775807 as libc::c_long) - 1 as libc::c_int as libc::c_long
+            && val2 == -(1 as libc::c_int) as libc::c_long
+        {
+            val1 = 0 as libc::c_int as intmax_t;
+            continue;
+        } else if op == '/' as i32
+            && val1 == -(9223372036854775807 as libc::c_long) - 1 as libc::c_int as libc::c_long
+            && val2 == -(1 as libc::c_int) as libc::c_long
+        {
+            val2 = 1 as libc::c_int as intmax_t;
+        }
+        if op == '*' as i32 {
+            val1 *= val2;
+        } else if op == '/' as i32 || op == '%' as i32 {
+            idiv = imaxdiv(val1, val2);
+            val1 = if op == '/' as i32 {
+                idiv.quot
+            } else {
+                idiv.rem
+            };
+        }
+        lasttok = 6 as libc::c_int;
+    }
+    return val1;
+}
 
