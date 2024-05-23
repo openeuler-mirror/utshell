@@ -1908,3 +1908,64 @@ pub unsafe extern "C" fn print_assoc_assignment(mut var: *mut SHELL_VAR, mut quo
         libc::free(vstr as *mut libc::c_void);
     };
 }
+
+/***********************************************************************/
+/*								       */
+/* Utility functions to manage arrays and their contents for expansion */
+/*								       */
+/***********************************************************************/
+
+/* Return 1 if NAME is a properly-formed array reference v[sub]. */
+
+/* We need to reserve 1 for FLAGS, which we pass to skipsubscript. */
+#[no_mangle]
+pub unsafe extern "C" fn valid_array_reference(
+    mut name: *const libc::c_char,
+    mut flags: libc::c_int,
+) -> libc::c_int {
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut r: libc::c_int = 0;
+    let mut len: libc::c_int = 0;
+    let mut isassoc: libc::c_int = 0;
+    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+
+    t = mbschr(name, '[' as i32); /* ] */
+    isassoc = 0 as libc::c_int;
+    if !t.is_null() {
+        *t = '\0' as i32 as libc::c_char;
+        r = legal_identifier(name);
+
+        if flags & VA_NOEXPAND as libc::c_int != 0 {
+            /* Don't waste a lookup if we don't need one */
+            entry = find_variable(name);
+            isassoc = (!entry.is_null() && assoc_p!(entry) != 0) as libc::c_int;
+        }
+        *t = '[' as i32 as libc::c_char;
+        if r == 0 as libc::c_int {
+            return 0 as libc::c_int;
+        }
+
+        if isassoc != 0
+            && flags & (VA_NOEXPAND as libc::c_int | VA_ONEWORD as libc::c_int)
+                == VA_NOEXPAND as libc::c_int | VA_ONEWORD as libc::c_int
+        {
+            len = (strlen(t)).wrapping_sub(1 as libc::c_int as libc::c_ulong) as libc::c_int;
+        } else if isassoc != 0 {
+            len = skipsubscript(t, 0 as libc::c_int, flags & VA_NOEXPAND as libc::c_int);
+        /* VA_NOEXPAND must be 1 */
+        } else {
+            /* Check for a properly-terminated non-null subscript. */
+            len = skipsubscript(t, 0 as libc::c_int, 0 as libc::c_int); /* arithmetic expression */
+        }
+
+        if *t.offset(len as isize) as libc::c_int != ']' as i32
+            || len == 1 as libc::c_int
+            || *t.offset((len + 1 as libc::c_int) as isize) as libc::c_int != '\0' as i32
+        {
+            return 0 as libc::c_int;
+        }
+        /* This allows blank subscripts */
+        return 1 as libc::c_int;
+    }
+    return 0 as libc::c_int;
+}
