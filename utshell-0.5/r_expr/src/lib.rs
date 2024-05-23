@@ -594,3 +594,25 @@ unsafe extern "C" fn expmuldiv() -> intmax_t {
     return val1;
 }
 
+#[no_mangle]
+unsafe extern "C" fn exp3() -> intmax_t {
+    let mut val1: intmax_t = 0;
+    let mut val2: intmax_t = 0;
+    val1 = expmuldiv();
+    while curtok == '+' as i32 || curtok == '-' as i32 {
+        let mut op: libc::c_int = curtok;
+        readtok();
+        val2 = expmuldiv();
+        if op == '+' as i32 {
+            val1 += val2;
+        } else if op == '-' as i32 {
+            val1 -= val2;
+        }
+        lasttok = NUM as libc::c_int;
+    }
+    return val1;
+}
+
+
+
+
