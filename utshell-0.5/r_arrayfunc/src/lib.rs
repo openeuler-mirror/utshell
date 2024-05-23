@@ -1969,3 +1969,44 @@ pub unsafe extern "C" fn valid_array_reference(
     }
     return 0 as libc::c_int;
 }
+
+/* Expand the array index beginning at S and extending LEN characters. */
+#[no_mangle]
+pub unsafe extern "C" fn array_expand_index(
+    mut var: *mut SHELL_VAR,
+    mut s: *mut libc::c_char,
+    mut len: libc::c_int,
+    mut flags: libc::c_int,
+) -> arrayind_t {
+    let mut exp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut savecmd: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut expok: libc::c_int = 0;
+    let mut val: arrayind_t = 0;
+
+    exp = libc::malloc(len as usize) as *mut libc::c_char;
+    strncpy(exp, s, (len - 1 as libc::c_int) as libc::c_ulong);
+    *exp.offset((len - 1 as libc::c_int) as isize) = '\0' as i32 as libc::c_char;
+
+    t = expand_arith_string(
+        exp,
+        Q_DOUBLE_QUOTES as libc::c_int | Q_ARITH as libc::c_int | Q_ARRAYSUB as libc::c_int,
+    ); /* XXX - Q_ARRAYSUB for future use */
+    savecmd = this_command_name;
+    this_command_name = 0 as *mut libc::c_void as *mut libc::c_char;
+    val = evalexp(t, EXP_EXPANDED as libc::c_int, &mut expok); /* XXX - was 0 but we expanded exp already */
+    this_command_name = savecmd;
+    if t != exp {
+        libc::free(t as *mut libc::c_void);
+    }
+    libc::free(exp as *mut libc::c_void);
+    if expok == 0 as libc::c_int {
+        set_exit_status(EXECUTION_FAILURE as libc::c_int);
+        if no_longjmp_on_fatal_error != 0 {
+            return 0 as libc::c_int as arrayind_t;
+        }
+        top_level_cleanup();
+        jump_to_top_level(DISCARD as libc::c_int);
+    }
+    return val;
+}
