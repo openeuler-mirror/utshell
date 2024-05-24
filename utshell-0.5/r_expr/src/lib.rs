@@ -632,5 +632,31 @@ unsafe extern "C" fn expshift() -> intmax_t {
     return val1;
 }
 
+#[no_mangle]
+unsafe extern "C" fn exp4() -> intmax_t {
+    let mut val1: intmax_t = 0;
+    let mut val2: intmax_t = 0;
+    val1 = expshift();
+    while curtok == LEQ as libc::c_int
+        || curtok == GEQ as libc::c_int
+        || curtok == '<' as i32
+        || curtok == '>' as i32
+    {
+        let mut op: libc::c_int = curtok;
+        readtok();
+        val2 = expshift();
+        if op == LEQ as libc::c_int {
+            val1 = (val1 <= val2) as libc::c_int as intmax_t;
+        } else if op == GEQ as libc::c_int {
+            val1 = (val1 >= val2) as libc::c_int as intmax_t;
+        } else if op == '<' as i32 {
+            val1 = (val1 < val2) as libc::c_int as intmax_t;
+        } else {
+            val1 = (val1 > val2) as libc::c_int as intmax_t;
+        }
+        lasttok = NUM as libc::c_int;
+    }
+    return val1;
+}
 
 
