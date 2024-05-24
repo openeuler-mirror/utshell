@@ -706,3 +706,42 @@ unsafe extern "C" fn expbxor() -> intmax_t {
     return val1;
 }
 
+
+#[no_mangle]
+unsafe extern "C" fn expbor() -> intmax_t {
+    let mut val1: intmax_t = 0;
+    let mut val2: intmax_t = 0;
+    val1 = expbxor();
+    while curtok == '|' as i32 {
+        readtok();
+        val2 = expbxor();
+        val1 = val1 | val2;
+        lasttok = NUM as libc::c_int;
+    }
+    return val1;
+}
+
+#[no_mangle]
+unsafe extern "C" fn expland() -> intmax_t {
+    let mut val1: intmax_t = 0;
+    let mut val2: intmax_t = 0;
+    let mut set_noeval: libc::c_int = 0;
+    val1 = expbor();
+    while curtok == LAND as libc::c_int {
+        set_noeval = 0 as libc::c_int;
+        if val1 == 0 as libc::c_int as libc::c_long {
+            set_noeval = 1 as libc::c_int;
+            noeval += 1;
+        }
+        readtok();
+        val2 = expbor();
+        if set_noeval != 0 {
+            noeval -= 1;
+        }
+        val1 = (val1 != 0 && val2 != 0) as libc::c_int as intmax_t;
+        lasttok = LAND as libc::c_int;
+    }
+    return val1;
+}
+
+
