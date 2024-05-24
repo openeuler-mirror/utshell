@@ -659,4 +659,21 @@ unsafe extern "C" fn exp4() -> intmax_t {
     return val1;
 }
 
-
+#[no_mangle]
+unsafe extern "C" fn exp5() -> intmax_t {
+    let mut val1: intmax_t = 0;
+    let mut val2: intmax_t = 0;
+    val1 = exp4();
+    while curtok == EQEQ as libc::c_int || curtok == NEQ as libc::c_int {
+        let mut op: libc::c_int = curtok;
+        readtok();
+        val2 = exp4();
+        if op == EQEQ as libc::c_int {
+            val1 = (val1 == val2) as libc::c_int as intmax_t;
+        } else if op == NEQ as libc::c_int {
+            val1 = (val1 != val2) as libc::c_int as intmax_t;
+        }
+        lasttok = NUM as libc::c_int;
+    }
+    return val1;
+}
