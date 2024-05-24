@@ -2258,3 +2258,30 @@ unsafe extern "C" fn array_value_internal(
 
     return retval;
 }
+
+/* Return a string containing the elements described by the array and
+subscript contained in S, obeying quoting for subscripts * and @. */
+#[no_mangle]
+pub unsafe extern "C" fn array_value(
+    mut s: *const libc::c_char,
+    mut quoted: libc::c_int,
+    mut flags: libc::c_int,
+    mut rtype: *mut libc::c_int,
+    mut indp: *mut arrayind_t,
+) -> *mut libc::c_char {
+    return array_value_internal(s, quoted, flags | AV_ALLOWALL as libc::c_int, rtype, indp);
+}
+
+/* Return the value of the array indexing expression S as a single string.
+If (FLAGS & AV_ALLOWALL) is 0, do not allow `@' and `*' subscripts.  This
+is used by other parts of the shell such as the arithmetic expression
+evaluator in expr.c. */
+#[no_mangle]
+pub unsafe extern "C" fn get_array_value(
+    mut s: *const libc::c_char,
+    mut flags: libc::c_int,
+    mut rtype: *mut libc::c_int,
+    mut indp: *mut arrayind_t,
+) -> *mut libc::c_char {
+    return array_value_internal(s, 0 as libc::c_int, flags, rtype, indp);
+}
