@@ -677,3 +677,32 @@ unsafe extern "C" fn exp5() -> intmax_t {
     }
     return val1;
 }
+
+#[no_mangle]
+unsafe extern "C" fn expband() -> intmax_t {
+    let mut val1: intmax_t = 0;
+    let mut val2: intmax_t = 0;
+    val1 = exp5();
+    while curtok == '&' as i32 {
+        readtok();
+        val2 = exp5();
+        val1 = val1 & val2;
+        lasttok = NUM as libc::c_int;
+    }
+    return val1;
+}
+
+#[no_mangle]
+unsafe extern "C" fn expbxor() -> intmax_t {
+    let mut val1: intmax_t = 0;
+    let mut val2: intmax_t = 0;
+    val1 = expband();
+    while curtok == '^' as i32 {
+        readtok();
+        val2 = expband();
+        val1 = val1 ^ val2;
+        lasttok = NUM as libc::c_int;
+    }
+    return val1;
+}
+
