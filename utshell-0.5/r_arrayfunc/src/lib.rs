@@ -2088,3 +2088,173 @@ pub unsafe extern "C" fn array_variable_part(
     libc::free(t as *mut libc::c_void);
     return var; /* now return invisible variables; caller must handle */
 }
+
+/* Return a string containing the elements in the array and subscript
+described by S.  If the subscript is * or @, obeys quoting rules akin
+to the expansion of $* and $@ including double quoting.  If RTYPE
+is non-null it gets 1 if the array reference is name[*], 2 if the
+reference is name[@], and 0 otherwise. */
+unsafe extern "C" fn array_value_internal(
+    mut s: *const libc::c_char,
+    mut quoted: libc::c_int,
+    mut flags: libc::c_int,
+    mut rtype: *mut libc::c_int,
+    mut indp: *mut arrayind_t,
+) -> *mut libc::c_char {
+    let mut len: libc::c_int = 0;
+    let mut ind: arrayind_t = 0;
+    let mut akey: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut retval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+
+    var = array_variable_part(
+        s,
+        if flags & 0x20 as libc::c_int != 0 {
+            1 as libc::c_int
+        } else {
+            0 as libc::c_int
+        },
+        &mut t,
+        &mut len,
+    ); /* XXX */
+
+    /* Expand the index, even if the variable doesn't exist, in case side
+    effects are needed, like ${w[i++]} where w is unset. */
+    if len == 0 as libc::c_int {
+        return 0 as *mut libc::c_void as *mut libc::c_char; /* error message already printed */
+    }
+
+    /* [ */
+    akey = 0 as *mut libc::c_char;
+
+    if ALL_ELEMENT_SUB!(*t.offset(0 as libc::c_int as isize) as libc::c_int)
+        && *t.offset(1 as libc::c_int as isize) as libc::c_int == ']' as i32
+    {
+        if !rtype.is_null() {
+            *rtype = if *t.offset(0 as libc::c_int as isize) as libc::c_int == '*' as i32 {
+                1 as libc::c_int
+            } else {
+                2 as libc::c_int
+            };
+        }
+        if flags & AV_ALLOWALL as libc::c_int == 0 as libc::c_int {
+            err_badarraysub(s);
+            return 0 as *mut libc::c_void as *mut libc::c_char;
+        } else if var.is_null() || value_cell!(var).is_null() {
+            /* XXX - check for invisible_p(var) ? */
+            return 0 as *mut libc::c_void as *mut libc::c_char;
+        } else if invisible_p!(var) != 0 {
+            return 0 as *mut libc::c_void as *mut libc::c_char;
+        } else if array_p!(var) == 0 as libc::c_int && assoc_p!(var) == 0 as libc::c_int {
+            l = make_word_list(
+                make_word(value_cell!(var)),
+                0 as *mut libc::c_void as *mut WORD_LIST,
+            );
+        } else if assoc_p!(var) != 0 {
+            l = assoc_to_word_list(assoc_cell!(var));
+            if l.is_null() {
+                return 0 as *mut libc::c_void as *mut libc::c_char;
+            }
+        } else {
+            l = array_to_word_list(array_cell!(var));
+            if l.is_null() {
+                return 0 as *mut libc::c_void as *mut libc::c_char;
+            }
+        }
+
+        /* Caller of array_value takes care of inspecting rtype and duplicating
+        retval if rtype == 0, so this is not a memory leak */
+        if *t.offset(0 as libc::c_int as isize) as libc::c_int == '*' as i32
+            && quoted & (Q_HERE_DOCUMENT as libc::c_int | Q_DOUBLE_QUOTES as libc::c_int) != 0
+        {
+            temp = string_list_dollar_star(
+                l,
+                quoted,
+                if flags & AV_ASSIGNRHS as libc::c_int != 0 {
+                    PF_ASSIGNRHS as libc::c_int
+                } else {
+                    0 as libc::c_int
+                },
+            );
+            retval = quote_string(temp);
+            libc::free(temp as *mut libc::c_void);
+        } else {
+            /* ${name[@]} or unquoted ${name[*]} */
+            retval = string_list_dollar_at(
+                l,
+                quoted,
+                if flags & AV_ASSIGNRHS as libc::c_int != 0 {
+                    PF_ASSIGNRHS as libc::c_int
+                } else {
+                    0 as libc::c_int
+                },
+            );
+        }
+
+        dispose_words(l);
+    } else {
+        if !rtype.is_null() {
+            *rtype = 0 as libc::c_int;
+        }
+        if var.is_null() || array_p!(var) != 0 || assoc_p!(var) == 0 as libc::c_int {
+            if flags & AV_USEIND as libc::c_int == 0 as libc::c_int || indp.is_null() {
+                ind = array_expand_index(var, t, len, flags);
+                if ind < 0 as libc::c_int as libc::c_long {
+                    /* negative subscripts to indexed arrays count back from end */
+                    if !var.is_null() && array_p!(var) != 0 {
+                        ind = array_max_index!(array_cell!(var))
+                            + 1 as libc::c_int as libc::c_long
+                            + ind;
+                    }
+                    if ind < 0 as libc::c_int as libc::c_long {
+                        INDEX_ERROR!(var, t, s);
+                    }
+                }
+                if !indp.is_null() {
+                    *indp = ind;
+                }
+            } else if !indp.is_null() {
+                ind = *indp;
+            }
+        } else if assoc_p!(var) != 0 {
+            *t.offset((len - 1 as libc::c_int) as isize) = '\0' as i32 as libc::c_char;
+            if flags & AV_NOEXPAND as libc::c_int == 0 as libc::c_int {
+                akey = expand_assignment_string_to_string(t, 0 as libc::c_int); /* [ */
+            } else {
+                akey = savestring!(t);
+            }
+            *t.offset((len - 1 as libc::c_int) as isize) = ']' as i32 as libc::c_char;
+            if akey.is_null() || *akey as libc::c_int == 0 as libc::c_int {
+                FREE!(akey);
+                INDEX_ERROR!(var, t, s);
+            }
+        }
+
+        /* XXX - check invisible_p(var) ? */
+        if var.is_null() || value_cell!(var).is_null() {
+            FREE!(akey);
+            return 0 as *mut libc::c_void as *mut libc::c_char;
+        } else if invisible_p!(var) != 0 {
+            FREE!(akey);
+            return 0 as *mut libc::c_void as *mut libc::c_char;
+        }
+
+        if array_p!(var) == 0 as libc::c_int && assoc_p!(var) == 0 as libc::c_int {
+            return if ind == 0 as libc::c_int as libc::c_long {
+                value_cell!(var)
+            } else {
+                0 as *mut libc::c_void as *mut libc::c_char
+            };
+        } else if assoc_p!(var) != 0 {
+            retval = assoc_reference(assoc_cell!(var), akey);
+            libc::free(akey as *mut libc::c_void);
+        } else {
+            retval = array_reference(array_cell!(var), ind);
+        }
+    }
+
+    return retval;
+}
