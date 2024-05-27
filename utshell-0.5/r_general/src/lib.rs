@@ -372,3 +372,20 @@ macro_rules! STANDARD_UTILS_PATH {
         (b"/bin:/usr/bin:/usr/sbin:/sbin\0" as *const u8 as *const libc::c_char)
     };
 }
+
+#[inline]
+unsafe extern "C" fn strtoimax(
+    mut nptr: *const libc::c_char,
+    mut endptr: *mut *mut libc::c_char,
+    mut base: libc::c_int,
+) -> intmax_t {
+    return __strtol_internal(nptr, endptr, base, 0 as libc::c_int);
+}
+
+#[inline]
+unsafe extern "C" fn stat(
+    mut __path: *const libc::c_char,
+    mut __statbuf: *mut stat,
+) -> libc::c_int {
+    return __xstat(1 as libc::c_int, __path, __statbuf);
+}
