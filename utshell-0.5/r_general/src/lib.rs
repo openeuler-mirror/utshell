@@ -459,3 +459,36 @@ static mut posix_vars: [C2RustUnnamed_1; 6] = unsafe {
         },
     ]
 };
+
+static mut saved_posix_vars: *mut libc::c_char = 0 as *const libc::c_char as *mut libc::c_char;
+
+#[no_mangle]
+pub unsafe extern "C" fn posix_initialize(mut on: libc::c_int) {
+    /* Things that should be turned on when posix mode is enabled. */
+    if on != 0 as libc::c_int {
+        expand_aliases = 1 as libc::c_int;
+        source_uses_path = expand_aliases;
+        interactive_comments = source_uses_path;
+        inherit_errexit = 1 as libc::c_int;
+        source_searches_cwd = 0 as libc::c_int;
+        print_shift_error = 1 as libc::c_int;
+
+        /* Things that should be turned on when posix mode is disabled. */
+    } else if !saved_posix_vars.is_null() {
+        set_posix_options(saved_posix_vars);
+        libc::free(saved_posix_vars as *mut libc::c_void);
+        saved_posix_vars = 0 as *mut libc::c_char;
+    } else {
+        /* on == 0, restore a default set of settings */
+        source_searches_cwd = 1 as libc::c_int;
+        expand_aliases = interactive_shell;
+        print_shift_error = 0 as libc::c_int;
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn num_posix_options() -> libc::c_int {
+    return (::core::mem::size_of::<[C2RustUnnamed_1; 6]>() as libc::c_ulong)
+        .wrapping_div(::core::mem::size_of::<C2RustUnnamed_1>() as libc::c_ulong)
+        .wrapping_sub(1 as libc::c_int as libc::c_ulong) as libc::c_int;
+}
