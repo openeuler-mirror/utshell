@@ -744,4 +744,30 @@ unsafe extern "C" fn expland() -> intmax_t {
     return val1;
 }
 
+#[no_mangle]
+unsafe extern "C" fn explor() -> intmax_t {
+    let mut val1: intmax_t = 0;
+    let mut val2: intmax_t = 0;
+    let mut set_noeval: libc::c_int = 0;
+    val1 = expland();
+    while curtok == LOR as libc::c_int {
+        set_noeval = 0 as libc::c_int;
+        if val1 != 0 as libc::c_int as libc::c_long {
+            noeval += 1;
+            set_noeval = 1 as libc::c_int;
+        }
+        readtok();
+        val2 = expland();
+        if set_noeval != 0 {
+            noeval -= 1;
+        }
+        val1 = (val1 != 0 || val2 != 0) as libc::c_int as intmax_t;
+        lasttok = LOR as libc::c_int;
+    }
+    return val1;
+}
+
+
+
+
 
