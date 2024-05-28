@@ -767,7 +767,62 @@ unsafe extern "C" fn explor() -> intmax_t {
     return val1;
 }
 
-
+#[no_mangle]
+unsafe extern "C" fn expcond() -> intmax_t {
+    let mut cval: intmax_t = 0;
+    let mut val1: intmax_t = 0;
+    let mut val2: intmax_t = 0;
+    let mut rval: intmax_t = 0;
+    let mut set_noeval: libc::c_int = 0;
+    set_noeval = 0 as libc::c_int;
+    cval = explor();
+    rval = cval;
+    if curtok == '?' as i32 {
+        if cval == 0 as libc::c_int as libc::c_long {
+            set_noeval = 1 as libc::c_int;
+            noeval += 1;
+        }
+        readtok();
+        if curtok == 0 as libc::c_int || curtok == ':' as i32 {
+            evalerror(dcgettext(
+                0 as *const libc::c_char,
+                b"expression expected\0" as *const u8 as *const libc::c_char,
+                5 as libc::c_int,
+            ));
+        }
+        val1 = expcomma();
+        if set_noeval != 0 {
+            noeval -= 1;
+        }
+        if curtok != ':' as i32 {
+            evalerror(dcgettext(
+                0 as *const libc::c_char,
+                b"`:' expected for conditional expression\0" as *const u8 as *const libc::c_char,
+                5 as libc::c_int,
+            ));
+        }
+        set_noeval = 0 as libc::c_int;
+        if cval != 0 {
+            set_noeval = 1 as libc::c_int;
+            noeval += 1;
+        }
+        readtok();
+        if curtok == 0 as libc::c_int {
+            evalerror(dcgettext(
+                0 as *const libc::c_char,
+                b"expression expected\0" as *const u8 as *const libc::c_char,
+                5 as libc::c_int,
+            ));
+        }
+        val2 = expcond();
+        if set_noeval != 0 {
+            noeval -= 1;
+        }
+        rval = if cval != 0 { val1 } else { val2 };
+        lasttok = COND as libc::c_int;
+    }
+    return rval;
+}
 
 
 
