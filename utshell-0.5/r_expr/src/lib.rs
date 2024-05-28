@@ -978,3 +978,117 @@ unsafe extern "C" fn expassign() -> intmax_t {
     return value;
 }
 
+#[no_mangle]
+unsafe extern "C" fn expcomma() -> intmax_t {
+    let mut value: intmax_t = 0;
+    value = expassign();
+    while curtok == ',' as i32 {
+        readtok();
+        value = expassign();
+    }
+    return value;
+}
+
+#[no_mangle]
+unsafe extern "C" fn strlong(mut num: *mut libc::c_char) -> intmax_t {
+    let mut s: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut c: libc::c_uchar = 0;
+    let mut base: libc::c_int = 0;
+    let mut foundbase: libc::c_int = 0;
+    let mut val: intmax_t = 0;
+    s = num;
+    base = 10 as libc::c_int;
+    foundbase = 0 as libc::c_int;
+    if *s as libc::c_int == '0' as i32 {
+        s = s.offset(1);
+        if *s as libc::c_int == '\u{0}' as i32 {
+            return 0 as libc::c_int as intmax_t;
+        }
+        if *s as libc::c_int == 'x' as i32 || *s as libc::c_int == 'X' as i32 {
+            base = 16 as libc::c_int;
+            s = s.offset(1);
+        } else {
+            base = 8 as libc::c_int;
+        }
+        foundbase += 1;
+    }
+    val = 0 as libc::c_int as intmax_t;
+    let fresh14 = s;
+    s = s.offset(1);
+    c = *fresh14 as libc::c_uchar;
+    while c != 0 {
+        if c as libc::c_int == '#' as i32 {
+            if foundbase != 0 {
+                evalerror(dcgettext(
+                    0 as *const libc::c_char,
+                    b"invalid number\0" as *const u8 as *const libc::c_char,
+                    5 as libc::c_int,
+                ));
+            }
+            if val < 2 as libc::c_int as libc::c_long || val > 64 as libc::c_int as libc::c_long {
+                evalerror(dcgettext(
+                    0 as *const libc::c_char,
+                    b"invalid arithmetic base\0" as *const u8 as *const libc::c_char,
+                    5 as libc::c_int,
+                ));
+            }
+            base = val as libc::c_int;
+            val = 0 as libc::c_int as intmax_t;
+            foundbase += 1;
+            if (1 as libc::c_int != 0
+                && *(*__ctype_b_loc()).offset(*s as libc::c_uchar as libc::c_int as isize)
+                    as libc::c_int
+                    & _ISalnum as libc::c_int as libc::c_ushort as libc::c_int
+                    != 0
+                || *s as libc::c_int == '_' as i32
+                || *s as libc::c_int == '@' as i32) as libc::c_int
+                == 0 as libc::c_int
+            {
+                evalerror(dcgettext(
+                    0 as *const libc::c_char,
+                    b"invalid integer constant\0" as *const u8 as *const libc::c_char,
+                    5 as libc::c_int,
+                ));
+            }
+        } else {
+            if !(1 as libc::c_int != 0
+                && *(*__ctype_b_loc()).offset(c as libc::c_int as isize) as libc::c_int
+                    & _ISalnum as libc::c_int as libc::c_ushort as libc::c_int
+                    != 0
+                || c as libc::c_int == '_' as i32
+                || c as libc::c_int == '@' as i32)
+            {
+                break;
+            }
+            if c as libc::c_int >= '0' as i32 && c as libc::c_int <= '9' as i32 {
+                c = (c as libc::c_int - '0' as i32) as libc::c_uchar;
+            } else if c as libc::c_int >= 'a' as i32 && c as libc::c_int <= 'z' as i32 {
+                c = (c as libc::c_int - ('a' as i32 - 10 as libc::c_int)) as libc::c_uchar;
+            } else if c as libc::c_int >= 'A' as i32 && c as libc::c_int <= 'Z' as i32 {
+                c = (c as libc::c_int
+                    - ('A' as i32
+                        - (if base <= 36 as libc::c_int {
+                            10 as libc::c_int
+                        } else {
+                            36 as libc::c_int
+                        }))) as libc::c_uchar;
+            } else if c as libc::c_int == '@' as i32 {
+                c = 62 as libc::c_int as libc::c_uchar;
+            } else if c as libc::c_int == '_' as i32 {
+                c = 63 as libc::c_int as libc::c_uchar;
+            }
+            if c as libc::c_int >= base {
+                evalerror(dcgettext(
+                    0 as *const libc::c_char,
+                    b"value too great for base\0" as *const u8 as *const libc::c_char,
+                    5 as libc::c_int,
+                ));
+            }
+            val = val * base as libc::c_long + c as libc::c_long;
+        }
+        let fresh15 = s;
+        s = s.offset(1);
+        c = *fresh15 as libc::c_uchar;
+    }
+    return val;
+}
