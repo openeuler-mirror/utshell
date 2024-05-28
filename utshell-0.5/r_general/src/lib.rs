@@ -389,3 +389,73 @@ unsafe extern "C" fn stat(
 ) -> libc::c_int {
     return __xstat(1 as libc::c_int, __path, __statbuf);
 }
+
+#[inline]
+unsafe extern "C" fn atoi(mut __nptr: *const libc::c_char) -> libc::c_int {
+    return strtol(
+        __nptr,
+        0 as *mut libc::c_void as *mut *mut libc::c_char,
+        10 as libc::c_int,
+    ) as libc::c_int;
+}
+
+/* A standard error message to use when getcwd() returns NULL. */
+#[no_mangle]
+pub static mut bash_getcwd_errstr: *const libc::c_char =
+    b"getcwd: cannot access parent directories\0" as *const u8 as *const libc::c_char;
+
+/* Do whatever is necessary to initialize `Posix mode'.  This currently
+ modifies the following variables which are controlled via shopt:
+    interactive_comments
+    source_uses_path
+    expand_aliases
+    inherit_errexit
+    print_shift_error
+    posixglob
+
+ and the following variables which cannot be user-modified:
+
+    source_searches_cwd
+
+If we add to the first list, we need to change the table and functions
+below */
+static mut posix_vars: [C2RustUnnamed_1; 6] = unsafe {
+    [
+        {
+            let mut init = C2RustUnnamed_1 {
+                posix_mode_var: &interactive_comments as *const libc::c_int as *mut libc::c_int,
+            };
+            init
+        },
+        {
+            let mut init = C2RustUnnamed_1 {
+                posix_mode_var: &source_uses_path as *const libc::c_int as *mut libc::c_int,
+            };
+            init
+        },
+        {
+            let mut init = C2RustUnnamed_1 {
+                posix_mode_var: &expand_aliases as *const libc::c_int as *mut libc::c_int,
+            };
+            init
+        },
+        {
+            let mut init = C2RustUnnamed_1 {
+                posix_mode_var: &inherit_errexit as *const libc::c_int as *mut libc::c_int,
+            };
+            init
+        },
+        {
+            let mut init = C2RustUnnamed_1 {
+                posix_mode_var: &print_shift_error as *const libc::c_int as *mut libc::c_int,
+            };
+            init
+        },
+        {
+            let mut init = C2RustUnnamed_1 {
+                posix_mode_var: 0 as *const libc::c_int as *mut libc::c_int,
+            };
+            init
+        },
+    ]
+};
