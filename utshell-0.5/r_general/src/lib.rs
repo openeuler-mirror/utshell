@@ -492,3 +492,36 @@ pub unsafe extern "C" fn num_posix_options() -> libc::c_int {
         .wrapping_div(::core::mem::size_of::<C2RustUnnamed_1>() as libc::c_ulong)
         .wrapping_sub(1 as libc::c_int as libc::c_ulong) as libc::c_int;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn get_posix_options(mut bitmap: *mut libc::c_char) -> *mut libc::c_char {
+    let mut i: libc::c_int = 0;
+    if bitmap.is_null() {
+        bitmap = libc::malloc(num_posix_options() as usize) as *mut libc::c_char;
+        /* no trailing NULL */
+    }
+    i = 0 as libc::c_int;
+    while !(posix_vars[i as usize].posix_mode_var).is_null() {
+        *bitmap.offset(i as isize) = *posix_vars[i as usize].posix_mode_var as libc::c_char;
+        i += 1;
+        i;
+    }
+    return bitmap;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn save_posix_options() {
+    saved_posix_vars = get_posix_options(saved_posix_vars);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn set_posix_options(mut bitmap: *const libc::c_char) {
+    let mut i: libc::c_int = 0;
+
+    i = 0 as libc::c_int;
+    while !(posix_vars[i as usize].posix_mode_var).is_null() {
+        *posix_vars[i as usize].posix_mode_var = *bitmap.offset(i as isize) as libc::c_int;
+        i += 1;
+        i;
+    }
+}
