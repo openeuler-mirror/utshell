@@ -824,5 +824,157 @@ unsafe extern "C" fn expcond() -> intmax_t {
     return rval;
 }
 
-
+#[no_mangle]
+unsafe extern "C" fn expassign() -> intmax_t {
+    let mut value: intmax_t = 0;
+    let mut lhs: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut rhs: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut lind: arrayind_t = 0;
+    let mut idiv: imaxdiv_t = imaxdiv_t { quot: 0, rem: 0 };
+    value = expcond();
+    if curtok == '=' as i32 || curtok == 11 as libc::c_int {
+        let mut special: libc::c_int = 0;
+        let mut op: libc::c_int = 0;
+        let mut lvalue: intmax_t = 0;
+        special = (curtok == 11 as libc::c_int) as libc::c_int;
+        if lasttok != 5 as libc::c_int {
+            evalerror(dcgettext(
+                0 as *const libc::c_char,
+                b"attempted assignment to non-variable\0" as *const u8 as *const libc::c_char,
+                5 as libc::c_int,
+            ));
+        }
+        if special != 0 {
+            op = assigntok;
+            lvalue = value;
+        }
+        if tokstr.is_null() {
+            evalerror(dcgettext(
+                0 as *const libc::c_char,
+                b"syntax error in variable assignment\0" as *const u8 as *const libc::c_char,
+                5 as libc::c_int,
+            ));
+        }
+        lhs = strcpy(
+            sh_xmalloc(
+                (1 as libc::c_int as libc::c_ulong).wrapping_add(strlen(tokstr)),
+                b"../expr.c\0" as *const u8 as *const libc::c_char,
+                533 as libc::c_int,
+            ) as *mut libc::c_char,
+            tokstr,
+        );
+        lind = curlval.ind;
+        readtok();
+        value = expassign();
+        if special != 0 {
+            if (op == '/' as i32 || op == '%' as i32) && value == 0 as libc::c_int as libc::c_long {
+                if noeval == 0 as libc::c_int {
+                    evalerror(dcgettext(
+                        0 as *const libc::c_char,
+                        b"division by 0\0" as *const u8 as *const libc::c_char,
+                        5 as libc::c_int,
+                    ));
+                } else {
+                    value = 1 as libc::c_int as intmax_t;
+                }
+            }
+            match op {
+                42 => {
+                    // '*'
+                    lvalue *= value;
+                }
+                47 | 37 => {
+                    // '/' | '%'
+                    if lvalue
+                        == -(9223372036854775807 as libc::c_long) - 1 as libc::c_int as libc::c_long
+                        && value == -(1 as libc::c_int) as libc::c_long
+                    {
+                        lvalue = if op == '/' as i32 {
+                            -(9223372036854775807 as libc::c_long)
+                                - 1 as libc::c_int as libc::c_long
+                        } else {
+                            0 as libc::c_int as libc::c_long
+                        };
+                    } else {
+                        idiv = imaxdiv(lvalue, value);
+                        lvalue = if op == '/' as i32 {
+                            idiv.quot
+                        } else {
+                            idiv.rem
+                        };
+                    }
+                }
+                43 => {
+                    // '+'
+                    lvalue += value;
+                }
+                45 => {
+                    // '-'
+                    lvalue -= value;
+                }
+                LSH => {
+                    lvalue <<= value;
+                }
+                RSH => {
+                    lvalue >>= value;
+                }
+                38 => {
+                    // '&'
+                    lvalue &= value;
+                }
+                124 => {
+                    // '|'
+                    lvalue |= value;
+                }
+                94 => {
+                    // '^'
+                    lvalue ^= value;
+                }
+                _ => {
+                    sh_xfree(
+                        lhs as *mut libc::c_void,
+                        b"../expr.c\0" as *const u8 as *const libc::c_char,
+                        591 as libc::c_int,
+                    );
+                    evalerror(dcgettext(
+                        0 as *const libc::c_char,
+                        b"bug: bad expassign token\0" as *const u8 as *const libc::c_char,
+                        5 as libc::c_int,
+                    ));
+                }
+            }
+            value = lvalue;
+        }
+        rhs = itos(value);
+        if noeval == 0 as libc::c_int {
+            if lind != -(1 as libc::c_int) as libc::c_long {
+                expr_bind_array_element(lhs, lind, rhs);
+            } else {
+                expr_bind_variable(lhs, rhs);
+            }
+        }
+        if !(curlval.tokstr).is_null() && curlval.tokstr == tokstr {
+            init_lvalue(&mut curlval);
+        }
+        sh_xfree(
+            rhs as *mut libc::c_void,
+            b"../expr.c\0" as *const u8 as *const libc::c_char,
+            611 as libc::c_int,
+        );
+        sh_xfree(
+            lhs as *mut libc::c_void,
+            b"../expr.c\0" as *const u8 as *const libc::c_char,
+            612 as libc::c_int,
+        );
+        if !tokstr.is_null() {
+            sh_xfree(
+                tokstr as *mut libc::c_void,
+                b"../expr.c\0" as *const u8 as *const libc::c_char,
+                613 as libc::c_int,
+            );
+        }
+        tokstr = 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+    return value;
+}
 
