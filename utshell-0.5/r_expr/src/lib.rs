@@ -1161,3 +1161,48 @@ unsafe extern "C" fn evalerror(mut msg: *const libc::c_char) {
     );
     siglongjmp(evalbuf.as_mut_ptr(), 1 as libc::c_int);
 }
+
+
+#[no_mangle]
+unsafe extern "C" fn pushexp() {
+    let mut context: *mut EXPR_CONTEXT = 0 as *mut EXPR_CONTEXT;
+    if expr_depth >= MAX_EXPR_RECURSION_LEVEL as libc::c_int {
+        evalerror(dcgettext(
+            0 as *const libc::c_char,
+            b"expression recursion level exceeded\0" as *const u8 as *const libc::c_char,
+            5 as libc::c_int,
+        ));
+    }
+    if expr_depth >= expr_stack_size {
+        expr_stack_size += EXPR_STACK_GROW_SIZE as libc::c_int;
+        expr_stack = sh_xrealloc(
+            expr_stack as *mut libc::c_void,
+            (expr_stack_size as libc::c_ulong)
+                .wrapping_mul(::std::mem::size_of::<*mut EXPR_CONTEXT>() as libc::c_ulong),
+            b"../expr.c\0" as *const u8 as *const libc::c_char,
+            268 as libc::c_int,
+        ) as *mut *mut EXPR_CONTEXT;
+    }
+    context = sh_xmalloc(
+        ::std::mem::size_of::<EXPR_CONTEXT>() as libc::c_ulong,
+        b"../expr.c\0" as *const u8 as *const libc::c_char,
+        271 as libc::c_int,
+    ) as *mut EXPR_CONTEXT;
+    let ref mut fresh0 = (*context).expression;
+    *fresh0 = expression;
+    (*context).curtok = curtok;
+    (*context).lasttok = lasttok;
+    let ref mut fresh1 = (*context).tp;
+    *fresh1 = tp;
+    let ref mut fresh2 = (*context).lasttp;
+    *fresh2 = lasttp;
+    (*context).tokval = tokval;
+    let ref mut fresh3 = (*context).tokstr;
+    *fresh3 = tokstr;
+    (*context).noeval = noeval;
+    (*context).lval = curlval;
+    let fresh4 = expr_depth;
+    expr_depth = expr_depth + 1;
+    let ref mut fresh5 = *expr_stack.offset(fresh4 as isize);
+    *fresh5 = context;
+}
