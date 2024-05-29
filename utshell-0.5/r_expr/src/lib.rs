@@ -1092,3 +1092,31 @@ unsafe extern "C" fn strlong(mut num: *mut libc::c_char) -> intmax_t {
     }
     return val;
 }
+
+#[no_mangle]
+unsafe extern "C" fn expr_skipsubscript(
+    mut vp: *mut libc::c_char,
+    mut cp: *mut libc::c_char,
+) -> libc::c_int {
+    let mut flags: libc::c_int = 0;
+    let mut isassoc: libc::c_int = 0;
+    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    isassoc = 0 as libc::c_int;
+    entry = 0 as *mut SHELL_VAR;
+    if assoc_expand_once & already_expanded != 0 {
+        *cp = '\u{0}' as i32 as libc::c_char;
+        isassoc = (legal_identifier(vp) != 0
+            && {
+                entry = find_variable(vp);
+                !entry.is_null()
+            }
+            && (*entry).attributes & 0x40 as libc::c_int != 0) as libc::c_int;
+        *cp = '[' as i32 as libc::c_char;
+    }
+    flags = if isassoc != 0 && assoc_expand_once != 0 && already_expanded != 0 {
+        0x1 as libc::c_int
+    } else {
+        0 as libc::c_int
+    };
+    return skipsubscript(cp, 0 as libc::c_int, flags);
+}
