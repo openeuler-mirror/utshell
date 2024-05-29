@@ -525,3 +525,82 @@ pub unsafe extern "C" fn set_posix_options(mut bitmap: *const libc::c_char) {
         i;
     }
 }
+
+/* **************************************************************** */
+/*								    */
+/*  Functions to convert to and from and display non-standard types */
+/*								    */
+/* **************************************************************** */
+#[no_mangle]
+pub unsafe extern "C" fn string_to_rlimtype(mut s: *mut libc::c_char) -> rlim_t {
+    let mut ret: rlim_t = 0 as rlim_t;
+    let mut neg: libc::c_int = 0;
+
+    while !s.is_null() && *s as libc::c_int != 0 && whitespace!(*s) {
+        s = s.offset(1);
+        s;
+    }
+    if !s.is_null() && (*s as libc::c_int == '-' as i32 || *s as libc::c_int == '+' as i32) {
+        neg = (*s as libc::c_int == '-' as i32) as libc::c_int;
+        s = s.offset(1);
+        s;
+    }
+    while !s.is_null() && *s as libc::c_int != 0 && DIGIT!(*s) {
+        ret = ret
+            .wrapping_mul(10 as libc::c_int as libc::c_ulong)
+            .wrapping_add((TODIGIT!(*s)) as libc::c_ulong);
+        s = s.offset(1);
+        s;
+    }
+    return if neg != 0 { ret.wrapping_neg() } else { ret };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn print_rlimtype(mut n: rlim_t, mut addnl: libc::c_int) {
+    let mut s: [libc::c_char; 21] = [0; 21];
+    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    p = s
+        .as_mut_ptr()
+        .offset(::core::mem::size_of::<[libc::c_char; 21]>() as libc::c_ulong as isize);
+    p = p.offset(-1);
+    *p = '\0' as i32 as libc::c_char;
+
+    if n < 0 as libc::c_int as libc::c_ulong {
+        loop {
+            p = p.offset(-1);
+            *p = ('0' as i32 as libc::c_ulong)
+                .wrapping_sub(n.wrapping_rem(10 as libc::c_int as libc::c_ulong))
+                as libc::c_char;
+            n = (n as libc::c_ulong).wrapping_div(10 as libc::c_int as libc::c_ulong) as rlim_t
+                as rlim_t;
+            if !(n != 0 as libc::c_int as libc::c_ulong) {
+                break;
+            }
+        }
+        p = p.offset(-1);
+        *p = '-' as i32 as libc::c_char;
+    } else {
+        loop {
+            p = p.offset(-1);
+            *p = ('0' as i32 as libc::c_ulong)
+                .wrapping_add(n.wrapping_rem(10 as libc::c_int as libc::c_ulong))
+                as libc::c_char;
+            n = (n as libc::c_ulong).wrapping_div(10 as libc::c_int as libc::c_ulong) as rlim_t
+                as rlim_t;
+            if !(n != 0 as libc::c_int as libc::c_ulong) {
+                break;
+            }
+        }
+    }
+
+    printf(
+        b"%s%s\0" as *const u8 as *const libc::c_char,
+        p,
+        if addnl != 0 {
+            b"\n\0" as *const u8 as *const libc::c_char
+        } else {
+            b"\0" as *const u8 as *const libc::c_char
+        },
+    );
+}
