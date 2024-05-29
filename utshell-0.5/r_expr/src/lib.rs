@@ -1206,3 +1206,33 @@ unsafe extern "C" fn pushexp() {
     let ref mut fresh5 = *expr_stack.offset(fresh4 as isize);
     *fresh5 = context;
 }
+
+#[no_mangle]
+unsafe extern "C" fn popexp() {
+    let mut context: *mut EXPR_CONTEXT = 0 as *mut EXPR_CONTEXT;
+    if expr_depth <= 0 as libc::c_int {
+        lasttp = 0 as *mut libc::c_char;
+        expression = lasttp;
+        evalerror(dcgettext(
+            0 as *const libc::c_char,
+            b"recursion stack underflow\0" as *const u8 as *const libc::c_char,
+            5 as libc::c_int,
+        ));
+    }
+    expr_depth -= 1;
+    context = *expr_stack.offset(expr_depth as isize);
+    expression = (*context).expression;
+    curtok = (*context).curtok;
+    lasttok = (*context).lasttok;
+    tp = (*context).tp;
+    lasttp = (*context).lasttp;
+    tokval = (*context).tokval;
+    tokstr = (*context).tokstr;
+    noeval = (*context).noeval;
+    curlval = (*context).lval;
+    sh_xfree(
+        context as *mut libc::c_void,
+        b"../expr.c\0" as *const u8 as *const libc::c_char,
+        299 as libc::c_int,
+    );
+}
