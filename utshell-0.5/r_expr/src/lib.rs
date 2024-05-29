@@ -1120,3 +1120,44 @@ unsafe extern "C" fn expr_skipsubscript(
     };
     return skipsubscript(cp, 0 as libc::c_int, flags);
 }
+
+
+#[no_mangle]
+unsafe extern "C" fn evalerror(mut msg: *const libc::c_char) {
+    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    name = this_command_name;
+    t = expression;
+    while !t.is_null() && (*t as libc::c_int == ' ' as i32 || *t as libc::c_int == '\t' as i32) {
+        t = t.offset(1);
+    }
+    internal_error(
+        dcgettext(
+            0 as *const libc::c_char,
+            b"%s%s%s: %s (error token is \"%s\")\0" as *const u8 as *const libc::c_char,
+            5 as libc::c_int,
+        ),
+        if !name.is_null() {
+            name
+        } else {
+            b"\0" as *const u8 as *const libc::c_char
+        },
+        if !name.is_null() {
+            b": \0" as *const u8 as *const libc::c_char
+        } else {
+            b"\0" as *const u8 as *const libc::c_char
+        },
+        if !t.is_null() {
+            t
+        } else {
+            b"\0" as *const u8 as *const libc::c_char
+        },
+        msg,
+        if !lasttp.is_null() && *lasttp as libc::c_int != 0 {
+            lasttp
+        } else {
+            b"\0" as *const u8 as *const libc::c_char
+        },
+    );
+    siglongjmp(evalbuf.as_mut_ptr(), 1 as libc::c_int);
+}
