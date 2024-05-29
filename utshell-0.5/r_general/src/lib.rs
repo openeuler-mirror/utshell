@@ -604,3 +604,72 @@ pub unsafe extern "C" fn print_rlimtype(mut n: rlim_t, mut addnl: libc::c_int) {
         },
     );
 }
+
+
+/* **************************************************************** */
+/*								    */
+/*		       Input Validation Functions		    */
+/*								    */
+/* **************************************************************** */
+
+/* Return non-zero if all of the characters in STRING are digits. */
+#[no_mangle]
+pub unsafe extern "C" fn all_digits(mut string: *const libc::c_char) -> libc::c_int {
+    let mut s: *const libc::c_char = 0 as *const libc::c_char;
+
+    s = string;
+    while *s != 0 {
+        if DIGIT!(*s) as libc::c_int == 0 {
+            return 0;
+        }
+        s = s.offset(1);
+        s;
+    }
+    return 1;
+}
+
+/* Return non-zero if the characters pointed to by STRING constitute a
+valid number.  Stuff the converted number into RESULT if RESULT is
+not null. */
+#[no_mangle]
+pub unsafe extern "C" fn legal_number(
+    mut string: *const libc::c_char,
+    mut result: *mut intmax_t,
+) -> libc::c_int {
+    let mut value: intmax_t = 0;
+    let mut ep: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    if !result.is_null() {
+        *result = 0 as intmax_t;
+    }
+
+    if string.is_null() {
+        return 0;
+    }
+
+    *__errno_location() = 0;
+    value = strtoimax(string, &mut ep, 10);
+    if *__errno_location() != 0 || ep == string as *mut libc::c_char {
+        return 0; /* errno is set on overflow or underflow */
+    }
+
+    /* Skip any trailing whitespace, since strtoimax does not. */
+    while *ep as libc::c_int == ' ' as i32 || *ep as libc::c_int == '\t' as i32 {
+        ep = ep.offset(1);
+        ep;
+    }
+
+    /* If *string is not '\0' but *ep is '\0' on return, the entire string
+    is valid. */
+    if *string as libc::c_int != 0 && *ep as libc::c_int == '\0' as i32 {
+        if !result.is_null() {
+            *result = value;
+        }
+        /* The SunOS4 implementation of strtol() will happily ignore
+        overflow conditions, so this cannot do overflow correctly
+        on those systems. */
+        return 1;
+    }
+
+    return 0;
+}
