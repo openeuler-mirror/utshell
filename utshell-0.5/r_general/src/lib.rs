@@ -673,3 +673,126 @@ pub unsafe extern "C" fn legal_number(
 
     return 0;
 }
+
+/* Return 1 if this token is a legal shell `identifier'; that is, it consists
+solely of letters, digits, and underscores, and does not begin with a
+digit. */
+#[no_mangle]
+pub unsafe extern "C" fn legal_identifier(mut name: *const libc::c_char) -> libc::c_int {
+    let mut s: *const libc::c_char = 0 as *const libc::c_char;
+    let mut c: libc::c_uchar = 0;
+
+    if name.is_null()
+        || {
+            c = *name as libc::c_uchar;
+            c == 0
+        }
+        || legal_variable_starter!(c) as libc::c_int == 0 as libc::c_int
+    {
+        return 0;
+    }
+
+    s = name.offset(1 as isize);
+    loop {
+        c = *s as libc::c_uchar;
+        if !(c as libc::c_int != 0 as libc::c_int) {
+            break;
+        }
+        if legal_variable_char!(c) as libc::c_int == 0 as libc::c_int {
+            return 0 as libc::c_int;
+        }
+        s = s.offset(1);
+        s;
+    }
+    return 1;
+}
+
+/* Return 1 if NAME is a valid value that can be assigned to a nameref
+variable.  FLAGS can be 2, in which case the name is going to be used
+to create a variable.  Other values are currently unused, but could
+be used to allow values to be stored and indirectly referenced, but
+not used in assignments. */
+#[no_mangle]
+pub unsafe extern "C" fn valid_nameref_value(
+    mut name: *const libc::c_char,
+    mut flags: libc::c_int,
+) -> libc::c_int {
+    if name.is_null() || *name as libc::c_int == 0 as libc::c_int {
+        return 0;
+    }
+
+    /* valid identifier */
+    if legal_identifier(name) != 0
+        || flags != 2 as libc::c_int && valid_array_reference(name, 0 as libc::c_int) != 0
+    {
+        return 1;
+    }
+    return 0;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn check_selfref(
+    mut name: *const libc::c_char,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> libc::c_int {
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    if STREQ!(name, value) {
+        return 1;
+    }
+
+    if valid_array_reference(value, 0 as libc::c_int) != 0 {
+        t = array_variable_name(
+            value,
+            0 as libc::c_int,
+            0 as *mut libc::c_void as *mut *mut libc::c_char,
+            0 as *mut libc::c_void as *mut libc::c_int,
+        );
+        if !t.is_null() && STREQ!(name, t) {
+            libc::free(t as *mut libc::c_void);
+            return 1;
+        }
+        libc::free(t as *mut libc::c_void);
+    }
+
+    return 0; /* not a self reference */
+}
+
+/* Make sure that WORD is a valid shell identifier, i.e.
+does not contain a dollar sign, nor is quoted in any way.
+If CHECK_WORD is non-zero,
+the word is checked to ensure that it consists of only letters,
+digits, and underscores, and does not consist of all digits. */
+#[no_mangle]
+pub unsafe extern "C" fn check_identifier(
+    mut word: *mut WORD_DESC,
+    mut check_word: libc::c_int,
+) -> libc::c_int {
+    /* XXX - HASDOLLAR? */
+    if (*word).flags & (W_HASDOLLAR | W_QUOTED) != 0 {
+        internal_error(
+            dcgettext(
+                0 as *const libc::c_char,
+                b"`%s': not a valid identifier\0" as *const u8 as *const libc::c_char,
+                5 as libc::c_int,
+            ),
+            (*word).word,
+        );
+        return 0;
+    } else if check_word != 0
+        && (all_digits((*word).word) != 0 || legal_identifier((*word).word) == 0 as libc::c_int)
+    {
+        internal_error(
+            dcgettext(
+                0 as *const libc::c_char,
+                b"`%s': not a valid identifier\0" as *const u8 as *const libc::c_char,
+                5 as libc::c_int,
+            ),
+            (*word).word,
+        );
+        return 0;
+    } else {
+        return 1;
+    };
+}
