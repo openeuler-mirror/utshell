@@ -1640,3 +1640,41 @@ unsafe extern "C" fn expr_unwind() {
     }
     noeval = 0 as libc::c_int;
 }
+
+
+#[no_mangle]
+unsafe extern "C" fn expr_unwind() {
+    loop {
+        expr_depth -= 1;
+        if !(expr_depth > 0 as libc::c_int) {
+            break;
+        }
+        if !((**expr_stack.offset(expr_depth as isize)).tokstr).is_null() {
+            sh_xfree(
+                (**expr_stack.offset(expr_depth as isize)).tokstr as *mut libc::c_void,
+                b"../expr.c\0" as *const u8 as *const libc::c_char,
+                308 as libc::c_int,
+            );
+        }
+        if !((**expr_stack.offset(expr_depth as isize)).expression).is_null() {
+            sh_xfree(
+                (**expr_stack.offset(expr_depth as isize)).expression as *mut libc::c_void,
+                b"../expr.c\0" as *const u8 as *const libc::c_char,
+                311 as libc::c_int,
+            );
+        }
+        sh_xfree(
+            *expr_stack.offset(expr_depth as isize) as *mut libc::c_void,
+            b"../expr.c\0" as *const u8 as *const libc::c_char,
+            313 as libc::c_int,
+        );
+    }
+    if expr_depth == 0 as libc::c_int {
+        sh_xfree(
+            *expr_stack.offset(expr_depth as isize) as *mut libc::c_void,
+            b"../expr.c\0" as *const u8 as *const libc::c_char,
+            316 as libc::c_int,
+        );
+    }
+    noeval = 0 as libc::c_int;
+}
