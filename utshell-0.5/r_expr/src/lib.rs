@@ -1678,3 +1678,73 @@ unsafe extern "C" fn expr_unwind() {
     }
     noeval = 0 as libc::c_int;
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn evalexp(
+    mut expr: *mut libc::c_char,
+    mut flags: libc::c_int,
+    mut validp: *mut libc::c_int,
+) -> intmax_t {
+    let mut val: intmax_t = 0;
+    let mut c: libc::c_int = 0;
+    let mut oevalbuf: sigjmp_buf = [__jmp_buf_tag {
+        __jmpbuf: [0; 8],
+        __mask_was_saved: 0,
+        __saved_mask: __sigset_t { __val: [0; 16] },
+    }; 1];
+    val = 0 as libc::c_int as intmax_t;
+    noeval = 0 as libc::c_int;
+    already_expanded = flags & EXP_EXPANDED as libc::c_int;
+
+    libc::memcpy(
+        oevalbuf.as_mut_ptr() as *mut libc::c_void,
+        evalbuf.as_mut_ptr() as *const libc::c_void,
+        ::std::mem::size_of::<sigjmp_buf>() as libc::c_ulong as libc::size_t,
+    );
+    c = __sigsetjmp(evalbuf.as_mut_ptr(), 0 as libc::c_int);
+
+    if c != 0 {
+        if !tokstr.is_null() {
+            sh_xfree(
+                tokstr as *mut libc::c_void,
+                b"../expr.c\0" as *const u8 as *const libc::c_char,
+                424 as libc::c_int,
+            );
+        }
+        if !expression.is_null() {
+            sh_xfree(
+                expression as *mut libc::c_void,
+                b"../expr.c\0" as *const u8 as *const libc::c_char,
+                425 as libc::c_int,
+            );
+        }
+        expression = 0 as *mut libc::c_void as *mut libc::c_char;
+        tokstr = expression;
+        expr_unwind();
+        expr_depth = 0 as libc::c_int;
+        libc::memcpy(
+            evalbuf.as_mut_ptr() as *mut libc::c_void,
+            oevalbuf.as_mut_ptr() as *const libc::c_void,
+            ::std::mem::size_of::<sigjmp_buf>() as libc::c_ulong as libc::size_t,
+        );
+        if !validp.is_null() {
+            *validp = 0 as libc::c_int;
+        }
+        return 0 as libc::c_int as intmax_t;
+    }
+
+    val = subexpr(expr);
+
+    if !validp.is_null() {
+        *validp = 1 as libc::c_int;
+    }
+
+    libc::memcpy(
+        evalbuf.as_mut_ptr() as *mut libc::c_void,
+        oevalbuf.as_mut_ptr() as *const libc::c_void,
+        ::std::mem::size_of::<sigjmp_buf>() as libc::c_ulong as libc::size_t,
+    );
+
+    return val;
+}
