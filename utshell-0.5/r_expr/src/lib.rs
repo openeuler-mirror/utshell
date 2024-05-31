@@ -1543,3 +1543,62 @@ unsafe extern "C" fn readtok() {
     }
     tp = cp;
 }
+
+#[no_mangle]
+unsafe extern "C" fn subexpr(mut expr: *mut libc::c_char) -> intmax_t {
+    let mut val: intmax_t = 0;
+    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    p = expr;
+    while !p.is_null()
+        && *p as libc::c_int != 0
+        && (*p as libc::c_int == ' ' as i32
+            || *p as libc::c_int == '\t' as i32
+            || *p as libc::c_int == '\n' as i32)
+    {
+        p = p.offset(1);
+    }
+    if p.is_null() || *p as libc::c_int == '\u{0}' as i32 {
+        return 0 as libc::c_int as intmax_t;
+    }
+    pushexp();
+    expression = strcpy(
+        sh_xmalloc(
+            (1 as libc::c_int as libc::c_ulong).wrapping_add(strlen(expr)),
+            b"../expr.c\0" as *const u8 as *const libc::c_char,
+            463 as libc::c_int,
+        ) as *mut libc::c_char,
+        expr,
+    );
+    tp = expression;
+    lasttok = 0 as libc::c_int;
+    curtok = lasttok;
+    tokstr = 0 as *mut libc::c_void as *mut libc::c_char;
+    tokval = 0 as libc::c_int as intmax_t;
+    init_lvalue(&mut curlval);
+    lastlval = curlval;
+    readtok();
+    val = expcomma();
+    if curtok != 0 as libc::c_int {
+        evalerror(dcgettext(
+            0 as *const libc::c_char,
+            b"syntax error in expression\0" as *const u8 as *const libc::c_char,
+            5 as libc::c_int,
+        ));
+    }
+    if !tokstr.is_null() {
+        sh_xfree(
+            tokstr as *mut libc::c_void,
+            b"../expr.c\0" as *const u8 as *const libc::c_char,
+            479 as libc::c_int,
+        );
+    }
+    if !expression.is_null() {
+        sh_xfree(
+            expression as *mut libc::c_void,
+            b"../expr.c\0" as *const u8 as *const libc::c_char,
+            480 as libc::c_int,
+        );
+    }
+    popexp();
+    return val;
+}
