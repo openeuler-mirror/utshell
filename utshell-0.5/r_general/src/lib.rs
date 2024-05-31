@@ -837,3 +837,107 @@ pub unsafe extern "C" fn exportable_function_name(mut string: *const libc::c_cha
     }
     return 1;
 }
+
+/* Return 1 if STRING comprises a valid alias name.  The shell accepts
+essentially all characters except those which must be quoted to the
+parser (which disqualifies them from alias expansion anyway) and `/'. */
+#[no_mangle]
+pub unsafe extern "C" fn legal_alias_name(
+    mut string: *const libc::c_char,
+    mut flags: libc::c_int,
+) -> libc::c_int {
+    let mut s: *const libc::c_char = 0 as *const libc::c_char;
+    s = string;
+    while *s != 0 {
+        if shellbreak!(*s as libc::c_uchar as isize) != 0
+            || shellxquote!(*s as libc::c_uchar as isize) != 0
+            || shellexp!(*s as libc::c_int)
+            || *s as libc::c_int == '/' as i32
+        {
+            return 0;
+        }
+        s = s.offset(1);
+        s;
+    }
+    return 1;
+}
+
+/* Returns non-zero if STRING is an assignment statement.  The returned value
+is the index of the `=' sign.  If FLAGS&1 we are expecting a compound assignment
+and require an array subscript before the `=' to denote an assignment
+statement. */
+#[no_mangle]
+pub unsafe extern "C" fn assignment(
+    mut string: *const libc::c_char,
+    mut flags: libc::c_int,
+) -> libc::c_int {
+    let mut c: libc::c_uchar = 0;
+    let mut newi: libc::c_int = 0;
+    let mut indx: libc::c_int = 0;
+
+    indx = 0;
+    c = *string.offset(indx as isize) as libc::c_uchar;
+
+    /* If parser_state includes PST_COMPASSIGN, FLAGS will include 1, so we are
+    parsing the contents of a compound assignment. If parser_state includes
+    PST_REPARSE, we are in the middle of an assignment statement and breaking
+    the words between the parens into words and assignment statements, but
+    we don't need to check for that right now. Within a compound assignment,
+    the subscript is required to make the word an assignment statement. If
+    we don't have a subscript, even if the word is a valid assignment
+    statement otherwise, we don't want to treat it as one. */
+    if flags & 1 != 0 && c as libc::c_int != '[' as i32 {
+        return 0;
+    } else if flags & 1 == 0 && legal_variable_starter!(c) as libc::c_int == 0 as libc::c_int {
+        return 0;
+    }
+
+    loop {
+        c = *string.offset(indx as isize) as libc::c_uchar;
+        if !(c != 0) {
+            break;
+        }
+        /* The following is safe.  Note that '=' at the start of a word
+        is not an assignment statement. */
+        if c as libc::c_int == '=' as i32 {
+            return indx;
+        }
+
+        if c as libc::c_int == '[' as i32 {
+            newi = skipsubscript(string, indx, if flags & 2 != 0 { 1 } else { 0 });
+            /* XXX - why not check for blank subscripts here, if we do in
+            valid_array_reference? */
+            let fresh0 = newi;
+            newi = newi + 1;
+            if *string.offset(fresh0 as isize) as libc::c_int != ']' as i32 {
+                return 0 as libc::c_int;
+            }
+            if *string.offset(newi as isize) as libc::c_int == '+' as i32
+                && *string.offset((newi + 1 as libc::c_int) as isize) as libc::c_int == '=' as i32
+            {
+                return newi + 1 as libc::c_int;
+            }
+            return if *string.offset(newi as isize) as libc::c_int == '=' as i32 {
+                newi
+            } else {
+                0 as libc::c_int
+            };
+        }
+
+        /* Check for `+=' */
+        if c as libc::c_int == '+' as i32
+            && *string.offset((indx + 1 as libc::c_int) as isize) as libc::c_int == '=' as i32
+        {
+            return indx + 1 as libc::c_int;
+        }
+
+        /* Variable names in assignment statements may contain only letters,
+        digits, and `_'. */
+        if legal_variable_char!(c) as libc::c_int == 0 as libc::c_int {
+            return 0;
+        }
+        indx += 1;
+        indx;
+    }
+    return 0;
+}
