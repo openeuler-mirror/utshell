@@ -941,3 +941,50 @@ pub unsafe extern "C" fn assignment(
     }
     return 0;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn line_isblank(mut line: *const libc::c_char) -> libc::c_int {
+    let mut i: libc::c_int = 0;
+
+    if line.is_null() {
+        return 0; /* XXX */
+    }
+
+    i = 0;
+    while *line.offset(i as isize) != 0 {
+        if isblank!(*line.offset(i as isize) as libc::c_uchar as libc::c_int as isize)
+            == 0 as libc::c_int
+        {
+            break;
+        }
+        i += 1;
+        i;
+    }
+    return (*line.offset(i as isize) as libc::c_int == '\0' as i32) as libc::c_int;
+}
+
+/* Make sure no-delay mode is not set on file descriptor FD. */
+#[no_mangle]
+pub unsafe extern "C" fn sh_unset_nodelay_mode(mut fd: libc::c_int) -> libc::c_int {
+    let mut flags: libc::c_int = 0;
+    let mut bflags: libc::c_int = 0;
+
+    flags = fcntl(fd, F_GETFL, 0 as libc::c_int);
+    if flags < 0 as libc::c_int {
+        return -(1 as libc::c_int);
+    }
+
+    bflags = 0 as libc::c_int;
+
+    /* This is defined to O_NDELAY in filecntl.h if O_NONBLOCK is not present
+    and O_NDELAY is defined. */
+    bflags |= O_NONBLOCK;
+    bflags |= O_NDELAY;
+
+    if flags & bflags != 0 {
+        flags &= !bflags;
+        return fcntl(fd, F_SETFL, flags);
+    }
+
+    return 0;
+}
