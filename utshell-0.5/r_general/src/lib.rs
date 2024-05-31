@@ -796,3 +796,44 @@ pub unsafe extern "C" fn check_identifier(
         return 1;
     };
 }
+
+/* Return 1 if STRING is a function name that the shell will import from
+the environment.  Currently we reject attempts to import shell functions
+containing slashes, beginning with newlines or containing blanks.  In
+Posix mode, we require that STRING be a valid shell identifier.  Not
+used yet. */
+#[no_mangle]
+pub unsafe extern "C" fn importable_function_name(
+    mut string: *const libc::c_char,
+    mut len: size_t,
+) -> libc::c_int {
+    if absolute_program(string) != 0 {
+        /* don't allow slash */
+        return 0;
+    }
+    if *string as libc::c_int == '\n' as i32 {
+        /* can't start with a newline */
+        return 0;
+    }
+    if shellblank!(*string as libc::c_uchar as isize) != 0
+        || shellblank!(len.wrapping_sub(1 as libc::c_ulong) as isize) != 0
+    {
+        return 0;
+    }
+    return if posixly_correct != 0 {
+        legal_identifier(string)
+    } else {
+        1
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn exportable_function_name(mut string: *const libc::c_char) -> libc::c_int {
+    if absolute_program(string) != 0 {
+        return 0;
+    }
+    if !(mbschr(string, '=' as i32)).is_null() {
+        return 0;
+    }
+    return 1;
+}
