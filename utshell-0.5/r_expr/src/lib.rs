@@ -1258,3 +1258,288 @@ unsafe extern "C" fn _is_multiop(mut c: libc::c_int) -> libc::c_int {
         _ => return 0 as libc::c_int,
     };
 }
+
+#[no_mangle]
+unsafe extern "C" fn readtok() {
+    let mut cp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut xp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut c: libc::c_uchar = 0;
+    let mut c1: libc::c_uchar = 0;
+    let mut e: libc::c_int = 0;
+    let mut lval: lvalue = lvalue {
+        tokstr: 0 as *mut libc::c_char,
+        tokval: 0,
+        tokvar: 0 as *mut SHELL_VAR,
+        ind: 0,
+    };
+    cp = tp;
+    e = 0 as libc::c_int;
+    c = e as libc::c_uchar;
+    while !cp.is_null()
+        && {
+            c = *cp as libc::c_uchar;
+            c as libc::c_int != 0
+        }
+        && (c as libc::c_int == ' ' as i32
+            || c as libc::c_int == '\t' as i32
+            || c as libc::c_int == '\n' as i32)
+    {
+        cp = cp.offset(1);
+    }
+    if c != 0 {
+        cp = cp.offset(1);
+    }
+    if c as libc::c_int == '\u{0}' as i32 {
+        lasttok = curtok;
+        curtok = 0 as libc::c_int;
+        tp = cp;
+        return;
+    }
+    tp = cp.offset(-(1 as libc::c_int as isize));
+    lasttp = tp;
+    if 1 as libc::c_int != 0
+        && *(*__ctype_b_loc()).offset(c as libc::c_int as isize) as libc::c_int
+            & _ISalpha as libc::c_int as libc::c_ushort as libc::c_int
+            != 0
+        || c as libc::c_int == '_' as i32
+    {
+        let mut savecp: *mut libc::c_char = 0 as *mut libc::c_char;
+        let mut ec: EXPR_CONTEXT = EXPR_CONTEXT {
+            curtok: 0,
+            lasttok: 0,
+            expression: 0 as *mut libc::c_char,
+            tp: 0 as *mut libc::c_char,
+            lasttp: 0 as *mut libc::c_char,
+            tokval: 0,
+            tokstr: 0 as *mut libc::c_char,
+            noeval: 0,
+            lval: lvalue {
+                tokstr: 0 as *mut libc::c_char,
+                tokval: 0,
+                tokvar: 0 as *mut SHELL_VAR,
+                ind: 0,
+            },
+        };
+        let mut peektok: libc::c_int = 0;
+        while 1 as libc::c_int != 0
+            && *(*__ctype_b_loc()).offset(c as libc::c_int as isize) as libc::c_int
+                & _ISalnum as libc::c_int as libc::c_ushort as libc::c_int
+                != 0
+            || c as libc::c_int == '_' as i32
+        {
+            let fresh11 = cp;
+            cp = cp.offset(1);
+            c = *fresh11 as libc::c_uchar;
+        }
+        cp = cp.offset(-1);
+        c = *cp as libc::c_uchar;
+        if c as libc::c_int == '[' as i32 {
+            e = expr_skipsubscript(tp, cp);
+            if *cp.offset(e as isize) as libc::c_int == ']' as i32 {
+                cp = cp.offset((e + 1 as libc::c_int) as isize);
+                c = *cp as libc::c_uchar;
+                e = ']' as i32;
+            } else {
+                evalerror(bash_badsub_errmsg);
+            }
+        }
+        *cp = '\u{0}' as i32 as libc::c_char;
+        if !(curlval.tokstr).is_null() && curlval.tokstr == tokstr {
+            init_lvalue(&mut curlval);
+        }
+        if !tokstr.is_null() {
+            sh_xfree(
+                tokstr as *mut libc::c_void,
+                b"../expr.c\0" as *const u8 as *const libc::c_char,
+                1360 as libc::c_int,
+            );
+        }
+        tokstr = strcpy(
+            sh_xmalloc(
+                (1 as libc::c_int as libc::c_ulong).wrapping_add(strlen(tp)),
+                b"../expr.c\0" as *const u8 as *const libc::c_char,
+                1361 as libc::c_int,
+            ) as *mut libc::c_char,
+            tp,
+        );
+        *cp = c as libc::c_char;
+        ec.curtok = curtok;
+        ec.lasttok = lasttok;
+        ec.tp = tp;
+        ec.lasttp = lasttp;
+        ec.tokval = tokval;
+        ec.tokstr = tokstr;
+        ec.noeval = noeval;
+        ec.lval = curlval;
+        tokstr = 0 as *mut libc::c_void as *mut libc::c_char;
+        savecp = cp;
+        tp = savecp;
+        noeval = 1 as libc::c_int;
+        curtok = STR as libc::c_int;
+        readtok();
+        peektok = curtok;
+        if peektok == STR as libc::c_int {
+            if !tokstr.is_null() {
+                sh_xfree(
+                    tokstr as *mut libc::c_void,
+                    b"../expr.c\0" as *const u8 as *const libc::c_char,
+                    1373 as libc::c_int,
+                );
+            }
+        }
+        curtok = ec.curtok;
+        lasttok = ec.lasttok;
+        tp = ec.tp;
+        lasttp = ec.lasttp;
+        tokval = ec.tokval;
+        tokstr = ec.tokstr;
+        noeval = ec.noeval;
+        curlval = ec.lval;
+        cp = savecp;
+        if lasttok == PREINC as libc::c_int
+            || lasttok == PREDEC as libc::c_int
+            || peektok != '=' as i32
+        {
+            lastlval = curlval;
+            tokval = expr_streval(tokstr, e, &mut curlval);
+        } else {
+            tokval = 0 as libc::c_int as intmax_t;
+        }
+        lasttok = curtok;
+        curtok = STR as libc::c_int;
+    } else if c as libc::c_int >= '0' as i32 && c as libc::c_int <= '9' as i32 {
+        while 1 as libc::c_int != 0
+            && *(*__ctype_b_loc()).offset(c as libc::c_int as isize) as libc::c_int
+                & _ISalnum as libc::c_int as libc::c_ushort as libc::c_int
+                != 0
+            || c as libc::c_int == '#' as i32
+            || c as libc::c_int == '@' as i32
+            || c as libc::c_int == '_' as i32
+        {
+            let fresh12 = cp;
+            cp = cp.offset(1);
+            c = *fresh12 as libc::c_uchar;
+        }
+        cp = cp.offset(-1);
+        c = *cp as libc::c_uchar;
+        *cp = '\u{0}' as i32 as libc::c_char;
+        tokval = strlong(tp);
+        *cp = c as libc::c_char;
+        lasttok = curtok;
+        curtok = NUM as libc::c_int;
+    } else {
+        let fresh13 = cp;
+        cp = cp.offset(1);
+        c1 = *fresh13 as libc::c_uchar;
+        if c as libc::c_int == EQ as i32 && c1 as libc::c_int == EQ as i32 {
+            c = EQEQ as libc::c_int as libc::c_uchar;
+        } else if c as libc::c_int == NOT as i32 && c1 as libc::c_int == EQ as i32 {
+            c = NEQ as libc::c_int as libc::c_uchar;
+        } else if c as libc::c_int == GT as i32 && c1 as libc::c_int == EQ as i32 {
+            c = GEQ as libc::c_int as libc::c_uchar;
+        } else if c as libc::c_int == LT as i32 && c1 as libc::c_int == EQ as i32 {
+            c = LEQ as libc::c_int as libc::c_uchar;
+        } else if c as libc::c_int == LT as i32 && c1 as libc::c_int == LT as i32 {
+            if *cp as libc::c_int == '=' as i32 {
+                assigntok = LSH as libc::c_int;
+                c = OP_ASSIGN as libc::c_int as libc::c_uchar;
+                cp = cp.offset(1);
+            } else {
+                c = LSH as libc::c_int as libc::c_uchar;
+            }
+        } else if c as libc::c_int == '>' as i32 && c1 as libc::c_int == '>' as i32 {
+            if *cp as libc::c_int == '=' as i32 {
+                assigntok = 10 as libc::c_int;
+                c = 11 as libc::c_int as libc::c_uchar;
+                cp = cp.offset(1);
+            } else {
+                c = 10 as libc::c_int as libc::c_uchar;
+            }
+        } else if c as libc::c_int == BAND as i32 && c1 as libc::c_int == BAND as i32 {
+            c = LAND as libc::c_int as libc::c_uchar;
+        } else if c as libc::c_int == BOR as i32 && c1 as libc::c_int == BOR as i32 {
+            c = LOR as libc::c_int as libc::c_uchar;
+        } else if c as libc::c_int == '*' as i32 && c1 as libc::c_int == '*' as i32 {
+            c = POWER as libc::c_int as libc::c_uchar;
+        } else if (c as libc::c_int == '-' as i32 || c as libc::c_int == '+' as i32)
+            && c1 as libc::c_int == c as libc::c_int
+            && curtok == 5 as libc::c_int
+        {
+            c = (if c as libc::c_int == '-' as i32 {
+                17 as libc::c_int
+            } else {
+                16 as libc::c_int
+            }) as libc::c_uchar;
+        } else if (c as libc::c_int == '-' as i32 || c as libc::c_int == '+' as i32)
+            && c1 as libc::c_int == c as libc::c_int
+            && curtok == NUM as libc::c_int
+            && (lasttok == PREINC as libc::c_int || lasttok == PREDEC as libc::c_int)
+        {
+            if c as libc::c_int == '-' as i32 {
+                evalerror(b"--: assignment requires lvalue\0" as *const u8 as *const libc::c_char);
+            } else {
+                evalerror(b"++: assignment requires lvalue\0" as *const u8 as *const libc::c_char);
+            }
+        } else if (c as libc::c_int == '-' as i32 || c as libc::c_int == '+' as i32)
+            && c1 as libc::c_int == c as libc::c_int
+        {
+            xp = cp;
+            while !xp.is_null()
+                && *xp as libc::c_int != 0
+                && (*xp as libc::c_int == ' ' as i32
+                    || *xp as libc::c_int == '\t' as i32
+                    || *xp as libc::c_int == '\n' as i32)
+            {
+                xp = xp.offset(1);
+            }
+            if 1 as libc::c_int != 0
+                && *(*__ctype_b_loc()).offset(*xp as libc::c_uchar as libc::c_int as isize)
+                    as libc::c_int
+                    & _ISalpha as libc::c_int as libc::c_ushort as libc::c_int
+                    != 0
+                || *xp as libc::c_uchar as libc::c_int == '_' as i32
+            {
+                c = (if c as libc::c_int == '-' as i32 {
+                    PREDEC as libc::c_int
+                } else {
+                    PREINC as libc::c_int
+                }) as libc::c_uchar;
+            } else {
+                cp = cp.offset(-1);
+            }
+        } else if c1 as libc::c_int == EQ as i32
+            && (if c as libc::c_int != 0 {
+                (mbschr(
+                    b"*/%+-&^|\0" as *const u8 as *const libc::c_char,
+                    c as libc::c_int,
+                ) != 0 as *mut libc::c_void as *mut libc::c_char) as libc::c_int
+            } else {
+                0 as libc::c_int
+            }) != 0
+        {
+            assigntok = c as libc::c_int;
+            c = OP_ASSIGN as libc::c_int as libc::c_uchar;
+        } else if _is_arithop(c as libc::c_int) == 0 as libc::c_int {
+            cp = cp.offset(-1);
+            if curtok == 0 as libc::c_int || _is_arithop(curtok) != 0 || _is_multiop(curtok) != 0 {
+                evalerror(dcgettext(
+                    0 as *const libc::c_char,
+                    b"syntax error: operand expected\0" as *const u8 as *const libc::c_char,
+                    5 as libc::c_int,
+                ));
+            } else {
+                evalerror(dcgettext(
+                    0 as *const libc::c_char,
+                    b"syntax error: invalid arithmetic operator\0" as *const u8
+                        as *const libc::c_char,
+                    5 as libc::c_int,
+                ));
+            }
+        } else {
+            cp = cp.offset(-1);
+        }
+        lasttok = curtok;
+        curtok = c as libc::c_int;
+    }
+    tp = cp;
+}
