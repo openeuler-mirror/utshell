@@ -1236,3 +1236,25 @@ unsafe extern "C" fn popexp() {
         299 as libc::c_int,
     );
 }
+
+#[no_mangle]
+unsafe extern "C" fn _is_arithop(mut c: libc::c_int) -> libc::c_int {
+    match c as u8 as char {
+        '=' | '>' | '<' | '+' | '-' | '*' | '/' | '%' | '!' | '(' | ')' | '&' | '|' | '^' | '~' => {
+            return 1 as libc::c_int;
+        }
+        '?' | ':' | ',' => return 1 as libc::c_int,
+        _ => return 0 as libc::c_int,
+    };
+}
+
+#[no_mangle]
+unsafe extern "C" fn _is_multiop(mut c: libc::c_int) -> libc::c_int {
+    match c {
+        EQEQ | NEQ | LEQ | GEQ | LAND | LOR | LSH | RSH | OP_ASSIGN | COND | POWER | PREINC
+        | PREDEC | POSTINC | POSTDEC => {
+            return 1 as libc::c_int;
+        }
+        _ => return 0 as libc::c_int,
+    };
+}
