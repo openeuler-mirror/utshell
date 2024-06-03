@@ -1109,3 +1109,58 @@ pub unsafe extern "C" fn same_file(
 
     return ((*stp1).st_dev == (*stp2).st_dev && (*stp1).st_ino == (*stp2).st_ino) as libc::c_int;
 }
+
+/* Move FD to a number close to the maximum number of file descriptors
+allowed in the shell process, to avoid the user stepping on it with
+redirection and causing us extra work.  If CHECK_NEW is non-zero,
+we check whether or not the file descriptors are in use before
+duplicating FD onto them.  MAXFD says where to start checking the
+file descriptors.  If it's less than 20, we get the maximum value
+available from getdtablesize(2). */
+#[no_mangle]
+pub unsafe extern "C" fn move_to_high_fd(
+    mut fd: libc::c_int,
+    mut check_new: libc::c_int,
+    mut maxfd: libc::c_int,
+) -> libc::c_int {
+    let mut script_fd: libc::c_int = 0;
+    let mut nfds: libc::c_int = 0;
+    let mut ignore: libc::c_int = 0;
+
+    if maxfd < 20 as libc::c_int {
+        nfds = getdtablesize();
+        if nfds <= 0 as libc::c_int {
+            nfds = 20 as libc::c_int;
+        }
+        if nfds > HIGH_FD_MAX {
+            nfds = HIGH_FD_MAX; /* reasonable maximum */
+        }
+    } else {
+        nfds = maxfd;
+    }
+
+    nfds -= 1;
+    nfds;
+    while check_new != 0 && nfds > 3 as libc::c_int {
+        if fcntl(nfds, F_GETFD, &mut ignore as *mut libc::c_int) == -(1 as libc::c_int) {
+            break;
+        }
+        nfds -= 1;
+        nfds;
+    }
+
+    if nfds > 3 as libc::c_int && fd != nfds && {
+        script_fd = dup2(fd, nfds);
+        script_fd != -(1 as libc::c_int)
+    } {
+        /* don't close stderr */
+        if check_new == 0 as libc::c_int || fd != fileno(stderr) {
+            close(fd);
+        }
+        return script_fd;
+    }
+
+    /* OK, we didn't find one less than our artificial maximum; return the
+    original file descriptor. */
+    return fd;
+}
