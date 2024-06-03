@@ -13,3 +13,4 @@ r_bash = {path = "../r_bash"}
 [lib]
 name = "r_input"
 crate-type = ["staticlib","rlib"]
+
