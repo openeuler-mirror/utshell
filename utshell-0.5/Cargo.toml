@@ -98,7 +98,8 @@ members=[
  "r_variables",
  "r_arrayfunc",
  "r_error", 
- "r_expr",
+ "r_expr", 
+ "r_input",
 ]
 
 [dependencies]
@@ -177,7 +178,7 @@ members=[
  r_variables = {path = "./r_variables"}
  r_error = {path = "./r_error"}
  r_expr = {path = "./r_expr"}
-
+ r_input = {path = "./r_input"}
 
 intl_pluralrules = "7.0.2"
 tinystr = "=0.7.1"
