@@ -1,14 +1,13 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+//# SPDX-License-Identifier: GPL-3.0-or-later
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+#![allow(
+    dead_code,
+    mutable_transmutes,
+    non_camel_case_types,
+    non_snake_case,
+    non_upper_case_globals,
+    unused_assignments,
+    unused_mut
+)]
