@@ -988,3 +988,22 @@ pub unsafe extern "C" fn sh_unset_nodelay_mode(mut fd: libc::c_int) -> libc::c_i
 
     return 0;
 }
+
+/* Just a wrapper for the define in include/filecntl.h */
+#[no_mangle]
+pub unsafe extern "C" fn sh_setclexec(mut fd: libc::c_int) -> libc::c_int {
+    return SET_CLOSE_ON_EXEC!(fd);
+}
+
+/* Return 1 if file descriptor FD is valid; 0 otherwise. */
+#[no_mangle]
+pub unsafe extern "C" fn sh_validfd(mut fd: libc::c_int) -> libc::c_int {
+    return (fcntl(fd, F_GETFD, 0) >= 0) as libc::c_int;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn fd_ispipe(mut fd: libc::c_int) -> libc::c_int {
+    *__errno_location() = 0;
+    return (lseek(fd, 0 as libc::c_long, SEEK_CUR) < 0 as libc::c_int as libc::c_long
+        && *__errno_location() == ESPIPE) as libc::c_int;
+}
