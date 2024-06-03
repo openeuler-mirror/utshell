@@ -1007,3 +1007,105 @@ pub unsafe extern "C" fn fd_ispipe(mut fd: libc::c_int) -> libc::c_int {
     return (lseek(fd, 0 as libc::c_long, SEEK_CUR) < 0 as libc::c_int as libc::c_long
         && *__errno_location() == ESPIPE) as libc::c_int;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn check_dev_tty() {
+    let mut tty_fd: libc::c_int = 0;
+    let mut tty: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    tty_fd = open(
+        b"/dev/tty\0" as *const u8 as *const libc::c_char,
+        O_RDWR | O_NONBLOCK,
+    );
+
+    if tty_fd < 0 as libc::c_int {
+        tty = ttyname(fileno(stdin));
+        if tty.is_null() {
+            return;
+        }
+        tty_fd = open(tty, O_RDWR | O_NONBLOCK);
+    }
+    if tty_fd >= 0 as libc::c_int {
+        close(tty_fd);
+    }
+}
+
+/* Return 1 if PATH1 and PATH2 are the same file.  This is kind of
+expensive.  If non-NULL STP1 and STP2 point to stat structures
+corresponding to PATH1 and PATH2, respectively. */
+#[no_mangle]
+pub unsafe extern "C" fn same_file(
+    mut path1: *const libc::c_char,
+    mut path2: *const libc::c_char,
+    mut stp1: *mut stat,
+    mut stp2: *mut stat,
+) -> libc::c_int {
+    let mut st1: stat = stat {
+        st_dev: 0,
+        st_ino: 0,
+        st_nlink: 0,
+        st_mode: 0,
+        st_uid: 0,
+        st_gid: 0,
+        __pad0: 0,
+        st_rdev: 0,
+        st_size: 0,
+        st_blksize: 0,
+        st_blocks: 0,
+        st_atim: timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_mtim: timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_ctim: timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        __glibc_reserved: [0; 3],
+    };
+    let mut st2: stat = stat {
+        st_dev: 0,
+        st_ino: 0,
+        st_nlink: 0,
+        st_mode: 0,
+        st_uid: 0,
+        st_gid: 0,
+        __pad0: 0,
+        st_rdev: 0,
+        st_size: 0,
+        st_blksize: 0,
+        st_blocks: 0,
+        st_atim: timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_mtim: timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_ctim: timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        __glibc_reserved: [0; 3],
+    };
+
+    if stp1.is_null() {
+        if stat(path1, &mut st1) != 0 as libc::c_int {
+            return 0 as libc::c_int;
+        }
+        stp1 = &mut st1;
+    }
+
+    if stp2.is_null() {
+        if stat(path2, &mut st2) != 0 as libc::c_int {
+            return 0 as libc::c_int;
+        }
+        stp2 = &mut st2;
+    }
+
+    return ((*stp1).st_dev == (*stp2).st_dev && (*stp1).st_ino == (*stp2).st_ino) as libc::c_int;
+}
