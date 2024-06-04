@@ -49,3 +49,36 @@ extern "C" {
     );
     fn run_pending_traps();
 }
+
+pub const EAGAIN: libc::c_int = 11;
+pub const X_EAGAIN: libc::c_int = EAGAIN;
+pub const EWOULDBLOCK: libc::c_int = EAGAIN;
+pub const X_EWOULDBLOCK: libc::c_int = EAGAIN;
+pub const EINTR: libc::c_int = 4;
+pub const B_UNBUFF: libc::c_int = 0x04;
+pub const O_TEXT: libc::c_int = 0;
+pub const F_GETFL: libc::c_int = 3;
+pub const B_TEXT: libc::c_int = 0x10;
+pub const SEEK_CUR: libc::c_int = 1;
+pub const MAX_INPUT_BUFFER_SIZE: libc::c_int = 8172;
+pub const O_RDONLY: libc::c_int = 0;
+pub const EBADF: libc::c_int = 9;
+
+pub type size_t = libc::c_ulong;
+pub type __off64_t = libc::c_long;
+pub type _IO_lock_t = ();
+pub type __off_t = libc::c_long;
+pub type __dev_t = libc::c_ulong;
+pub type __uid_t = libc::c_uint;
+pub type __gid_t = libc::c_uint;
+pub type __ino_t = libc::c_ulong;
+pub type __mode_t = libc::c_uint;
+pub type __nlink_t = libc::c_ulong;
+pub type __time_t = libc::c_long;
+pub type __blksize_t = libc::c_long;
+pub type __blkcnt_t = libc::c_long;
+pub type __ssize_t = libc::c_long;
+pub type __syscall_slong_t = libc::c_long;
+pub type __sig_atomic_t = libc::c_int;
+pub type off_t = __off_t;
+pub type ssize_t = __ssize_t;
