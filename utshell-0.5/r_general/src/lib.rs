@@ -1191,3 +1191,39 @@ pub unsafe extern "C" fn check_binary_file(
 
     return 0 as libc::c_int;
 }
+
+/* **************************************************************** */
+/*								    */
+/*		    Functions to manipulate pipes		    */
+/*								    */
+/* **************************************************************** */
+#[no_mangle]
+pub unsafe extern "C" fn sh_openpipe(mut pv: *mut libc::c_int) -> libc::c_int {
+    let mut r: libc::c_int = 0;
+
+    r = pipe(pv);
+    if r < 0 {
+        return r;
+    }
+
+    *pv.offset(0 as isize) = move_to_high_fd(*pv.offset(0 as isize), 1, 64);
+    *pv.offset(1 as isize) = move_to_high_fd(*pv.offset(1 as isize), 1, 64);
+
+    return 0;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn sh_closepipe(mut pv: *mut libc::c_int) -> libc::c_int {
+    if *pv.offset(0 as isize) >= 0 as libc::c_int {
+        close(*pv.offset(0 as isize));
+    }
+
+    if *pv.offset(1 as isize) >= 0 as libc::c_int {
+        close(*pv.offset(1 as isize));
+    }
+
+    let ref mut fresh1 = *pv.offset(1 as isize);
+    *fresh1 = -(1 as libc::c_int);
+    *pv.offset(0 as isize) = *fresh1;
+    return 0;
+}
