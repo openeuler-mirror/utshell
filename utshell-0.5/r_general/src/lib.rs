@@ -1164,3 +1164,30 @@ pub unsafe extern "C" fn move_to_high_fd(
     original file descriptor. */
     return fd;
 }
+
+/* Return non-zero if the characters from SAMPLE are not all valid
+characters to be found in the first line of a shell script.  We
+check up to the first newline, or SAMPLE_LEN, whichever comes first.
+All of the characters must be printable or whitespace. */
+#[no_mangle]
+pub unsafe extern "C" fn check_binary_file(
+    mut sample: *const libc::c_char,
+    mut sample_len: libc::c_int,
+) -> libc::c_int {
+    let mut i: libc::c_int = 0;
+    let mut c: libc::c_uchar = 0;
+
+    while i < sample_len {
+        c = *sample.offset(i as isize) as libc::c_uchar;
+        if c as libc::c_int == '\n' as i32 {
+            return 0 as libc::c_int;
+        }
+        if c as libc::c_int == '\0' as i32 {
+            return 1 as libc::c_int;
+        }
+        i += 1;
+        i;
+    }
+
+    return 0 as libc::c_int;
+}
