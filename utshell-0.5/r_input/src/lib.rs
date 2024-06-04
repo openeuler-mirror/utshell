@@ -107,3 +107,39 @@ pub struct stat {
     pub st_ctim: timespec,
     pub __glibc_reserved: [__syscall_slong_t; 3],
 }
+pub type sig_atomic_t = __sig_atomic_t;
+pub type sh_cget_func_t = unsafe extern "C" fn() -> libc::c_int;
+pub type sh_cunget_func_t = unsafe extern "C" fn(libc::c_int) -> libc::c_int;
+pub type stream_type = libc::c_uint;
+pub const st_bstream: stream_type = 4;
+pub const st_string: stream_type = 3;
+pub const st_stream: stream_type = 2;
+pub const st_stdin: stream_type = 1;
+pub const st_none: stream_type = 0;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct BSTREAM {
+    pub b_fd: libc::c_int,
+    pub b_buffer: *mut libc::c_char,
+    pub b_size: size_t,
+    pub b_used: size_t,
+    pub b_flag: libc::c_int,
+    pub b_inputp: size_t,
+}
+pub type BUFFERED_STREAM = BSTREAM;
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union INPUT_STREAM {
+    pub file: *mut FILE,
+    pub string: *mut libc::c_char,
+    pub buffered_fd: libc::c_int,
+}
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct BASH_INPUT {
+    pub type_0: stream_type,
+    pub name: *mut libc::c_char,
+    pub location: INPUT_STREAM,
+    pub getter: Option<sh_cget_func_t>,
+    pub ungetter: Option<sh_cunget_func_t>,
+}
