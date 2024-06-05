@@ -1296,3 +1296,30 @@ pub unsafe extern "C" fn file_isdir(mut fn_0: *const libc::c_char) -> libc::c_in
 
     return (stat(fn_0, &mut sb) == 0 && S_ISDIR!(sb.st_mode)) as libc::c_int;
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn file_iswdir(mut fn_0: *const libc::c_char) -> libc::c_int {
+    return (file_isdir(fn_0) != 0 && sh_eaccess(fn_0, W_OK) == 0 as libc::c_int) as libc::c_int;
+}
+
+/* Return 1 if STRING is "." or "..", optionally followed by a directory
+separator */
+#[no_mangle]
+pub unsafe extern "C" fn path_dot_or_dotdot(mut string: *const libc::c_char) -> libc::c_int {
+    if string.is_null()
+        || *string as libc::c_int == '\0' as i32
+        || *string as libc::c_int != '.' as i32
+    {
+        return 0 as libc::c_int;
+    }
+
+    /* string[0] == '.' */
+    if PATHSEP!(*string.offset(1 as isize) as libc::c_int)
+        || *string.offset(1 as isize) as libc::c_int == '.' as i32
+            && PATHSEP!(*string.offset(2 as isize) as libc::c_int)
+    {
+        return 1;
+    }
+
+    return 0;
+}
