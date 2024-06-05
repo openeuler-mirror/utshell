@@ -163,3 +163,28 @@ macro_rules! QUIT {
         }
     };
 }
+
+#[macro_export]
+macro_rules! ALLOCATE_BUFFERS {
+    ($n:expr) => {
+        if $n >= nbuffers {
+            allocate_buffers($n);
+        }
+    };
+}
+#[macro_export]
+macro_rules! SET_CLOSE_ON_EXEC {
+    ($fd:expr) => {
+        fcntl($fd, 2, 1)
+    };
+}
+#[macro_export]
+macro_rules! max {
+    ($a: expr, $b: expr) => {
+        if $a > $b {
+            $a
+        } else {
+            $b
+        }
+    };
+}
