@@ -1323,3 +1323,42 @@ pub unsafe extern "C" fn path_dot_or_dotdot(mut string: *const libc::c_char) -> 
 
     return 0;
 }
+
+/* Return 1 if STRING contains an absolute pathname, else 0.  Used by `cd'
+to decide whether or not to look up a directory name in $CDPATH. */
+#[no_mangle]
+pub unsafe extern "C" fn absolute_pathname(mut string: *const libc::c_char) -> libc::c_int {
+    if string.is_null() || *string as libc::c_int == '\0' as i32 {
+        return 0;
+    }
+
+    if ABSPATH!(string) {
+        return 1;
+    }
+
+    /* . and ./ */
+    if *string.offset(0 as libc::c_int as isize) as libc::c_int == '.' as i32
+        && PATHSEP!(*string.offset(1 as libc::c_int as isize) as libc::c_int)
+    {
+        return 1;
+    }
+
+    /* .. and ../ */
+    if *string.offset(0 as libc::c_int as isize) as libc::c_int == '.' as i32
+        && *string.offset(1 as libc::c_int as isize) as libc::c_int == '.' as i32
+        && PATHSEP!(*string.offset(2 as libc::c_int as isize) as libc::c_int)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+/* Return 1 if STRING is an absolute program name; it is absolute if it
+contains any slashes.  This is used to decide whether or not to look
+up through $PATH. */
+#[no_mangle]
+pub unsafe extern "C" fn absolute_program(mut string: *const libc::c_char) -> libc::c_int {
+    return (mbschr(string, '/' as i32) != 0 as *mut libc::c_void as *mut libc::c_char)
+        as libc::c_int;
+}
