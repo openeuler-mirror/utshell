@@ -143,3 +143,23 @@ pub struct BASH_INPUT {
     pub getter: Option<sh_cget_func_t>,
     pub ungetter: Option<sh_cunget_func_t>,
 }
+
+#[macro_export]
+macro_rules! CHECK_TERMSIG {
+    () => {
+        if terminating_signal != 0 {
+            termsig_handler(terminating_signal);
+        }
+    };
+}
+#[macro_export]
+macro_rules! QUIT {
+    () => {
+        if terminating_signal != 0 {
+            termsig_handler(terminating_signal);
+        }
+        if interrupt_state != 0 {
+            throw_to_top_level();
+        }
+    };
+}
