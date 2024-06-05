@@ -188,3 +188,34 @@ macro_rules! max {
         }
     };
 }
+
+#[macro_export]
+macro_rules! min {
+    ($a: expr, $b: expr) => {
+        if $a > $b {
+            $b
+        } else {
+            $a
+        }
+    };
+}
+#[macro_export]
+macro_rules! fd_is_seekable {
+    ($fd: expr) => {
+        lseek($fd, 0 as libc::c_long, SEEK_CUR) >= 0 as libc::c_long
+    };
+}
+#[macro_export]
+macro_rules! bufstream_getc {
+    ($bp: expr) => {
+        if ($bp).b_inputp == ($bp).b_used || ($bp).b_used == 0 {
+            b_fill_buffer(*buffers.offset(bash_input.location.buffered_fd as isize))
+        } else {
+            let ref mut fresh10 =
+                (**buffers.offset(bash_input.location.buffered_fd as isize)).b_inputp;
+            let fresh11 = *fresh10;
+            *fresh10 = (*fresh10).wrapping_add(1);
+            *(($bp).b_buffer).offset(fresh11 as isize) as libc::c_int & 0xff as libc::c_int
+        }
+    };
+}
