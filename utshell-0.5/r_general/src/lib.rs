@@ -1362,3 +1362,50 @@ pub unsafe extern "C" fn absolute_program(mut string: *const libc::c_char) -> li
     return (mbschr(string, '/' as i32) != 0 as *mut libc::c_void as *mut libc::c_char)
         as libc::c_int;
 }
+
+/* **************************************************************** */
+/*								    */
+/*		    Functions to manipulate pathnames		    */
+/*								    */
+/* **************************************************************** */
+
+/* Turn STRING (a pathname) into an absolute pathname, assuming that
+DOT_PATH contains the symbolic location of `.'.  This always
+returns a new string, even if STRING was an absolute pathname to
+begin with. */
+#[no_mangle]
+pub unsafe extern "C" fn make_absolute(
+    mut string: *const libc::c_char,
+    mut dot_path: *const libc::c_char,
+) -> *mut libc::c_char {
+    let mut result: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    if dot_path.is_null() || ABSPATH!(string) {
+        result = savestring!(string);
+    } else {
+        result = sh_makepath(dot_path, string, 0 as libc::c_int);
+    }
+
+    return result;
+}
+
+/* Return the `basename' of the pathname in STRING (the stuff after the
+last '/').  If STRING is `/', just return it. */
+#[no_mangle]
+pub unsafe extern "C" fn base_pathname(mut string: *mut libc::c_char) -> *mut libc::c_char {
+    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    if *string.offset(0 as libc::c_int as isize) as libc::c_int == '/' as i32
+        && *string.offset(1 as libc::c_int as isize) as libc::c_int == 0 as libc::c_int
+    {
+        return string;
+    }
+
+    p = strrchr(string, '/' as i32);
+    return if !p.is_null() {
+        p = p.offset(1);
+        p
+    } else {
+        string
+    };
+}
