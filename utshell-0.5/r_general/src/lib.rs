@@ -1409,3 +1409,67 @@ pub unsafe extern "C" fn base_pathname(mut string: *mut libc::c_char) -> *mut li
         string
     };
 }
+
+/* Return the full pathname of FILE.  Easy.  Filenames that begin
+with a '/' are returned as themselves.  Other filenames have
+the current working directory prepended.  A new string is
+returned in either case. */
+#[no_mangle]
+pub unsafe extern "C" fn full_pathname(mut file: *mut libc::c_char) -> *mut libc::c_char {
+    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    file = if *file as libc::c_int == '~' as i32 {
+        bash_tilde_expand(file, 0 as libc::c_int)
+    } else {
+        savestring!(file)
+    };
+
+    if ABSPATH!(file) {
+        return file;
+    }
+
+    ret = sh_makepath(
+        0 as *mut libc::c_void as *mut libc::c_char,
+        file,
+        MP_DOCWD | MP_RMDOT,
+    );
+    libc::free(file as *mut libc::c_void);
+
+    return ret;
+}
+
+/* A slightly related function.  Get the prettiest name of this
+directory possible. */
+static mut tdir: [libc::c_char; PATH_MAX as usize] = [0; PATH_MAX as usize];
+
+/* Return a pretty pathname.  If the first part of the pathname is
+the same as $HOME, then replace that with `~'.  */
+#[no_mangle]
+pub unsafe extern "C" fn polite_directory_format(mut name: *mut libc::c_char) -> *mut libc::c_char {
+    let mut home: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut l: libc::c_int = 0;
+
+    home = get_string_value(b"HOME\0" as *const u8 as *const libc::c_char);
+    l = (if !home.is_null() {
+        strlen(home)
+    } else {
+        0 as libc::c_ulong
+    }) as libc::c_int;
+    if l > 1 as libc::c_int
+        && strncmp(home, name, l as libc::c_ulong) == 0 as libc::c_int
+        && (*name.offset(l as isize) == 0 || *name.offset(l as isize) as libc::c_int == '/' as i32)
+    {
+        strncpy(
+            tdir.as_mut_ptr().offset(1 as isize),
+            name.offset(l as isize),
+            (::core::mem::size_of::<[libc::c_char; 4096]>() as libc::c_ulong)
+                .wrapping_sub(2 as libc::c_ulong),
+        );
+        tdir[0 as usize] = '~' as i32 as libc::c_char;
+        tdir[(::core::mem::size_of::<[libc::c_char; 4096]>() as libc::c_ulong)
+            .wrapping_sub(1 as libc::c_ulong) as usize] = '\0' as i32 as libc::c_char;
+        return tdir.as_mut_ptr();
+    } else {
+        return name;
+    };
+}
