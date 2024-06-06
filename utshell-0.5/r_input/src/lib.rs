@@ -219,3 +219,75 @@ macro_rules! bufstream_getc {
         }
     };
 }
+
+
+#[inline]
+unsafe extern "C" fn fstat(mut __fd: libc::c_int, mut __statbuf: *mut stat) -> libc::c_int {
+    return __fxstat(1 as libc::c_int, __fd, __statbuf);
+}
+
+/* Functions to handle reading input on systems that don't restart read(2)
+if a signal is received. */
+
+static mut localbuf: [libc::c_char; 1024] = [0; 1024];
+static mut local_index: libc::c_int = 0 as libc::c_int;
+static mut local_bufused: libc::c_int = 0 as libc::c_int;
+
+/* Posix and USG systems do not guarantee to restart read () if it is
+interrupted by a signal.  We do the read ourselves, and restart it
+if it returns EINTR. */
+#[no_mangle]
+pub unsafe extern "C" fn getc_with_restart(mut stream: *mut FILE) -> libc::c_int {
+    let mut uc: libc::c_uchar = 0;
+
+    CHECK_TERMSIG!();
+
+    /* Try local buffering to reduce the number of read(2) calls. */
+    if local_index == local_bufused || local_bufused == 0 as libc::c_int {
+        loop {
+            QUIT!();
+            run_pending_traps();
+
+            local_bufused = read(
+                fileno(stream),
+                localbuf.as_mut_ptr() as *mut libc::c_void,
+                ::core::mem::size_of::<[libc::c_char; 1024]>() as libc::c_ulong,
+            ) as libc::c_int;
+            if local_bufused > 0 as libc::c_int {
+                break;
+            }
+            if local_bufused == 0 as libc::c_int {
+                local_index = 0 as libc::c_int;
+                return EOF;
+            } else if *__errno_location() == X_EAGAIN || *__errno_location() == X_EWOULDBLOCK {
+                if sh_unset_nodelay_mode(fileno(stream)) < 0 as libc::c_int {
+                    sys_error(
+                        dcgettext(
+                            0 as *const libc::c_char,
+                            b"cannot reset nodelay mode for fd %d\0" as *const u8
+                                as *const libc::c_char,
+                            5 as libc::c_int,
+                        ),
+                        fileno(stream),
+                    );
+                    local_bufused = 0 as libc::c_int;
+                    local_index = local_bufused;
+                    return EOF;
+                }
+            } else if *__errno_location() != EINTR {
+                local_bufused = 0 as libc::c_int;
+                local_index = local_bufused;
+                return EOF;
+            } else if interrupt_state != 0 || terminating_signal != 0 {
+                /* QUIT; */
+                local_bufused = 0 as libc::c_int;
+                local_index = local_bufused;
+            }
+        }
+        local_index = 0 as libc::c_int;
+    }
+    let fresh0 = local_index;
+    local_index = local_index + 1;
+    uc = localbuf[fresh0 as usize] as libc::c_uchar;
+    return uc as libc::c_int;
+}
