@@ -291,3 +291,53 @@ pub unsafe extern "C" fn getc_with_restart(mut stream: *mut FILE) -> libc::c_int
     uc = localbuf[fresh0 as usize] as libc::c_uchar;
     return uc as libc::c_int;
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn ungetc_with_restart(
+    mut c: libc::c_int,
+    mut stream: *mut FILE,
+) -> libc::c_int {
+    if local_index == 0 as libc::c_int || c == EOF {
+        return EOF;
+    }
+    local_index -= 1;
+    localbuf[local_index as usize] = c as libc::c_char;
+    return c;
+}
+
+#[no_mangle]
+pub static mut bash_input_fd_changed: libc::c_int = 0;
+
+/* This provides a way to map from a file descriptor to the buffer
+associated with that file descriptor, rather than just the other
+way around.  This is needed so that buffers are managed properly
+in constructs like 3<&4.  buffers[x]->b_fd == x -- that is how the
+correspondence is maintained. */
+static mut buffers: *mut *mut BUFFERED_STREAM =
+    0 as *const libc::c_void as *mut libc::c_void as *mut *mut BUFFERED_STREAM;
+static mut nbuffers: libc::c_int = 0;
+
+/* Make sure `buffers' has at least N elements. */
+unsafe extern "C" fn allocate_buffers(mut n: libc::c_int) {
+    let mut i: libc::c_int = 0;
+    let mut orig_nbuffers: libc::c_int = 0;
+
+    orig_nbuffers = nbuffers;
+    nbuffers = n + 20 as libc::c_int;
+    buffers = libc::realloc(
+        buffers as *mut libc::c_void,
+        (nbuffers as libc::c_ulong)
+            .wrapping_mul(::core::mem::size_of::<*mut BUFFERED_STREAM>() as libc::c_ulong)
+            as usize,
+    ) as *mut *mut BUFFERED_STREAM;
+
+    /* Zero out the new buffers. */
+    i = orig_nbuffers;
+    while i < nbuffers {
+        let ref mut fresh1 = *buffers.offset(i as isize);
+        *fresh1 = 0 as *mut libc::c_void as *mut BUFFERED_STREAM;
+        i += 1;
+        i;
+    }
+}
