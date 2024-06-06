@@ -1473,3 +1473,116 @@ pub unsafe extern "C" fn polite_directory_format(mut name: *mut libc::c_char) ->
         return name;
     };
 }
+
+/* Trim NAME.  If NAME begins with `~/', skip over tilde prefix.  Trim to
+keep any tilde prefix and PROMPT_DIRTRIM trailing directory components
+and replace the intervening characters with `...' */
+#[no_mangle]
+pub unsafe extern "C" fn trim_pathname(
+    mut name: *mut libc::c_char,
+    mut maxlen: libc::c_int,
+) -> *mut libc::c_char {
+    let mut nlen: libc::c_int = 0;
+    let mut ndirs: libc::c_int = 0;
+    let mut nskip: intmax_t = 0;
+    let mut nbeg: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut nend: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ntail: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    if name.is_null() || {
+        nlen = strlen(name) as libc::c_int;
+        nlen == 0 as libc::c_int
+    } {
+        return name;
+    }
+    nend = name.offset(nlen as isize);
+
+    v = get_string_value(b"PROMPT_DIRTRIM\0" as *const u8 as *const libc::c_char);
+    if v.is_null() || *v as libc::c_int == 0 as libc::c_int {
+        return name;
+    }
+    if legal_number(v, &mut nskip) == 0 as libc::c_int || nskip <= 0 as libc::c_int as libc::c_long
+    {
+        return name;
+    }
+
+    /* Skip over tilde prefix */
+    nbeg = name;
+    if *name.offset(0 as libc::c_int as isize) as libc::c_int == '~' as i32 {
+        nbeg = name;
+        while *nbeg != 0 {
+            if *nbeg as libc::c_int == '/' as i32 {
+                nbeg = nbeg.offset(1);
+                nbeg;
+                break;
+            } else {
+                nbeg = nbeg.offset(1);
+                nbeg;
+            }
+        }
+    }
+    if *nbeg as libc::c_int == 0 as libc::c_int {
+        return name;
+    }
+
+    ndirs = 0 as libc::c_int;
+    ntail = nbeg;
+    while *ntail != 0 {
+        if *ntail as libc::c_int == '/' as i32 {
+            ndirs += 1;
+            ndirs;
+        }
+        ntail = ntail.offset(1);
+        ntail;
+    }
+    if (ndirs as libc::c_long) < nskip {
+        return name;
+    }
+
+    ntail = if *nend as libc::c_int == '/' as i32 {
+        nend
+    } else {
+        nend.offset(-(1 as libc::c_int as isize))
+    };
+    while ntail > nbeg {
+        if *ntail as libc::c_int == '/' as i32 {
+            nskip -= 1;
+            nskip;
+        }
+        if nskip == 0 as libc::c_int as libc::c_long {
+            break;
+        }
+        ntail = ntail.offset(-1);
+        ntail;
+    }
+    if ntail == nbeg {
+        return name;
+    }
+
+    /* Now we want to return name[0..nbeg]+"..."+ntail, modifying name in place */
+    nlen = ntail.offset_from(nbeg) as libc::c_long as libc::c_int;
+    if nlen <= 3 as libc::c_int {
+        return name;
+    }
+
+    let fresh2 = nbeg;
+    nbeg = nbeg.offset(1);
+    *fresh2 = '.' as i32 as libc::c_char;
+    let fresh3 = nbeg;
+    nbeg = nbeg.offset(1);
+    *fresh3 = '.' as i32 as libc::c_char;
+    let fresh4 = nbeg;
+    nbeg = nbeg.offset(1);
+    *fresh4 = '.' as i32 as libc::c_char;
+
+    nlen = nend.offset_from(ntail) as libc::c_long as libc::c_int;
+    memmove(
+        nbeg as *mut libc::c_void,
+        ntail as *const libc::c_void,
+        nlen as libc::c_ulong,
+    );
+    *nbeg.offset(nlen as isize) = '\0' as i32 as libc::c_char;
+
+    return name;
+}
