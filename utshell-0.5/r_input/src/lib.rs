@@ -341,3 +341,31 @@ unsafe extern "C" fn allocate_buffers(mut n: libc::c_int) {
         i;
     }
 }
+
+/* Construct and return a BUFFERED_STREAM corresponding to file descriptor
+FD, using BUFFER. */
+unsafe extern "C" fn make_buffered_stream(
+    mut fd: libc::c_int,
+    mut buffer: *mut libc::c_char,
+    mut bufsize: size_t,
+) -> *mut BUFFERED_STREAM {
+    let mut bp: *mut BUFFERED_STREAM = 0 as *mut BUFFERED_STREAM;
+    bp = libc::malloc(::core::mem::size_of::<BUFFERED_STREAM>() as libc::c_ulong as usize)
+        as *mut BUFFERED_STREAM;
+    ALLOCATE_BUFFERS!(fd);
+    let ref mut fresh2 = *buffers.offset(fd as isize);
+    *fresh2 = bp;
+    (*bp).b_fd = fd;
+    (*bp).b_buffer = buffer;
+    (*bp).b_size = bufsize;
+    (*bp).b_flag = 0 as libc::c_int;
+    (*bp).b_inputp = (*bp).b_flag as size_t;
+    (*bp).b_used = (*bp).b_inputp;
+    if bufsize == 1 as libc::c_int as libc::c_ulong {
+        (*bp).b_flag |= B_UNBUFF;
+    }
+    if O_TEXT != 0 && fcntl(fd, F_GETFL) & O_TEXT != 0 as libc::c_int {
+        (*bp).b_flag |= B_TEXT;
+    }
+    return bp;
+}
