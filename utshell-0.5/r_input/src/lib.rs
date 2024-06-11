@@ -397,3 +397,98 @@ pub unsafe extern "C" fn set_bash_input_fd(mut fd: libc::c_int) -> libc::c_int {
     }
     return 0 as libc::c_int;
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn fd_is_bash_input(mut fd: libc::c_int) -> libc::c_int {
+    if bash_input.type_0 as libc::c_uint == st_bstream as libc::c_int as libc::c_uint
+        && bash_input.location.buffered_fd == fd
+    {
+        return 1 as libc::c_int;
+    } else if interactive_shell == 0 as libc::c_int && default_buffered_input == fd {
+        return 1 as libc::c_int;
+    }
+    return 0 as libc::c_int;
+}
+
+/* Save the buffered stream corresponding to file descriptor FD (which bash
+is using to read input) to a buffered stream associated with NEW_FD.  If
+NEW_FD is -1, a new file descriptor is allocated with fcntl.  The new
+file descriptor is returned on success, -1 on error. */
+#[no_mangle]
+pub unsafe extern "C" fn save_bash_input(
+    mut fd: libc::c_int,
+    mut new_fd: libc::c_int,
+) -> libc::c_int {
+    let mut nfd: libc::c_int = 0;
+
+    /* Sync the stream so we can re-read from the new file descriptor.  We
+    might be able to avoid this by copying the buffered stream verbatim
+    to the new file descriptor. */
+    if !(*buffers.offset(fd as isize)).is_null() {
+        sync_buffered_stream(fd);
+    }
+
+    /* Now take care of duplicating the file descriptor that bash is
+    using for input, so we can reinitialize it later. */
+    nfd = if new_fd == -(1 as libc::c_int) {
+        fcntl(fd, 0 as libc::c_int, 10 as libc::c_int)
+    } else {
+        new_fd
+    };
+    if nfd == -(1 as libc::c_int) {
+        if fcntl(fd, 1 as libc::c_int, 0 as libc::c_int) == 0 as libc::c_int {
+            sys_error(
+                dcgettext(
+                    0 as *const libc::c_char,
+                    b"cannot allocate new file descriptor for bash input from fd %d\0" as *const u8
+                        as *const libc::c_char,
+                    5 as libc::c_int,
+                ),
+                fd,
+            );
+        }
+        return -(1 as libc::c_int);
+    }
+
+    if nfd < nbuffers && !(*buffers.offset(nfd as isize)).is_null() {
+        /* What's this?  A stray buffer without an associated open file
+        descriptor?  Free up the buffer and report the error. */
+        internal_error(
+            dcgettext(
+                0 as *const libc::c_char,
+                b"save_bash_input: buffer already exists for new fd %d\0" as *const u8
+                    as *const libc::c_char,
+                5 as libc::c_int,
+            ),
+            nfd,
+        );
+        if (**buffers.offset(nfd as isize)).b_flag & B_SHAREDBUF as libc::c_int != 0 {
+            let ref mut fresh3 = (**buffers.offset(nfd as isize)).b_buffer;
+            *fresh3 = 0 as *mut libc::c_void as *mut libc::c_char;
+        }
+        free_buffered_stream(*buffers.offset(nfd as isize));
+    }
+
+    /* Reinitialize bash_input.location. */
+    if bash_input.type_0 as libc::c_uint == st_bstream as libc::c_int as libc::c_uint {
+        bash_input.location.buffered_fd = nfd;
+        fd_to_buffered_stream(nfd);
+        close_buffered_fd(fd); /* XXX */
+    } else {
+        /* If the current input type is not a buffered stream, but the shell
+        is not interactive and therefore using a buffered stream to read
+        input (e.g. with an `eval exec 3>output' inside a script), note
+        that the input fd has been changed.  pop_stream() looks at this
+        value and adjusts the input fd to the new value of
+        default_buffered_input accordingly. */
+        bash_input_fd_changed += 1;
+        bash_input_fd_changed;
+    }
+    if default_buffered_input == fd {
+        default_buffered_input = nfd;
+    }
+
+    SET_CLOSE_ON_EXEC!(nfd);
+    return nfd;
+}
