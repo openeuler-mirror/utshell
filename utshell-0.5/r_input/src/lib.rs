@@ -492,3 +492,100 @@ pub unsafe extern "C" fn save_bash_input(
     SET_CLOSE_ON_EXEC!(nfd);
     return nfd;
 }
+
+
+/* Check that file descriptor FD is not the one that bash is currently
+using to read input from a script.  FD is about to be duplicated onto,
+which means that the kernel will close it for us.  If FD is the bash
+input file descriptor, we need to seek backwards in the script (if
+possible and necessary -- scripts read from stdin are still unbuffered),
+allocate a new file descriptor to use for bash input, and re-initialize
+the buffered stream.  Make sure the file descriptor used to save bash
+input is set close-on-exec. Returns 0 on success, -1 on failure.  This
+works only if fd is > 0 -- if fd == 0 and bash is reading input from
+fd 0, sync_buffered_stream is used instead, to cooperate with input
+redirection (look at redir.c:add_undo_redirect()). */
+#[no_mangle]
+pub unsafe extern "C" fn check_bash_input(mut fd: libc::c_int) -> libc::c_int {
+    if fd_is_bash_input(fd) != 0 {
+        if fd > 0 as libc::c_int {
+            return if save_bash_input(fd, -(1 as libc::c_int)) == -(1 as libc::c_int) {
+                -(1 as libc::c_int)
+            } else {
+                0 as libc::c_int
+            };
+        } else if fd == 0 as libc::c_int {
+            return if sync_buffered_stream(fd) == -(1 as libc::c_int) {
+                -(1 as libc::c_int)
+            } else {
+                0 as libc::c_int
+            };
+        }
+    }
+    return 0 as libc::c_int;
+}
+
+/* This is the buffered stream analogue of dup2(fd1, fd2).  The
+BUFFERED_STREAM corresponding to fd2 is deallocated, if one exists.
+BUFFERS[fd1] is copied to BUFFERS[fd2].  This is called by the
+redirect code for constructs like 4<&0 and 3</etc/rc.local. */
+#[no_mangle]
+pub unsafe extern "C" fn duplicate_buffered_stream(
+    mut fd1: libc::c_int,
+    mut fd2: libc::c_int,
+) -> libc::c_int {
+    let mut is_bash_input: libc::c_int = 0;
+    let mut m: libc::c_int = 0;
+
+    if fd1 == fd2 {
+        return 0 as libc::c_int;
+    }
+
+    m = max!(fd1, fd2);
+    ALLOCATE_BUFFERS!(m);
+
+    /* If FD2 is the file descriptor bash is currently using for shell input,
+    we need to do some extra work to make sure that the buffered stream
+    actually exists (it might not if fd1 was not active, and the copy
+    didn't actually do anything). */
+    is_bash_input = (bash_input.type_0 as libc::c_uint == st_bstream as libc::c_int as libc::c_uint
+        && bash_input.location.buffered_fd == fd2) as libc::c_int;
+
+    if !(*buffers.offset(fd2 as isize)).is_null() {
+        /* If the two objects share the same b_buffer, don't free it. */
+        if !(*buffers.offset(fd1 as isize)).is_null()
+            && !((**buffers.offset(fd1 as isize)).b_buffer).is_null()
+            && (**buffers.offset(fd1 as isize)).b_buffer
+                == (**buffers.offset(fd2 as isize)).b_buffer
+        {
+            let ref mut fresh4 = *buffers.offset(fd2 as isize);
+            *fresh4 = 0 as *mut libc::c_void as *mut BUFFERED_STREAM;
+            /* If this buffer is shared with another fd, don't free the buffer */
+        } else if (**buffers.offset(fd2 as isize)).b_flag & B_SHAREDBUF as libc::c_int != 0 {
+            let ref mut fresh5 = (**buffers.offset(fd2 as isize)).b_buffer;
+            *fresh5 = 0 as *mut libc::c_void as *mut libc::c_char;
+            free_buffered_stream(*buffers.offset(fd2 as isize));
+        } else {
+            free_buffered_stream(*buffers.offset(fd2 as isize));
+        }
+    }
+    let ref mut fresh6 = *buffers.offset(fd2 as isize);
+    *fresh6 = copy_buffered_stream(*buffers.offset(fd1 as isize));
+    if !(*buffers.offset(fd2 as isize)).is_null() {
+        (**buffers.offset(fd2 as isize)).b_fd = fd2;
+    }
+    if is_bash_input != 0 {
+        if (*buffers.offset(fd2 as isize)).is_null() {
+            fd_to_buffered_stream(fd2);
+        }
+        (**buffers.offset(fd2 as isize)).b_flag |= B_WASBASHINPUT as libc::c_int;
+    }
+    if fd_is_bash_input(fd1) != 0
+        || !(*buffers.offset(fd1 as isize)).is_null()
+            && (**buffers.offset(fd1 as isize)).b_flag & B_SHAREDBUF as libc::c_int != 0
+    {
+        (**buffers.offset(fd2 as isize)).b_flag |= B_SHAREDBUF as libc::c_int;
+    }
+
+    return fd2;
+}
