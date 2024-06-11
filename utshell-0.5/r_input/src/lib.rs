@@ -369,3 +369,31 @@ unsafe extern "C" fn make_buffered_stream(
     }
     return bp;
 }
+
+/* Allocate a new BUFFERED_STREAM, copy BP to it, and return the new copy. */
+unsafe extern "C" fn copy_buffered_stream(mut bp: *mut BUFFERED_STREAM) -> *mut BUFFERED_STREAM {
+    let mut nbp: *mut BUFFERED_STREAM = 0 as *mut BUFFERED_STREAM;
+
+    if bp.is_null() {
+        return 0 as *mut libc::c_void as *mut BUFFERED_STREAM;
+    }
+
+    nbp = libc::malloc(::core::mem::size_of::<BUFFERED_STREAM>() as libc::c_ulong as usize)
+        as *mut BUFFERED_STREAM;
+    xbcopy(
+        bp as *mut libc::c_char,
+        nbp as *mut libc::c_char,
+        ::core::mem::size_of::<BUFFERED_STREAM>() as libc::c_ulong as libc::c_int,
+    );
+    return nbp;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn set_bash_input_fd(mut fd: libc::c_int) -> libc::c_int {
+    if bash_input.type_0 as libc::c_uint == st_bstream as libc::c_int as libc::c_uint {
+        bash_input.location.buffered_fd = fd;
+    } else if interactive_shell == 0 as libc::c_int {
+        default_buffered_input = fd;
+    }
+    return 0 as libc::c_int;
+}
