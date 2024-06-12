@@ -1765,3 +1765,65 @@ pub unsafe extern "C" fn tilde_initialize() {
         *fresh15 = 0 as *mut libc::c_void as *mut libc::c_char;
     }
 }
+
+unsafe extern "C" fn unquoted_tilde_word(mut s: *const libc::c_char) -> libc::c_int {
+    let mut r: *const libc::c_char = 0 as *const libc::c_char;
+    r = s;
+
+    while TILDE_END!(*r as libc::c_int) as libc::c_int == 0 as libc::c_int {
+        match *r as u8 as char {
+            '\\' | '\'' | '"' => return 0,
+            _ => {}
+        }
+        r = r.offset(1);
+        r;
+    }
+    return 1;
+}
+
+/* Find the end of the tilde-prefix starting at S, and return the tilde
+prefix in newly-allocated memory.  Return the length of the string in
+*LENP.  FLAGS tells whether or not we're in an assignment context --
+if so, `:' delimits the end of the tilde prefix as well. */
+#[no_mangle]
+pub unsafe extern "C" fn bash_tilde_find_word(
+    mut s: *const libc::c_char,
+    mut flags: libc::c_int,
+    mut lenp: *mut libc::c_int,
+) -> *mut libc::c_char {
+    let mut r: *const libc::c_char = 0 as *const libc::c_char;
+    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut l: libc::c_int = 0;
+
+    r = s;
+    while *r as libc::c_int != 0 && *r as libc::c_int != '/' as i32 {
+        /* Short-circuit immediately if we see a quote character.  Even though
+        POSIX says that `the first unquoted slash' (or `:') terminates the
+        tilde-prefix, in practice, any quoted portion of the tilde prefix
+        will cause it to not be expanded. */
+        if *r as libc::c_int == '\\' as i32
+            || *r as libc::c_int == '\'' as i32
+            || *r as libc::c_int == '"' as i32
+        {
+            ret = savestring!(s);
+            if !lenp.is_null() {
+                *lenp = 0 as libc::c_int;
+            }
+            return ret;
+        } else {
+            if flags != 0 && *r as libc::c_int == ':' as i32 {
+                break;
+            }
+            r = r.offset(1);
+            r;
+        }
+    }
+    l = r.offset_from(s) as libc::c_long as libc::c_int;
+    ret = libc::malloc((l + 1 as libc::c_int) as usize) as *mut libc::c_char;
+    strncpy(ret, s, l as libc::c_ulong);
+    *ret.offset(l as isize) = '\0' as i32 as libc::c_char;
+    if !lenp.is_null() {
+        *lenp = l;
+    }
+    return ret;
+}
