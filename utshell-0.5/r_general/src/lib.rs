@@ -1710,3 +1710,58 @@ unsafe extern "C" fn bash_special_tilde_expansions(
     };
 }
 
+/* Initialize the tilde expander.  In Bash, we handle `~-' and `~+', as
+well as handling special tilde prefixes; `:~" and `=~' are indications
+that we should do tilde expansion. */
+#[no_mangle]
+pub unsafe extern "C" fn tilde_initialize() {
+    static mut times_called: libc::c_int = 0 as libc::c_int;
+
+    /* Tell the tilde expander that we want a crack first. */
+    tilde_expansion_preexpansion_hook = ::core::mem::transmute::<
+        Option<unsafe extern "C" fn() -> *mut libc::c_char>,
+        Option<tilde_hook_func_t>,
+    >(Some(::core::mem::transmute::<
+        unsafe extern "C" fn(*mut libc::c_char) -> *mut libc::c_char,
+        unsafe extern "C" fn() -> *mut libc::c_char,
+    >(bash_special_tilde_expansions)));
+
+    /* Tell the tilde expander about special strings which start a tilde
+    expansion, and the special strings that end one.  Only do this once.
+    tilde_initialize () is called from within bashline_reinitialize (). */
+    let fresh5 = times_called;
+    times_called = times_called + 1;
+    if fresh5 == 0 as libc::c_int {
+        bash_tilde_prefixes = strvec_create(3 as libc::c_int);
+        let ref mut fresh6 = *bash_tilde_prefixes.offset(0 as libc::c_int as isize);
+        *fresh6 = b"=~\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+        let ref mut fresh7 = *bash_tilde_prefixes.offset(1 as libc::c_int as isize);
+        *fresh7 = b":~\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+        let ref mut fresh8 = *bash_tilde_prefixes.offset(2 as libc::c_int as isize);
+        *fresh8 = 0 as *mut libc::c_void as *mut libc::c_char;
+
+        bash_tilde_prefixes2 = strvec_create(2 as libc::c_int);
+        let ref mut fresh9 = *bash_tilde_prefixes2.offset(0 as libc::c_int as isize);
+        *fresh9 = b":~\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+        let ref mut fresh10 = *bash_tilde_prefixes2.offset(1 as libc::c_int as isize);
+        *fresh10 = 0 as *mut libc::c_void as *mut libc::c_char;
+
+        tilde_additional_prefixes = bash_tilde_prefixes;
+
+        bash_tilde_suffixes = strvec_create(3 as libc::c_int);
+        let ref mut fresh11 = *bash_tilde_suffixes.offset(0 as libc::c_int as isize);
+        *fresh11 = b":\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+        let ref mut fresh12 = *bash_tilde_suffixes.offset(1 as libc::c_int as isize);
+        *fresh12 = b"=~\0" as *const u8 as *const libc::c_char as *mut libc::c_char; /* XXX - ?? */
+        let ref mut fresh13 = *bash_tilde_suffixes.offset(2 as libc::c_int as isize);
+        *fresh13 = 0 as *mut libc::c_void as *mut libc::c_char;
+
+        tilde_additional_suffixes = bash_tilde_suffixes;
+
+        bash_tilde_suffixes2 = strvec_create(2 as libc::c_int);
+        let ref mut fresh14 = *bash_tilde_suffixes2.offset(0 as libc::c_int as isize);
+        *fresh14 = b":\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+        let ref mut fresh15 = *bash_tilde_suffixes2.offset(1 as libc::c_int as isize);
+        *fresh15 = 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+}
