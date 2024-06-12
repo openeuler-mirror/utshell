@@ -641,3 +641,35 @@ pub unsafe extern "C" fn fd_to_buffered_stream(mut fd: libc::c_int) -> *mut BUFF
 
     return make_buffered_stream(fd, buffer, size);
 }
+
+/* Return a buffered stream corresponding to FILE, a file name. */
+#[no_mangle]
+pub unsafe extern "C" fn open_buffered_stream(mut file: *mut libc::c_char) -> *mut BUFFERED_STREAM {
+    let mut fd: libc::c_int = 0;
+
+    fd = open(file, O_RDONLY);
+    return if fd >= 0 as libc::c_int {
+        fd_to_buffered_stream(fd)
+    } else {
+        0 as *mut libc::c_void as *mut BUFFERED_STREAM
+    };
+}
+
+/* Deallocate a buffered stream and free up its resources.  Make sure we
+zero out the slot in BUFFERS that points to BP. */
+#[no_mangle]
+pub unsafe extern "C" fn free_buffered_stream(mut bp: *mut BUFFERED_STREAM) {
+    let mut n: libc::c_int = 0;
+
+    if bp.is_null() {
+        return;
+    }
+
+    n = (*bp).b_fd;
+    if !((*bp).b_buffer).is_null() {
+        libc::free((*bp).b_buffer as *mut libc::c_void);
+    }
+    libc::free(bp as *mut libc::c_void);
+    let ref mut fresh7 = *buffers.offset(n as isize);
+    *fresh7 = 0 as *mut libc::c_void as *mut BUFFERED_STREAM;
+}
