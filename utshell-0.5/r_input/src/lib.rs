@@ -589,3 +589,55 @@ pub unsafe extern "C" fn duplicate_buffered_stream(
 
     return fd2;
 }
+
+/* Take FD, a file descriptor, and create and return a buffered stream
+corresponding to it.  If something is wrong and the file descriptor
+is invalid, return a NULL stream. */
+#[no_mangle]
+pub unsafe extern "C" fn fd_to_buffered_stream(mut fd: libc::c_int) -> *mut BUFFERED_STREAM {
+    let mut buffer: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut size: size_t = 0;
+    let mut sb: stat = stat {
+        st_dev: 0,
+        st_ino: 0,
+        st_nlink: 0,
+        st_mode: 0,
+        st_uid: 0,
+        st_gid: 0,
+        __pad0: 0,
+        st_rdev: 0,
+        st_size: 0,
+        st_blksize: 0,
+        st_blocks: 0,
+        st_atim: timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_mtim: timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_ctim: timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        __glibc_reserved: [0; 3],
+    };
+
+    if fstat(fd, &mut sb) < 0 as libc::c_int {
+        close(fd);
+        return 0 as *mut libc::c_void as *mut BUFFERED_STREAM;
+    }
+
+    size = (if fd_is_seekable!(fd) {
+        min!(sb.st_size, MAX_INPUT_BUFFER_SIZE as libc::c_long)
+    } else {
+        1 as libc::c_int as libc::c_long
+    }) as size_t;
+    if size == 0 as libc::c_int as libc::c_ulong {
+        size = 1 as libc::c_int as size_t;
+    }
+    buffer = libc::malloc(size as usize) as *mut libc::c_char;
+
+    return make_buffered_stream(fd, buffer, size);
+}
