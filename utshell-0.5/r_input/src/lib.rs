@@ -673,3 +673,50 @@ pub unsafe extern "C" fn free_buffered_stream(mut bp: *mut BUFFERED_STREAM) {
     let ref mut fresh7 = *buffers.offset(n as isize);
     *fresh7 = 0 as *mut libc::c_void as *mut BUFFERED_STREAM;
 }
+
+
+/* Close the file descriptor associated with BP, a buffered stream, and free
+up the stream.  Return the status of closing BP's file descriptor. */
+#[no_mangle]
+pub unsafe extern "C" fn close_buffered_stream(mut bp: *mut BUFFERED_STREAM) -> libc::c_int {
+    let mut fd: libc::c_int = 0;
+
+    if bp.is_null() {
+        return 0 as libc::c_int;
+    }
+    fd = (*bp).b_fd;
+    if (*bp).b_flag & B_SHAREDBUF as libc::c_int != 0 {
+        (*bp).b_buffer = 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+    free_buffered_stream(bp);
+    return close(fd);
+}
+
+/* Deallocate the buffered stream associated with file descriptor FD, and
+close FD.  Return the status of the close on FD. */
+#[no_mangle]
+pub unsafe extern "C" fn close_buffered_fd(mut fd: libc::c_int) -> libc::c_int {
+    if fd < 0 as libc::c_int {
+        *__errno_location() = EBADF;
+        return -(1 as libc::c_int);
+    }
+    if fd >= nbuffers || buffers.is_null() || (*buffers.offset(fd as isize)).is_null() {
+        return close(fd);
+    }
+    return close_buffered_stream(*buffers.offset(fd as isize));
+}
+
+/* Make the BUFFERED_STREAM associated with buffers[FD] be BP, and return
+the old BUFFERED_STREAM. */
+#[no_mangle]
+pub unsafe extern "C" fn set_buffered_stream(
+    mut fd: libc::c_int,
+    mut bp: *mut BUFFERED_STREAM,
+) -> *mut BUFFERED_STREAM {
+    let mut ret: *mut BUFFERED_STREAM = 0 as *mut BUFFERED_STREAM;
+
+    ret = *buffers.offset(fd as isize);
+    let ref mut fresh8 = *buffers.offset(fd as isize);
+    *fresh8 = bp;
+    return ret;
+}
