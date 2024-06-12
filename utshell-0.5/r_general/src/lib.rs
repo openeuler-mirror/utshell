@@ -1586,3 +1586,127 @@ pub unsafe extern "C" fn trim_pathname(
 
     return name;
 }
+
+/* Return a printable representation of FN without special characters.  The
+caller is responsible for freeing memory if this returns something other
+than its argument.  If FLAGS is non-zero, we are printing for portable
+re-input and should single-quote filenames appropriately. */
+#[no_mangle]
+pub unsafe extern "C" fn printable_filename(
+    mut fn_0: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut libc::c_char {
+    let mut newf: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    if ansic_shouldquote(fn_0) != 0 {
+        newf = ansic_quote(fn_0, 0 as libc::c_int, 0 as *mut libc::c_int);
+    } else if flags != 0 && sh_contains_shell_metas(fn_0) != 0 {
+        newf = sh_single_quote(fn_0);
+    } else {
+        newf = fn_0;
+    }
+
+    return newf;
+}
+
+/* Given a string containing units of information separated by colons,
+return the next one pointed to by (P_INDEX), or NULL if there are no more.
+Advance (P_INDEX) to the character after the colon. */
+#[no_mangle]
+pub unsafe extern "C" fn extract_colon_unit(
+    mut string: *mut libc::c_char,
+    mut p_index: *mut libc::c_int,
+) -> *mut libc::c_char {
+    let mut i: libc::c_int = 0;
+    let mut start: libc::c_int = 0;
+    let mut len: libc::c_int = 0;
+    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    if string.is_null() {
+        return string;
+    }
+
+    len = strlen(string) as libc::c_int;
+    if *p_index >= len {
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+
+    i = *p_index;
+
+    /* Each call to this routine leaves the index pointing at a colon if
+    there is more to the path.  If I is > 0, then increment past the
+    `:'.  If I is 0, then the path has a leading colon.  Trailing colons
+    are handled OK by the `else' part of the if statement; an empty
+    string is returned in that case. */
+    if i != 0 && *string.offset(i as isize) as libc::c_int == ':' as i32 {
+        i += 1;
+        i;
+    }
+
+    start = i;
+    while *string.offset(i as isize) as libc::c_int != 0
+        && *string.offset(i as isize) as libc::c_int != ':' as i32
+    {
+        i += 1;
+        i;
+    }
+
+    *p_index = i;
+
+    if i == start {
+        if *string.offset(i as isize) != 0 {
+            *p_index += 1;
+            *p_index;
+        }
+        /* Return "" in the case of a trailing `:'. */
+        value = libc::malloc(1 as usize) as *mut libc::c_char;
+        *value.offset(0 as libc::c_int as isize) = '\0' as i32 as libc::c_char;
+    } else {
+        value = substring(string, start, i);
+    }
+
+    return value;
+}
+
+static mut bash_tilde_prefixes: *mut *mut libc::c_char =
+    0 as *const *mut libc::c_char as *mut *mut libc::c_char;
+static mut bash_tilde_prefixes2: *mut *mut libc::c_char =
+    0 as *const *mut libc::c_char as *mut *mut libc::c_char;
+static mut bash_tilde_suffixes: *mut *mut libc::c_char =
+    0 as *const *mut libc::c_char as *mut *mut libc::c_char;
+static mut bash_tilde_suffixes2: *mut *mut libc::c_char =
+    0 as *const *mut libc::c_char as *mut *mut libc::c_char;
+
+/* If tilde_expand hasn't been able to expand the text, perhaps it
+is a special shell expansion.  This function is installed as the
+tilde_expansion_preexpansion_hook.  It knows how to expand ~- and ~+.
+If PUSHD_AND_POPD is defined, ~[+-]N expands to directories from the
+directory stack. */
+unsafe extern "C" fn bash_special_tilde_expansions(
+    mut text: *mut libc::c_char,
+) -> *mut libc::c_char {
+    let mut result: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    result = 0 as *mut libc::c_void as *mut libc::c_char;
+    if *text.offset(0 as libc::c_int as isize) as libc::c_int == '+' as i32
+        && *text.offset(1 as libc::c_int as isize) as libc::c_int == '\0' as i32
+    {
+        result = get_string_value(b"PWD\0" as *const u8 as *const libc::c_char);
+    } else if *text.offset(0 as libc::c_int as isize) as libc::c_int == '-' as i32
+        && *text.offset(1 as libc::c_int as isize) as libc::c_int == '\0' as i32
+    {
+        result = get_string_value(b"OLDPWD\0" as *const u8 as *const libc::c_char);
+    } else if DIGIT!(*text)
+        || (*text as libc::c_int == '+' as i32 || *text as libc::c_int == '-' as i32)
+            && DIGIT!(*text.offset(1 as libc::c_int as isize))
+    {
+        result = get_dirstack_from_string(text);
+    }
+
+    return if !result.is_null() {
+        savestring!(result)
+    } else {
+        0 as *mut libc::c_void as *mut libc::c_char
+    };
+}
+
