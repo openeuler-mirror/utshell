@@ -1939,3 +1939,34 @@ unsafe extern "C" fn initialize_group_array() {
         }
     }
 }
+
+/* Return non-zero if GID is one that we have in our groups list. */
+#[no_mangle]
+pub unsafe extern "C" fn group_member(mut gid: gid_t) -> libc::c_int {
+    let mut i: libc::c_int = 0;
+
+    /* Short-circuit if possible, maybe saving a call to getgroups(). */
+    if gid == current_user.gid || gid == current_user.egid {
+        return 1 as libc::c_int;
+    }
+    if ngroups == 0 as libc::c_int {
+        initialize_group_array();
+    }
+
+    /* In case of error, the user loses. */
+    if ngroups <= 0 as libc::c_int {
+        return 0 as libc::c_int;
+    }
+
+    /* Search through the list looking for GID. */
+    i = 0 as libc::c_int;
+    while i < ngroups {
+        if gid == *group_array.offset(i as isize) {
+            return 1 as libc::c_int;
+        }
+        i += 1;
+        i;
+    }
+
+    return 0 as libc::c_int;
+}
