@@ -1827,3 +1827,43 @@ pub unsafe extern "C" fn bash_tilde_find_word(
     }
     return ret;
 }
+
+/* Tilde-expand S by running it through the tilde expansion library.
+ASSIGN_P is 1 if this is a variable assignment, so the alternate
+tilde prefixes should be enabled (`=~' and `:~', see above).  If
+ASSIGN_P is 2, we are expanding the rhs of an assignment statement,
+so `=~' is not valid. */
+#[no_mangle]
+pub unsafe extern "C" fn bash_tilde_expand(
+    mut s: *const libc::c_char,
+    mut assign_p: libc::c_int,
+) -> *mut libc::c_char {
+    let mut r: libc::c_int = 0;
+    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    tilde_additional_prefixes = if assign_p == 0 as libc::c_int {
+        0 as *mut *mut libc::c_char
+    } else if assign_p == 2 as libc::c_int {
+        bash_tilde_prefixes2
+    } else {
+        bash_tilde_prefixes
+    };
+    if assign_p == 2 as libc::c_int {
+        tilde_additional_suffixes = bash_tilde_suffixes2;
+    }
+
+    r = if *s as libc::c_int == '~' as i32 {
+        unquoted_tilde_word(s)
+    } else {
+        1 as libc::c_int
+    };
+    ret = if r != 0 {
+        tilde_expand(s)
+    } else {
+        savestring!(s)
+    };
+
+    QUIT!();
+
+    return ret;
+}
