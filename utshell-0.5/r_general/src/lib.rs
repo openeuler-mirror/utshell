@@ -1867,3 +1867,75 @@ pub unsafe extern "C" fn bash_tilde_expand(
 
     return ret;
 }
+
+/* **************************************************************** */
+/*								    */
+/*	  Functions to manipulate and search the group list	    */
+/*								    */
+/* **************************************************************** */
+
+static mut ngroups: libc::c_int = 0;
+static mut maxgroups: libc::c_int = 0;
+
+/* The set of groups that this user is a member of. */
+static mut group_array: *mut gid_t = 0 as *const libc::c_void as *mut libc::c_void as *mut gid_t;
+
+unsafe extern "C" fn initialize_group_array() {
+    let mut i: libc::c_int = 0;
+
+    if maxgroups == 0 as libc::c_int {
+        maxgroups = getmaxgroups();
+    }
+
+    ngroups = 0 as libc::c_int;
+    group_array = libc::realloc(
+        group_array as *mut libc::c_void,
+        ((maxgroups as libc::c_ulong)
+            .wrapping_mul(::core::mem::size_of::<gid_t>() as libc::c_ulong)) as usize,
+    ) as *mut gid_t;
+
+    ngroups = getgroups(maxgroups, group_array);
+
+    /* If getgroups returns nothing, or the OS does not support getgroups(),
+    make sure the groups array includes at least the current gid. */
+    if ngroups == 0 as libc::c_int {
+        *group_array.offset(0 as libc::c_int as isize) = current_user.gid;
+        ngroups = 1 as libc::c_int;
+    }
+
+    /* If the primary group is not in the groups array, add it as group_array[0]
+    and shuffle everything else up 1, if there's room. */
+    i = 0 as libc::c_int;
+    while i < ngroups {
+        if current_user.gid == *group_array.offset(i as isize) {
+            break;
+        }
+        i += 1;
+        i;
+    }
+    if i == ngroups && ngroups < maxgroups {
+        i = ngroups;
+        while i > 0 as libc::c_int {
+            *group_array.offset(i as isize) = *group_array.offset((i - 1 as libc::c_int) as isize);
+            i -= 1;
+            i;
+        }
+        *group_array.offset(0 as libc::c_int as isize) = current_user.gid;
+        ngroups += 1;
+        ngroups;
+    }
+    if *group_array.offset(0 as libc::c_int as isize) != current_user.gid {
+        i = 0 as libc::c_int;
+        while i < ngroups {
+            if *group_array.offset(i as isize) == current_user.gid {
+                break;
+            }
+            i += 1;
+            i;
+        }
+        if i < ngroups {
+            *group_array.offset(i as isize) = *group_array.offset(0 as libc::c_int as isize);
+            *group_array.offset(0 as libc::c_int as isize) = current_user.gid;
+        }
+    }
+}
