@@ -1,0 +1,16 @@
+# .utshellrc
+
+# User specific aliases and functions
+
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+# 设置历史命令保存地址
+export HISTFILE=~/.utshell_history
+
+
+# Source global definitions
+if [ -f /etc/utshellrc ]; then
+	. /etc/utshellrc
+fi

@@ -1,0 +1,1808 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
+use crate::arrayfunc::{array_variable_name, valid_array_reference};
+use crate::builtins::{
+    pushd::get_dirstack_from_string,
+    source::{source_searches_cwd, source_uses_path},
+};
+use crate::readline::*;
+use crate::src_common::*;
+use crate::stringlib::substring;
+use crate::subst::skipsubscript;
+use crate::variables::get_string_value;
+use crate::y_tab::expand_aliases;
+
+//add by bgz
+#[link(name = "history")]
+#[link(name = "readline")]
+extern "C" {
+    pub fn sh_unset_nodelay_mode(_: libc::c_int) -> libc::c_int;
+}
+//end of bgz
+
+#[macro_export]
+macro_rules! legal_variable_starter {
+    ($c: expr) => {
+        (ISALPHA!($c) || ($c as i32 == '_' as i32))
+    };
+}
+#[macro_export]
+macro_rules! legal_variable_char {
+    ($c: expr) => {
+        (ISALNUM!($c) || ($c as i32 == '_' as i32))
+    };
+}
+#[macro_export]
+macro_rules! ISALNUM {
+    ($c:expr) => {
+        IN_CTYPE_DOMAIN!($c) != false && isalnum!($c) != 0 as libc::c_int
+    };
+}
+#[macro_export]
+macro_rules! isalnum {
+    ($c:expr) => {
+        __isctype_f!($c, _ISalnum)
+    };
+}
+
+#[inline]
+fn strtoimax(
+    mut nptr: *const libc::c_char,
+    mut endptr: *mut *mut libc::c_char,
+    mut base: libc::c_int,
+) -> intmax_t {
+    unsafe {
+        return __strtol_internal(nptr, endptr, base, 0 as libc::c_int);
+    }
+}
+
+#[inline]
+fn stat(
+    mut __path: *const libc::c_char,
+    mut __statbuf: *mut crate::src_common::stat,
+) -> libc::c_int {
+    unsafe {
+        return __xstat(1 as libc::c_int, __path, __statbuf);
+    }
+}
+
+#[inline]
+fn atoi(mut __nptr: *const libc::c_char) -> libc::c_int {
+    unsafe {
+        return strtol(
+            __nptr,
+            0 as *mut libc::c_void as *mut *mut libc::c_char,
+            10 as libc::c_int,
+        ) as libc::c_int;
+    }
+}
+
+/* A standard error message to use when getcwd() returns NULL. */
+#[no_mangle]
+pub static mut bash_getcwd_errstr: *const libc::c_char =
+    b"getcwd: cannot access parent directories\0" as *const u8 as *const libc::c_char;
+
+/* Do whatever is necessary to initialize `Posix mode'.  This currently
+ modifies the following variables which are controlled via shopt:
+    interactive_comments
+    source_uses_path
+    expand_aliases
+    inherit_errexit
+    print_shift_error
+    posixglob
+
+ and the following variables which cannot be user-modified:
+
+    source_searches_cwd
+
+If we add to the first list, we need to change the table and functions
+below */
+static mut posix_vars: [C2RustUnnamed_1; 6] = unsafe {
+    [
+        {
+            let mut init = C2RustUnnamed_1 {
+                posix_mode_var: &interactive_comments as *const libc::c_int as *mut libc::c_int,
+            };
+            init
+        },
+        {
+            let mut init = C2RustUnnamed_1 {
+                posix_mode_var: &source_uses_path as *const libc::c_int as *mut libc::c_int,
+            };
+            init
+        },
+        {
+            let mut init = C2RustUnnamed_1 {
+                posix_mode_var: &expand_aliases as *const libc::c_int as *mut libc::c_int,
+            };
+            init
+        },
+        {
+            let mut init = C2RustUnnamed_1 {
+                posix_mode_var: &inherit_errexit as *const libc::c_int as *mut libc::c_int,
+            };
+            init
+        },
+        {
+            let mut init = C2RustUnnamed_1 {
+                posix_mode_var: &print_shift_error as *const libc::c_int as *mut libc::c_int,
+            };
+            init
+        },
+        {
+            let mut init = C2RustUnnamed_1 {
+                posix_mode_var: 0 as *const libc::c_int as *mut libc::c_int,
+            };
+            init
+        },
+    ]
+};
+
+static mut saved_posix_vars: *mut libc::c_char = 0 as *const libc::c_char as *mut libc::c_char;
+
+#[no_mangle]
+pub fn posix_initialize(mut on: libc::c_int) {
+    /* Things that should be turned on when posix mode is enabled. */
+    unsafe {
+        if on != 0 as libc::c_int {
+            expand_aliases = 1 as libc::c_int;
+            source_uses_path = expand_aliases;
+            interactive_comments = source_uses_path;
+            inherit_errexit = 1 as libc::c_int;
+            source_searches_cwd = 0 as libc::c_int;
+            print_shift_error = 1 as libc::c_int;
+
+            /* Things that should be turned on when posix mode is disabled. */
+        } else if !saved_posix_vars.is_null() {
+            set_posix_options(saved_posix_vars);
+            libc::free(saved_posix_vars as *mut libc::c_void);
+            saved_posix_vars = 0 as *mut libc::c_char;
+        } else {
+            /* on == 0, restore a default set of settings */
+            source_searches_cwd = 1 as libc::c_int;
+            expand_aliases = interactive_shell;
+            print_shift_error = 0 as libc::c_int;
+        };
+    }
+}
+
+#[no_mangle]
+pub fn num_posix_options() -> libc::c_int {
+    return (::core::mem::size_of::<[C2RustUnnamed_1; 6]>() as libc::c_ulong)
+        .wrapping_div(::core::mem::size_of::<C2RustUnnamed_1>() as libc::c_ulong)
+        .wrapping_sub(1 as libc::c_int as libc::c_ulong) as libc::c_int;
+}
+
+#[no_mangle]
+pub fn get_posix_options(mut bitmap: *mut libc::c_char) -> *mut libc::c_char {
+    let mut i: libc::c_int = 0;
+    unsafe {
+        if bitmap.is_null() {
+            bitmap = libc::malloc(num_posix_options() as usize) as *mut libc::c_char;
+            /* no trailing NULL */
+        }
+        i = 0 as libc::c_int;
+        while !(posix_vars[i as usize].posix_mode_var).is_null() {
+            *bitmap.offset(i as isize) = *posix_vars[i as usize].posix_mode_var as libc::c_char;
+            i += 1;
+            i;
+        }
+    }
+    return bitmap;
+}
+
+#[no_mangle]
+pub fn save_posix_options() {
+    unsafe {
+        saved_posix_vars = get_posix_options(saved_posix_vars);
+    }
+}
+
+#[no_mangle]
+pub fn set_posix_options(mut bitmap: *const libc::c_char) {
+    let mut i: libc::c_int = 0;
+
+    i = 0 as libc::c_int;
+    unsafe {
+        while !(posix_vars[i as usize].posix_mode_var).is_null() {
+            *posix_vars[i as usize].posix_mode_var = *bitmap.offset(i as isize) as libc::c_int;
+            i += 1;
+            i;
+        }
+    }
+}
+
+/* **************************************************************** */
+/*								    */
+/*  Functions to convert to and from and display non-standard types */
+/*								    */
+/* **************************************************************** */
+#[no_mangle]
+pub fn string_to_rlimtype(mut s: *mut libc::c_char) -> rlim_t {
+    let mut ret: rlim_t = 0 as rlim_t;
+    let mut neg: libc::c_int = 0;
+    unsafe {
+        while !s.is_null() && *s as libc::c_int != 0 && whitespace!(*s) {
+            s = s.offset(1);
+            s;
+        }
+        if !s.is_null() && (*s as libc::c_int == '-' as i32 || *s as libc::c_int == '+' as i32) {
+            neg = (*s as libc::c_int == '-' as i32) as libc::c_int;
+            s = s.offset(1);
+            s;
+        }
+        while !s.is_null() && *s as libc::c_int != 0 && DIGIT!(*s) {
+            ret = ret
+                .wrapping_mul(10 as libc::c_int as libc::c_ulong)
+                .wrapping_add((TODIGIT!(*s)) as libc::c_ulong);
+            s = s.offset(1);
+            s;
+        }
+        return if neg != 0 { ret.wrapping_neg() } else { ret };
+    }
+}
+
+#[no_mangle]
+pub fn print_rlimtype(mut n: rlim_t, mut addnl: libc::c_int) {
+    let mut s: [libc::c_char; 21] = [0; 21];
+    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    unsafe {
+        p = s
+            .as_mut_ptr()
+            .offset(::core::mem::size_of::<[libc::c_char; 21]>() as libc::c_ulong as isize);
+        p = p.offset(-1);
+        *p = '\0' as i32 as libc::c_char;
+
+        if n < 0 as libc::c_int as libc::c_ulong {
+            loop {
+                p = p.offset(-1);
+                *p = ('0' as i32 as libc::c_ulong)
+                    .wrapping_sub(n.wrapping_rem(10 as libc::c_int as libc::c_ulong))
+                    as libc::c_char;
+                n = (n as libc::c_ulong).wrapping_div(10 as libc::c_int as libc::c_ulong) as rlim_t
+                    as rlim_t;
+                if !(n != 0 as libc::c_int as libc::c_ulong) {
+                    break;
+                }
+            }
+            p = p.offset(-1);
+            *p = '-' as i32 as libc::c_char;
+        } else {
+            loop {
+                p = p.offset(-1);
+                *p = ('0' as i32 as libc::c_ulong)
+                    .wrapping_add(n.wrapping_rem(10 as libc::c_int as libc::c_ulong))
+                    as libc::c_char;
+                n = (n as libc::c_ulong).wrapping_div(10 as libc::c_int as libc::c_ulong) as rlim_t
+                    as rlim_t;
+                if !(n != 0 as libc::c_int as libc::c_ulong) {
+                    break;
+                }
+            }
+        }
+
+        printf(
+            b"%s%s\0" as *const u8 as *const libc::c_char,
+            p,
+            if addnl != 0 {
+                b"\n\0" as *const u8 as *const libc::c_char
+            } else {
+                b"\0" as *const u8 as *const libc::c_char
+            },
+        );
+    }
+}
+
+/* **************************************************************** */
+/*								    */
+/*		       Input Validation Functions		    */
+/*								    */
+/* **************************************************************** */
+
+/* Return non-zero if all of the characters in STRING are digits. */
+#[no_mangle]
+pub fn all_digits(mut string: *const libc::c_char) -> libc::c_int {
+    let mut s: *const libc::c_char = 0 as *const libc::c_char;
+
+    s = string;
+    unsafe {
+        while *s != 0 {
+            if DIGIT!(*s) as libc::c_int == 0 {
+                return 0;
+            }
+            s = s.offset(1);
+            s;
+        }
+    }
+    return 1;
+}
+
+/* Return non-zero if the characters pointed to by STRING constitute a
+valid number.  Stuff the converted number into RESULT if RESULT is
+not null. */
+#[no_mangle]
+pub fn legal_number(mut string: *const libc::c_char, mut result: *mut intmax_t) -> libc::c_int {
+    let mut value: intmax_t = 0;
+    let mut ep: *mut libc::c_char = 0 as *mut libc::c_char;
+    unsafe {
+        if !result.is_null() {
+            *result = 0 as intmax_t;
+        }
+
+        if string.is_null() {
+            return 0;
+        }
+
+        *__errno_location() = 0;
+        value = strtoimax(string, &mut ep, 10);
+        if *__errno_location() != 0 || ep == string as *mut libc::c_char {
+            return 0; /* errno is set on overflow or underflow */
+        }
+
+        /* Skip any trailing whitespace, since strtoimax does not. */
+        while *ep as libc::c_int == ' ' as i32 || *ep as libc::c_int == '\t' as i32 {
+            ep = ep.offset(1);
+            ep;
+        }
+
+        /* If *string is not '\0' but *ep is '\0' on return, the entire string
+        is valid. */
+        if *string as libc::c_int != 0 && *ep as libc::c_int == '\0' as i32 {
+            if !result.is_null() {
+                *result = value;
+            }
+            /* The SunOS4 implementation of strtol() will happily ignore
+            overflow conditions, so this cannot do overflow correctly
+            on those systems. */
+            return 1;
+        }
+
+        return 0;
+    }
+}
+
+/* Return 1 if this token is a legal shell `identifier'; that is, it consists
+solely of letters, digits, and underscores, and does not begin with a
+digit. */
+#[no_mangle]
+pub fn legal_identifier(mut name: *const libc::c_char) -> libc::c_int {
+    let mut s: *const libc::c_char = 0 as *const libc::c_char;
+    let mut c: libc::c_uchar = 0;
+    unsafe {
+        if name.is_null()
+            || {
+                c = *name as libc::c_uchar;
+                c == 0
+            }
+            || legal_variable_starter!(c) as libc::c_int == 0 as libc::c_int
+        {
+            return 0;
+        }
+
+        s = name.offset(1 as isize);
+        loop {
+            c = *s as libc::c_uchar;
+            if !(c as libc::c_int != 0 as libc::c_int) {
+                break;
+            }
+            if legal_variable_char!(c) as libc::c_int == 0 as libc::c_int {
+                return 0 as libc::c_int;
+            }
+            s = s.offset(1);
+            s;
+        }
+        return 1;
+    }
+}
+
+/* Return 1 if NAME is a valid value that can be assigned to a nameref
+variable.  FLAGS can be 2, in which case the name is going to be used
+to create a variable.  Other values are currently unused, but could
+be used to allow values to be stored and indirectly referenced, but
+not used in assignments. */
+#[no_mangle]
+pub fn valid_nameref_value(mut name: *const libc::c_char, mut flags: libc::c_int) -> libc::c_int {
+    unsafe {
+        if name.is_null() || *name as libc::c_int == 0 as libc::c_int {
+            return 0;
+        }
+
+        /* valid identifier */
+        if legal_identifier(name) != 0
+            || flags != 2 as libc::c_int && valid_array_reference(name, 0 as libc::c_int) != 0
+        {
+            return 1;
+        }
+        return 0;
+    }
+}
+
+#[no_mangle]
+pub fn check_selfref(
+    mut name: *const libc::c_char,
+    mut value: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> libc::c_int {
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    unsafe {
+        if STREQ!(name, value) {
+            return 1;
+        }
+
+        if valid_array_reference(value, 0 as libc::c_int) != 0 {
+            t = array_variable_name(
+                value,
+                0 as libc::c_int,
+                0 as *mut libc::c_void as *mut *mut libc::c_char,
+                0 as *mut libc::c_void as *mut libc::c_int,
+            );
+            if !t.is_null() && STREQ!(name, t) {
+                libc::free(t as *mut libc::c_void);
+                return 1;
+            }
+            libc::free(t as *mut libc::c_void);
+        }
+    }
+    return 0; /* not a self reference */
+}
+
+/* Make sure that WORD is a valid shell identifier, i.e.
+does not contain a dollar sign, nor is quoted in any way.
+If CHECK_WORD is non-zero,
+the word is checked to ensure that it consists of only letters,
+digits, and underscores, and does not consist of all digits. */
+#[no_mangle]
+pub fn check_identifier(mut word: *mut WORD_DESC, mut check_word: libc::c_int) -> libc::c_int {
+    /* XXX - HASDOLLAR? */
+    unsafe {
+        if (*word).flags & (W_HASDOLLAR | W_QUOTED) != 0 {
+            internal_error(
+                dcgettext(
+                    0 as *const libc::c_char,
+                    b"`%s': not a valid identifier\0" as *const u8 as *const libc::c_char,
+                    5 as libc::c_int,
+                ),
+                (*word).word,
+            );
+            return 0;
+        } else if check_word != 0
+            && (all_digits((*word).word) != 0 || legal_identifier((*word).word) == 0 as libc::c_int)
+        {
+            internal_error(
+                dcgettext(
+                    0 as *const libc::c_char,
+                    b"`%s': not a valid identifier\0" as *const u8 as *const libc::c_char,
+                    5 as libc::c_int,
+                ),
+                (*word).word,
+            );
+            return 0;
+        } else {
+            return 1;
+        };
+    }
+}
+
+/* Return 1 if STRING is a function name that the shell will import from
+the environment.  Currently we reject attempts to import shell functions
+containing slashes, beginning with newlines or containing blanks.  In
+Posix mode, we require that STRING be a valid shell identifier.  Not
+used yet. */
+#[no_mangle]
+pub fn importable_function_name(mut string: *const libc::c_char, mut len: size_t) -> libc::c_int {
+    if absolute_program(string) != 0 {
+        /* don't allow slash */
+        return 0;
+    }
+    unsafe {
+        if *string as libc::c_int == '\n' as i32 {
+            /* can't start with a newline */
+            return 0;
+        }
+        if shellblank!(*string as libc::c_uchar as isize) != 0
+            || shellblank!(len.wrapping_sub(1 as libc::c_ulong) as isize) != 0
+        {
+            return 0;
+        }
+        return if posixly_correct != 0 {
+            legal_identifier(string)
+        } else {
+            1
+        };
+    }
+}
+
+#[no_mangle]
+pub fn exportable_function_name(mut string: *const libc::c_char) -> libc::c_int {
+    if absolute_program(string) != 0 {
+        return 0;
+    }
+    if unsafe { !(mbschr(string, '=' as i32)).is_null() } {
+        return 0;
+    }
+    return 1;
+}
+
+/* Return 1 if STRING comprises a valid alias name.  The shell accepts
+essentially all characters except those which must be quoted to the
+parser (which disqualifies them from alias expansion anyway) and `/'. */
+#[no_mangle]
+pub fn legal_alias_name(mut string: *const libc::c_char, mut flags: libc::c_int) -> libc::c_int {
+    let mut s: *const libc::c_char = 0 as *const libc::c_char;
+    s = string;
+    unsafe {
+        while *s != 0 {
+            if shellbreak!(*s as libc::c_uchar as isize) != 0
+                || shellxquote!(*s as libc::c_uchar as isize) != 0
+                || shellexp!(*s as libc::c_int)
+                || *s as libc::c_int == '/' as i32
+            {
+                return 0;
+            }
+            s = s.offset(1);
+            s;
+        }
+    }
+    return 1;
+}
+
+/* Returns non-zero if STRING is an assignment statement.  The returned value
+is the index of the `=' sign.  If FLAGS&1 we are expecting a compound assignment
+and require an array subscript before the `=' to denote an assignment
+statement. */
+#[no_mangle]
+pub fn assignment(mut string: *const libc::c_char, mut flags: libc::c_int) -> libc::c_int {
+    let mut c: libc::c_uchar = 0;
+    let mut newi: libc::c_int = 0;
+    let mut indx: libc::c_int = 0;
+    unsafe {
+        indx = 0;
+        c = *string.offset(indx as isize) as libc::c_uchar;
+
+        /* If parser_state includes PST_COMPASSIGN, FLAGS will include 1, so we are
+        parsing the contents of a compound assignment. If parser_state includes
+        PST_REPARSE, we are in the middle of an assignment statement and breaking
+        the words between the parens into words and assignment statements, but
+        we don't need to check for that right now. Within a compound assignment,
+        the subscript is required to make the word an assignment statement. If
+        we don't have a subscript, even if the word is a valid assignment
+        statement otherwise, we don't want to treat it as one. */
+
+        if flags & 1 != 0 && c as libc::c_int != '[' as i32 {
+            return 0;
+        } else if flags & 1 == 0 && legal_variable_starter!(c) as libc::c_int == 0 as libc::c_int {
+            return 0;
+        }
+
+        loop {
+            c = *string.offset(indx as isize) as libc::c_uchar;
+            if !(c != 0) {
+                break;
+            }
+            /* The following is safe.  Note that '=' at the start of a word
+            is not an assignment statement. */
+            if c as libc::c_int == '=' as i32 {
+                return indx;
+            }
+
+            if c as libc::c_int == '[' as i32 {
+                newi = skipsubscript(string, indx, if flags & 2 != 0 { 1 } else { 0 });
+                /* XXX - why not check for blank subscripts here, if we do in
+                valid_array_reference? */
+                let fresh0 = newi;
+                newi = newi + 1;
+                if *string.offset(fresh0 as isize) as libc::c_int != ']' as i32 {
+                    return 0 as libc::c_int;
+                }
+                if *string.offset(newi as isize) as libc::c_int == '+' as i32
+                    && *string.offset((newi + 1 as libc::c_int) as isize) as libc::c_int
+                        == '=' as i32
+                {
+                    return newi + 1 as libc::c_int;
+                }
+                return if *string.offset(newi as isize) as libc::c_int == '=' as i32 {
+                    newi
+                } else {
+                    0 as libc::c_int
+                };
+            }
+
+            /* Check for `+=' */
+            if c as libc::c_int == '+' as i32
+                && *string.offset((indx + 1 as libc::c_int) as isize) as libc::c_int == '=' as i32
+            {
+                return indx + 1 as libc::c_int;
+            }
+
+            /* Variable names in assignment statements may contain only letters,
+            digits, and `_'. */
+            if legal_variable_char!(c) as libc::c_int == 0 as libc::c_int {
+                return 0;
+            }
+            indx += 1;
+            indx;
+        }
+        return 0;
+    }
+}
+
+#[no_mangle]
+pub fn line_isblank(mut line: *const libc::c_char) -> libc::c_int {
+    let mut i: libc::c_int = 0;
+
+    if line.is_null() {
+        return 0; /* XXX */
+    }
+
+    i = 0;
+    unsafe {
+        while *line.offset(i as isize) != 0 {
+            if isblank!(*line.offset(i as isize) as libc::c_uchar as libc::c_int as isize)
+                == 0 as libc::c_int
+            {
+                break;
+            }
+            i += 1;
+            i;
+        }
+        return (*line.offset(i as isize) as libc::c_int == '\0' as i32) as libc::c_int;
+    }
+}
+
+/* Make sure no-delay mode is not set on file descriptor FD. */
+
+/* Just a wrapper for the define in include/filecntl.h */
+#[no_mangle]
+pub fn sh_setclexec(mut fd: libc::c_int) -> libc::c_int {
+    unsafe {
+        return SET_CLOSE_ON_EXEC!(fd);
+    }
+}
+
+/* Return 1 if file descriptor FD is valid; 0 otherwise. */
+#[no_mangle]
+pub fn sh_validfd(mut fd: libc::c_int) -> libc::c_int {
+    unsafe {
+        return (fcntl(fd, F_GETFD, 0) >= 0) as libc::c_int;
+    }
+}
+
+#[no_mangle]
+pub fn fd_ispipe(mut fd: libc::c_int) -> libc::c_int {
+    unsafe {
+        *__errno_location() = 0;
+        return (lseek(fd, 0 as libc::c_long, SEEK_CUR) < 0 as libc::c_int as libc::c_long
+            && *__errno_location() == ESPIPE) as libc::c_int;
+    }
+}
+
+#[no_mangle]
+pub fn check_dev_tty() {
+    let mut tty_fd: libc::c_int = 0;
+    let mut tty: *mut libc::c_char = 0 as *mut libc::c_char;
+    unsafe {
+        tty_fd = open(
+            b"/dev/tty\0" as *const u8 as *const libc::c_char,
+            O_RDWR | O_NONBLOCK,
+        );
+
+        if tty_fd < 0 as libc::c_int {
+            tty = ttyname(fileno(stdin));
+            if tty.is_null() {
+                return;
+            }
+            tty_fd = open(tty, O_RDWR | O_NONBLOCK);
+        }
+        if tty_fd >= 0 as libc::c_int {
+            close(tty_fd);
+        }
+    }
+}
+
+/* Return 1 if PATH1 and PATH2 are the same file.  This is kind of
+expensive.  If non-NULL STP1 and STP2 point to stat structures
+corresponding to PATH1 and PATH2, respectively. */
+#[no_mangle]
+pub fn same_file(
+    mut path1: *const libc::c_char,
+    mut path2: *const libc::c_char,
+    mut stp1: *mut crate::src_common::stat,
+    mut stp2: *mut crate::src_common::stat,
+) -> libc::c_int {
+    let mut st1: crate::src_common::stat = crate::src_common::stat {
+        st_dev: 0,
+        st_ino: 0,
+        st_nlink: 0,
+        st_mode: 0,
+        st_uid: 0,
+        st_gid: 0,
+        __pad0: 0,
+        st_rdev: 0,
+        st_size: 0,
+        st_blksize: 0,
+        st_blocks: 0,
+        st_atim: crate::src_common::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_mtim: crate::src_common::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_ctim: crate::src_common::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        __glibc_reserved: [0; 3],
+    };
+    let mut st2: crate::src_common::stat = crate::src_common::stat {
+        st_dev: 0,
+        st_ino: 0,
+        st_nlink: 0,
+        st_mode: 0,
+        st_uid: 0,
+        st_gid: 0,
+        __pad0: 0,
+        st_rdev: 0,
+        st_size: 0,
+        st_blksize: 0,
+        st_blocks: 0,
+        st_atim: crate::src_common::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_mtim: crate::src_common::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_ctim: crate::src_common::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        __glibc_reserved: [0; 3],
+    };
+    if stp1.is_null() {
+        if stat(path1, &mut st1) != 0 as libc::c_int {
+            return 0 as libc::c_int;
+        }
+        stp1 = &mut st1;
+    }
+
+    if stp2.is_null() {
+        if stat(path2, &mut st2) != 0 as libc::c_int {
+            return 0 as libc::c_int;
+        }
+        stp2 = &mut st2;
+    }
+
+    return unsafe {
+        ((*stp1).st_dev == (*stp2).st_dev && (*stp1).st_ino == (*stp2).st_ino) as libc::c_int
+    };
+}
+
+/* Move FD to a number close to the maximum number of file descriptors
+allowed in the shell process, to avoid the user stepping on it with
+redirection and causing us extra work.  If CHECK_NEW is non-zero,
+we check whether or not the file descriptors are in use before
+duplicating FD onto them.  MAXFD says where to start checking the
+file descriptors.  If it's less than 20, we get the maximum value
+available from getdtablesize(2). */
+#[no_mangle]
+pub fn move_to_high_fd(
+    mut fd: libc::c_int,
+    mut check_new: libc::c_int,
+    mut maxfd: libc::c_int,
+) -> libc::c_int {
+    let mut script_fd: libc::c_int = 0;
+    let mut nfds: libc::c_int = 0;
+    let mut ignore: libc::c_int = 0;
+    unsafe {
+        if maxfd < 20 as libc::c_int {
+            nfds = getdtablesize();
+            if nfds <= 0 as libc::c_int {
+                nfds = 20 as libc::c_int;
+            }
+            if nfds > HIGH_FD_MAX {
+                nfds = HIGH_FD_MAX; /* reasonable maximum */
+            }
+        } else {
+            nfds = maxfd;
+        }
+
+        nfds -= 1;
+        nfds;
+        while check_new != 0 && nfds > 3 as libc::c_int {
+            if fcntl(nfds, F_GETFD, &mut ignore as *mut libc::c_int) == -(1 as libc::c_int) {
+                break;
+            }
+            nfds -= 1;
+            nfds;
+        }
+
+        if nfds > 3 as libc::c_int && fd != nfds && {
+            script_fd = dup2(fd, nfds);
+            script_fd != -(1 as libc::c_int)
+        } {
+            /* don't close stderr */
+            if check_new == 0 as libc::c_int || fd != fileno(stderr) {
+                close(fd);
+            }
+            return script_fd;
+        }
+    }
+    /* OK, we didn't find one less than our artificial maximum; return the
+    original file descriptor. */
+    return fd;
+}
+
+/* Return non-zero if the characters from SAMPLE are not all valid
+characters to be found in the first line of a shell script.  We
+check up to the first newline, or SAMPLE_LEN, whichever comes first.
+All of the characters must be printable or whitespace. */
+#[no_mangle]
+pub fn check_binary_file(
+    mut sample: *const libc::c_char,
+    mut sample_len: libc::c_int,
+) -> libc::c_int {
+    let mut i: libc::c_int = 0;
+    let mut c: libc::c_uchar = 0;
+    unsafe {
+        while i < sample_len {
+            c = *sample.offset(i as isize) as libc::c_uchar;
+            if c as libc::c_int == '\n' as i32 {
+                return 0 as libc::c_int;
+            }
+            if c as libc::c_int == '\0' as i32 {
+                return 1 as libc::c_int;
+            }
+            i += 1;
+            i;
+        }
+
+        return 0 as libc::c_int;
+    }
+}
+
+/* **************************************************************** */
+/*								    */
+/*		    Functions to manipulate pipes		    */
+/*								    */
+/* **************************************************************** */
+#[no_mangle]
+pub fn sh_openpipe(mut pv: *mut libc::c_int) -> libc::c_int {
+    let mut r: libc::c_int = 0;
+    unsafe {
+        r = pipe(pv);
+        if r < 0 {
+            return r;
+        }
+
+        *pv.offset(0 as isize) = move_to_high_fd(*pv.offset(0 as isize), 1, 64);
+        *pv.offset(1 as isize) = move_to_high_fd(*pv.offset(1 as isize), 1, 64);
+    }
+    return 0;
+}
+
+#[no_mangle]
+pub fn sh_closepipe(mut pv: *mut libc::c_int) -> libc::c_int {
+    unsafe {
+        if *pv.offset(0 as isize) >= 0 as libc::c_int {
+            close(*pv.offset(0 as isize));
+        }
+
+        if *pv.offset(1 as isize) >= 0 as libc::c_int {
+            close(*pv.offset(1 as isize));
+        }
+
+        let ref mut fresh1 = *pv.offset(1 as isize);
+        *fresh1 = -(1 as libc::c_int);
+        *pv.offset(0 as isize) = *fresh1;
+    }
+    return 0;
+}
+
+/* **************************************************************** */
+/*								    */
+/*		    Functions to inspect pathnames		    */
+/*								    */
+/* **************************************************************** */
+#[no_mangle]
+pub fn file_exists(mut fn_0: *const libc::c_char) -> libc::c_int {
+    let mut sb: crate::src_common::stat = crate::src_common::stat {
+        st_dev: 0,
+        st_ino: 0,
+        st_nlink: 0,
+        st_mode: 0,
+        st_uid: 0,
+        st_gid: 0,
+        __pad0: 0,
+        st_rdev: 0,
+        st_size: 0,
+        st_blksize: 0,
+        st_blocks: 0,
+        st_atim: crate::src_common::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_mtim: crate::src_common::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_ctim: crate::src_common::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        __glibc_reserved: [0; 3],
+    };
+
+    return (stat(fn_0, &mut sb) == 0 as libc::c_int) as libc::c_int;
+}
+
+#[no_mangle]
+pub fn file_isdir(mut fn_0: *const libc::c_char) -> libc::c_int {
+    let mut sb: crate::src_common::stat = crate::src_common::stat {
+        st_dev: 0,
+        st_ino: 0,
+        st_nlink: 0,
+        st_mode: 0,
+        st_uid: 0,
+        st_gid: 0,
+        __pad0: 0,
+        st_rdev: 0,
+        st_size: 0,
+        st_blksize: 0,
+        st_blocks: 0,
+        st_atim: crate::src_common::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_mtim: crate::src_common::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        st_ctim: crate::src_common::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        },
+        __glibc_reserved: [0; 3],
+    };
+
+    return (stat(fn_0, &mut sb) == 0 && S_ISDIR!(sb.st_mode)) as libc::c_int;
+}
+
+#[no_mangle]
+pub fn file_iswdir(mut fn_0: *const libc::c_char) -> libc::c_int {
+    unsafe {
+        return (file_isdir(fn_0) != 0 && sh_eaccess(fn_0, W_OK) == 0 as libc::c_int)
+            as libc::c_int;
+    }
+}
+
+/* Return 1 if STRING is "." or "..", optionally followed by a directory
+separator */
+#[no_mangle]
+pub fn path_dot_or_dotdot(mut string: *const libc::c_char) -> libc::c_int {
+    unsafe {
+        if string.is_null()
+            || *string as libc::c_int == '\0' as i32
+            || *string as libc::c_int != '.' as i32
+        {
+            return 0 as libc::c_int;
+        }
+
+        /* string[0] == '.' */
+        if PATHSEP!(*string.offset(1 as isize) as libc::c_int)
+            || *string.offset(1 as isize) as libc::c_int == '.' as i32
+                && PATHSEP!(*string.offset(2 as isize) as libc::c_int)
+        {
+            return 1;
+        }
+
+        return 0;
+    }
+}
+
+/* Return 1 if STRING contains an absolute pathname, else 0.  Used by `cd'
+to decide whether or not to look up a directory name in $CDPATH. */
+#[no_mangle]
+pub fn absolute_pathname(mut string: *const libc::c_char) -> libc::c_int {
+    unsafe {
+        if string.is_null() || *string as libc::c_int == '\0' as i32 {
+            return 0;
+        }
+
+        if ABSPATH!(string) {
+            return 1;
+        }
+
+        /* . and ./ */
+        if *string.offset(0 as libc::c_int as isize) as libc::c_int == '.' as i32
+            && PATHSEP!(*string.offset(1 as libc::c_int as isize) as libc::c_int)
+        {
+            return 1;
+        }
+
+        /* .. and ../ */
+        if *string.offset(0 as libc::c_int as isize) as libc::c_int == '.' as i32
+            && *string.offset(1 as libc::c_int as isize) as libc::c_int == '.' as i32
+            && PATHSEP!(*string.offset(2 as libc::c_int as isize) as libc::c_int)
+        {
+            return 1;
+        }
+
+        return 0;
+    }
+}
+
+/* Return 1 if STRING is an absolute program name; it is absolute if it
+contains any slashes.  This is used to decide whether or not to look
+up through $PATH. */
+#[no_mangle]
+pub fn absolute_program(mut string: *const libc::c_char) -> libc::c_int {
+    unsafe {
+        return (mbschr(string, '/' as i32) != 0 as *mut libc::c_void as *mut libc::c_char)
+            as libc::c_int;
+    }
+}
+
+/* **************************************************************** */
+/*								    */
+/*		    Functions to manipulate pathnames		    */
+/*								    */
+/* **************************************************************** */
+
+/* Turn STRING (a pathname) into an absolute pathname, assuming that
+DOT_PATH contains the symbolic location of `.'.  This always
+returns a new string, even if STRING was an absolute pathname to
+begin with. */
+#[no_mangle]
+pub fn make_absolute(
+    mut string: *const libc::c_char,
+    mut dot_path: *const libc::c_char,
+) -> *mut libc::c_char {
+    unsafe {
+        let mut result: *mut libc::c_char = 0 as *mut libc::c_char;
+
+        if dot_path.is_null() || ABSPATH!(string) {
+            result = savestring!(string);
+        } else {
+            result = sh_makepath(dot_path, string, 0 as libc::c_int);
+        }
+
+        return result;
+    }
+}
+
+/* Return the `basename' of the pathname in STRING (the stuff after the
+last '/').  If STRING is `/', just return it. */
+#[no_mangle]
+pub fn base_pathname(mut string: *mut libc::c_char) -> *mut libc::c_char {
+    unsafe {
+        let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+
+        if *string.offset(0 as libc::c_int as isize) as libc::c_int == '/' as i32
+            && *string.offset(1 as libc::c_int as isize) as libc::c_int == 0 as libc::c_int
+        {
+            return string;
+        }
+
+        p = strrchr(string, '/' as i32);
+        return if !p.is_null() {
+            p = p.offset(1);
+            p
+        } else {
+            string
+        };
+    }
+}
+
+/* Return the full pathname of FILE.  Easy.  Filenames that begin
+with a '/' are returned as themselves.  Other filenames have
+the current working directory prepended.  A new string is
+returned in either case. */
+#[no_mangle]
+pub fn full_pathname(mut file: *mut libc::c_char) -> *mut libc::c_char {
+    unsafe {
+        let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
+
+        file = if *file as libc::c_int == '~' as i32 {
+            bash_tilde_expand(file, 0 as libc::c_int)
+        } else {
+            savestring!(file)
+        };
+
+        if ABSPATH!(file) {
+            return file;
+        }
+
+        ret = sh_makepath(
+            0 as *mut libc::c_void as *mut libc::c_char,
+            file,
+            MP_DOCWD | MP_RMDOT,
+        );
+        libc::free(file as *mut libc::c_void);
+
+        return ret;
+    }
+}
+
+/* A slightly related function.  Get the prettiest name of this
+directory possible. */
+static mut tdir: [libc::c_char; PATH_MAX as usize] = [0; PATH_MAX as usize];
+
+/* Return a pretty pathname.  If the first part of the pathname is
+the same as $HOME, then replace that with `~'.  */
+#[no_mangle]
+pub fn polite_directory_format(mut name: *mut libc::c_char) -> *mut libc::c_char {
+    let mut home: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut l: libc::c_int = 0;
+    unsafe {
+        home = get_string_value(b"HOME\0" as *const u8 as *const libc::c_char);
+        l = (if !home.is_null() { strlen(home) } else { 0 }) as libc::c_int;
+        if l > 1 as libc::c_int
+            && strncmp(home, name, l as usize) == 0 as libc::c_int
+            && (*name.offset(l as isize) == 0
+                || *name.offset(l as isize) as libc::c_int == '/' as i32)
+        {
+            strncpy(
+                tdir.as_mut_ptr().offset(1 as isize),
+                name.offset(l as isize),
+                (::core::mem::size_of::<[libc::c_char; 4096]>() as usize).wrapping_sub(2 as usize),
+            );
+            tdir[0 as usize] = '~' as i32 as libc::c_char;
+            tdir[(::core::mem::size_of::<[libc::c_char; 4096]>() as libc::c_ulong)
+                .wrapping_sub(1 as libc::c_ulong) as usize] = '\0' as i32 as libc::c_char;
+            return tdir.as_mut_ptr();
+        } else {
+            return name;
+        };
+    }
+}
+
+/* Trim NAME.  If NAME begins with `~/', skip over tilde prefix.  Trim to
+keep any tilde prefix and PROMPT_DIRTRIM trailing directory components
+and replace the intervening characters with `...' */
+#[no_mangle]
+pub fn trim_pathname(mut name: *mut libc::c_char, mut maxlen: libc::c_int) -> *mut libc::c_char {
+    unsafe {
+        let mut nlen: libc::c_int = 0;
+        let mut ndirs: libc::c_int = 0;
+        let mut nskip: intmax_t = 0;
+        let mut nbeg: *mut libc::c_char = 0 as *mut libc::c_char;
+        let mut nend: *mut libc::c_char = 0 as *mut libc::c_char;
+        let mut ntail: *mut libc::c_char = 0 as *mut libc::c_char;
+        let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
+
+        if name.is_null() || {
+            nlen = strlen(name) as libc::c_int;
+            nlen == 0 as libc::c_int
+        } {
+            return name;
+        }
+        nend = name.offset(nlen as isize);
+
+        v = get_string_value(b"PROMPT_DIRTRIM\0" as *const u8 as *const libc::c_char);
+        if v.is_null() || *v as libc::c_int == 0 as libc::c_int {
+            return name;
+        }
+        if legal_number(v, &mut nskip) == 0 as libc::c_int
+            || nskip <= 0 as libc::c_int as libc::c_long
+        {
+            return name;
+        }
+
+        /* Skip over tilde prefix */
+        nbeg = name;
+        if *name.offset(0 as libc::c_int as isize) as libc::c_int == '~' as i32 {
+            nbeg = name;
+            while *nbeg != 0 {
+                if *nbeg as libc::c_int == '/' as i32 {
+                    nbeg = nbeg.offset(1);
+                    nbeg;
+                    break;
+                } else {
+                    nbeg = nbeg.offset(1);
+                    nbeg;
+                }
+            }
+        }
+        if *nbeg as libc::c_int == 0 as libc::c_int {
+            return name;
+        }
+
+        ndirs = 0 as libc::c_int;
+        ntail = nbeg;
+        while *ntail != 0 {
+            if *ntail as libc::c_int == '/' as i32 {
+                ndirs += 1;
+                ndirs;
+            }
+            ntail = ntail.offset(1);
+            ntail;
+        }
+        if (ndirs as libc::c_long) < nskip {
+            return name;
+        }
+
+        ntail = if *nend as libc::c_int == '/' as i32 {
+            nend
+        } else {
+            nend.offset(-(1 as libc::c_int as isize))
+        };
+        while ntail > nbeg {
+            if *ntail as libc::c_int == '/' as i32 {
+                nskip -= 1;
+                nskip;
+            }
+            if nskip == 0 as libc::c_int as libc::c_long {
+                break;
+            }
+            ntail = ntail.offset(-1);
+            ntail;
+        }
+        if ntail == nbeg {
+            return name;
+        }
+
+        /* Now we want to return name[0..nbeg]+"..."+ntail, modifying name in place */
+        nlen = ntail.offset_from(nbeg) as libc::c_long as libc::c_int;
+        if nlen <= 3 as libc::c_int {
+            return name;
+        }
+
+        let fresh2 = nbeg;
+        nbeg = nbeg.offset(1);
+        *fresh2 = '.' as i32 as libc::c_char;
+        let fresh3 = nbeg;
+        nbeg = nbeg.offset(1);
+        *fresh3 = '.' as i32 as libc::c_char;
+        let fresh4 = nbeg;
+        nbeg = nbeg.offset(1);
+        *fresh4 = '.' as i32 as libc::c_char;
+
+        nlen = nend.offset_from(ntail) as libc::c_long as libc::c_int;
+        memmove(
+            nbeg as *mut libc::c_void,
+            ntail as *const libc::c_void,
+            nlen as usize,
+        );
+        *nbeg.offset(nlen as isize) = '\0' as i32 as libc::c_char;
+
+        return name;
+    }
+}
+
+/* Return a printable representation of FN without special characters.  The
+caller is responsible for freeing memory if this returns something other
+than its argument.  If FLAGS is non-zero, we are printing for portable
+re-input and should single-quote filenames appropriately. */
+#[no_mangle]
+pub fn printable_filename(
+    mut fn_0: *mut libc::c_char,
+    mut flags: libc::c_int,
+) -> *mut libc::c_char {
+    unsafe {
+        let mut newf: *mut libc::c_char = 0 as *mut libc::c_char;
+
+        if ansic_shouldquote(fn_0) != 0 {
+            newf = ansic_quote(fn_0, 0 as libc::c_int, 0 as *mut libc::c_int);
+        } else if flags != 0 && sh_contains_shell_metas(fn_0) != 0 {
+            newf = sh_single_quote(fn_0);
+        } else {
+            newf = fn_0;
+        }
+
+        return newf;
+    }
+}
+
+/* Given a string containing units of information separated by colons,
+return the next one pointed to by (P_INDEX), or NULL if there are no more.
+Advance (P_INDEX) to the character after the colon. */
+#[no_mangle]
+pub fn extract_colon_unit(
+    mut string: *mut libc::c_char,
+    mut p_index: *mut libc::c_int,
+) -> *mut libc::c_char {
+    let mut i: libc::c_int = 0;
+    let mut start: libc::c_int = 0;
+    let mut len: libc::c_int = 0;
+    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
+
+    if string.is_null() {
+        return string;
+    }
+    unsafe {
+        len = strlen(string) as libc::c_int;
+        if *p_index >= len {
+            return 0 as *mut libc::c_void as *mut libc::c_char;
+        }
+
+        i = *p_index;
+
+        /* Each call to this routine leaves the index pointing at a colon if
+        there is more to the path.  If I is > 0, then increment past the
+        `:'.  If I is 0, then the path has a leading colon.  Trailing colons
+        are handled OK by the `else' part of the if statement; an empty
+        string is returned in that case. */
+        if i != 0 && *string.offset(i as isize) as libc::c_int == ':' as i32 {
+            i += 1;
+            i;
+        }
+
+        start = i;
+        while *string.offset(i as isize) as libc::c_int != 0
+            && *string.offset(i as isize) as libc::c_int != ':' as i32
+        {
+            i += 1;
+            i;
+        }
+
+        *p_index = i;
+
+        if i == start {
+            if *string.offset(i as isize) != 0 {
+                *p_index += 1;
+                *p_index;
+            }
+            /* Return "" in the case of a trailing `:'. */
+            value = libc::malloc(1 as usize) as *mut libc::c_char;
+            *value.offset(0 as libc::c_int as isize) = '\0' as i32 as libc::c_char;
+        } else {
+            value = substring(string, start, i);
+        }
+    }
+    return value;
+}
+
+static mut bash_tilde_prefixes: *mut *mut libc::c_char =
+    0 as *const *mut libc::c_char as *mut *mut libc::c_char;
+static mut bash_tilde_prefixes2: *mut *mut libc::c_char =
+    0 as *const *mut libc::c_char as *mut *mut libc::c_char;
+static mut bash_tilde_suffixes: *mut *mut libc::c_char =
+    0 as *const *mut libc::c_char as *mut *mut libc::c_char;
+static mut bash_tilde_suffixes2: *mut *mut libc::c_char =
+    0 as *const *mut libc::c_char as *mut *mut libc::c_char;
+
+/* If tilde_expand hasn't been able to expand the text, perhaps it
+is a special shell expansion.  This function is installed as the
+tilde_expansion_preexpansion_hook.  It knows how to expand ~- and ~+.
+If PUSHD_AND_POPD is defined, ~[+-]N expands to directories from the
+directory stack. */
+fn bash_special_tilde_expansions(mut text: *mut libc::c_char) -> *mut libc::c_char {
+    unsafe {
+        let mut result: *mut libc::c_char = 0 as *mut libc::c_char;
+
+        result = 0 as *mut libc::c_void as *mut libc::c_char;
+        if *text.offset(0 as libc::c_int as isize) as libc::c_int == '+' as i32
+            && *text.offset(1 as libc::c_int as isize) as libc::c_int == '\0' as i32
+        {
+            result = get_string_value(b"PWD\0" as *const u8 as *const libc::c_char);
+        } else if *text.offset(0 as libc::c_int as isize) as libc::c_int == '-' as i32
+            && *text.offset(1 as libc::c_int as isize) as libc::c_int == '\0' as i32
+        {
+            result = get_string_value(b"OLDPWD\0" as *const u8 as *const libc::c_char);
+        } else if DIGIT!(*text)
+            || (*text as libc::c_int == '+' as i32 || *text as libc::c_int == '-' as i32)
+                && DIGIT!(*text.offset(1 as libc::c_int as isize))
+        {
+            result = get_dirstack_from_string(text);
+        }
+
+        return if !result.is_null() {
+            savestring!(result)
+        } else {
+            0 as *mut libc::c_void as *mut libc::c_char
+        };
+    }
+}
+
+/* Initialize the tilde expander.  In Bash, we handle `~-' and `~+', as
+well as handling special tilde prefixes; `:~" and `=~' are indications
+that we should do tilde expansion. */
+#[no_mangle]
+pub fn tilde_initialize() {
+    unsafe {
+        static mut times_called: libc::c_int = 0 as libc::c_int;
+
+        /* Tell the tilde expander that we want a crack first. */
+        tilde_expansion_preexpansion_hook =
+            ::core::mem::transmute::<Option<fn() -> *mut libc::c_char>, Option<tilde_hook_func_t>>(
+                Some(::core::mem::transmute::<
+                    fn(*mut libc::c_char) -> *mut libc::c_char,
+                    fn() -> *mut libc::c_char,
+                >(bash_special_tilde_expansions)),
+            );
+
+        /* Tell the tilde expander about special strings which start a tilde
+        expansion, and the special strings that end one.  Only do this once.
+        tilde_initialize () is called from within bashline_reinitialize (). */
+        let fresh5 = times_called;
+        times_called = times_called + 1;
+        if fresh5 == 0 as libc::c_int {
+            bash_tilde_prefixes = strvec_create(3 as libc::c_int);
+            let ref mut fresh6 = *bash_tilde_prefixes.offset(0 as libc::c_int as isize);
+            *fresh6 = b"=~\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+            let ref mut fresh7 = *bash_tilde_prefixes.offset(1 as libc::c_int as isize);
+            *fresh7 = b":~\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+            let ref mut fresh8 = *bash_tilde_prefixes.offset(2 as libc::c_int as isize);
+            *fresh8 = 0 as *mut libc::c_void as *mut libc::c_char;
+
+            bash_tilde_prefixes2 = strvec_create(2 as libc::c_int);
+            let ref mut fresh9 = *bash_tilde_prefixes2.offset(0 as libc::c_int as isize);
+            *fresh9 = b":~\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+            let ref mut fresh10 = *bash_tilde_prefixes2.offset(1 as libc::c_int as isize);
+            *fresh10 = 0 as *mut libc::c_void as *mut libc::c_char;
+
+            tilde_additional_prefixes = bash_tilde_prefixes;
+
+            bash_tilde_suffixes = strvec_create(3 as libc::c_int);
+            let ref mut fresh11 = *bash_tilde_suffixes.offset(0 as libc::c_int as isize);
+            *fresh11 = b":\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+            let ref mut fresh12 = *bash_tilde_suffixes.offset(1 as libc::c_int as isize);
+            *fresh12 = b"=~\0" as *const u8 as *const libc::c_char as *mut libc::c_char; /* XXX - ?? */
+            let ref mut fresh13 = *bash_tilde_suffixes.offset(2 as libc::c_int as isize);
+            *fresh13 = 0 as *mut libc::c_void as *mut libc::c_char;
+
+            tilde_additional_suffixes = bash_tilde_suffixes;
+
+            bash_tilde_suffixes2 = strvec_create(2 as libc::c_int);
+            let ref mut fresh14 = *bash_tilde_suffixes2.offset(0 as libc::c_int as isize);
+            *fresh14 = b":\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
+            let ref mut fresh15 = *bash_tilde_suffixes2.offset(1 as libc::c_int as isize);
+            *fresh15 = 0 as *mut libc::c_void as *mut libc::c_char;
+        }
+    }
+}
+
+fn unquoted_tilde_word(mut s: *const libc::c_char) -> libc::c_int {
+    let mut r: *const libc::c_char = 0 as *const libc::c_char;
+    r = s;
+    unsafe {
+        while TILDE_END!(*r as libc::c_int) as libc::c_int == 0 as libc::c_int {
+            match *r as u8 as char {
+                '\\' | '\'' | '"' => return 0,
+                _ => {}
+            }
+            r = r.offset(1);
+            r;
+        }
+    }
+    return 1;
+}
+
+/* Find the end of the tilde-prefix starting at S, and return the tilde
+prefix in newly-allocated memory.  Return the length of the string in
+*LENP.  FLAGS tells whether or not we're in an assignment context --
+if so, `:' delimits the end of the tilde prefix as well. */
+#[no_mangle]
+pub fn bash_tilde_find_word(
+    mut s: *const libc::c_char,
+    mut flags: libc::c_int,
+    mut lenp: *mut libc::c_int,
+) -> *mut libc::c_char {
+    let mut r: *const libc::c_char = 0 as *const libc::c_char;
+    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut l: libc::c_int = 0;
+
+    r = s;
+    unsafe {
+        while *r as libc::c_int != 0 && *r as libc::c_int != '/' as i32 {
+            /* Short-circuit immediately if we see a quote character.  Even though
+            POSIX says that `the first unquoted slash' (or `:') terminates the
+            tilde-prefix, in practice, any quoted portion of the tilde prefix
+            will cause it to not be expanded. */
+            if *r as libc::c_int == '\\' as i32
+                || *r as libc::c_int == '\'' as i32
+                || *r as libc::c_int == '"' as i32
+            {
+                ret = savestring!(s);
+                if !lenp.is_null() {
+                    *lenp = 0 as libc::c_int;
+                }
+                return ret;
+            } else {
+                if flags != 0 && *r as libc::c_int == ':' as i32 {
+                    break;
+                }
+                r = r.offset(1);
+                r;
+            }
+        }
+        l = r.offset_from(s) as libc::c_long as libc::c_int;
+        ret = libc::malloc((l + 1 as libc::c_int) as usize) as *mut libc::c_char;
+        strncpy(ret, s, l as usize);
+        *ret.offset(l as isize) = '\0' as i32 as libc::c_char;
+        if !lenp.is_null() {
+            *lenp = l;
+        }
+    }
+    return ret;
+}
+
+/* Tilde-expand S by running it through the tilde expansion library.
+ASSIGN_P is 1 if this is a variable assignment, so the alternate
+tilde prefixes should be enabled (`=~' and `:~', see above).  If
+ASSIGN_P is 2, we are expanding the rhs of an assignment statement,
+so `=~' is not valid. */
+#[no_mangle]
+pub fn bash_tilde_expand(
+    mut s: *const libc::c_char,
+    mut assign_p: libc::c_int,
+) -> *mut libc::c_char {
+    let mut r: libc::c_int = 0;
+    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
+    unsafe {
+        tilde_additional_prefixes = if assign_p == 0 as libc::c_int {
+            0 as *mut *mut libc::c_char
+        } else if assign_p == 2 as libc::c_int {
+            bash_tilde_prefixes2
+        } else {
+            bash_tilde_prefixes
+        };
+        if assign_p == 2 as libc::c_int {
+            tilde_additional_suffixes = bash_tilde_suffixes2;
+        }
+
+        r = if *s as libc::c_int == '~' as i32 {
+            unquoted_tilde_word(s)
+        } else {
+            1 as libc::c_int
+        };
+        ret = if r != 0 {
+            tilde_expand(s)
+        } else {
+            savestring!(s)
+        };
+
+        QUIT!();
+    }
+    return ret;
+}
+
+/* **************************************************************** */
+/*								    */
+/*	  Functions to manipulate and search the group list	    */
+/*								    */
+/* **************************************************************** */
+
+static mut ngroups: libc::c_int = 0;
+static mut maxgroups: libc::c_int = 0;
+
+/* The set of groups that this user is a member of. */
+static mut group_array: *mut gid_t = 0 as *const libc::c_void as *mut libc::c_void as *mut gid_t;
+
+fn initialize_group_array() {
+    let mut i: libc::c_int = 0;
+    unsafe {
+        if maxgroups == 0 as libc::c_int {
+            maxgroups = getmaxgroups();
+        }
+
+        ngroups = 0 as libc::c_int;
+        group_array = libc::realloc(
+            group_array as *mut libc::c_void,
+            ((maxgroups as libc::c_ulong)
+                .wrapping_mul(::core::mem::size_of::<gid_t>() as libc::c_ulong))
+                as usize,
+        ) as *mut gid_t;
+
+        ngroups = getgroups(maxgroups, group_array);
+
+        /* If getgroups returns nothing, or the OS does not support getgroups(),
+        make sure the groups array includes at least the current gid. */
+        if ngroups == 0 as libc::c_int {
+            *group_array.offset(0 as libc::c_int as isize) = current_user.gid;
+            ngroups = 1 as libc::c_int;
+        }
+
+        /* If the primary group is not in the groups array, add it as group_array[0]
+        and shuffle everything else up 1, if there's room. */
+        i = 0 as libc::c_int;
+        while i < ngroups {
+            if current_user.gid == *group_array.offset(i as isize) {
+                break;
+            }
+            i += 1;
+            i;
+        }
+        if i == ngroups && ngroups < maxgroups {
+            i = ngroups;
+            while i > 0 as libc::c_int {
+                *group_array.offset(i as isize) =
+                    *group_array.offset((i - 1 as libc::c_int) as isize);
+                i -= 1;
+                i;
+            }
+            *group_array.offset(0 as libc::c_int as isize) = current_user.gid;
+            ngroups += 1;
+            ngroups;
+        }
+        if *group_array.offset(0 as libc::c_int as isize) != current_user.gid {
+            i = 0 as libc::c_int;
+            while i < ngroups {
+                if *group_array.offset(i as isize) == current_user.gid {
+                    break;
+                }
+                i += 1;
+                i;
+            }
+            if i < ngroups {
+                *group_array.offset(i as isize) = *group_array.offset(0 as libc::c_int as isize);
+                *group_array.offset(0 as libc::c_int as isize) = current_user.gid;
+            }
+        }
+    }
+}
+
+/* Return non-zero if GID is one that we have in our groups list. */
+#[no_mangle]
+pub fn group_member(mut gid: gid_t) -> libc::c_int {
+    let mut i: libc::c_int = 0;
+    unsafe {
+        /* Short-circuit if possible, maybe saving a call to getgroups(). */
+        if gid == current_user.gid || gid == current_user.egid {
+            return 1 as libc::c_int;
+        }
+        if ngroups == 0 as libc::c_int {
+            initialize_group_array();
+        }
+
+        /* In case of error, the user loses. */
+        if ngroups <= 0 as libc::c_int {
+            return 0 as libc::c_int;
+        }
+
+        /* Search through the list looking for GID. */
+        i = 0 as libc::c_int;
+        while i < ngroups {
+            if gid == *group_array.offset(i as isize) {
+                return 1 as libc::c_int;
+            }
+            i += 1;
+            i;
+        }
+    }
+    return 0 as libc::c_int;
+}
+
+#[no_mangle]
+pub fn get_group_list(mut ngp: *mut libc::c_int) -> *mut *mut libc::c_char {
+    static mut group_vector: *mut *mut libc::c_char =
+        0 as *const libc::c_void as *mut libc::c_void as *mut *mut libc::c_char;
+    let mut i: libc::c_int = 0;
+    unsafe {
+        if !group_vector.is_null() {
+            if !ngp.is_null() {
+                *ngp = ngroups;
+            }
+            return group_vector;
+        }
+
+        if ngroups == 0 as libc::c_int {
+            initialize_group_array();
+        }
+
+        if ngroups <= 0 as libc::c_int {
+            if !ngp.is_null() {
+                *ngp = 0 as libc::c_int;
+            }
+            return 0 as *mut libc::c_void as *mut *mut libc::c_char;
+        }
+
+        group_vector = strvec_create(ngroups);
+        i = 0 as libc::c_int;
+        while i < ngroups {
+            let ref mut fresh16 = *group_vector.offset(i as isize);
+            *fresh16 = itos(*group_array.offset(i as isize) as intmax_t);
+            i += 1;
+            i;
+        }
+
+        if !ngp.is_null() {
+            *ngp = ngroups;
+        }
+        return group_vector;
+    }
+}
+
+#[no_mangle]
+pub fn get_group_array(mut ngp: *mut libc::c_int) -> *mut libc::c_int {
+    let mut i: libc::c_int = 0;
+    static mut group_iarray: *mut libc::c_int =
+        0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_int;
+    unsafe {
+        if !group_iarray.is_null() {
+            if !ngp.is_null() {
+                *ngp = ngroups;
+            }
+            return group_iarray;
+        }
+
+        if ngroups == 0 as libc::c_int {
+            initialize_group_array();
+        }
+
+        if ngroups <= 0 as libc::c_int {
+            if !ngp.is_null() {
+                *ngp = 0 as libc::c_int;
+            }
+            return 0 as *mut libc::c_void as *mut libc::c_int;
+        }
+
+        group_iarray = libc::malloc(
+            (ngroups as libc::c_ulong)
+                .wrapping_mul(::core::mem::size_of::<libc::c_int>() as libc::c_ulong)
+                as usize,
+        ) as *mut libc::c_int;
+        i = 0 as libc::c_int;
+        while i < ngroups {
+            *group_iarray.offset(i as isize) = *group_array.offset(i as isize) as libc::c_int;
+            i += 1;
+            i;
+        }
+
+        if !ngp.is_null() {
+            *ngp = ngroups;
+        }
+        return group_iarray;
+    }
+}
+
+/* **************************************************************** */
+/*								    */
+/*	  Miscellaneous functions				    */
+/*								    */
+/* **************************************************************** */
+
+/* Return a value for PATH that is guaranteed to find all of the standard
+utilities.  This uses Posix.2 configuration variables, if present.  It
+uses a value defined in config.h as a last resort. */
+#[no_mangle]
+pub fn conf_standard_path() -> *mut libc::c_char {
+    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut len: size_t = 0;
+    unsafe {
+        len = confstr(
+            _CS_PATH,
+            0 as *mut libc::c_void as *mut libc::c_char,
+            0 as libc::c_int as usize,
+        ) as size_t;
+        if len > 0 as libc::c_int as libc::c_ulong {
+            p = libc::malloc(len.wrapping_add(2 as libc::c_int as libc::c_ulong) as usize)
+                as *mut libc::c_char;
+            confstr(_CS_PATH, p, len as usize);
+            return p;
+        } else {
+            return savestring!(STANDARD_UTILS_PATH!());
+        };
+    }
+}
+#[no_mangle]
+pub fn default_columns() -> libc::c_int {
+    let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut c: libc::c_int = 0;
+    unsafe {
+        c = -(1 as libc::c_int);
+        v = get_string_value(b"COLUMNS\0" as *const u8 as *const libc::c_char);
+        if !v.is_null() && *v as libc::c_int != 0 {
+            c = atoi(v);
+            if c > 0 as libc::c_int {
+                return c;
+            }
+        }
+
+        if check_window_size != 0 {
+            get_new_window_size(0 as libc::c_int, 0 as *mut libc::c_int, &mut c);
+        }
+
+        return if c > 0 as libc::c_int {
+            c
+        } else {
+            80 as libc::c_int
+        };
+    }
+}
