@@ -1,0 +1,42 @@
+[package]
+name = "utshell"
+version = "0.1.0"
+edition = "2018"
+
+build = "./build.rs"  
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libc = "*"
+nix =  "0.25.0"
+lazy_static = "1.4.0"
+#fluent = "*"
+unic-langid = "0.9.4"
+fluent-resmgr = "0.0.6"
+fluent-bundle = "0.15.2"
+intl_pluralrules = "7.0.2"
+tinystr = "=0.7.1"
+
+
+#调试使用，用于打印函数名称和所在行数
+#stdext = "0.3.1"  
+
+
+[build_dependencies]
+dunce = "1.0.0" 
+
+[lib]
+name = "builtins"
+path = "src/lib.rs"
+crate-type = ["staticlib","rlib"]
+
+
+#[[bin]]
+#name = "utshell"
+#path = "src/main.rs"
+
+#[[bin]]
+#name = "utshellversion"
+#path = "src/utshellversion.rs"
+
