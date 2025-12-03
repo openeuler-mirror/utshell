@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::arrayfunc::{array_variable_part, get_array_value, valid_array_reference};
 use crate::copycmd::{copy_redirects, copy_word};
 use crate::dispose_cmd::{dispose_redirects, dispose_words};
@@ -22,22 +17,6 @@ use crate::variables::{
     stupidly_hack_special_variables, sv_ifs,
 };
 
-#[inline]
-fn stat(
-    mut __path: *const libc::c_char,
-    mut __statbuf: *mut crate::src_common::stat,
-) -> libc::c_int {
-    unsafe {
-        return __xstat(1 as libc::c_int, __path, __statbuf);
-    }
-}
-
-#[inline]
-fn fstat(mut __fd: libc::c_int, mut __statbuf: *mut crate::src_common::stat) -> libc::c_int {
-    unsafe {
-        return __fxstat(1 as libc::c_int, __fd, __statbuf);
-    }
-}
 
 static mut rd: REDIRECTEE = REDIRECTEE { dest: 0 };
 static mut heredoc_errno: libc::c_int = 0;

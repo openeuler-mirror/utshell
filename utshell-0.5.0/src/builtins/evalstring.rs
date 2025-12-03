@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use libc::{close, free, malloc, open, strcmp, strcpy, strlen};
 
 use crate::bashhist::bash_history_disable;

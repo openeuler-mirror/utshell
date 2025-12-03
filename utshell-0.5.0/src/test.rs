@@ -1,15 +1,10 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::arrayfunc::{array_value, valid_array_reference};
 use crate::assoc::assoc_reference;
 use crate::builtins::common::number_of_args;
 use crate::builtins::set::minus_o_option_value;
 use crate::expr::evalexp;
 use crate::general::{legal_number, same_file};
-use crate::readline::{__lxstat, array_reference};
+use crate::readline::{ array_reference};
 use crate::src_common::*;
 use crate::variables::{find_variable, find_variable_noref};
 use crate::version::shell_compatibility_level;
@@ -46,15 +41,6 @@ fn timespec_cmp(
     };
 }
 
-#[inline]
-fn lstat(
-    mut __path: *const libc::c_char,
-    mut __statbuf: *mut crate::src_common::stat,
-) -> libc::c_int {
-    unsafe {
-        return __lxstat(1 as libc::c_int, __path, __statbuf);
-    }
-}
 
 static mut test_error_return: libc::c_int = 0;
 static mut pos: libc::c_int = 0;

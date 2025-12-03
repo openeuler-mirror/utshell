@@ -49,4 +49,3 @@ clean:
 	done
 
 	cargo clean
-	rm -rf Cargo.lock

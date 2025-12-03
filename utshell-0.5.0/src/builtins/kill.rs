@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use super::help::builtin_help;
 use crate::builtins::common::{
     builtin_usage, display_signal_list, err_translate_fn, get_job_spec, sh_badjob, sh_badpid,

@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::copycmd::copy_command;
 use crate::copycmd::copy_redirect;
 use crate::dispose_cmd::{dispose_command, dispose_redirects};
@@ -1545,7 +1540,7 @@ pub fn named_function_string(
 
         inside_function_def += 1;
 
-        cprintf(if (flags & FUNC_MULTILINE) == 0 {
+        cprintf(if (flags & FUNC_MULTILINE) != 0 {
             b"{ \n\0" as *const u8 as *const libc::c_char
         } else {
             b"{ \0" as *const u8 as *const libc::c_char
@@ -1566,7 +1561,6 @@ pub fn named_function_string(
         PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *const libc::c_char);
 
         indentation = old_indent;
-        indentation = old_amount;
         indentation_amount = old_amount;
         inside_function_def -= 1;
 

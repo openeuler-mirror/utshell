@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::arrayfunc::{array_variable_name, valid_array_reference};
 use crate::builtins::{
     pushd::get_dirstack_from_string,
@@ -20,6 +15,7 @@ use crate::y_tab::expand_aliases;
 #[link(name = "readline")]
 extern "C" {
     pub fn sh_unset_nodelay_mode(_: libc::c_int) -> libc::c_int;
+    fn confstr(__name: libc::c_int, __buf: *mut libc::c_char, __len: size_t) -> size_t;
 }
 //end of bgz
 
@@ -59,15 +55,6 @@ fn strtoimax(
     }
 }
 
-#[inline]
-fn stat(
-    mut __path: *const libc::c_char,
-    mut __statbuf: *mut crate::src_common::stat,
-) -> libc::c_int {
-    unsafe {
-        return __xstat(1 as libc::c_int, __path, __statbuf);
-    }
-}
 
 #[inline]
 fn atoi(mut __nptr: *const libc::c_char) -> libc::c_int {
@@ -764,6 +751,7 @@ pub fn same_file(
         },
         __glibc_reserved: [0; 3],
     };
+    unsafe{
     if stp1.is_null() {
         if stat(path1, &mut st1) != 0 as libc::c_int {
             return 0 as libc::c_int;
@@ -777,7 +765,7 @@ pub fn same_file(
         }
         stp2 = &mut st2;
     }
-
+    }
     return unsafe {
         ((*stp1).st_dev == (*stp2).st_dev && (*stp1).st_ino == (*stp2).st_ino) as libc::c_int
     };
@@ -938,7 +926,7 @@ pub fn file_exists(mut fn_0: *const libc::c_char) -> libc::c_int {
         __glibc_reserved: [0; 3],
     };
 
-    return (stat(fn_0, &mut sb) == 0 as libc::c_int) as libc::c_int;
+   unsafe{ return (stat(fn_0, &mut sb) == 0 as libc::c_int) as libc::c_int;}
 }
 
 #[no_mangle]
@@ -970,7 +958,7 @@ pub fn file_isdir(mut fn_0: *const libc::c_char) -> libc::c_int {
         __glibc_reserved: [0; 3],
     };
 
-    return (stat(fn_0, &mut sb) == 0 && S_ISDIR!(sb.st_mode)) as libc::c_int;
+    unsafe{return (stat(fn_0, &mut sb) == 0 && S_ISDIR!(sb.st_mode)) as libc::c_int;}
 }
 
 #[no_mangle]
@@ -1767,14 +1755,14 @@ pub fn conf_standard_path() -> *mut libc::c_char {
     let mut len: size_t = 0;
     unsafe {
         len = confstr(
-            _CS_PATH,
+            _CS_PATH as libc::c_int,
             0 as *mut libc::c_void as *mut libc::c_char,
-            0 as libc::c_int as usize,
+            0 as libc::c_int as size_t,
         ) as size_t;
         if len > 0 as libc::c_int as libc::c_ulong {
             p = libc::malloc(len.wrapping_add(2 as libc::c_int as libc::c_ulong) as usize)
                 as *mut libc::c_char;
-            confstr(_CS_PATH, p, len as usize);
+            confstr(_CS_PATH, p, len as libc::c_int as size_t);
             return p;
         } else {
             return savestring!(STANDARD_UTILS_PATH!());

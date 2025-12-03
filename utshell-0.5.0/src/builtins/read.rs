@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use super::help::builtin_help;
 use crate::array::array_flush;
 use crate::arrayfunc::{
@@ -199,7 +194,7 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
                     }
                     if sh_validfd(fd) == 0 {
                         let c_err = CString::new("%d: invalid file descriptor: %s").unwrap();
-                        builtin_error(c_err.as_ptr(), fd, libc::strerror(nix::errno::errno()));
+                        builtin_error(c_err.as_ptr(), fd, libc::strerror(5 as libc::c_int));
                         return EXECUTION_FAILURE;
                     }
                 }
@@ -312,7 +307,7 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
             input_is_tty = libc::isatty(fd);
             if input_is_tty == 0 {
                 input_is_pipe = (libc::lseek(fd, 0, libc::SEEK_CUR) < 0
-                    && (errno() == libc::ESPIPE)) as libc::c_int;
+                    && (errno!() == libc::ESPIPE)) as libc::c_int;
             }
 
             //如果设置 -p,-e,-s但输入不是终端，忽略

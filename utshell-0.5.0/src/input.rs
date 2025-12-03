@@ -1,24 +1,11 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::general::sh_unset_nodelay_mode;
 use crate::src_common::*;
 use crate::stringlib::xbcopy;
 use crate::trap::run_pending_traps;
 use crate::y_tab::{bash_input, init_yy_io, return_EOF};
+use crate::src_common;
 
-#[inline]
-fn fstat(mut __fd: libc::c_int, mut __statbuf: *mut crate::src_common::stat) -> libc::c_int {
-    unsafe {
-        return __fxstat(
-            1 as libc::c_int,
-            __fd,
-            __statbuf as *mut crate::src_common::stat,
-        );
-    }
-}
+
 
 /* Functions to handle reading input on systems that don't restart read(2)
 if a signal is received. */
@@ -423,7 +410,7 @@ pub fn fd_to_buffered_stream(mut fd: libc::c_int) -> *mut BUFFERED_STREAM {
         __glibc_reserved: [0; 3],
     };
     unsafe {
-        if fstat(fd, &mut sb) < 0 as libc::c_int {
+        if crate::src_common::fstat(fd, &mut sb) < 0 as libc::c_int {
             close(fd);
             return 0 as *mut libc::c_void as *mut BUFFERED_STREAM;
         }
