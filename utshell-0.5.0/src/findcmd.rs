@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::general::{absolute_program, bash_tilde_expand, conf_standard_path, extract_colon_unit};
 use crate::hashcmd::{phash_insert, phash_remove, phash_search};
 use crate::pathexp::setup_ignore_patterns;
@@ -46,32 +51,7 @@ fn exec_name_should_ignore(name: *const libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn file_status(name: *const libc::c_char) -> libc::c_int {
-    let mut finfo: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
     let mut r: libc::c_int = 0;
     unsafe{
     if stat(name, &mut finfo) < 0 {
@@ -281,32 +261,7 @@ pub fn user_command_matches(
     let mut path_list: *mut libc::c_char = 0 as *mut libc::c_char;
     let mut path_element: *mut libc::c_char = 0 as *mut libc::c_char;
     let mut match_0: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut dotinfo: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut dotinfo: crate::src_common::stat = crate::src_common::stat_init;
     static mut match_list: *mut *mut libc::c_char =
         0 as *const *mut libc::c_char as *mut *mut libc::c_char;
     static mut match_list_size: libc::c_int = 0 as libc::c_int;
@@ -484,32 +439,7 @@ fn find_user_command_in_path(
     let mut path: *mut libc::c_char = 0 as *mut libc::c_char;
     let mut path_index: libc::c_int = 0;
     let mut name_len: libc::c_int = 0;
-    let mut dotinfo: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut dotinfo: crate::src_common::stat = crate::src_common::stat_init;
     unsafe {
         dot_found_in_search = 0;
 

@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::src_common::*;
 use crate::stringlib::substring;
 use crate::subst::skip_to_delim;

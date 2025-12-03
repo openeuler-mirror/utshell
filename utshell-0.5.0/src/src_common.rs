@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 pub use libc::*;
 
 pub use crate::array::array_dispose_element;
@@ -4885,10 +4890,20 @@ pub type __uid_t = libc::c_uint;
 pub type __gid_t = libc::c_uint;
 pub type __ino_t = libc::c_ulong;
 pub type __mode_t = libc::c_uint;
+
+#[cfg(target_arch = "x86_64")]
 pub type __nlink_t = libc::c_ulong;
+#[cfg(not(target_arch = "x86_64"))]
+pub type __nlink_t = libc::c_uint;
+
 pub type __rlim_t = libc::c_ulong;
 pub type __time_t = libc::c_long;
+
+#[cfg(target_arch = "x86_64")]
 pub type __blksize_t = libc::c_long;
+#[cfg(not(target_arch = "x86_64"))]
+pub type __blksize_t = libc::c_int;
+
 pub type __blkcnt_t = libc::c_long;
 pub type __syscall_slong_t = libc::c_long;
 pub type __sig_atomic_t = libc::c_int;
@@ -4907,20 +4922,67 @@ pub type sig_atomic_t = __sig_atomic_t;
 pub struct stat {
     pub st_dev: __dev_t,
     pub st_ino: __ino_t,
+    #[cfg(target_arch = "x86_64")]
     pub st_nlink: __nlink_t,
     pub st_mode: __mode_t,
+    #[cfg(not(target_arch = "x86_64"))]
+    pub st_nlink: __nlink_t,
     pub st_uid: __uid_t,
     pub st_gid: __gid_t,
+    #[cfg(target_arch = "x86_64")]
     pub __pad0: libc::c_int,
     pub st_rdev: __dev_t,
+    #[cfg(not(target_arch = "x86_64"))]
+    pub __pad1: __dev_t,
     pub st_size: __off_t,
     pub st_blksize: __blksize_t,
+    #[cfg(not(target_arch = "x86_64"))]
+    pub __pad2: libc::c_int,
     pub st_blocks: __blkcnt_t,
     pub st_atim: timespec,
     pub st_mtim: timespec,
     pub st_ctim: timespec,
+    #[cfg(target_arch = "x86_64")]
     pub __glibc_reserved: [__syscall_slong_t; 3],
+    #[cfg(not(target_arch = "x86_64"))]
+    pub __glibc_reserved: [libc::c_int; 2],
 }
+
+// stat类型初始化
+pub const stat_init: stat = stat {
+    st_dev: 0,
+    st_ino: 0,
+    st_nlink: 0,
+    st_mode: 0,
+    st_uid: 0,
+    st_gid: 0,
+    #[cfg(target_arch = "x86_64")]
+    __pad0: 0,
+    st_rdev: 0,
+    #[cfg(not(target_arch = "x86_64"))]
+    __pad1: 0,
+    st_size: 0,
+    st_blksize: 0,
+    #[cfg(not(target_arch = "x86_64"))]
+    __pad2: 0,
+    st_blocks: 0,
+    st_atim: timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    },
+    st_mtim: timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    },
+    st_ctim: timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    },
+    #[cfg(target_arch = "x86_64")]
+    __glibc_reserved: [0; 3],
+    #[cfg(not(target_arch = "x86_64"))]
+    __glibc_reserved: [0; 2],
+};
 
 #[derive(Copy, Clone)]
 #[repr(C)]

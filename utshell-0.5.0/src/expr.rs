@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::arrayfunc::{array_variable_name, array_variable_part, get_array_value};
 use crate::error::err_unboundvar;
 use crate::general::legal_identifier;

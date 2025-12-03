@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use super::help::builtin_help;
 use crate::builtins::bashgetopt::{internal_getopt, reset_internal_getopt};
 use crate::builtins::common::{builtin_usage, display_signal_list, sh_chkwrite, sh_invalidsig};

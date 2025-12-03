@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::src_common;
 use crate::bashhist::{
     bash_history_reinit, bash_initialize_history, load_history, maybe_save_shell_history,
@@ -1191,32 +1196,7 @@ fn open_shell_script(script_name: *mut libc::c_char) -> libc::c_int {
         let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
         let mut sample: [libc::c_char; 80] = [0; 80];
         let mut sample_len: libc::c_int = 0;
-        let mut sb: crate::src_common::stat = crate::src_common::stat {
-            st_dev: 0,
-            st_ino: 0,
-            st_nlink: 0,
-            st_mode: 0,
-            st_uid: 0,
-            st_gid: 0,
-            __pad0: 0,
-            st_rdev: 0,
-            st_size: 0,
-            st_blksize: 0,
-            st_blocks: 0,
-            st_atim: crate::src_common::timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            },
-            st_mtim: crate::src_common::timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            },
-            st_ctim: crate::src_common::timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            },
-            __glibc_reserved: [0; 3],
-        };
+        let mut sb: crate::src_common::stat = crate::src_common::stat_init;
         let mut funcname_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
         let mut bash_source_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
         let mut bash_lineno_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;

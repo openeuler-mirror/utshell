@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::arrayfunc::{array_variable_name, valid_array_reference};
 use crate::builtins::{
     pushd::get_dirstack_from_string,
@@ -699,58 +704,8 @@ pub fn same_file(
     mut stp1: *mut crate::src_common::stat,
     mut stp2: *mut crate::src_common::stat,
 ) -> libc::c_int {
-    let mut st1: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
-    let mut st2: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut st1: crate::src_common::stat = crate::src_common::stat_init;
+    let mut st2: crate::src_common::stat = crate::src_common::stat_init;
     unsafe{
     if stp1.is_null() {
         if stat(path1, &mut st1) != 0 as libc::c_int {
@@ -899,64 +854,14 @@ pub fn sh_closepipe(mut pv: *mut libc::c_int) -> libc::c_int {
 /* **************************************************************** */
 #[no_mangle]
 pub fn file_exists(mut fn_0: *const libc::c_char) -> libc::c_int {
-    let mut sb: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut sb: crate::src_common::stat = crate::src_common::stat_init;
 
    unsafe{ return (stat(fn_0, &mut sb) == 0 as libc::c_int) as libc::c_int;}
 }
 
 #[no_mangle]
 pub fn file_isdir(mut fn_0: *const libc::c_char) -> libc::c_int {
-    let mut sb: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut sb: crate::src_common::stat = crate::src_common::stat_init;
 
     unsafe{return (stat(fn_0, &mut sb) == 0 && S_ISDIR!(sb.st_mode)) as libc::c_int;}
 }
