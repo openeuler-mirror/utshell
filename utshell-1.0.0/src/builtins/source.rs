@@ -1,8 +1,6 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::builtins::common::{
     builtin_usage, dollar_vars_changed, no_options, remember_args, set_dollar_vars_unchanged,
     sh_restricted,

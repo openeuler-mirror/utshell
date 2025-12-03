@@ -1,8 +1,6 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::general::{absolute_program, bash_tilde_expand, conf_standard_path, extract_colon_unit};
 use crate::hashcmd::{phash_insert, phash_remove, phash_search};
 use crate::pathexp::setup_ignore_patterns;

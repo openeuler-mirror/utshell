@@ -1,8 +1,6 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 // 抑制与 C FFI 兼容性相关的各种编译警告
 #![allow(non_snake_case)] // 允许非蛇形命名(与C兼容)
 #![allow(non_camel_case_types)] // 允许非驼峰类型名(与C兼容)

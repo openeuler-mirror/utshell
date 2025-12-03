@@ -1,8 +1,6 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::alias::{alias_expand, all_aliases, get_alias_value};
 use crate::bashhist::{bash_add_history, pre_process_line};
 use crate::bracecomp::bash_brace_completion;

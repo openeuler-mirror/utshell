@@ -1,8 +1,6 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::arrayfunc::{array_variable_part, get_array_value, valid_array_reference};
 use crate::copycmd::{copy_redirects, copy_word};
 use crate::dispose_cmd::{dispose_redirects, dispose_words};

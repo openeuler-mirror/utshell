@@ -1,8 +1,6 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use super::help::builtin_help;
 use crate::bashline::{enable_hostname_completion, set_directory_hook};
 use crate::builtins::bashgetopt::{internal_getopt, reset_internal_getopt};

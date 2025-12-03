@@ -1,8 +1,6 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use super::help::builtin_help;
 use crate::bashhist::{bash_clear_history, bash_delete_history_range, maybe_append_history};
 use crate::bashhist::{bash_delete_histent, bash_delete_last_history, check_add_history};
