@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::builtins::common::{
     builtin_usage, get_numeric_arg, number_of_args, sh_erange, shift_args,
 };

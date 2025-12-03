@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use super::help::builtin_help;
 use crate::array::array_to_assign;
 use crate::arrayfunc::print_array_assignment;

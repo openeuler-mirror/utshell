@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use fluent_bundle::FluentArgs;
 use fluent_resmgr::resource_manager::ResourceManager;
 
@@ -118,17 +113,16 @@ pub fn type_builtin(mut list: *mut WordList) -> i32 {
                 sh_notfound((*(*list).word).word);
             }
         }
-        any_failed = found + any_failed;
-        let _ = any_failed == 0;
-        // (any_failed += found) == 0;
+       
+        any_failed += (found == 0 as libc::c_int) as libc::c_int;
         unsafe {
             list = (*list).next;
         }
     }
     if any_failed == 0 {
-        EXECUTION_SUCCESS!();
+        opt = EXECUTION_SUCCESS!();
     } else {
-        EXECUTION_FAILURE!();
+        opt = EXECUTION_FAILURE!();
     }
     return sh_chkwrite(opt);
 }

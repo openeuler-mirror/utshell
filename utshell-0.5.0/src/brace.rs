@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::general::legal_number;
 use crate::sig::{termsig_handler, throw_to_top_level};
 use crate::src_common::*;
@@ -155,7 +150,7 @@ pub fn brace_expand(mut text: *mut libc::c_char) -> *mut *mut libc::c_char {
         loop {
             if *amble.offset(j as isize) as libc::c_int == 0 as libc::c_int {
                 tack = expand_seqterm(amble, alen);
-                if tack.is_null() {
+                if !tack.is_null() {
                     break;
                 } else if !text.offset((i + 1) as isize).is_null() {
                     tack = strvec_create(2 as libc::c_int);
@@ -454,11 +449,12 @@ fn expand_seqterm(mut text: *mut libc::c_char, mut tlen: size_t) -> *mut *mut li
             return 0 as *mut libc::c_void as *mut *mut libc::c_char;
         }
         lhs_l = t.offset_from(text) as libc::c_long as libc::c_int;
-
         lhs = substring(text, 0 as libc::c_int, lhs_l);
         rhs = substring(
             text,
-            (lhs_l + std::mem::size_of::<[libc::c_char; 3]> as libc::c_int - 1 as libc::c_int),
+            (lhs_l as libc::c_ulong)
+                .wrapping_add(::std::mem::size_of::<[libc::c_char; 3]>() as libc::c_ulong)
+                .wrapping_sub(1 as libc::c_int as libc::c_ulong) as libc::c_int,
             tlen as libc::c_int,
         );
         if *lhs.offset(0 as libc::c_int as isize) as libc::c_int == 0 as libc::c_int

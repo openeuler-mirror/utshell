@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 //# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
@@ -95,15 +90,15 @@ pub fn bg_builtin(list: *mut WordList) -> i32 {
 /* How to put a job into the foreground/background. */
 #[no_mangle]
 pub fn fg_bg(list: *mut WordList, foreground: i32) -> i32 {
-    let mut set: nix::sys::signal::SigSet = nix::sys::signal::SigSet::empty();
-    let mut oset: nix::sys::signal::SigSet = nix::sys::signal::SigSet::empty();
+    let mut set: sigset_t = sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = sigset_t { __val: [0; 16] };
     let job: i32;
     let status: i32;
     let mut old_async_pid: i32 = 0;
     let j: *mut JOB;
 
     unsafe {
-        BLOCK_CHILD_1!(Some(&mut set), Some(&mut oset));
+        BLOCK_CHILD_1!(&mut set, &mut oset);
         job = get_job_spec(list);
 
         if INVALID_JOB!(job) {
@@ -116,7 +111,7 @@ pub fn fg_bg(list: *mut WordList, foreground: i32) -> i32 {
                 }
             }
 
-            UNBLOCK_CHILD_1!(Some(&oset));
+            UNBLOCK_CHILD_1!(&mut oset);
             return EXECUTION_FAILURE!();
         }
 
@@ -130,7 +125,7 @@ pub fn fg_bg(list: *mut WordList, foreground: i32) -> i32 {
                     .add(&String::from("started without job control").to_string())
                     .as_ptr() as *const libc::c_char,
             );
-            UNBLOCK_CHILD_1!(Some(&oset));
+            UNBLOCK_CHILD_1!(&mut oset);
             return EXECUTION_FAILURE!();
         }
 
@@ -143,7 +138,7 @@ pub fn fg_bg(list: *mut WordList, foreground: i32) -> i32 {
 
         if status >= 0 {
             /* win: */
-            UNBLOCK_CHILD_1!(Some(&oset));
+            UNBLOCK_CHILD_1!(&mut oset);
             if foreground != 0 {
                 return status;
             } else {
@@ -154,7 +149,7 @@ pub fn fg_bg(list: *mut WordList, foreground: i32) -> i32 {
                 last_asynchronous_pid = i32::from(old_async_pid);
             }
 
-            UNBLOCK_CHILD_1!(Some(&oset));
+            UNBLOCK_CHILD_1!(&mut oset);
             return EXECUTION_FAILURE!();
         }
     }

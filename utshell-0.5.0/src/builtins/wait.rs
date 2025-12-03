@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::arrayfunc::valid_array_reference;
 use crate::builtins::bashgetopt::{internal_getopt, reset_internal_getopt};
 use crate::builtins::common::{
@@ -17,7 +12,6 @@ use crate::jobs::{
 use crate::src_common::*;
 use crate::trap::{first_pending_trap, next_pending_trap};
 use crate::variables::bind_var_to_int;
-use nix::sys::signal::SigSet;
 
 include!("./signal.rs");
 
@@ -196,17 +190,17 @@ pub fn wait_builtin(mut list: *mut WordList) -> i32 {
             else if *w != 0 && *w == '%' as libc::c_char {
                 /* Must be a job spec.  Check it out. */
                 let job: i32;
-                let mut set: SigSet = SigSet::empty();
-                let mut oset: SigSet = SigSet::empty();
+                let mut set: sigset_t = sigset_t { __val: [0; 16] };
+                let mut oset: sigset_t = sigset_t { __val: [0; 16] };
 
-                BLOCK_CHILD_1!(Some(&mut set), Some(&mut oset));
+                BLOCK_CHILD_1!(&mut set, &mut oset);
                 job = get_job_spec(list);
 
                 if INVALID_JOB!(job) == true {
                     if job != DUP_JOB!() {
                         sh_badjob((*(*list).word).word);
                     }
-                    UNBLOCK_CHILD_1!(Some(&mut oset));
+                    UNBLOCK_CHILD_1!(&mut oset);
                     status = 127; /* As per Posix.2, section 4.70.2 */
                     pstat.pid = NO_PID!();
                     pstat.status = status as libc::c_short;
@@ -215,7 +209,7 @@ pub fn wait_builtin(mut list: *mut WordList) -> i32 {
                 }
 
                 /* Job spec used.  Wait for the last pid in the pipeline. */
-                UNBLOCK_CHILD_1!(Some(&mut oset));
+                UNBLOCK_CHILD_1!(&mut oset);
                 status = wait_for_job(job, wflags, &mut pstat)
             } else {
                 sh_badjob(w);
@@ -241,8 +235,8 @@ pub fn wait_builtin(mut list: *mut WordList) -> i32 {
 
 #[no_mangle]
 fn set_waitlist(list: *mut WordList) -> i32 {
-    let mut set: SigSet = SigSet::empty();
-    let mut oset: SigSet = SigSet::empty();
+    let mut set: sigset_t = sigset_t { __val: [0; 16] }; 
+    let mut oset: sigset_t = sigset_t { __val: [0; 16] };
     let mut job: i32;
     let mut _r: i32;
     let mut njob: i32;
@@ -250,7 +244,7 @@ fn set_waitlist(list: *mut WordList) -> i32 {
     let mut l: *mut WordList;
 
     unsafe {
-        BLOCK_CHILD_1!(Some(&mut set), Some(&mut oset));
+        BLOCK_CHILD_1!(&mut set, &mut oset);
         njob = 0;
 
         l = list;
@@ -282,7 +276,7 @@ fn set_waitlist(list: *mut WordList) -> i32 {
 
             l = (*l).next;
         }
-        UNBLOCK_CHILD_1!(Some(&mut oset));
+        UNBLOCK_CHILD_1!(&mut oset);
 
         return njob;
     } //unsafe
@@ -292,11 +286,11 @@ fn set_waitlist(list: *mut WordList) -> i32 {
 #[no_mangle]
 fn unset_waitlist() {
     // let mut i:i32;
-    let mut set: SigSet = SigSet::empty();
-    let mut oset: SigSet = SigSet::empty();
+    let mut set: sigset_t = sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = sigset_t { __val: [0; 16] };
 
     unsafe {
-        BLOCK_CHILD_1!(Some(&mut set), Some(&mut oset));
+        BLOCK_CHILD_1!(&mut set, &mut oset);
         for i in 0..js.j_jobslots {
             if get_job_by_jid!(i) != std::ptr::null_mut()
                 && (*get_job_by_jid!(i)).flags & J_WAITING!() != 0
@@ -305,6 +299,6 @@ fn unset_waitlist() {
             }
         }
 
-        UNBLOCK_CHILD_1!(Some(&mut oset));
+        UNBLOCK_CHILD_1!(&mut oset);
     }
 }

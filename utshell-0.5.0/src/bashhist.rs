@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::bashline::bash_re_edit;
 use crate::general::file_exists;
 use crate::pathexp::setup_ignore_patterns;
@@ -16,16 +11,6 @@ use crate::y_tab::{
     bash_input, current_command_line_count, dstack, history_delimiting_chars, parser_state,
 };
 use std::ffi::CStr;
-
-#[inline]
-fn stat(
-    mut __path: *const libc::c_char,
-    mut __statbuf: *mut crate::src_common::stat,
-) -> libc::c_int {
-    unsafe {
-        return __xstat(1 as libc::c_int, __path, __statbuf);
-    }
-}
 
 
 fn member(c: i32, s: *const libc::c_char) -> bool {

@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 pub use libc::*;
 
 pub use crate::array::array_dispose_element;
@@ -32,8 +27,6 @@ pub use crate::trap::signal_is_trapped;
 pub use crate::variables::find_variable;
 pub use fluent_bundle::FluentArgs;
 pub use fluent_resmgr::resource_manager::ResourceManager;
-pub use nix::errno::errno;
-pub use nix::sys::signal::SigSet;
 pub use std::env::var;
 pub use std::ffi::*;
 pub use std::fs::File;
@@ -296,11 +289,15 @@ extern "C" {
         sawc: *mut libc::c_int,
         rlen: *mut libc::c_int,
     ) -> *mut libc::c_char;
-    pub fn __fxstat(
-        __ver: libc::c_int,
+    pub fn fstat(
         __fildes: libc::c_int,
         __stat_buf: *mut stat,
     ) -> libc::c_int;
+    pub fn lstat(
+        __path: *const libc::c_char,
+        __statbuf: *mut crate::src_common::stat,
+    ) -> libc::c_int;
+
     pub fn zmapfd(_: libc::c_int, _: *mut *mut libc::c_char, _: *mut libc::c_char) -> libc::c_int;
     pub fn uconvert(
         s: *mut libc::c_char,
@@ -380,11 +377,10 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
     pub fn strvec_mcreate(arg1: ::std::os::raw::c_int) -> *mut *mut ::std::os::raw::c_char;
     pub fn programming_error(arg1: *const ::std::os::raw::c_char, ...);
-    pub fn __xstat(
-        __ver: libc::c_int,
-        __filename: *const libc::c_char,
-        __stat_buf: *mut stat,
-    ) -> libc::c_int;
+    pub fn stat(
+            __filename: *const libc::c_char,
+            __stat_buf: *mut stat,
+        ) -> libc::c_int;
     pub fn sh_eaccess(_: *const libc::c_char, _: libc::c_int) -> libc::c_int;
     pub fn getmaxchild() -> i64;
     pub fn make_command_string(arg1: *mut COMMAND) -> *mut ::std::os::raw::c_char;
@@ -395,22 +391,16 @@ extern "C" {
     pub fn wcswidth(__s: *const wchar_t, __n: usize) -> ::std::os::raw::c_int;
     pub fn putc(__c: ::std::os::raw::c_int, __stream: *mut FILE) -> ::std::os::raw::c_int;
     pub fn subshell_exit(arg1: ::std::os::raw::c_int);
-    // pub fn command_builtin(_: *mut WordList) -> libc::c_int;
-    // pub fn eval_builtin(_: *mut WordList) -> libc::c_int;
-    // pub fn source_builtin(_: *mut WordList) -> libc::c_int;
     pub fn sh_regmatch(
         a: *const libc::c_char,
         b: *const libc::c_char,
         c: libc::c_int,
     ) -> libc::c_int;
-    // pub fn mapfile_builtin(_: *mut WordList) -> libc::c_int;
-    // pub fn fc_builtin(_: *mut WordList) -> libc::c_int;
-    // pub fn return_builtin(_: *mut WordList) -> libc::c_int;
+  
     pub fn sh_getopt_restore_istate(arg1: *mut sh_getopt_state_t);
     pub fn optimize_shell_function(arg1: *mut COMMAND);
     pub fn sh_getopt_save_istate() -> *mut sh_getopt_state_t;
-    // pub fn jobs_builtin(_: *mut WordList) -> libc::c_int;
-    // pub fn exec_builtin(_: *mut WordList) -> libc::c_int;
+  
     pub fn unset_bash_input(arg1: ::std::os::raw::c_int);
     pub fn unbind_args();
     pub fn bind_function_def(
@@ -4146,12 +4136,11 @@ macro_rules! SIG_SETMASK {
     };
 }
 
-//builtins目录下使用
-//BLOCK_CHILD 变形1
+//UNBLOCK_SIGNAL的变形1
 #[macro_export]
-macro_rules! BLOCK_CHILD_1 {
-    ($nvar:expr,$ovar:expr) => {
-        BLOCK_SIGNAL_1!(nix::sys::signal::SIGCHLD, $nvar, $ovar);
+macro_rules! UNBLOCK_SIGNAL_1 {
+    ($ovar:expr) => {
+        sigprocmask(2 as libc::c_int, $ovar, 0 as *mut libc::c_void as *mut sigset_t)
     };
 }
 
@@ -4162,22 +4151,22 @@ macro_rules! UNBLOCK_CHILD_1 {
         UNBLOCK_SIGNAL_1!($ovar);
     };
 }
+
 //BLOCK_SIGNAL的变形1
 #[macro_export]
 macro_rules! BLOCK_SIGNAL_1 {
     ($sig:expr, $nvar:expr, $ovar:expr) => {
-        $nvar.unwrap().clear();
-        $nvar.unwrap().add($sig);
-        $nvar.unwrap().clear();
-        nix::sys::signal::sigprocmask(nix::sys::signal::SigmaskHow::SIG_BLOCK, $nvar, $ovar);
+        sigemptyset($nvar);
+        sigaddset($nvar, $sig as libc::c_int);
+        sigemptyset($ovar);
+        sigprocmask(0 as libc::c_int, $nvar, $ovar);
     };
 }
 
-//UNBLOCK_SIGNAL的变形1
 #[macro_export]
-macro_rules! UNBLOCK_SIGNAL_1 {
-    ($ovar:expr) => {
-        nix::sys::signal::sigprocmask(nix::sys::signal::SigmaskHow::SIG_SETMASK, $ovar, None)
+macro_rules! BLOCK_CHILD_1 {
+    ($nvar:expr, $ovar:expr) => {
+        BLOCK_SIGNAL_1!(17 as libc::c_int, $nvar, $ovar);
     };
 }
 
@@ -4188,13 +4177,13 @@ macro_rules! BLOCK_SIGNAL {
         sigemptyset(&mut $nvar);
         sigaddset(&mut $nvar, $sig as libc::c_int);
         sigemptyset(&mut $ovar);
-        sigprocmask(SIG_BLOCK!(), &mut $nvar, &mut $ovar);
+        sigprocmask(SIG_BLOCK as libc::c_int, &mut $nvar, &mut $ovar);
     };
 }
 #[macro_export]
 macro_rules! UNBLOCK_SIGNAL {
     ($ovar:expr) => {
-        sigprocmask(SIG_SETMASK!(), &mut $ovar, 0 as *mut sigset_t)
+        sigprocmask(SIG_SETMASK as libc::c_int, &mut $ovar, 0 as *mut sigset_t)
     };
 }
 
@@ -6002,12 +5991,6 @@ macro_rules! SPROMPT {
     };
 }
 
-#[macro_export]
-macro_rules! MACHTYPE {
-    () => {
-        b"x86_64-pc-linux-gnu\0" as *const u8 as *const libc::c_char
-    };
-}
 
 //makecmd
 #[no_mangle]

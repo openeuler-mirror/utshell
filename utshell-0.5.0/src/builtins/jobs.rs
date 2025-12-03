@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use super::help::builtin_help;
 use crate::builtins::bashgetopt::{internal_getopt, reset_internal_getopt};
 use crate::builtins::common::{builtin_usage, get_job_spec, sh_badjob};
@@ -74,10 +69,8 @@ pub fn jobs_builtin(mut list: *mut WordList) -> i32 {
     let mut any_failed: i32 = 0;
     let mut job: i32;
 
-    let mut set: nix::sys::signal::SigSet = nix::sys::signal::SigSet::empty();
-    let mut oset: nix::sys::signal::SigSet = nix::sys::signal::SigSet::empty();
-    // let mut set: sigset_t = sigset_t { __val: [0; 16] };
-    // let mut oset: sigset_t = sigset_t { __val: [0; 16] };
+    let mut set: sigset_t = sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = sigset_t { __val: [0; 16] };
 
     form = JLIST_STANDARD!();
     state = JSTATE_ANY!();
@@ -144,7 +137,7 @@ pub fn jobs_builtin(mut list: *mut WordList) -> i32 {
         }
 
         while list != std::ptr::null_mut() {
-            BLOCK_CHILD_1!(Some(&mut set), Some(&mut oset));
+            BLOCK_CHILD_1!(&mut set, &mut oset);
             job = get_job_spec(list);
 
             if (job == NO_JOB!())
@@ -157,7 +150,7 @@ pub fn jobs_builtin(mut list: *mut WordList) -> i32 {
                 list_one_job(0 as *mut JOB, form, 0, job);
             }
 
-            UNBLOCK_CHILD_1!(Some(&oset));
+            UNBLOCK_CHILD_1!(&mut oset);
 
             list = (*list).next;
         }
@@ -178,10 +171,8 @@ pub fn disown_builtin(list: *mut WordList) -> libc::c_int {
     let mut running_jobs: i32 = 0;
     let mut all_jobs: i32 = 0;
 
-    let mut set: nix::sys::signal::SigSet = nix::sys::signal::SigSet::empty();
-    let mut oset: nix::sys::signal::SigSet = nix::sys::signal::SigSet::empty();
-    // let mut set: sigset_t = sigset_t { __val: [0; 16] };
-    // let mut oset: sigset_t = sigset_t { __val: [0; 16] };
+    let mut set: sigset_t = sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = sigset_t { __val: [0; 16] };
     let mut pid_value: libc::c_long = 0;
     unsafe {
         reset_internal_getopt();
@@ -222,7 +213,7 @@ pub fn disown_builtin(list: *mut WordList) -> libc::c_int {
             }
             return EXECUTION_SUCCESS!();
         }
-        BLOCK_CHILD_1!(Some(&mut set), Some(&mut oset));
+        BLOCK_CHILD_1!(&mut set, &mut oset);
         if loptend != std::ptr::null_mut()
             && legal_number((*(*loptend).word).word, &mut pid_value) != 0
             && pid_value == pid_value
@@ -244,13 +235,13 @@ pub fn disown_builtin(list: *mut WordList) -> libc::c_int {
             delete_job(job, 1);
         }
 
-        UNBLOCK_CHILD_1!(Some(&oset));
+        UNBLOCK_CHILD_1!(&oset);
 
         if loptend != std::ptr::null_mut() {
             let mut loptendt = *loptend;
             while loptendt.next != std::ptr::null_mut() {
                 loptendt = *loptendt.next;
-                BLOCK_CHILD_1!(Some(&mut set), Some(&mut oset));
+                BLOCK_CHILD_1!(&mut set, &mut oset);
                 if legal_number((*loptendt.word).word, &mut pid_value) != 0
                     && pid_value == pid_value
                 {
@@ -266,7 +257,7 @@ pub fn disown_builtin(list: *mut WordList) -> libc::c_int {
                 } else {
                     delete_job(job, 1);
                 }
-                UNBLOCK_CHILD_1!(Some(&oset));
+                UNBLOCK_CHILD_1!(&oset);
             }
         }
         return retval;

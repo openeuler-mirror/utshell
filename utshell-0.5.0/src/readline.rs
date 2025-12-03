@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::src_common::*;
 pub const control_character_threshold: u32 = 32;
 pub const control_character_mask: u32 = 31;
@@ -6385,9 +6380,7 @@ extern "C" {
         >,
     ) -> ::std::os::raw::c_int;
 }
-extern "C" {
-    pub fn stat(__file: *const ::std::os::raw::c_char, __buf: *mut stat) -> ::std::os::raw::c_int;
-}
+
 extern "C" {
     pub fn fstat(__fd: ::std::os::raw::c_int, __buf: *mut stat) -> ::std::os::raw::c_int;
 }
@@ -6494,13 +6487,13 @@ extern "C" {
     pub fn futimens(__fd: ::std::os::raw::c_int, __times: *const timespec)
         -> ::std::os::raw::c_int;
 }
-extern "C" {
-    pub fn __fxstat(
-        __ver: ::std::os::raw::c_int,
-        __fildes: ::std::os::raw::c_int,
-        __stat_buf: *mut stat,
-    ) -> ::std::os::raw::c_int;
-}
+// extern "C" {
+//     pub fn __fxstat(
+//         __ver: ::std::os::raw::c_int,
+//         __fildes: ::std::os::raw::c_int,
+//         __stat_buf: *mut stat,
+//     ) -> ::std::os::raw::c_int;
+// }
 // extern "C" {
 //     pub fn __xstat(
 //         __ver: ::std::os::raw::c_int,
@@ -6508,13 +6501,13 @@ extern "C" {
 //         __stat_buf: *mut stat,
 //     ) -> ::std::os::raw::c_int;
 // }
-extern "C" {
-    pub fn __lxstat(
-        __ver: ::std::os::raw::c_int,
-        __filename: *const ::std::os::raw::c_char,
-        __stat_buf: *mut crate::src_common::stat,
-    ) -> ::std::os::raw::c_int;
-}
+// extern "C" {
+//     pub fn __lxstat(
+//         __ver: ::std::os::raw::c_int,
+//         __filename: *const ::std::os::raw::c_char,
+//         __stat_buf: *mut crate::src_common::stat,
+//     ) -> ::std::os::raw::c_int;
+// }
 extern "C" {
     pub fn __fxstatat(
         __ver: ::std::os::raw::c_int,

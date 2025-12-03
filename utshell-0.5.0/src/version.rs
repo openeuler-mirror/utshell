@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::src_common::*;
 use std::convert::TryInto;
 
@@ -83,13 +78,7 @@ pub fn show_shell_version(mut extended: libc::c_int) {
                 5 as libc::c_int,
             ),
             shell_version_string(),
-            if cfg!(target_arch = "x86_64") {
-                b"x86_64-uos-linux-gnu\0" as *const u8 as *const libc::c_char
-            } else if cfg!(target_arch = "aarch64") {
-                b"aarch64-uos-linux-gnu\0" as *const u8 as *const libc::c_char
-            } else {
-                b"unknow-uos-linux-gnu\0" as *const u8 as *const libc::c_char
-            },
+            get_mach_type(),
         );
         if extended != 0 {
             printf(

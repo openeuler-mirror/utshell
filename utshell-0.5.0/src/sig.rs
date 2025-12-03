@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::bashhist::maybe_save_shell_history;
 use crate::bashline::{bashline_reset, bashline_set_event_hook};
 use crate::builtins::evalstring::parse_and_execute_cleanup;

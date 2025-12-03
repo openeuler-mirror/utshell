@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 //# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
@@ -626,7 +621,7 @@ pub fn get_working_directory(for_whom: *mut libc::c_char) -> *mut libc::c_char {
             the_current_working_directory = getcwd(0 as *mut libc::c_char, 0);
 
             if the_current_working_directory.is_null() {
-                let strerror_str = CStr::from_ptr(strerror(errno()));
+                let strerror_str = CStr::from_ptr(strerror(errno!()));
                 let strerror_string = strerror_str.to_str().unwrap().to_owned();
                 let bash_getcwd_errstr = String::from("getcwd: cannot access parent directories");
                 if !for_whom.is_null() && *for_whom != 0 {
@@ -946,7 +941,9 @@ pub fn builtin_address_internal(name: *mut libc::c_char, disabled_okay: i32) -> 
         while lo <= hi {
             mid = (lo + hi) / 2;
 
-            j = (*((*shell_builtins.offset(mid as isize)).name).offset(0) - *name.offset(0)) as i32;
+            j = *((*shell_builtins.offset(mid as isize)).name)
+                .offset(0 as libc::c_int as isize) as libc::c_int
+                - *name.offset(0 as libc::c_int as isize) as libc::c_int;
 
             if j == 0 {
                 j = strcmp((*shell_builtins.offset(mid as isize)).name, name);
@@ -1019,11 +1016,11 @@ pub fn find_special_builtin(name: *mut libc::c_char) -> Option<sh_builtin_func_t
 
 #[no_mangle]
 fn shell_builtin_compare(sbp1: *mut builtin, sbp2: *mut builtin) -> i32 {
-    let mut result: i32;
-
     unsafe {
-        result = (*((*sbp1).name).offset(0) - *((*sbp2).name).offset(0)) as i32;
-        if result == 0 {
+        let mut result: libc::c_int = 0;
+        result = *((*sbp1).name).offset(0 as libc::c_int as isize) as libc::c_int
+            - *((*sbp2).name).offset(0 as libc::c_int as isize) as libc::c_int;
+        if result == 0 as libc::c_int {
             result = strcmp((*sbp1).name, (*sbp2).name);
         }
         return result;

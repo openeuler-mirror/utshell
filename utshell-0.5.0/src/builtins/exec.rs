@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 //# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
 
 //# SPDX-License-Identifier: GPL-3.0-or-later
@@ -94,7 +89,6 @@ pub fn exec_builtin(mut list: *mut WordList) -> i32 {
 
             if restricted != 0 {
                 //限制性shell
-                // sh_restricted(std::ptr::null_mut() as *mut libc::c_char);
                 sh_restricted(std::ptr::null_mut() as *mut libc::c_char);
                 return EXECUTION_FAILURE!();
             }
@@ -115,7 +109,7 @@ pub fn exec_builtin(mut list: *mut WordList) -> i32 {
                 if file_isdir(*args.offset(0)) != 0 {
                     let c_str = CString::new("%s: cannot execute: %s").unwrap();
                     let c_ptr = c_str.as_ptr();
-                    builtin_error(c_ptr, *args.offset(0), strerror(errno()));
+                    builtin_error(c_ptr, *args.offset(0), strerror(errno!()));
                     exit_value = EX_NOEXEC;
                 } else {
                     sh_notfound(*args.offset(0));
@@ -202,7 +196,7 @@ pub fn exec_builtin(mut list: *mut WordList) -> i32 {
             } else if executable_file(command) == 0 {
                 let c_str = CString::new("%s: cannot execute: %s").unwrap();
                 let c_ptr = c_str.as_ptr();
-                builtin_error(c_ptr, command, strerror(errno()));
+                builtin_error(c_ptr, command, strerror(errno!()));
                 exit_value = EX_NOEXEC;
             } else {
                 file_error(command);

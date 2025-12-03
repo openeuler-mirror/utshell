@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::src_common;
 use crate::bashhist::{
     bash_history_reinit, bash_initialize_history, load_history, maybe_save_shell_history,
@@ -67,16 +62,7 @@ extern "C" {
     pub static mut stdout: *mut FILE;
 
 }
-#[inline]
-fn fstat(mut __fd: libc::c_int, mut __statbuf: *mut crate::src_common::stat) -> libc::c_int {
-    unsafe {
-        return __fxstat(
-            1 as libc::c_int,
-            __fd,
-            __statbuf as *mut crate::src_common::stat,
-        );
-    } //unsafe
-}
+
 static mut act_like_sh: libc::c_int = 0;
 static mut su_shell: libc::c_int = 0;
 static mut sourced_env: libc::c_int = 0;
@@ -1645,7 +1631,7 @@ fn show_shell_usage(fp: *mut FILE, extra: libc::c_int) {
                 fp,
                 b"utshell, version %s-(%s)\n\0" as *const u8 as *const libc::c_char,
                 shell_version_string(),
-                MACHTYPE!(),
+                get_mach_type(),
             );
         }
         fprintf(

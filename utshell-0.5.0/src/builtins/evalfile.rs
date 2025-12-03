@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use libc::{__errno_location, close, free, malloc, memmove, open, read, strlen};
 
 use crate::array::{array_dispose_element, array_rshift, array_shift};
@@ -21,10 +16,7 @@ use crate::variables::{find_variable, init_bash_argv, pop_args};
 use crate::version::shell_compatibility_level;
 use crate::y_tab::{current_token, push_token};
 
-#[inline]
-fn fstat(mut __fd: libc::c_int, mut __statbuf: *mut crate::src_common::stat) -> libc::c_int {
-    return unsafe { __fxstat(1 as libc::c_int, __fd, __statbuf) };
-}
+
 #[no_mangle]
 pub static mut sourcelevel: libc::c_int = 0 as libc::c_int;
 fn evalfile(mut filename: *const libc::c_char, mut flags: libc::c_int) -> libc::c_int {

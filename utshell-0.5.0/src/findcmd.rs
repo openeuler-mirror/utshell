@@ -1,23 +1,9 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::general::{absolute_program, bash_tilde_expand, conf_standard_path, extract_colon_unit};
 use crate::hashcmd::{phash_insert, phash_remove, phash_search};
 use crate::pathexp::setup_ignore_patterns;
 use crate::src_common::*;
 use crate::variables::{find_variable_tempenv, get_string_value};
 
-#[inline]
-fn stat(
-    mut __path: *const libc::c_char,
-    mut __statbuf: *mut crate::src_common::stat,
-) -> libc::c_int {
-    unsafe {
-        return __xstat(1 as libc::c_int, __path, __statbuf);
-    }
-}
 
 static mut file_to_lose_on: *mut libc::c_char = 0 as *mut libc::c_char;
 static mut execignore: ignorevar = {
@@ -87,10 +73,11 @@ pub fn file_status(name: *const libc::c_char) -> libc::c_int {
         __glibc_reserved: [0; 3],
     };
     let mut r: libc::c_int = 0;
-
+    unsafe{
     if stat(name, &mut finfo) < 0 {
         return 0;
     }
+}
 
     if S_ISDIR!(finfo.st_mode) {
         return FS_EXISTS as libc::c_int | FS_DIRECTORY as libc::c_int;

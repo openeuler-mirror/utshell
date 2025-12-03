@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 use crate::alias::{alias_expand, all_aliases, get_alias_value};
 use crate::bashhist::{bash_add_history, pre_process_line};
 use crate::bracecomp::bash_brace_completion;
@@ -40,15 +35,8 @@ use std::convert::TryInto;
 extern "C" {
     static mut stdin: *mut FILE;
 }
-#[inline]
-fn lstat(
-    mut __path: *const libc::c_char,
-    mut __statbuf: *mut crate::src_common::stat,
-) -> libc::c_int {
-    unsafe {
-        return __lxstat(1 as libc::c_int, __path, __statbuf);
-    }
-}
+
+
 #[macro_export]
 macro_rules! BACKUP_CHAR {
     ($_str:expr, $_strsize:expr, $_i:expr,$state:expr) => {
@@ -3317,7 +3305,7 @@ fn directory_exists(
             *new_dirname.offset((dirlen - 1 as libc::c_int) as isize) =
                 '\u{0}' as i32 as libc::c_char;
         }
-        r = (lstat(new_dirname, &mut sb) == 0) as libc::c_int;
+        r = (crate::src_common::lstat(new_dirname, &mut sb) == 0) as libc::c_int;
         libc::free(new_dirname as *mut c_void);
     }
     return r;
