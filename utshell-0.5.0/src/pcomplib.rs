@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::hashlib::{
     hash_create, hash_dispose, hash_flush, hash_insert, hash_remove, hash_search, hash_walk,
 };

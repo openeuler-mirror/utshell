@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::array::array_reference;
 use crate::builtins::common::builtin_address_internal;
 use crate::dispose_cmd::{dispose_word, dispose_words};

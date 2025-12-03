@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::copycmd::copy_command;
 use crate::copycmd::copy_redirect;
 use crate::dispose_cmd::{dispose_command, dispose_redirects};

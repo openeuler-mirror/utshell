@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::general::{extract_colon_unit, full_pathname, legal_number};
 use crate::src_common::*;
 use crate::subst::expand_string_to_string;
@@ -63,32 +68,7 @@ fn init_mail_file(i: libc::c_int) {
 
 fn update_mail_file(i: libc::c_int) {
     let file: *mut libc::c_char;
-    let mut finfo: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
     unsafe {
         file = (**mailfiles.offset(i as isize)).name;
         if mailstat(file, &mut finfo) == 0 as libc::c_int {
@@ -100,32 +80,7 @@ fn update_mail_file(i: libc::c_int) {
 }
 
 fn add_mail_file(file: *mut libc::c_char, msg: *mut libc::c_char) -> libc::c_int {
-    let mut finfo: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
     let filename: *mut libc::c_char;
     let mut i: libc::c_int;
     filename = full_pathname(file);
@@ -224,32 +179,7 @@ pub fn init_mail_dates() {
 
 fn file_mod_date_changed(i: libc::c_int) -> libc::c_int {
     let mtime_0: time_t;
-    let mut finfo: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
     unsafe {
         let file: *mut libc::c_char;
         file = (**mailfiles.offset(i as isize)).name;
@@ -271,32 +201,7 @@ fn file_mod_date_changed(i: libc::c_int) -> libc::c_int {
 
 fn file_access_date_changed(i: libc::c_int) -> libc::c_int {
     let atime_0: time_t;
-    let mut finfo: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
     let file: *mut libc::c_char;
     unsafe {
         file = (**mailfiles.offset(i as isize)).name;
@@ -313,32 +218,7 @@ fn file_access_date_changed(i: libc::c_int) -> libc::c_int {
 
 fn file_has_grown(i: libc::c_int) -> libc::c_int {
     let size: off_t;
-    let mut finfo: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
     unsafe {
         let file: *mut libc::c_char;
         file = (**mailfiles.offset(i as isize)).name;

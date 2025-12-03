@@ -1,15 +1,20 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::src_common::*;
 use std::convert::TryInto;
 
 /* The distribution version number of this shell. */
 #[no_mangle]
-pub static mut dist_version: *const libc::c_char = b"5.1\0" as *const u8 as *const libc::c_char;
+pub static mut dist_version: *const libc::c_char = b"0.5\0" as *const u8 as *const libc::c_char;
 
 /* It's important that there be no other strings in this file that match the
 regexp `^#define[ 	]*PATCHLEVEL', since that's what support/mkversion.sh
 looks for to find the patch level (for the sccs version string). */
 #[no_mangle]
-pub static mut patch_level: libc::c_int = 4 as libc::c_int;
+pub static mut patch_level: libc::c_int = 0 as libc::c_int;
 
 /* The last built version of this shell. */
 #[no_mangle]

@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::array::{
     array_create, array_dispose_element, array_flush, array_insert, array_keys_to_word_list,
     array_reference, array_remove, array_to_assign, array_to_word_list,

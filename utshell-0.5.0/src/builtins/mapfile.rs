@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use super::help::builtin_help;
 use crate::array::array_flush;
 use crate::arrayfunc::{bind_array_element, find_or_make_array_variable};

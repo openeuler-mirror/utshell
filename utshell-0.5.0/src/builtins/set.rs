@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use super::help::builtin_help;
 use crate::arrayfunc::{array_variable_part, unbind_array_element, valid_array_reference};
 use crate::bashhist::{bash_history_disable, bash_history_enable, load_history};

@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::array::array_to_argv;
 use crate::builtins::common::get_working_directory;
 use crate::builtins::exit::bash_logout;

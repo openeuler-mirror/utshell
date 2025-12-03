@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
 use crate::arrayfunc::{array_value, valid_array_reference};
 use crate::assoc::assoc_reference;
 use crate::builtins::common::number_of_args;
@@ -691,58 +696,9 @@ pub fn filecomp(
     mut t: *mut libc::c_char,
     op: libc::c_int,
 ) -> libc::c_int {
-    let mut st1: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
-    let mut st2: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut st1: crate::src_common::stat = crate::src_common::stat_init;
+    let mut st2: crate::src_common::stat = crate::src_common::stat_init;
+
     let mut ts1: crate::src_common::timespec = crate::src_common::timespec {
         tv_sec: 0,
         tv_nsec: 0,
@@ -882,32 +838,7 @@ pub fn binary_test(
 #[no_mangle]
 pub fn unary_test(mut op: *mut libc::c_char, mut arg: *mut libc::c_char) -> libc::c_int {
     let mut r: intmax_t = 0;
-    let mut stat_buf: crate::src_common::stat = crate::src_common::stat {
-        st_dev: 0,
-        st_ino: 0,
-        st_nlink: 0,
-        st_mode: 0,
-        st_uid: 0,
-        st_gid: 0,
-        __pad0: 0,
-        st_rdev: 0,
-        st_size: 0,
-        st_blksize: 0,
-        st_blocks: 0,
-        st_atim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_mtim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        st_ctim: crate::src_common::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        },
-        __glibc_reserved: [0; 3],
-    };
+    let mut stat_buf: crate::src_common::stat = crate::src_common::stat_init;
     let mut mtime: crate::src_common::timespec = crate::src_common::timespec {
         tv_sec: 0,
         tv_nsec: 0,
