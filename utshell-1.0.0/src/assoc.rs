@@ -1,8 +1,6 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::dispose_cmd::dispose_words;
 use crate::hashlib::{hash_dispose, hash_flush, hash_remove, hash_search};
 use crate::make_cmd::{make_bare_word, make_word_list};

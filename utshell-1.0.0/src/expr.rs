@@ -1,8 +1,6 @@
-/*
- * SPDX-FileCopyrightText: 2025 UnionTech Software Technology Co., Ltd.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
+//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+
+//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::arrayfunc::{array_variable_name, array_variable_part, get_array_value};
 use crate::error::err_unboundvar;
 use crate::general::legal_identifier;
@@ -1183,20 +1181,16 @@ fn readtok() {
         {
             cp = cp.offset(1);
         }
-
-        if c as libc::c_int != 0 {
+        if c != 0 {
             cp = cp.offset(1);
         }
-
         if c as libc::c_int == '\u{0}' as i32 {
             lasttok = curtok;
             curtok = 0 as libc::c_int;
             tp = cp;
             return;
         }
-
-        // bash: lasttp = tp = cp - 1;
-        tp = cp.offset(-1);
+        tp = cp.offset(-(1 as libc::c_int as isize));
         lasttp = tp;
         if 1 as libc::c_int != 0
             && *(*__ctype_b_loc()).offset(c as libc::c_int as isize) as libc::c_int
@@ -1318,27 +1312,18 @@ fn readtok() {
             lasttok = curtok;
             curtok = NUM as libc::c_int;
         } else {
-            c1 = *cp as libc::c_uchar;
-            let mut matched_two_char = false;
-
-            if c as libc::c_int == '=' as i32 && c1 as libc::c_int == '=' as i32 {
+            let fresh13 = cp;
+            cp = cp.offset(1);
+            c1 = *fresh13 as libc::c_uchar;
+            if c as libc::c_int == EQ as i32 && c1 as libc::c_int == EQ as i32 {
                 c = EQEQ as libc::c_int as libc::c_uchar;
-                cp = cp.offset(1);
-                matched_two_char = true;
-            } else if c as libc::c_int == '!' as i32 && c1 as libc::c_int == '=' as i32 {
+            } else if c as libc::c_int == NOT as i32 && c1 as libc::c_int == EQ as i32 {
                 c = NEQ as libc::c_int as libc::c_uchar;
-                cp = cp.offset(1);
-                matched_two_char = true;
-            } else if c as libc::c_int == '>' as i32 && c1 as libc::c_int == '=' as i32 {
+            } else if c as libc::c_int == GT as i32 && c1 as libc::c_int == EQ as i32 {
                 c = GEQ as libc::c_int as libc::c_uchar;
-                cp = cp.offset(1);
-                matched_two_char = true;
-            } else if c as libc::c_int == '<' as i32 && c1 as libc::c_int == '=' as i32 {
+            } else if c as libc::c_int == LT as i32 && c1 as libc::c_int == EQ as i32 {
                 c = LEQ as libc::c_int as libc::c_uchar;
-                cp = cp.offset(1);
-                matched_two_char = true;
-            } else if c as libc::c_int == '<' as i32 && c1 as libc::c_int == '<' as i32 {
-                cp = cp.offset(1);
+            } else if c as libc::c_int == LT as i32 && c1 as libc::c_int == LT as i32 {
                 if *cp as libc::c_int == '=' as i32 {
                     assigntok = LSH as libc::c_int;
                     c = OP_ASSIGN as libc::c_int as libc::c_uchar;
@@ -1346,40 +1331,29 @@ fn readtok() {
                 } else {
                     c = LSH as libc::c_int as libc::c_uchar;
                 }
-                matched_two_char = true;
             } else if c as libc::c_int == '>' as i32 && c1 as libc::c_int == '>' as i32 {
-                cp = cp.offset(1);
                 if *cp as libc::c_int == '=' as i32 {
-                    assigntok = RSH as libc::c_int;
-                    c = OP_ASSIGN as libc::c_int as libc::c_uchar;
+                    assigntok = 10 as libc::c_int;
+                    c = 11 as libc::c_int as libc::c_uchar;
                     cp = cp.offset(1);
                 } else {
-                    c = RSH as libc::c_int as libc::c_uchar;
+                    c = 10 as libc::c_int as libc::c_uchar;
                 }
-                matched_two_char = true;
-            } else if c as libc::c_int == '&' as i32 && c1 as libc::c_int == '&' as i32 {
+            } else if c as libc::c_int == BAND as i32 && c1 as libc::c_int == BAND as i32 {
                 c = LAND as libc::c_int as libc::c_uchar;
-                cp = cp.offset(1);
-                matched_two_char = true;
-            } else if c as libc::c_int == '|' as i32 && c1 as libc::c_int == '|' as i32 {
+            } else if c as libc::c_int == BOR as i32 && c1 as libc::c_int == BOR as i32 {
                 c = LOR as libc::c_int as libc::c_uchar;
-                cp = cp.offset(1);
-                matched_two_char = true;
             } else if c as libc::c_int == '*' as i32 && c1 as libc::c_int == '*' as i32 {
                 c = POWER as libc::c_int as libc::c_uchar;
-                cp = cp.offset(1);
-                matched_two_char = true;
             } else if (c as libc::c_int == '-' as i32 || c as libc::c_int == '+' as i32)
                 && c1 as libc::c_int == c as libc::c_int
-                && curtok == STR as libc::c_int
+                && curtok == 5 as libc::c_int
             {
                 c = (if c as libc::c_int == '-' as i32 {
-                    POSTDEC as libc::c_int
+                    17 as libc::c_int
                 } else {
-                    POSTINC as libc::c_int
+                    16 as libc::c_int
                 }) as libc::c_uchar;
-                cp = cp.offset(1);
-                matched_two_char = true;
             } else if (c as libc::c_int == '-' as i32 || c as libc::c_int == '+' as i32)
                 && c1 as libc::c_int == c as libc::c_int
                 && curtok == NUM as libc::c_int
@@ -1397,7 +1371,7 @@ fn readtok() {
             } else if (c as libc::c_int == '-' as i32 || c as libc::c_int == '+' as i32)
                 && c1 as libc::c_int == c as libc::c_int
             {
-                xp = cp.offset(1);
+                xp = cp;
                 while !xp.is_null()
                     && *xp as libc::c_int != 0
                     && (*xp as libc::c_int == ' ' as i32
@@ -1418,12 +1392,10 @@ fn readtok() {
                     } else {
                         PREINC as libc::c_int
                     }) as libc::c_uchar;
-                    cp = cp.offset(1);
-                    matched_two_char = true;
                 } else {
-                    // No match for ++/-- operators, will backtrack below
+                    cp = cp.offset(-1);
                 }
-            } else if c1 as libc::c_int == '=' as i32
+            } else if c1 as libc::c_int == EQ as i32
                 && (if c as libc::c_int != 0 {
                     (mbschr(
                         b"*/%+-&^|\0" as *const u8 as *const libc::c_char,
@@ -1436,20 +1408,8 @@ fn readtok() {
             {
                 assigntok = c as libc::c_int;
                 c = OP_ASSIGN as libc::c_int as libc::c_uchar;
-                cp = cp.offset(1);
-                matched_two_char = true;
-            }
-
-            // If we didn't match any two-character operator, backtrack
-            if !matched_two_char {
+            } else if _is_arithop(c as libc::c_int) == 0 as libc::c_int {
                 cp = cp.offset(-1);
-                c = *cp as libc::c_uchar; // 重新读取当前字符
-            }
-
-            // Check if it's a valid arithmetic operator (single char) or multi-char operator
-            if _is_arithop(c as libc::c_int) == 0 as libc::c_int
-                && _is_multiop(c as libc::c_int) == 0 as libc::c_int
-            {
                 if curtok == 0 as libc::c_int
                     || _is_arithop(curtok) != 0
                     || _is_multiop(curtok) != 0
@@ -1467,6 +1427,8 @@ fn readtok() {
                         5 as libc::c_int,
                     ));
                 }
+            } else {
+                cp = cp.offset(-1);
             }
             lasttok = curtok;
             curtok = c as libc::c_int;

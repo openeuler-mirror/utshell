@@ -940,9 +940,11 @@ wchars (p, wc)
     return;
   memset (&mbs, '\0', sizeof (mbstate_t));
   len = wcrtomb (lbuf, wc, &mbs);
-  if (len == (size_t)-1)
+  if (len == (size_t)-1){
     /* conversion failed; bail now. */
+    free(lbuf);
     return;
+  }
   p->width -= len;
   l = lbuf;
   PUT_STRING (l, len, p);
