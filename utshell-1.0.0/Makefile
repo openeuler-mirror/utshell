@@ -9,15 +9,15 @@ INSTALLMODE2 = -m 0555
 
 TOP_DIR = $(PWD)
 LANGSRC = resources
-BIN_DIR = target/debug
+BIN_DIR = target/release
 CONFIG_DIR = config
 
 LIB_DIR := $(TOP_DIR)/variable \
 		   $(TOP_DIR)/lib/glob \
 		   $(TOP_DIR)/lib/readline \
-		   $(TOP_DIR)/lib/sh \
-		   $(TOP_DIR)/lib/termcap \
-		   $(TOP_DIR)/lib/tilde
+		   $(TOP_DIR)/lib/sh 
+		
+		
 
 
 .PHONY:all
@@ -27,7 +27,7 @@ build_lib:
 		(cd $$libdir && make) ;\
 	done
 build_utshell:
-	cargo build
+	cargo build --release
 
 install:
 	mkdir -p $(DESTDIR)$(bindir)
