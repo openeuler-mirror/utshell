@@ -18,24 +18,23 @@ intl_pluralrules = "7.0.2"
 tinystr = "=0.7.1"
 
 
-#调试使用，用于打印函数名称和所在行数
-#stdext = "0.3.1"  
-
-
 [build-dependencies]
 dunce = "1.0.0" 
+
+[profile.release]
+lto = false
+opt-level = 0
+codegen-units = 1
 
 [lib]
 name = "builtins"
 path = "src/lib.rs"
 crate-type = ["staticlib","rlib"]
 
+[[bin]]
+name = "utshell"
+path = "src/main.rs"
 
-#[[bin]]
-#name = "utshell"
-#path = "src/main.rs"
-
-#[[bin]]
-#name = "utshellversion"
-#path = "src/utshellversion.rs"
-
+[[bin]]
+name = "utshellversion"
+path = "src/utshellversion.rs"
