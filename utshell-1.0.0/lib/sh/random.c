@@ -90,7 +90,7 @@ genseed ()
   u_bits32_t iv;
 
   gettimeofday (&tv, NULL);
-  iv = (u_bits32_t)seedrand;		/* let the compiler truncate */
+  iv = (u_bits32_t)(uintptr_t)seedrand;		/* let the compiler truncate */
   iv = tv.tv_sec ^ tv.tv_usec ^ getpid () ^ getppid () ^ current_user.uid ^ iv;
   return (iv);
 }
