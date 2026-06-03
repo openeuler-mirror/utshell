@@ -27,11 +27,11 @@ PACKAGE_VERSION = 0.1-release
 
 srcdir = .
 
-topdir = ../
+topdir = ..
 topdiri = ../include
 BUILD_DIR = ../include
 
-LIBBUILD = ${BUILD_DIR}/lib
+LIBBUILD = ${BUILD_DIR}
 
 BASHINCDIR = ${topdir}/include
 
