@@ -35,6 +35,7 @@
 
 #include "shmbchar.h"
 #include "shmbutil.h"
+// #include "rlshell.h"
 
 extern char *ansic_quote PARAMS((char *, int, int *));
 extern int ansic_shouldquote PARAMS((const char *));
@@ -92,8 +93,8 @@ static const char bstab[256] =
 /* Return a new string which is the single-quoted version of STRING.
    Used by alias and trap, among others. */
 
-/*
-char *sh_single_quote (string)
+
+static char *sh_single_quote (string)
      const char *string;
 {
   register int c;
@@ -130,7 +131,7 @@ char *sh_single_quote (string)
 
   return (result);
 }
-*/
+
 
 
 /* Quote STRING using double quotes.  Return a new string. */
