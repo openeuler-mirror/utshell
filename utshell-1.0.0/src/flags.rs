@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::bashhist::bash_initialize_history;
 use crate::jobs::set_job_control;
 use crate::src_common::*;
@@ -23,58 +20,62 @@ pub fn find_flag(name: libc::c_int) -> *mut libc::c_int {
 pub fn change_flag(flag: libc::c_int, on_or_off: libc::c_int) -> libc::c_int {
     let value: *mut libc::c_int;
     let old_value: libc::c_int;
+
+    if unsafe { restricted != 0 && flag == b'r' as i32 && on_or_off == FLAG_OFF as i32 } {
+        return FLAG_ERROR;
+    }
+    value = find_flag(flag);
+    if value as *const libc::c_int == FLAG_UNKNOWN as *const libc::c_int
+        || on_or_off != FLAG_ON as i32 && on_or_off != FLAG_OFF as i32
+    {
+        return FLAG_ERROR;
+    }
     unsafe {
-        if restricted != 0 && flag == b'r' as i32 && on_or_off == FLAG_OFF as i32 {
-            return FLAG_ERROR;
-        }
-        value = find_flag(flag);
-        if value as *const libc::c_int == FLAG_UNKNOWN as *const libc::c_int
-            || on_or_off != FLAG_ON as i32 && on_or_off != FLAG_OFF as i32
-        {
-            return FLAG_ERROR;
-        }
         old_value = *value;
         *value = if on_or_off == FLAG_ON as i32 {
             1 as libc::c_int
         } else {
             0 as libc::c_int
         };
-        match flag as u8 {
-            b'H' => {
-                history_expansion = histexp_flag;
-                if on_or_off == '-' as i32 {
-                    bash_initialize_history();
-                }
-            }
-            b'm' => {
-                set_job_control((on_or_off == '-' as i32) as libc::c_int);
-            }
-            b'e' => {
-                if builtin_ignoring_errexit == 0 as libc::c_int {
-                    exit_immediately_on_error = errexit_flag;
-                }
-            }
-            b'n' => {
-                if interactive_shell != 0 {
-                    read_but_dont_execute = 0 as libc::c_int;
-                }
-            }
-            b'p' => {
-                if on_or_off == '+' as i32 {
-                    disable_priv_mode();
-                }
-            }
-            b'r' => {
-                if on_or_off == '-' as i32 && shell_initialized != 0 {
-                    maybe_make_restricted(shell_name);
-                }
-            }
-            b'v' => {
-                echo_input_at_read = verbose_flag;
-            }
-            _ => {}
-        }
     }
+    match flag as u8 {
+        b'H' => {
+            unsafe {
+                history_expansion = histexp_flag;
+            }
+            if on_or_off == '-' as i32 {
+                bash_initialize_history();
+            }
+        }
+        b'm' => {
+            set_job_control((on_or_off == '-' as i32) as libc::c_int);
+        }
+        b'e' => unsafe {
+            if builtin_ignoring_errexit == 0 as libc::c_int {
+                exit_immediately_on_error = errexit_flag;
+            }
+        },
+        b'n' => unsafe {
+            if interactive_shell != 0 {
+                read_but_dont_execute = 0 as libc::c_int;
+            }
+        },
+        b'p' => {
+            if on_or_off == '+' as i32 {
+                disable_priv_mode();
+            }
+        }
+        b'r' => unsafe {
+            if on_or_off == '-' as i32 && shell_initialized != 0 {
+                maybe_make_restricted(shell_name);
+            }
+        },
+        b'v' => unsafe {
+            echo_input_at_read = verbose_flag;
+        },
+        _ => {}
+    }
+
     return old_value;
 }
 
