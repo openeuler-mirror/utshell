@@ -23,8 +23,8 @@ use crate::builtins::{
 pub fn enable_builtin(mut list: *mut WordList) -> i32 {
     let mut result: i32 = 0;
     let mut flags: i32 = 0;
-    let mut opt: i32 = 0;
-    let mut filter: i32 = 0;
+    let mut opt: i32;
+    let mut filter: i32;
     let mut filename: *mut libc::c_char = 0 as *mut libc::c_char;
     reset_internal_getopt();
     let adnpsf = CString::new("adnpsf").expect("CString::new failed");
@@ -174,7 +174,7 @@ fn list_some_builtins(filter: libc::c_int) {
     }
 }
 fn enable_shell_command(name: *mut libc::c_char, disable_p: libc::c_int) -> libc::c_int {
-    let mut b: *mut builtin = 0 as *mut builtin;
+    let b: *mut builtin;
     b = builtin_address_internal(name, 1);
     if b.is_null() {
         return EXECUTION_FAILURE!();
@@ -185,7 +185,6 @@ fn enable_shell_command(name: *mut libc::c_char, disable_p: libc::c_int) -> libc
             if !set_cmd_enable(CStr::from_ptr(name).to_string_lossy().into_owned(), false) {
                 insert_empty_cmd(CStr::from_ptr(name).to_string_lossy().into_owned());
                 set_cmd_enable(CStr::from_ptr(name).to_string_lossy().into_owned(), false);
-                //get_cmd_enable(CStr::from_ptr(name).to_string_lossy().into_owned());
             }
         } else if restricted != 0 && (*b).flags & BUILTIN_ENABLED == 0 {
             sh_restricted(0 as *mut libc::c_void as *mut libc::c_char);
@@ -207,50 +206,54 @@ fn dyn_load_builtin(
     flags: libc::c_int,
     filename: *mut libc::c_char,
 ) -> libc::c_int {
-    unsafe {
-        let mut l: *mut WordList = 0 as *mut WordList;
-        let mut handle: *mut libc::c_void = 0 as *mut libc::c_void;
-        let mut total: libc::c_int = 0;
-        let mut size: libc::c_int = 0;
-        let mut new: libc::c_int = 0;
-        let mut replaced: libc::c_int = 0;
-        let mut r: libc::c_int = 0;
-        let mut struct_name: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut funcname: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut loadfunc: sh_load_func_t = None;
-        let mut new_builtins: *mut *mut builtin = 0 as *mut *mut builtin;
-        let mut b: *mut builtin = 0 as *mut builtin;
-        let mut new_shell_builtins: *mut builtin = 0 as *mut builtin;
-        let mut old_builtin: *mut builtin = 0 as *mut builtin;
-        let mut loadables_path: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut load_path: *mut libc::c_char = 0 as *mut libc::c_char;
-        if list.is_null() {
-            return 1 as libc::c_int;
-        }
-        handle = 0 as *mut libc::c_void;
-        if absolute_program(filename) == 0 as libc::c_int {
-            loadables_path =
-                get_string_value(b"BASH_LOADABLES_PATH\0" as *const u8 as *const libc::c_char);
-            if !loadables_path.is_null() {
-                load_path = find_in_path(
-                    filename,
-                    loadables_path,
-                    0x20 as libc::c_int | 0x4 as libc::c_int,
-                );
-                if !load_path.is_null() {
+    let mut l: *mut WordList;
+    let mut handle: *mut libc::c_void;
+    let total: libc::c_int;
+    let mut size: libc::c_int;
+    let mut new: libc::c_int;
+    let mut replaced: libc::c_int;
+    let mut r: libc::c_int;
+    let mut struct_name: *mut libc::c_char;
+    let mut name: *mut libc::c_char;
+    let mut funcname: *mut libc::c_char;
+    let mut loadfunc: sh_load_func_t;
+    let new_builtins: *mut *mut builtin;
+    let mut b: *mut builtin;
+    let new_shell_builtins: *mut builtin;
+    let mut old_builtin: *mut builtin;
+    let loadables_path: *mut libc::c_char;
+    let load_path: *mut libc::c_char;
+    if list.is_null() {
+        return 1 as libc::c_int;
+    }
+    handle = 0 as *mut libc::c_void;
+    if absolute_program(filename) == 0 as libc::c_int {
+        loadables_path =
+            get_string_value(b"BASH_LOADABLES_PATH\0" as *const u8 as *const libc::c_char);
+        if !loadables_path.is_null() {
+            load_path = find_in_path(
+                filename,
+                loadables_path,
+                0x20 as libc::c_int | 0x4 as libc::c_int,
+            );
+            if !load_path.is_null() {
+                unsafe {
                     handle = dlopen(load_path, 0x1 as libc::c_int);
                     free(load_path as *mut libc::c_void);
                 }
             }
         }
-        if handle.is_null() {
+    }
+    if handle.is_null() {
+        unsafe {
             handle = dlopen(filename, 0x1 as libc::c_int);
         }
-        if handle.is_null() {
-            name = printable_filename(filename, 0 as libc::c_int);
+    }
+    if handle.is_null() {
+        name = printable_filename(filename, 0 as libc::c_int);
+        unsafe {
             builtin_error(
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"cannot open shared object %s: %s\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
@@ -261,21 +264,26 @@ fn dyn_load_builtin(
             if name != filename {
                 free(name as *mut libc::c_void);
             }
-            return 1 as libc::c_int;
         }
-        new = 0 as libc::c_int;
-        l = list;
-        while !l.is_null() {
+        return 1 as libc::c_int;
+    }
+    new = 0 as libc::c_int;
+    l = list;
+    while !l.is_null() {
+        unsafe {
             l = (*l).next;
-            new += 1;
         }
-        new_builtins = libc::malloc(
-            (new as usize).wrapping_mul(::std::mem::size_of::<*mut builtin>() as usize),
-        ) as *mut *mut builtin;
-        let mut current_block_57: u64;
-        new = 0 as libc::c_int;
-        replaced = new;
-        while !list.is_null() {
+        new += 1;
+    }
+    new_builtins = unsafe {
+        libc::malloc((new as usize).wrapping_mul(::std::mem::size_of::<*mut builtin>() as usize))
+            as *mut *mut builtin
+    };
+    let mut current_block_57: u64;
+    new = 0 as libc::c_int;
+    replaced = new;
+    while !list.is_null() {
+        unsafe {
             name = (*(*list).word).word;
             size = strlen(name) as libc::c_int;
             struct_name = libc::malloc((size + 8 as libc::c_int) as usize) as *mut libc::c_char;
@@ -289,7 +297,7 @@ fn dyn_load_builtin(
             if b.is_null() {
                 name = printable_filename(filename, 0 as libc::c_int);
                 builtin_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"cannot find %s in shared object %s: %s\0" as *const u8
                             as *const libc::c_char,
@@ -323,7 +331,7 @@ fn dyn_load_builtin(
                         && (*old_builtin).flags & 0x4 as libc::c_int == 0 as libc::c_int
                     {
                         builtin_warning(
-                            dcgettext(
+                            c_dcgettext(
                                 0 as *const libc::c_char,
                                 b"%s: dynamic builtin already loaded\0" as *const u8
                                     as *const libc::c_char,
@@ -336,7 +344,7 @@ fn dyn_load_builtin(
                         .expect("non-null function pointer")(name);
                     if r == 0 as libc::c_int {
                         builtin_error(
-                            dcgettext(
+                            c_dcgettext(
                                 0 as *const libc::c_char,
                                 b"load function for %s returns failure (%d): not loaded\0"
                                     as *const u8
@@ -382,12 +390,16 @@ fn dyn_load_builtin(
             }
             list = (*list).next;
         }
-        if replaced == 0 as libc::c_int && new == 0 as libc::c_int {
+    }
+    if replaced == 0 as libc::c_int && new == 0 as libc::c_int {
+        unsafe {
             free(new_builtins as *mut libc::c_void);
             dlclose(handle);
-            return 1 as libc::c_int;
         }
-        if new != 0 {
+        return 1 as libc::c_int;
+    }
+    if new != 0 {
+        unsafe {
             total = num_shell_builtins + new;
             size = ((total + 1 as libc::c_int) as libc::c_ulong)
                 .wrapping_mul(::std::mem::size_of::<builtin>() as libc::c_ulong)
@@ -424,14 +436,16 @@ fn dyn_load_builtin(
             num_shell_builtins = total;
             initialize_shell_builtins();
         }
-        free(new_builtins as *mut libc::c_void);
-        return 0 as libc::c_int;
     }
+    unsafe {
+        free(new_builtins as *mut libc::c_void);
+    }
+    return 0 as libc::c_int;
 }
 fn delete_builtin(b: *mut builtin) {
-    let mut ind: libc::c_int = 0;
-    let mut size: libc::c_int = 0;
-    let mut new_shell_builtins: *mut builtin = 0 as *mut builtin;
+    let ind: libc::c_int;
+    let size: libc::c_int;
+    let new_shell_builtins: *mut builtin;
     unsafe {
         ind = b.offset_from(shell_builtins) as libc::c_long as libc::c_int;
         size = (num_shell_builtins as libc::c_ulong)
@@ -469,13 +483,13 @@ fn local_dlclose(handle: *mut libc::c_void) -> libc::c_int {
     }
 }
 fn dyn_unload_builtin(name: *mut libc::c_char) -> libc::c_int {
-    let mut b: *mut builtin = 0 as *mut builtin;
-    let mut handle: *mut libc::c_void = 0 as *mut libc::c_void;
-    let mut funcname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut unloadfunc: sh_unload_func_t = None;
-    let mut ref_0: libc::c_int = 0;
-    let mut i: libc::c_int = 0;
-    let mut size: libc::c_int = 0;
+    let b: *mut builtin;
+    let handle: *mut libc::c_void;
+    let funcname: *mut libc::c_char;
+    let unloadfunc: sh_unload_func_t;
+    let mut ref_0: libc::c_int;
+    let mut i: libc::c_int;
+    let size: libc::c_int;
     b = builtin_address_internal(name, 1 as libc::c_int);
     if b.is_null() {
         sh_notbuiltin(name);
@@ -484,7 +498,7 @@ fn dyn_unload_builtin(name: *mut libc::c_char) -> libc::c_int {
     unsafe {
         if (*b).flags & 0x4 as libc::c_int != 0 {
             builtin_error(
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"%s: not dynamically loaded\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
@@ -522,7 +536,7 @@ fn dyn_unload_builtin(name: *mut libc::c_char) -> libc::c_int {
         free(funcname as *mut libc::c_void);
         if ref_0 == 1 as libc::c_int && local_dlclose(handle) != 0 as libc::c_int {
             builtin_error(
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"%s: cannot delete: %s\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
