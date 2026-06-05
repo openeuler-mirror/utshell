@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::arrayfunc::{array_variable_part, get_array_value, valid_array_reference};
 use crate::copycmd::{copy_redirects, copy_word};
 use crate::dispose_cmd::{dispose_redirects, dispose_words};
@@ -9,12 +6,12 @@ use crate::general::{all_digits, legal_number, same_file};
 use crate::input::{check_bash_input, close_buffered_fd, duplicate_buffered_stream};
 use crate::make_cmd::{make_bare_word, make_redirection, make_word_list};
 use crate::print_cmd::xtrace_fdchk;
-use crate::readline::run_pending_traps;
 use crate::src_common::*;
 use crate::stringlib::find_string_in_alist;
 use crate::subst::{
     expand_assignment_string_to_string, expand_string_to_string, expand_words_no_vars, string_list,
 };
+use crate::trap::run_pending_traps;
 use crate::variables::{
     bind_var_to_int, find_variable_last_nameref, get_variable_value,
     stupidly_hack_special_variables, sv_ifs,
@@ -53,9 +50,9 @@ macro_rules! STRLEN_1 {
 
 #[no_mangle]
 pub fn redirection_error(temp: *mut REDIRECT, error: libc::c_int, fn_0: *mut libc::c_char) {
-    let mut filename: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut allocname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut oflags: libc::c_int = 0;
+    let mut filename: *mut libc::c_char;
+    let mut allocname: *mut libc::c_char;
+    let oflags: libc::c_int;
     allocname = 0 as *mut libc::c_char;
     unsafe {
         if (*temp).rflags & 0x1 as libc::c_int != 0 && error < 0 as libc::c_int {
@@ -71,7 +68,7 @@ pub fn redirection_error(temp: *mut REDIRECT, error: libc::c_int, fn_0: *mut lib
         } else if (*temp).rflags & REDIR_VARASSIGN as libc::c_int == 0 as libc::c_int
             && (*temp).redirector.dest < REDIR_VARASSIGN as libc::c_int
         {
-            filename = dcgettext(
+            filename = c_dcgettext(
                 0 as *const libc::c_char,
                 b"file descriptor out of range\0" as *const u8 as *const libc::c_char,
                 5 as libc::c_int,
@@ -82,14 +79,14 @@ pub fn redirection_error(temp: *mut REDIRECT, error: libc::c_int, fn_0: *mut lib
         {
             match (*temp).instruction as libc::c_uint {
                 r_duplicating_input | r_duplicating_output | r_move_input | r_move_output => {
-                    allocname = itos((*temp).redirectee.dest as intmax_t);
+                    allocname = c_itos((*temp).redirectee.dest as intmax_t);
                     filename = allocname;
                 }
                 r_duplicating_input_word => {
                     if (*temp).redirector.dest == 0 as libc::c_int {
                         filename = (*(*temp).redirectee.filename).word;
                     } else {
-                        allocname = itos((*temp).redirector.dest as intmax_t);
+                        allocname = c_itos((*temp).redirector.dest as intmax_t);
                         filename = allocname;
                     }
                 }
@@ -97,12 +94,12 @@ pub fn redirection_error(temp: *mut REDIRECT, error: libc::c_int, fn_0: *mut lib
                     if (*temp).redirector.dest == 1 as libc::c_int {
                         filename = (*(*temp).redirectee.filename).word;
                     } else {
-                        allocname = itos((*temp).redirector.dest as intmax_t);
+                        allocname = c_itos((*temp).redirector.dest as intmax_t);
                         filename = allocname;
                     }
                 }
                 _ => {
-                    allocname = itos((*temp).redirector.dest as intmax_t);
+                    allocname = c_itos((*temp).redirector.dest as intmax_t);
                     filename = allocname;
                 }
             }
@@ -121,20 +118,20 @@ pub fn redirection_error(temp: *mut REDIRECT, error: libc::c_int, fn_0: *mut lib
                 filename = (*(*temp).redirectee.filename).word;
             }
         } else if (*temp).redirectee.dest < 0 as libc::c_int {
-            filename = dcgettext(
+            filename = c_dcgettext(
                 0 as *const libc::c_char,
                 b"file descriptor out of range\0" as *const u8 as *const libc::c_char,
                 5 as libc::c_int,
             );
         } else {
-            allocname = itos((*temp).redirectee.dest as intmax_t);
+            allocname = c_itos((*temp).redirectee.dest as intmax_t);
             filename = allocname;
         }
 
         match error {
             AMBIGUOUS_REDIRECT => {
                 internal_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: ambiguous redirect\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
@@ -144,7 +141,7 @@ pub fn redirection_error(temp: *mut REDIRECT, error: libc::c_int, fn_0: *mut lib
             }
             NOCLOBBER_REDIRECT => {
                 internal_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: cannot overwrite existing file\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
@@ -154,7 +151,7 @@ pub fn redirection_error(temp: *mut REDIRECT, error: libc::c_int, fn_0: *mut lib
             }
             RESTRICTED_REDIRECT => {
                 internal_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: restricted: cannot redirect output\0" as *const u8
                             as *const libc::c_char,
@@ -165,7 +162,7 @@ pub fn redirection_error(temp: *mut REDIRECT, error: libc::c_int, fn_0: *mut lib
             }
             HEREDOC_REDIRECT => {
                 internal_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"cannot create temp file for here-document: %s\0" as *const u8
                             as *const libc::c_char,
@@ -176,7 +173,7 @@ pub fn redirection_error(temp: *mut REDIRECT, error: libc::c_int, fn_0: *mut lib
             }
             BADVAR_REDIRECT => {
                 internal_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: cannot assign fd to variable\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
@@ -195,14 +192,14 @@ pub fn redirection_error(temp: *mut REDIRECT, error: libc::c_int, fn_0: *mut lib
         if !allocname.is_null() {
             free(allocname as *mut libc::c_void);
         }
-        allocname = 0 as *mut libc::c_char;
+        // allocname = 0 as *mut libc::c_char;
     }
 }
 #[no_mangle]
 pub fn do_redirections(list: *mut REDIRECT, flags: libc::c_int) -> libc::c_int {
-    let mut error: libc::c_int = 0;
-    let mut temp: *mut REDIRECT = 0 as *mut REDIRECT;
-    let mut fn_0: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut error: libc::c_int;
+    let mut temp: *mut REDIRECT;
+    let mut fn_0: *mut libc::c_char;
     unsafe {
         if flags & (RX_UNDOABLE as i32) != 0 {
             if !redirection_undo_list.is_null() {
@@ -213,87 +210,97 @@ pub fn do_redirections(list: *mut REDIRECT, flags: libc::c_int) -> libc::c_int {
                 dispose_exec_redirects();
             }
         }
-        //println!("in {}:{}", stdext::function_name!(),std::line!());
-        temp = list;
-        while !temp.is_null() {
-            fn_0 = 0 as *mut libc::c_char;
-            error = do_redirection_internal(temp, flags, &mut fn_0);
-            if error != 0 {
-                redirection_error(temp, error, fn_0);
-                if !fn_0.is_null() {
+    }
+    temp = list;
+    while !temp.is_null() {
+        fn_0 = 0 as *mut libc::c_char;
+        error = do_redirection_internal(temp, flags, &mut fn_0);
+        if error != 0 {
+            redirection_error(temp, error, fn_0);
+            if !fn_0.is_null() {
+                unsafe {
                     free(fn_0 as *mut libc::c_void);
                 }
-                fn_0 = 0 as *mut libc::c_char;
-                return error;
             }
-            if !fn_0.is_null() {
+            // fn_0 = 0 as *mut libc::c_char;
+            return error;
+        }
+        if !fn_0.is_null() {
+            unsafe {
                 free(fn_0 as *mut libc::c_void);
             }
-            fn_0 = 0 as *mut libc::c_char;
+        }
+        // fn_0 = 0 as *mut libc::c_char;
+        unsafe {
             temp = (*temp).next;
         }
     }
+
     return 0 as libc::c_int;
 }
 fn expandable_redirection_filename(redirect: *mut REDIRECT) -> libc::c_int {
-    unsafe {
-        match (*redirect).instruction as libc::c_uint {
-            r_output_direction
-            | r_appending_to
-            | r_input_direction
-            | r_inputa_direction
-            | r_err_and_out
-            | r_append_err_and_out
-            | r_input_output
-            | r_output_force
-            | r_duplicating_input_word
-            | r_duplicating_output_word
-            | r_move_input_word
-            | r_move_output_word => return 1 as libc::c_int,
-            _ => return 0 as libc::c_int,
-        };
-    }
+    match unsafe { (*redirect).instruction as libc::c_uint } {
+        r_output_direction
+        | r_appending_to
+        | r_input_direction
+        | r_inputa_direction
+        | r_err_and_out
+        | r_append_err_and_out
+        | r_input_output
+        | r_output_force
+        | r_duplicating_input_word
+        | r_duplicating_output_word
+        | r_move_input_word
+        | r_move_output_word => return 1 as libc::c_int,
+        _ => return 0 as libc::c_int,
+    };
 }
 
 #[no_mangle]
 pub fn redirection_expand(word: *mut WORD_DESC) -> *mut libc::c_char {
-    unsafe {
-        let mut result: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut tlist1: *mut WORD_LIST = 0 as *mut WORD_LIST;
-        let mut tlist2: *mut WORD_LIST = 0 as *mut WORD_LIST;
-        let mut w: *mut WORD_DESC = 0 as *mut WORD_DESC;
-        let mut old: libc::c_int = 0;
+    let result: *mut libc::c_char;
+    let tlist1: *mut WORD_LIST;
+    let tlist2: *mut WORD_LIST;
+    let w: *mut WORD_DESC;
+    let old: libc::c_int;
 
-        w = copy_word(word);
+    w = copy_word(word);
+    unsafe {
         if posixly_correct != 0 {
             (*w).flags |= (1 as libc::c_int) << 4 as libc::c_int;
         }
-        tlist1 = make_word_list(w, 0 as *mut libc::c_void as *mut WORD_LIST);
+    }
+    tlist1 = make_word_list(w, 0 as *mut libc::c_void as *mut WORD_LIST);
+    unsafe {
         expanding_redir = 1 as libc::c_int;
-        sv_ifs(b"IFS\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
-        tlist2 = expand_words_no_vars(tlist1);
+    }
+    sv_ifs(b"IFS\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
+    tlist2 = expand_words_no_vars(tlist1);
+    unsafe {
         expanding_redir = 0 as libc::c_int;
-        /* Now we need to change the variable search order back to include the temp
-        environment.  We force the temp environment search by forcing
-        executing_builtin to 1.  This is what makes `read' get the right values
-        for the IFS-related cached variables, for example. */
+    }
+    /* Now we need to change the variable search order back to include the temp
+    environment.  We force the temp environment search by forcing
+    executing_builtin to 1.  This is what makes `read' get the right values
+    for the IFS-related cached variables, for example. */
+    unsafe {
         old = executing_builtin;
         executing_builtin = 1 as libc::c_int;
         sv_ifs(b"IFS\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
         executing_builtin = old;
-        dispose_words(tlist1);
-        if tlist2.is_null() || !((*tlist2).next).is_null() {
-            /* We expanded to no words, or to more than a single word.
-            Dispose of the word list and return NULL. */
-            if !tlist2.is_null() {
-                dispose_words(tlist2);
-            }
-            return 0 as *mut libc::c_void as *mut libc::c_char;
-        }
-        result = string_list(tlist2); /* XXX savestring (tlist2->word->word)? */
-        dispose_words(tlist2);
-        return result;
     }
+    dispose_words(tlist1);
+    if unsafe { tlist2.is_null() || !((*tlist2).next).is_null() } {
+        /* We expanded to no words, or to more than a single word.
+        Dispose of the word list and return NULL. */
+        if !tlist2.is_null() {
+            dispose_words(tlist2);
+        }
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
+    result = string_list(tlist2); /* XXX savestring (tlist2->word->word)? */
+    dispose_words(tlist2);
+    return result;
 }
 
 /* Expand a here-document or here-string (determined by RI) contained in
@@ -309,10 +316,10 @@ fn heredoc_expand(
     ri: libc::c_uint,
     lenp: *mut size_t,
 ) -> *mut libc::c_char {
+    let mut document: *mut libc::c_char;
+    let mut dlen: size_t;
+    let old: libc::c_int;
     unsafe {
-        let mut document: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut dlen: size_t = 0;
-        let mut old: libc::c_int = 0;
         if ((*redirectee).word).is_null()
             || *((*redirectee).word).offset(0 as libc::c_int as isize) as libc::c_int == '\0' as i32
         {
@@ -359,57 +366,54 @@ fn heredoc_expand(
     }
 }
 fn heredoc_write(fd: libc::c_int, heredoc: *mut libc::c_char, herelen: size_t) -> libc::c_int {
-    let mut nw: ssize_t = 0;
-    let mut e: libc::c_int = 0;
+    let nw: ssize_t;
+    let mut e: libc::c_int;
     unsafe {
-        *__errno_location() = 0 as libc::c_int;
+        *c___errno_location() = 0 as libc::c_int;
         nw = write(fd, heredoc as *const libc::c_void, herelen as usize) as i64;
-        e = *__errno_location();
-        if nw as size_t != herelen {
-            if e == 0 as libc::c_int {
-                e = ENOSPC;
-            }
-            return e;
-        }
-        return 0 as libc::c_int;
+        e = *c___errno_location();
     }
+    if nw as size_t != herelen {
+        if e == 0 as libc::c_int {
+            e = ENOSPC;
+        }
+        return e;
+    }
+    return 0 as libc::c_int;
 }
 
-fn here_document_to_fd(
-    redirectee: *mut WORD_DESC,
-    ri: libc::c_uint, //枚举
-) -> libc::c_int {
+fn here_document_to_fd(redirectee: *mut WORD_DESC, ri: libc::c_uint) -> libc::c_int {
+    let mut filename: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut r: libc::c_int;
+    let fd: libc::c_int;
+    let fd2: libc::c_int;
+    let mut herepipe: [libc::c_int; 2] = [0; 2];
+    let document: *mut libc::c_char;
+    let mut document_len: size_t = 0;
+    document = heredoc_expand(redirectee, ri, &mut document_len);
     unsafe {
-        let mut filename: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut r: libc::c_int = 0;
-        let mut fd: libc::c_int = 0;
-        let mut fd2: libc::c_int = 0;
-        let mut herepipe: [libc::c_int; 2] = [0; 2];
-        let mut document: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut document_len: size_t = 0;
-        document = heredoc_expand(redirectee, ri, &mut document_len);
         if document_len == 0 as libc::c_int as size_t {
             fd = open(
                 b"/dev/null\0" as *const u8 as *const libc::c_char,
                 0 as libc::c_int,
             );
-            r = *__errno_location();
+            r = *c___errno_location();
             if document != (*redirectee).word {
                 if !document.is_null() {
                     free(document as *mut libc::c_void);
                 }
-                document = 0 as *mut libc::c_char;
+                // document = 0 as *mut libc::c_char;
             }
-            *__errno_location() = r;
+            *c___errno_location() = r;
             return fd;
         }
         if document_len <= HEREDOC_PIPESIZE as libc::c_int as size_t {
             if pipe(herepipe.as_mut_ptr()) < 0 as libc::c_int {
-                r = *__errno_location();
+                r = *c___errno_location();
                 if document != (*redirectee).word {
                     free(document as *mut libc::c_void);
                 }
-                *__errno_location() = r;
+                *c___errno_location() = r;
                 return -(1 as libc::c_int);
             }
             if !((fcntl(
@@ -426,52 +430,50 @@ fn here_document_to_fd(
                 close(herepipe[1 as libc::c_int as usize]);
                 if r != 0 {
                     close(herepipe[0 as libc::c_int as usize]);
-                    *__errno_location() = r;
+                    *c___errno_location() = r;
                     return -(1 as libc::c_int);
                 }
                 return herepipe[0 as libc::c_int as usize];
             }
         }
-        fd = sh_mktmpfd(
+        fd = c_sh_mktmpfd(
             b"sh-thd\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             (MT_USERANDOM | MT_USETMPDIR) as i32,
             &mut filename,
         );
         if fd < 0 as libc::c_int {
-            r = *__errno_location();
+            r = *c___errno_location();
             if !filename.is_null() {
                 free(filename as *mut libc::c_void);
             }
-            filename = 0 as *mut libc::c_char;
+            // filename = 0 as *mut libc::c_char;
             if document != (*redirectee).word {
                 if !document.is_null() {
                     free(document as *mut libc::c_void);
                 }
-                document = 0 as *mut libc::c_char;
+                // document = 0 as *mut libc::c_char;
             }
-            *__errno_location() = r;
+            *c___errno_location() = r;
             return fd;
         }
-
-        // fchmod (fd, S_IRUSR | S_IWUSR);
 
         fchmod(fd, (S_IRUSR | S_IWUSR) as libc::c_uint);
         fcntl(fd, 2 as libc::c_int, 1 as libc::c_int);
         r = 0 as libc::c_int;
 
-        *__errno_location() = r;
+        *c___errno_location() = r;
         r = heredoc_write(fd, document, document_len);
         if document != (*redirectee).word {
             if !document.is_null() {
                 free(document as *mut libc::c_void);
             }
-            document = 0 as *mut libc::c_char;
+            // document = 0 as *mut libc::c_char;
         }
         if r != 0 {
             close(fd);
             unlink(filename);
             free(filename as *mut libc::c_void);
-            *__errno_location() = r;
+            *c___errno_location() = r;
             return -(1 as libc::c_int);
         }
         fd2 = open(
@@ -480,19 +482,19 @@ fn here_document_to_fd(
             0o600 as libc::c_int,
         );
         if fd2 < 0 as libc::c_int {
-            r = *__errno_location();
+            r = *c___errno_location();
             unlink(filename);
             free(filename as *mut libc::c_void);
             close(fd);
-            *__errno_location() = r;
+            *c___errno_location() = r;
             return -(1 as libc::c_int);
         }
         close(fd);
         if unlink(filename) < 0 as libc::c_int {
-            r = *__errno_location();
+            r = *c___errno_location();
             close(fd2);
             free(filename as *mut libc::c_void);
-            *__errno_location() = r;
+            *c___errno_location() = r;
             return -(1 as libc::c_int);
         }
         free(filename as *mut libc::c_void);
@@ -531,20 +533,18 @@ fn redir_special_open(
     mut _mode: libc::c_int,
     mut _ri: r_instruction,
 ) -> libc::c_int {
-    unsafe {
-        let mut fd: libc::c_int = 0;
-        fd = RF_END;
-        match spec {
-            RF_DEVTCP | RF_DEVUDP => {
-                if restricted != 0 {
-                    return RESTRICTED_REDIRECT;
-                }
-                fd = netopen(filename);
+    let mut fd: libc::c_int;
+    fd = RF_END;
+    match spec {
+        RF_DEVTCP | RF_DEVUDP => {
+            if unsafe { restricted != 0 } {
+                return RESTRICTED_REDIRECT;
             }
-            _ => {}
+            fd = c_netopen(filename);
         }
-        return fd;
+        _ => {}
     }
+    return fd;
 }
 
 fn noclobber_open(
@@ -553,49 +553,49 @@ fn noclobber_open(
     mode: libc::c_int,
     mut _ri: r_instruction,
 ) -> libc::c_int {
-    unsafe {
-        let mut r: libc::c_int = 0;
-        let mut fd: libc::c_int = 0;
-        let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
-        let mut finfo2: crate::src_common::stat = crate::src_common::stat { ..finfo };
-        r = stat(filename, &mut finfo);
-        if r == 0 && S_ISREG!(finfo.st_mode) {
-            return NOCLOBBER_REDIRECT;
-        }
-
-        flags &= !(O_TRUNC as i32);
-        if r != 0 as libc::c_int {
-            fd = open(filename, flags | O_EXCL as libc::c_int, mode);
-            return if fd < 0 as libc::c_int && *__errno_location() == 17 as libc::c_int {
-                NOCLOBBER_REDIRECT
-            } else {
-                fd
-            };
-        }
-        fd = open(filename, flags, mode);
-        if fd < 0 as libc::c_int {
-            return if *__errno_location() == EEXIST as libc::c_int {
-                NOCLOBBER_REDIRECT
-            } else {
-                fd
-            };
-        }
-        if fstat(fd, &mut finfo2) == 0 as libc::c_int
-            && (finfo2.st_mode & 0o170000 as libc::c_int as libc::c_uint
-                == 0o100000 as libc::c_int as libc::c_uint) as libc::c_int
-                == 0 as libc::c_int
-            && r == 0 as libc::c_int
-            && (finfo.st_mode & 0o170000 as libc::c_int as libc::c_uint
-                == 0o100000 as libc::c_int as libc::c_uint) as libc::c_int
-                == 0 as libc::c_int
-            && same_file(filename, filename, &mut finfo, &mut finfo2) != 0
-        {
-            return fd;
-        }
-        close(fd);
-        *__errno_location() = EEXIST;
+    let r: libc::c_int;
+    let fd: libc::c_int;
+    let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
+    let mut finfo2: crate::src_common::stat = crate::src_common::stat { ..finfo };
+    r = c_stat(filename, &mut finfo);
+    if r == 0 && S_ISREG!(finfo.st_mode) {
         return NOCLOBBER_REDIRECT;
     }
+
+    flags &= !(O_TRUNC as i32);
+    if r != 0 as libc::c_int {
+        fd = unsafe { open(filename, flags | O_EXCL as libc::c_int, mode) };
+        return if unsafe { fd < 0 as libc::c_int && *c___errno_location() == 17 as libc::c_int } {
+            NOCLOBBER_REDIRECT
+        } else {
+            fd
+        };
+    }
+    fd = unsafe { open(filename, flags, mode) };
+    if fd < 0 as libc::c_int {
+        return if unsafe { *c___errno_location() == EEXIST as libc::c_int } {
+            NOCLOBBER_REDIRECT
+        } else {
+            fd
+        };
+    }
+    if c_fstat(fd, &mut finfo2) == 0 as libc::c_int
+        && (finfo2.st_mode & 0o170000 as libc::c_int as libc::c_uint
+            == 0o100000 as libc::c_int as libc::c_uint) as libc::c_int
+            == 0 as libc::c_int
+        && r == 0 as libc::c_int
+        && (finfo.st_mode & 0o170000 as libc::c_int as libc::c_uint
+            == 0o100000 as libc::c_int as libc::c_uint) as libc::c_int
+            == 0 as libc::c_int
+        && same_file(filename, filename, &mut finfo, &mut finfo2) != 0
+    {
+        return fd;
+    }
+    unsafe {
+        close(fd);
+        *c___errno_location() = EEXIST;
+    }
+    return NOCLOBBER_REDIRECT;
 }
 
 fn redir_open(
@@ -604,27 +604,29 @@ fn redir_open(
     mode: libc::c_int,
     ri: r_instruction,
 ) -> libc::c_int {
-    unsafe {
-        let mut fd: libc::c_int = 0;
-        let mut r: libc::c_int = 0;
-        let mut e: libc::c_int = 0;
-        r = find_string_in_alist(
+    let mut fd: libc::c_int;
+    let r: libc::c_int;
+    let mut e: libc::c_int;
+    r = unsafe {
+        find_string_in_alist(
             filename,
             _redir_special_filenames.as_mut_ptr(),
             1 as libc::c_int,
-        );
-        if r >= 0 as libc::c_int {
-            return redir_special_open(r, filename, flags, mode, ri as libc::c_uint);
+        )
+    };
+    if r >= 0 as libc::c_int {
+        return redir_special_open(r, filename, flags, mode, ri as libc::c_uint);
+    }
+    if unsafe { noclobber != 0 && CLOBBERING_REDIRECT!(ri) } {
+        fd = noclobber_open(filename, flags, mode, ri as libc::c_uint);
+        if fd == NOCLOBBER_REDIRECT {
+            return NOCLOBBER_REDIRECT;
         }
-        if noclobber != 0 && CLOBBERING_REDIRECT!(ri) {
-            fd = noclobber_open(filename, flags, mode, ri as libc::c_uint);
-            if fd == NOCLOBBER_REDIRECT {
-                return NOCLOBBER_REDIRECT;
-            }
-        } else {
-            loop {
+    } else {
+        loop {
+            unsafe {
                 fd = open(filename, flags, mode);
-                e = *__errno_location();
+                e = *c___errno_location();
                 if fd < 0 as libc::c_int && e == EINTR {
                     if terminating_signal != 0 {
                         termsig_handler(terminating_signal);
@@ -634,14 +636,14 @@ fn redir_open(
                     }
                     run_pending_traps();
                 }
-                *__errno_location() = e;
-                if !(fd < 0 as libc::c_int && *__errno_location() == EINTR) {
+                *c___errno_location() = e;
+                if !(fd < 0 as libc::c_int && *c___errno_location() == EINTR) {
                     break;
                 }
             }
         }
-        return fd;
     }
+    return fd;
 }
 
 fn do_redirection_internal(
@@ -649,18 +651,18 @@ fn do_redirection_internal(
     mut flags: libc::c_int,
     fnp: *mut *mut libc::c_char,
 ) -> libc::c_int {
+    let mut redirectee: *mut WORD_DESC;
+    let mut redir_fd: libc::c_int;
+    let fd: libc::c_int;
+    let mut redirector: libc::c_int;
+    let mut r: libc::c_int;
+    let mut oflags: libc::c_int = 0;
+    let mut lfd: intmax_t = 0;
+    let mut redirectee_word: *mut libc::c_char;
+    let mut ri: r_instruction;
+    let mut new_redirect: *mut REDIRECT = 0 as *mut REDIRECT;
+    let sd: REDIRECTEE;
     unsafe {
-        let mut redirectee: *mut WORD_DESC = 0 as *mut WORD_DESC;
-        let mut redir_fd: libc::c_int = 0;
-        let mut fd: libc::c_int = 0;
-        let mut redirector: libc::c_int = 0;
-        let mut r: libc::c_int = 0;
-        let mut oflags: libc::c_int = 0;
-        let mut lfd: intmax_t = 0;
-        let mut redirectee_word: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut ri: r_instruction = r_output_direction;
-        let mut new_redirect: *mut REDIRECT = 0 as *mut REDIRECT;
-        let mut sd: REDIRECTEE = REDIRECTEE { dest: 0 };
         redirectee = (*redirect).redirectee.filename;
         redir_fd = (*redirect).redirectee.dest;
         redirector = (*redirect).redirector.dest;
@@ -720,7 +722,7 @@ fn do_redirection_internal(
             if (*new_redirect).instruction as libc::c_uint
                 == r_err_and_out as libc::c_int as libc::c_uint
             {
-                let mut alloca_hack: *mut libc::c_char = 0 as *mut libc::c_char;
+                let alloca_hack: *mut libc::c_char;
                 let mut fresh1 = ::std::vec::from_elem(
                     0,
                     ::core::mem::size_of::<WORD_DESC>() as libc::c_ulong as usize,
@@ -787,14 +789,14 @@ fn do_redirection_internal(
                     return fd;
                 }
                 if fd < 0 as libc::c_int {
-                    return *__errno_location();
+                    return *c___errno_location();
                 }
                 if flags & (RX_ACTIVE as i32) != 0 {
                     if (*redirect).rflags & REDIR_VARASSIGN != 0 {
                         redirector = fcntl(fd, F_DUPFD as i32, SHELL_FD_BASE as libc::c_int);
-                        r = *__errno_location();
+                        let _ = *c___errno_location();
                         if redirector < 0 as libc::c_int {
-                            sys_error(dcgettext(
+                            sys_error(c_dcgettext(
                                 0 as *const libc::c_char,
                                 b"redirection error: cannot duplicate fd\0" as *const u8
                                     as *const libc::c_char,
@@ -821,10 +823,10 @@ fn do_redirection_internal(
                     }
                     if redirector == 1 as libc::c_int && fileno(stdout) == redirector {
                         fflush(stdout);
-                        fpurge(stdout);
+                        c_fpurge(stdout);
                     } else if redirector == 2 as libc::c_int && fileno(stderr) == redirector {
                         fflush(stderr);
-                        fpurge(stderr);
+                        c_fpurge(stderr);
                     }
 
                     if (*redirect).rflags & REDIR_VARASSIGN as libc::c_int != 0 {
@@ -836,7 +838,7 @@ fn do_redirection_internal(
                         }
                     } else if fd != redirector && dup2(fd, redirector) < 0 as libc::c_int {
                         close(fd);
-                        return *__errno_location();
+                        return *c___errno_location();
                     }
 
                     if ri as libc::c_uint == r_input_direction as libc::c_int as libc::c_uint
@@ -867,7 +869,7 @@ fn do_redirection_internal(
                             add_undo_redirect(2 as libc::c_int, ri, -(1 as libc::c_int));
                         }
                         if dup2(1 as libc::c_int, 2 as libc::c_int) < 0 as libc::c_int {
-                            return *__errno_location();
+                            return *c___errno_location();
                         }
                     }
                 }
@@ -877,14 +879,14 @@ fn do_redirection_internal(
                 if !redirectee.is_null() {
                     fd = here_document_to_fd(redirectee, ri as libc::c_uint);
                     if fd < 0 as libc::c_int {
-                        heredoc_errno = *__errno_location();
+                        heredoc_errno = *c___errno_location();
                         return HEREDOC_REDIRECT;
                     }
                     if (*redirect).rflags & REDIR_VARASSIGN as libc::c_int != 0 {
                         redirector = fcntl(fd, F_DUPFD as i32, SHELL_FD_BASE);
-                        r = *__errno_location();
+                        r = *c___errno_location();
                         if redirector < 0 as libc::c_int {
-                            sys_error(dcgettext(
+                            sys_error(c_dcgettext(
                                 0 as *const libc::c_char,
                                 b"redirection error: cannot duplicate fd\0" as *const u8
                                     as *const libc::c_char,
@@ -920,7 +922,7 @@ fn do_redirection_internal(
                                 return r;
                             }
                         } else if fd != redirector && dup2(fd, redirector) < 0 as libc::c_int {
-                            r = *__errno_location();
+                            r = *c___errno_location();
                             close(fd);
                             return r;
                         }
@@ -939,9 +941,9 @@ fn do_redirection_internal(
             r_duplicating_input | r_duplicating_output | r_move_input | r_move_output => {
                 if flags & RX_ACTIVE as i32 != 0 && (*redirect).rflags & REDIR_VARASSIGN != 0 {
                     redirector = fcntl(redir_fd, 0 as libc::c_int, 10 as libc::c_int);
-                    r = *__errno_location();
+                    let _ = *c___errno_location();
                     if redirector < 0 as libc::c_int {
-                        sys_error(dcgettext(
+                        sys_error(c_dcgettext(
                             0 as *const libc::c_char,
                             b"redirection error: cannot duplicate fd\0" as *const u8
                                 as *const libc::c_char,
@@ -987,7 +989,7 @@ fn do_redirection_internal(
                             return r;
                         }
                     } else if dup2(redir_fd, redirector) < 0 as libc::c_int {
-                        return *__errno_location();
+                        return *c___errno_location();
                     }
                     if ri as libc::c_uint == r_duplicating_input as libc::c_int as libc::c_uint
                         || ri as libc::c_uint == r_move_input as libc::c_int as libc::c_uint
@@ -1028,7 +1030,7 @@ fn do_redirection_internal(
                             return AMBIGUOUS_REDIRECT;
                         }
                     }
-                    r = 0 as libc::c_int;
+                    // r = 0 as libc::c_int;
                     if flags & RX_UNDOABLE as i32 != 0 {
                         if fcntl(redirector, 1 as libc::c_int, 0 as libc::c_int)
                             != -(1 as libc::c_int)
@@ -1050,7 +1052,7 @@ fn do_redirection_internal(
                     r = close_buffered_fd(redirector);
                     if r < 0 as libc::c_int
                         && flags & RX_INTERNAL != 0
-                        && (*__errno_location() == EIO || *__errno_location() == ENOSPC)
+                        && (*c___errno_location() == EIO || *c___errno_location() == ENOSPC)
                     {
                         REDIRECTION_ERROR!(r, errno, -1);
                     }
@@ -1068,12 +1070,12 @@ fn do_redirection_internal(
     }
 }
 fn add_undo_redirect(fd: libc::c_int, ri: r_instruction, fdbase: libc::c_int) -> libc::c_int {
-    let mut new_fd: libc::c_int = 0;
-    let mut clexec_flag: libc::c_int = 0;
-    let mut savefd_flag: libc::c_int = 0;
-    let mut new_redirect: *mut REDIRECT = 0 as *mut REDIRECT;
-    let mut closer: *mut REDIRECT = 0 as *mut REDIRECT;
-    let mut dummy_redirect: *mut REDIRECT = 0 as *mut REDIRECT;
+    let mut new_fd: libc::c_int;
+    let clexec_flag: libc::c_int;
+    let mut savefd_flag: libc::c_int;
+    let mut new_redirect: *mut REDIRECT;
+    let closer: *mut REDIRECT;
+    let dummy_redirect: *mut REDIRECT;
     let mut sd: REDIRECTEE = REDIRECTEE { dest: 0 };
     savefd_flag = 0 as libc::c_int;
     unsafe {
@@ -1094,7 +1096,7 @@ fn add_undo_redirect(fd: libc::c_int, ri: r_instruction, fdbase: libc::c_int) ->
             savefd_flag = 1 as libc::c_int;
         }
         if new_fd < 0 as libc::c_int {
-            sys_error(dcgettext(
+            sys_error(c_dcgettext(
                 0 as *const libc::c_char,
                 b"redirection error: cannot duplicate fd\0" as *const u8 as *const libc::c_char,
                 5 as libc::c_int,
@@ -1148,7 +1150,7 @@ fn add_undo_redirect(fd: libc::c_int, ri: r_instruction, fdbase: libc::c_int) ->
     return 0 as libc::c_int;
 }
 fn add_undo_close_redirect(fd: libc::c_int) -> libc::c_int {
-    let mut closer: *mut REDIRECT = 0 as *mut REDIRECT;
+    let closer: *mut REDIRECT;
     let mut sd: REDIRECTEE = REDIRECTEE { dest: 0 };
     sd.dest = fd;
     unsafe {
@@ -1194,25 +1196,25 @@ fn stdin_redirection(ri: r_instruction, redirector: libc::c_int) -> libc::c_int 
 }
 #[no_mangle]
 pub fn stdin_redirects(redirs: *mut REDIRECT) -> libc::c_int {
-    unsafe {
-        let mut rp: *mut REDIRECT = 0 as *mut REDIRECT;
-        let mut n: libc::c_int = 0;
-        n = 0 as libc::c_int;
-        rp = redirs;
+    let mut rp: *mut REDIRECT;
+    let mut n: libc::c_int;
+    n = 0 as libc::c_int;
+    rp = redirs;
 
-        while !rp.is_null() {
+    while !rp.is_null() {
+        unsafe {
             if (*rp).rflags & REDIR_VARASSIGN as libc::c_int == 0 as libc::c_int {
                 n += stdin_redirection((*rp).instruction as libc::c_uint, (*rp).redirector.dest);
             }
             rp = (*rp).next;
         }
-
-        return n;
     }
+
+    return n;
 }
 fn redir_varassign(redir: *mut REDIRECT, fd: libc::c_int) -> libc::c_int {
-    let mut w: *mut WORD_DESC = 0 as *mut WORD_DESC;
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let w: *mut WORD_DESC;
+    let v: *mut SHELL_VAR;
     unsafe {
         w = (*redir).redirector.filename;
         v = bind_var_to_int((*w).word, fd as intmax_t);
@@ -1225,55 +1227,57 @@ fn redir_varassign(redir: *mut REDIRECT, fd: libc::c_int) -> libc::c_int {
 }
 
 fn redir_varvalue(redir: *mut REDIRECT) -> libc::c_int {
+    let mut v: *mut SHELL_VAR;
+    let val: *mut libc::c_char;
+    let mut w: *mut libc::c_char;
+    let mut vmax: intmax_t = 0;
+    let i: libc::c_int;
+    let mut sub: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut len: libc::c_int = 0;
+    let mut vr: libc::c_int;
     unsafe {
-        let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-        let mut val: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut w: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut vmax: intmax_t = 0;
-        let mut i: libc::c_int = 0;
-        let mut sub: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut len: libc::c_int = 0;
-        let mut vr: libc::c_int = 0;
         w = (*(*redir).redirector.filename).word;
-        vr = valid_array_reference(w, 0 as libc::c_int);
-        if vr != 0 {
-            v = array_variable_part(w, 0 as libc::c_int, &mut sub, &mut len);
-        } else {
-            v = find_variable(w);
-            if v.is_null() {
-                v = find_variable_last_nameref(w, 0 as libc::c_int);
-                if !v.is_null() && (*v).attributes & 0x800 as libc::c_int != 0 {
+    }
+    vr = valid_array_reference(w, 0 as libc::c_int);
+    if vr != 0 {
+        v = array_variable_part(w, 0 as libc::c_int, &mut sub, &mut len);
+    } else {
+        v = find_variable(w);
+        if v.is_null() {
+            v = find_variable_last_nameref(w, 0 as libc::c_int);
+            if unsafe { !v.is_null() && (*v).attributes & 0x800 as libc::c_int != 0 } {
+                unsafe {
                     w = (*v).value;
-                    vr = valid_array_reference(w, 0 as libc::c_int);
-                    if vr != 0 {
-                        v = array_variable_part(w, 0 as libc::c_int, &mut sub, &mut len);
-                    } else {
-                        v = find_variable(w);
-                    }
+                }
+                vr = valid_array_reference(w, 0 as libc::c_int);
+                if vr != 0 {
+                    v = array_variable_part(w, 0 as libc::c_int, &mut sub, &mut len);
+                } else {
+                    v = find_variable(w);
                 }
             }
         }
-        if v.is_null() || invisible_p!(v) as libc::c_int != 0 {
-            return -(1 as libc::c_int);
-        }
-
-        if vr != 0 && (array_p!(v) as libc::c_int != 0 || assoc_p!(v) as libc::c_int != 0) {
-            val = get_array_value(
-                w,
-                0 as libc::c_int,
-                0 as *mut libc::c_void as *mut libc::c_int,
-                0 as *mut arrayind_t,
-            );
-        } else {
-            val = get_variable_value(v);
-        }
-        if val.is_null() || *val as libc::c_int == 0 as libc::c_int {
-            return -(1 as libc::c_int);
-        }
-        if legal_number(val, &mut vmax) < 0 as libc::c_int {
-            return -(1 as libc::c_int);
-        }
-        i = vmax as libc::c_int;
-        return i;
     }
+    if unsafe { v.is_null() || invisible_p!(v) as libc::c_int != 0 } {
+        return -(1 as libc::c_int);
+    }
+
+    if unsafe { vr != 0 && (array_p!(v) as libc::c_int != 0 || assoc_p!(v) as libc::c_int != 0) } {
+        val = get_array_value(
+            w,
+            0 as libc::c_int,
+            0 as *mut libc::c_void as *mut libc::c_int,
+            0 as *mut arrayind_t,
+        );
+    } else {
+        val = get_variable_value(v);
+    }
+    if unsafe { val.is_null() || *val as libc::c_int == 0 as libc::c_int } {
+        return -(1 as libc::c_int);
+    }
+    if legal_number(val, &mut vmax) < 0 as libc::c_int {
+        return -(1 as libc::c_int);
+    }
+    i = vmax as libc::c_int;
+    return i;
 }
