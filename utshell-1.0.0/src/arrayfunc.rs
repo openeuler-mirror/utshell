@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::array::{
     array_create, array_dispose_element, array_flush, array_insert, array_keys_to_word_list,
     array_reference, array_remove, array_to_assign, array_to_word_list,
@@ -12,8 +9,10 @@ use crate::assoc::{
 use crate::builtins::common::sh_invalidid;
 use crate::dispose_cmd::dispose_words;
 use crate::error::err_badarraysub;
+use crate::error::err_readonly;
 use crate::expr::evalexp;
 use crate::general::legal_identifier;
+use crate::general::valid_nameref_value;
 use crate::make_cmd::{make_word, make_word_list};
 use crate::pathexp::glob_char_p;
 use crate::sig::{jump_to_top_level, top_level_cleanup};
@@ -24,6 +23,7 @@ use crate::subst::{
     expand_arith_string, expand_words_no_vars, extract_array_assignment_list, quote_string,
     skipsubscript, string_list_dollar_at, string_list_dollar_star, string_list_pos_params,
 };
+use crate::utshell::set_exit_status;
 use crate::variables::{
     dispose_variable, find_shell_variable, find_variable, find_variable_last_nameref,
     find_variable_nameref_for_create, make_new_array_variable, make_new_assoc_variable,
@@ -33,13 +33,11 @@ use crate::y_tab::parse_string_to_word_list;
 
 #[inline]
 fn mbrlen(mut __s: *const libc::c_char, mut __n: size_t, mut __ps: *mut mbstate_t) -> size_t {
-    unsafe {
-        return if !__ps.is_null() {
-            mbrtowc(0 as *mut wchar_t, __s, __n, __ps)
-        } else {
-            __mbrlen(__s, __n, 0 as *mut mbstate_t)
-        };
-    }
+    return if !__ps.is_null() {
+        c_mbrtowc(0 as *mut wchar_t, __s, __n, __ps)
+    } else {
+        c___mbrlen(__s, __n, 0 as *mut mbstate_t)
+    };
 }
 #[inline]
 fn is_basic(c: libc::c_char) -> libc::c_int {
@@ -53,8 +51,8 @@ fn is_basic(c: libc::c_char) -> libc::c_int {
 }
 #[no_mangle]
 pub fn convert_var_to_array(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut oldval: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut array: *mut ARRAY = 0 as *mut ARRAY;
+    let oldval: *mut libc::c_char;
+    let array: *mut ARRAY;
     unsafe {
         oldval = value_cell!(var);
         array = array_create();
@@ -78,7 +76,6 @@ pub fn convert_var_to_array(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 
         if exported_p!(var) != 0 {
             array_needs_making += 1;
-            array_needs_making;
         }
 
         VSETATTR!(var, att_array);
@@ -99,8 +96,8 @@ pub fn convert_var_to_array(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 saved as array[0]. */
 #[no_mangle]
 pub fn convert_var_to_assoc(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut oldval: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut hash: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
+    let oldval: *mut libc::c_char;
+    let hash: *mut HASH_TABLE;
     unsafe {
         oldval = value_cell!(var);
         hash = assoc_create!(0);
@@ -129,7 +126,6 @@ pub fn convert_var_to_assoc(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 
         if exported_p!(var) != 0 {
             array_needs_making += 1;
-            array_needs_making;
         }
 
         VSETATTR!(var, att_assoc);
@@ -154,13 +150,14 @@ pub fn make_array_variable_value(
     value: *mut libc::c_char,
     flags: libc::c_int,
 ) -> *mut libc::c_char {
-    let mut dentry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut newval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let dentry: *mut SHELL_VAR;
+    let mut newval: *mut libc::c_char;
 
     /* If we're appending, we need the old value of the array reference, so
     fake out make_variable_value with a dummy SHELL_VAR */
-    unsafe {
-        if flags & ASS_APPEND as libc::c_int != 0 {
+
+    if flags & ASS_APPEND as libc::c_int != 0 {
+        unsafe {
             dentry = libc::malloc(::core::mem::size_of::<SHELL_VAR>() as libc::c_ulong as usize)
                 as *mut SHELL_VAR;
             (*dentry).name = savestring!((*entry).name);
@@ -180,14 +177,15 @@ pub fn make_array_variable_value(
                 & !(att_array as libc::c_int
                     | att_assoc as libc::c_int
                     | att_exported as libc::c_int);
-            /* Leave the rest of the members uninitialized; the code doesn't look
-            at them. */
-            newval = make_variable_value(dentry, value, flags);
-            dispose_variable(dentry);
-        } else {
-            newval = make_variable_value(entry, value, flags);
         }
+        /* Leave the rest of the members uninitialized; the code doesn't look
+        at them. */
+        newval = make_variable_value(dentry, value, flags);
+        dispose_variable(dentry);
+    } else {
+        newval = make_variable_value(entry, value, flags);
     }
+
     return newval;
 }
 
@@ -204,12 +202,13 @@ fn bind_assoc_var_internal(
     value: *mut libc::c_char,
     flags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut newval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let newval: *mut libc::c_char;
 
     /* Use the existing array contents to expand the value */
     newval = make_array_variable_value(entry, 0 as libc::c_int as arrayind_t, key, value, flags);
-    unsafe {
-        if ((*entry).assign_func).is_some() {
+
+    if unsafe { ((*entry).assign_func).is_some() } {
+        unsafe {
             (Some(((*entry).assign_func).expect("non-null function pointer")))
                 .expect("non-null function pointer")(
                 entry,
@@ -217,10 +216,11 @@ fn bind_assoc_var_internal(
                 0 as libc::c_int as arrayind_t,
                 key,
             );
-        } else {
-            assoc_insert(hash, key, newval);
         }
-
+    } else {
+        assoc_insert(hash, key, newval);
+    }
+    unsafe {
         FREE!(newval);
 
         VUNSETATTR!(entry, att_invisible); /* no longer invisible */
@@ -238,7 +238,7 @@ fn bind_array_var_internal(
     value: *mut libc::c_char,
     flags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut newval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let newval: *mut libc::c_char;
 
     newval = make_array_variable_value(entry, ind, key, value, flags);
     unsafe {
@@ -272,10 +272,10 @@ pub fn bind_array_variable(
     value: *mut libc::c_char,
     flags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    unsafe {
-        entry = find_shell_variable(name);
+    let mut entry: *mut SHELL_VAR;
 
+    entry = find_shell_variable(name);
+    unsafe {
         if entry.is_null() {
             /* Is NAME a nameref variable that points to an unset variable? */
             entry = find_variable_nameref_for_create(name, 0 as libc::c_int);
@@ -345,10 +345,10 @@ pub fn assign_array_element(
     flags: libc::c_int,
 ) -> *mut SHELL_VAR {
     let mut sub: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut vname: *mut libc::c_char = 0 as *mut libc::c_char;
+    let vname: *mut libc::c_char;
     let mut sublen: libc::c_int = 0;
-    let mut isassoc: libc::c_int = 0;
-    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let isassoc: libc::c_int;
+    let mut entry: *mut SHELL_VAR;
 
     vname = array_variable_name(
         name,
@@ -391,8 +391,8 @@ fn assign_array_element_internal(
     value: *mut libc::c_char,
     flags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut akey: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ind: arrayind_t = 0;
+    let akey: *mut libc::c_char;
+    let mut ind: arrayind_t;
     unsafe {
         if !entry.is_null() && assoc_p!(entry) as libc::c_int != 0 {
             *sub.offset((sublen - 1 as libc::c_int) as isize) = '\0' as i32 as libc::c_char;
@@ -438,17 +438,18 @@ for assignment (e.g., by the `read' builtin).  If FLAGS&2 is non-zero, we
 create an associative array. */
 #[no_mangle]
 pub fn find_or_make_array_variable(name: *mut libc::c_char, flags: libc::c_int) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut var: *mut SHELL_VAR;
 
     var = find_variable(name);
-    unsafe {
-        if var.is_null() {
-            /* See if we have a nameref pointing to a variable that hasn't been
-            created yet. */
-            var = find_variable_last_nameref(name, 1 as libc::c_int);
-            if !var.is_null() && nameref_p!(var) != 0 && invisible_p!(var) != 0 {
+
+    if var.is_null() {
+        /* See if we have a nameref pointing to a variable that hasn't been
+        created yet. */
+        var = find_variable_last_nameref(name, 1 as libc::c_int);
+        if unsafe { !var.is_null() && nameref_p!(var) != 0 && invisible_p!(var) != 0 } {
+            unsafe {
                 internal_warning(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: removing nameref attribute\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
@@ -457,6 +458,8 @@ pub fn find_or_make_array_variable(name: *mut libc::c_char, flags: libc::c_int) 
                 );
                 VUNSETATTR!(var, att_nameref);
             }
+        }
+        unsafe {
             if !var.is_null() && nameref_p!(var) != 0 {
                 if valid_nameref_value(nameref_cell!(var), 2 as libc::c_int) == 0 as libc::c_int {
                     sh_invalidid(nameref_cell!(var));
@@ -469,23 +472,26 @@ pub fn find_or_make_array_variable(name: *mut libc::c_char, flags: libc::c_int) 
                 };
             }
         }
+    }
 
-        if var.is_null() {
-            var = if flags & 2 as libc::c_int != 0 {
-                make_new_assoc_variable(name)
-            } else {
-                make_new_array_variable(name)
-            };
-        } else if flags & 1 as libc::c_int != 0 && (readonly_p!(var) != 0 || noassign_p!(var) != 0)
-        {
-            if readonly_p!(var) != 0 {
-                err_readonly(name);
-            }
-            return 0 as *mut libc::c_void as *mut SHELL_VAR;
-        } else if flags & 2 as libc::c_int != 0 && array_p!(var) != 0 {
-            set_exit_status(EXECUTION_FAILURE as libc::c_int);
+    if var.is_null() {
+        var = if flags & 2 as libc::c_int != 0 {
+            make_new_assoc_variable(name)
+        } else {
+            make_new_array_variable(name)
+        };
+    } else if unsafe {
+        flags & 1 as libc::c_int != 0 && (readonly_p!(var) != 0 || noassign_p!(var) != 0)
+    } {
+        if unsafe { readonly_p!(var) != 0 } {
+            err_readonly(name);
+        }
+        return 0 as *mut libc::c_void as *mut SHELL_VAR;
+    } else if unsafe { flags & 2 as libc::c_int != 0 && array_p!(var) != 0 } {
+        set_exit_status(EXECUTION_FAILURE as libc::c_int);
+        unsafe {
             report_error(
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"%s: cannot convert indexed to associative array\0" as *const u8
                         as *const libc::c_char,
@@ -493,11 +499,12 @@ pub fn find_or_make_array_variable(name: *mut libc::c_char, flags: libc::c_int) 
                 ),
                 name,
             );
-            return 0 as *mut libc::c_void as *mut SHELL_VAR;
-        } else if array_p!(var) == 0 as libc::c_int && assoc_p!(var) == 0 as libc::c_int {
-            var = convert_var_to_array(var);
         }
+        return 0 as *mut libc::c_void as *mut SHELL_VAR;
+    } else if unsafe { array_p!(var) == 0 as libc::c_int && assoc_p!(var) == 0 as libc::c_int } {
+        var = convert_var_to_array(var);
     }
+
     return var;
 }
 
@@ -509,8 +516,8 @@ pub fn assign_array_from_string(
     value: *mut libc::c_char,
     flags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut vflags: libc::c_int = 0;
+    let var: *mut SHELL_VAR;
+    let mut vflags: libc::c_int;
 
     vflags = 1 as libc::c_int;
     if flags & ASS_MKASSOC as libc::c_int != 0 {
@@ -533,19 +540,20 @@ pub fn assign_array_var_from_word_list(
     list: *mut WORD_LIST,
     flags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut i: arrayind_t = 0;
-    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut a: *mut ARRAY = 0 as *mut ARRAY;
-    unsafe {
-        a = array_cell!(var);
-        i = if flags & ASS_APPEND as libc::c_int != 0 {
-            array_max_index!(a) + 1 as libc::c_int as libc::c_long
-        } else {
-            0 as libc::c_int as libc::c_long
-        };
+    let mut i: arrayind_t;
+    let mut l: *mut WORD_LIST;
+    let a: *mut ARRAY;
 
-        l = list;
-        while !l.is_null() {
+    a = unsafe { array_cell!(var) };
+    i = if flags & ASS_APPEND as libc::c_int != 0 {
+        unsafe { array_max_index!(a) + 1 as libc::c_int as libc::c_long }
+    } else {
+        0 as libc::c_int as libc::c_long
+    };
+
+    l = list;
+    while !l.is_null() {
+        unsafe {
             bind_array_var_internal(
                 var,
                 i,
@@ -554,12 +562,14 @@ pub fn assign_array_var_from_word_list(
                 flags & !(ASS_APPEND as libc::c_int),
             );
             l = (*l).next;
-            i += 1;
-            i;
         }
-
-        VUNSETATTR!(var, att_invisible); /* no longer invisible */
+        i += 1;
     }
+
+    unsafe {
+        VUNSETATTR!(var, att_invisible);
+    } /* no longer invisible */
+
     return var;
 }
 
@@ -567,12 +577,12 @@ pub fn assign_array_var_from_word_list(
 pub fn expand_compound_array_assignment(
     var: *mut SHELL_VAR,
     value: *mut libc::c_char,
-    flags: libc::c_int,
+    _flags: libc::c_int,
 ) -> *mut WORD_LIST {
-    let mut list: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut nlist: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut val: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ni: libc::c_int = 0;
+    let list: *mut WORD_LIST;
+    let nlist: *mut WORD_LIST;
+    let val: *mut libc::c_char;
+    let mut ni: libc::c_int;
 
     /* This condition is true when invoked from the declare builtin with a
      command like
@@ -641,12 +651,12 @@ fn assign_assoc_from_kvlist(
     h: *mut HASH_TABLE,
     flags: libc::c_int,
 ) {
-    let mut list: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut akey: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut aval: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut k: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut free_aval: libc::c_int = 0;
+    let mut list: *mut WORD_LIST;
+    let mut akey: *mut libc::c_char;
+    let mut aval: *mut libc::c_char;
+    let mut k: *mut libc::c_char;
+    let mut v: *mut libc::c_char;
+    let mut free_aval: libc::c_int;
 
     list = nlist;
     while !list.is_null() {
@@ -701,22 +711,24 @@ pub fn kvpair_assignment_p(l: *mut WORD_LIST) -> libc::c_int {
 
 #[no_mangle]
 pub fn expand_and_quote_kvpair_word(w: *mut libc::c_char) -> *mut libc::c_char {
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut r: *mut libc::c_char = 0 as *mut libc::c_char;
+    let t: *mut libc::c_char;
+    let r: *mut libc::c_char;
 
     t = if !w.is_null() {
         expand_assignment_string_to_string(w, 0 as libc::c_int)
     } else {
         0 as *mut libc::c_char
     };
+
+    r = c_sh_single_quote(if !t.is_null() {
+        t as *const libc::c_char
+    } else {
+        b"\0" as *const u8 as *const libc::c_char
+    });
     unsafe {
-        r = sh_single_quote(if !t.is_null() {
-            t as *const libc::c_char
-        } else {
-            b"\0" as *const u8 as *const libc::c_char
-        });
         libc::free(t as *mut libc::c_void);
     }
+
     return r;
 }
 
@@ -730,20 +742,20 @@ If this is an associative array, we perform the assignments into NHASH and
 set NHASH to be the value of VAR after processing the assignments in NLIST */
 #[no_mangle]
 pub fn assign_compound_array_list(var: *mut SHELL_VAR, nlist: *mut WORD_LIST, flags: libc::c_int) {
-    let mut a: *mut ARRAY = 0 as *mut ARRAY;
-    let mut h: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
-    let mut nhash: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
-    let mut list: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut w: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut val: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut nval: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut savecmd: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut len: libc::c_int = 0;
-    let mut iflags: libc::c_int = 0;
-    let mut free_val: libc::c_int = 0;
-    let mut ind: arrayind_t = 0;
-    let mut last_ind: arrayind_t = 0;
-    let mut akey: *mut libc::c_char = 0 as *mut libc::c_char;
+    let a: *mut ARRAY;
+    let mut h: *mut HASH_TABLE;
+    let mut nhash: *mut HASH_TABLE;
+    let mut list: *mut WORD_LIST;
+    let mut w: *mut libc::c_char;
+    let mut val: *mut libc::c_char;
+    let mut nval: *mut libc::c_char;
+    let mut savecmd: *mut libc::c_char;
+    let mut len: libc::c_int;
+    let mut iflags: libc::c_int;
+    let mut free_val: libc::c_int;
+    let mut ind: arrayind_t;
+    let mut last_ind: arrayind_t;
+    let mut akey: *mut libc::c_char;
     unsafe {
         a = if !var.is_null() && array_p!(var) != 0 {
             array_cell!(var)
@@ -832,7 +844,6 @@ pub fn assign_compound_array_list(var: *mut SHELL_VAR, nlist: *mut WORD_LIST, fl
                     }
                     FREE!(nval);
                     last_ind += 1;
-                    last_ind;
                     list = (*list).next;
                     continue;
                 }
@@ -849,7 +860,7 @@ pub fn assign_compound_array_list(var: *mut SHELL_VAR, nlist: *mut WORD_LIST, fl
                     set_exit_status(EXECUTION_FAILURE as libc::c_int);
                     if assoc_p!(var) != 0 {
                         report_error(
-                            dcgettext(
+                            c_dcgettext(
                                 0 as *const libc::c_char,
                                 b"%s: invalid associative array key\0" as *const u8
                                     as *const libc::c_char,
@@ -859,7 +870,7 @@ pub fn assign_compound_array_list(var: *mut SHELL_VAR, nlist: *mut WORD_LIST, fl
                         );
                     } else {
                         report_error(
-                            dcgettext(
+                            c_dcgettext(
                                 0 as *const libc::c_char,
                                 b"%s: cannot assign to non-numeric index\0" as *const u8
                                     as *const libc::c_char,
@@ -921,7 +932,7 @@ pub fn assign_compound_array_list(var: *mut SHELL_VAR, nlist: *mut WORD_LIST, fl
             } else if assoc_p!(var) != 0 {
                 set_exit_status(EXECUTION_FAILURE as libc::c_int);
                 report_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: %s: must use subscript when assigning associative array\0"
                             as *const u8 as *const libc::c_char,
@@ -957,7 +968,6 @@ pub fn assign_compound_array_list(var: *mut SHELL_VAR, nlist: *mut WORD_LIST, fl
                 bind_array_var_internal(var, ind, akey, val, iflags);
             }
             last_ind += 1;
-            last_ind;
             this_command_name = savecmd;
 
             if free_val != 0 {
@@ -983,7 +993,7 @@ pub fn assign_array_var_from_string(
     value: *mut libc::c_char,
     flags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut nlist: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let nlist: *mut WORD_LIST;
 
     if value.is_null() {
         return var;
@@ -1009,15 +1019,15 @@ pub fn assign_array_var_from_string(
 statement (usually a compound array assignment) to protect them from
 unwanted filename expansion or word splitting. */
 fn quote_assign(string: *const libc::c_char) -> *mut libc::c_char {
-    let mut slen: size_t = 0;
-    let mut saw_eq: libc::c_int = 0;
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut subs: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut s: *const libc::c_char = 0 as *const libc::c_char;
-    let mut send: *const libc::c_char = 0 as *const libc::c_char;
-    let mut ss: libc::c_int = 0;
-    let mut se: libc::c_int = 0;
+    let slen: size_t;
+    let mut saw_eq: libc::c_int;
+    let temp: *mut libc::c_char;
+    let mut t: *mut libc::c_char;
+    let mut subs: *mut libc::c_char;
+    let mut s: *const libc::c_char;
+    let send: *const libc::c_char;
+    let mut ss: libc::c_int;
+    let mut se: libc::c_int;
     let mut state: mbstate_t = mbstate_t {
         __count: 0,
         __value: mbstate_t_value { __wch: 0 },
@@ -1074,7 +1084,7 @@ fn quote_assign(string: *const libc::c_char) -> *mut libc::c_char {
                     __count: 0,
                     __value: mbstate_t_value { __wch: 0 },
                 };
-                let mut mblength: size_t = 0;
+                let mut mblength: size_t;
                 let mut _k: libc::c_int = 0;
                 _k = is_basic(*s);
                 if _k != 0 {
@@ -1107,7 +1117,6 @@ fn quote_assign(string: *const libc::c_char) -> *mut libc::c_char {
                     t = t.offset(1);
                     *fresh5 = *fresh4;
                     _k += 1;
-                    _k;
                 }
             } else {
                 let fresh6 = s;
@@ -1126,27 +1135,27 @@ fn quote_assign(string: *const libc::c_char) -> *mut libc::c_char {
 to prevent further expansion. This is called for compound assignments to
 indexed arrays. W has already undergone word expansions. If W has no [IND]=,
 just single-quote and return it. */
-fn quote_compound_array_word(w: *mut libc::c_char, type_0: libc::c_int) -> *mut libc::c_char {
-    let mut nword: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut sub: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
-    let t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ind: libc::c_int = 0;
-    let mut wlen: libc::c_int = 0;
-    let mut i: libc::c_int = 0;
+fn quote_compound_array_word(w: *mut libc::c_char, _type_0: libc::c_int) -> *mut libc::c_char {
+    let nword: *mut libc::c_char;
+    let sub: *mut libc::c_char;
+    let value: *mut libc::c_char;
+    // let t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut ind: libc::c_int;
+    let wlen: libc::c_int;
+    let mut i: libc::c_int;
     unsafe {
         //LBRACK  RBRACK
         if *w.offset(0 as libc::c_int as isize) as libc::c_int != LBRACK!() as i32 {
-            return sh_single_quote(w);
+            return c_sh_single_quote(w);
         }
         ind = skipsubscript(w, 0 as libc::c_int, 0 as libc::c_int);
         if *w.offset(ind as isize) as libc::c_int != RBRACK!() as i32 {
-            return sh_single_quote(w);
+            return c_sh_single_quote(w);
         }
 
         wlen = libc::strlen(w) as libc::c_int;
         *w.offset(ind as isize) = '\0' as i32 as libc::c_char;
-        sub = sh_single_quote(w.offset(1 as libc::c_int as isize));
+        sub = c_sh_single_quote(w.offset(1 as libc::c_int as isize));
         *w.offset(ind as isize) = RBRACK!() as i32 as libc::c_char;
 
         nword = libc::malloc((wlen * 4 as libc::c_int + 5 as libc::c_int) as usize)
@@ -1160,7 +1169,7 @@ fn quote_compound_array_word(w: *mut libc::c_char, type_0: libc::c_int) -> *mut 
         );
 
         i += 1;
-        i; /* accommodate the opening LBRACK */
+        /* accommodate the opening LBRACK */
         let fresh8 = ind;
         ind = ind + 1;
         let fresh9 = i;
@@ -1178,7 +1187,7 @@ fn quote_compound_array_word(w: *mut libc::c_char, type_0: libc::c_int) -> *mut 
         let fresh13 = i;
         i = i + 1;
         *nword.offset(fresh13 as isize) = *w.offset(fresh12 as isize);
-        value = sh_single_quote(w.offset(ind as isize));
+        value = c_sh_single_quote(w.offset(ind as isize));
         libc::strcpy(nword.offset(i as isize), value);
     }
     return nword;
@@ -1192,21 +1201,24 @@ W has already been expanded, and expands the KEY and VALUE separately.
 Used for compound assignments to associative arrays that are arguments to
 declaration builtins (declare -A a=( list )). */
 #[no_mangle]
-pub fn expand_and_quote_assoc_word(w: *mut libc::c_char, type_0: libc::c_int) -> *mut libc::c_char {
-    let mut nword: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut key: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ind: libc::c_int = 0;
-    let mut wlen: libc::c_int = 0;
-    let mut i: libc::c_int = 0;
+pub fn expand_and_quote_assoc_word(
+    w: *mut libc::c_char,
+    _type_0: libc::c_int,
+) -> *mut libc::c_char {
+    let mut nword: *mut libc::c_char;
+    let key: *mut libc::c_char;
+    let value: *mut libc::c_char;
+    let mut t: *mut libc::c_char;
+    let mut ind: libc::c_int;
+    let wlen: libc::c_int;
+    let mut i: libc::c_int;
     unsafe {
         if *w.offset(0 as libc::c_int as isize) as libc::c_int != LBRACK!() as i32 {
-            return sh_single_quote(w);
+            return c_sh_single_quote(w);
         }
         ind = skipsubscript(w, 0 as libc::c_int, 0 as libc::c_int);
         if *w.offset(ind as isize) as libc::c_int != RBRACK!() as i32 {
-            return sh_single_quote(w);
+            return c_sh_single_quote(w);
         }
 
         *w.offset(ind as isize) = '\0' as i32 as libc::c_char;
@@ -1216,7 +1228,7 @@ pub fn expand_and_quote_assoc_word(w: *mut libc::c_char, type_0: libc::c_int) ->
         );
         *w.offset(ind as isize) = RBRACK!() as i32 as libc::c_char;
 
-        key = sh_single_quote(if !t.is_null() {
+        key = c_sh_single_quote(if !t.is_null() {
             t as *const libc::c_char
         } else {
             b"\0" as *const u8 as *const libc::c_char
@@ -1254,7 +1266,7 @@ pub fn expand_and_quote_assoc_word(w: *mut libc::c_char, type_0: libc::c_int) ->
 
         t = expand_assignment_string_to_string(w.offset(ind as isize), 0 as libc::c_int);
 
-        value = sh_single_quote(if !t.is_null() {
+        value = c_sh_single_quote(if !t.is_null() {
             t as *const libc::c_char
         } else {
             b"\0" as *const u8 as *const libc::c_char
@@ -1279,15 +1291,15 @@ the = sign (and any `+') alone. If it's not an assignment, just single-
 quote the word. This is used for indexed arrays. */
 #[no_mangle]
 pub fn quote_compound_array_list(list: *mut WORD_LIST, type_0: libc::c_int) {
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut t: *mut libc::c_char;
+    let mut l: *mut WORD_LIST;
 
     l = list;
     unsafe {
         while !l.is_null() {
             if !(((*l).word).is_null() || ((*(*l).word).word).is_null()) {
                 if (*(*l).word).flags & W_ASSIGNMENT == 0 as libc::c_int {
-                    t = sh_single_quote((*(*l).word).word);
+                    t = c_sh_single_quote((*(*l).word).word);
                 } else {
                     t = quote_compound_array_word((*(*l).word).word, type_0);
                 }
@@ -1302,8 +1314,8 @@ pub fn quote_compound_array_list(list: *mut WORD_LIST, type_0: libc::c_int) {
 /* For each word in a compound array assignment, if the word looks like
 [ind]=value, quote globbing chars and characters in $IFS before the `='. */
 fn quote_array_assignment_chars(list: *mut WORD_LIST) {
-    let mut nword: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut nword: *mut libc::c_char;
+    let mut l: *mut WORD_LIST;
 
     l = list;
     unsafe {
@@ -1324,7 +1336,7 @@ fn quote_array_assignment_chars(list: *mut WORD_LIST) {
             }
             /* ] */
             if *((*(*l).word).word).offset(0 as libc::c_int as isize) as libc::c_int != '[' as i32
-                || (mbschr((*(*l).word).word, '=' as i32)).is_null()
+                || (c_mbschr((*(*l).word).word, '=' as i32)).is_null()
             {
                 l = (*l).next;
                 continue;
@@ -1351,10 +1363,10 @@ pub fn unbind_array_element(
     sub: *mut libc::c_char,
     flags: libc::c_int,
 ) -> libc::c_int {
-    let mut len: libc::c_int = 0;
-    let mut ind: arrayind_t = 0;
-    let mut akey: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ae: *mut ARRAY_ELEMENT = 0 as *mut ARRAY_ELEMENT;
+    let len: libc::c_int;
+    let mut ind: arrayind_t;
+    let akey: *mut libc::c_char;
+    let ae: *mut ARRAY_ELEMENT;
     unsafe {
         len = skipsubscript(
             sub,
@@ -1367,7 +1379,7 @@ pub fn unbind_array_element(
                 b"%s[%s: %s\0" as *const u8 as *const libc::c_char,
                 (*var).name,
                 sub,
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     bash_badsub_errmsg,
                     5 as libc::c_int,
@@ -1398,7 +1410,7 @@ pub fn unbind_array_element(
                 builtin_error(
                     b"[%s]: %s\0" as *const u8 as *const libc::c_char,
                     sub,
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         bash_badsub_errmsg,
                         5 as libc::c_int,
@@ -1422,7 +1434,7 @@ pub fn unbind_array_element(
                 builtin_error(
                     b"[%s]: %s\0" as *const u8 as *const libc::c_char,
                     sub,
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         bash_badsub_errmsg,
                         5 as libc::c_int,
@@ -1454,7 +1466,7 @@ pub fn unbind_array_element(
 suitable for re-use as input. */
 #[no_mangle]
 pub fn print_array_assignment(var: *mut SHELL_VAR, quoted: libc::c_int) {
-    let mut vstr: *mut libc::c_char = 0 as *mut libc::c_char;
+    let vstr: *mut libc::c_char;
     unsafe {
         vstr = array_to_assign(array_cell!(var), quoted);
 
@@ -1483,7 +1495,7 @@ pub fn print_array_assignment(var: *mut SHELL_VAR, quoted: libc::c_int) {
 VAR=(VALUES), suitable for re-use as input. */
 #[no_mangle]
 pub fn print_assoc_assignment(var: *mut SHELL_VAR, quoted: libc::c_int) {
-    let mut vstr: *mut libc::c_char = 0 as *mut libc::c_char;
+    let vstr: *mut libc::c_char;
     unsafe {
         vstr = assoc_to_assign(assoc_cell!(var), quoted);
 
@@ -1519,13 +1531,13 @@ pub fn print_assoc_assignment(var: *mut SHELL_VAR, quoted: libc::c_int) {
 /* We need to reserve 1 for FLAGS, which we pass to skipsubscript. */
 #[no_mangle]
 pub fn valid_array_reference(name: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut r: libc::c_int = 0;
-    let mut len: libc::c_int = 0;
-    let mut isassoc: libc::c_int = 0;
-    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let t: *mut libc::c_char;
+    let r: libc::c_int;
+    let len: libc::c_int;
+    let mut isassoc: libc::c_int;
+    let entry: *mut SHELL_VAR;
 
-    t = unsafe { mbschr(name, '[' as i32) }; /* ] */
+    t = c_mbschr(name, '[' as i32); /* ] */
     isassoc = 0 as libc::c_int;
     if !t.is_null() {
         unsafe {
@@ -1572,16 +1584,16 @@ pub fn valid_array_reference(name: *const libc::c_char, flags: libc::c_int) -> l
 /* Expand the array index beginning at S and extending LEN characters. */
 #[no_mangle]
 pub fn array_expand_index(
-    var: *mut SHELL_VAR,
+    _var: *mut SHELL_VAR,
     s: *mut libc::c_char,
     len: libc::c_int,
-    flags: libc::c_int,
+    _flags: libc::c_int,
 ) -> arrayind_t {
-    let mut exp: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut savecmd: *mut libc::c_char = 0 as *mut libc::c_char;
+    let exp: *mut libc::c_char;
+    let t: *mut libc::c_char;
+    let savecmd: *mut libc::c_char;
     let mut expok: libc::c_int = 0;
-    let mut val: arrayind_t = 0;
+    let val: arrayind_t;
     unsafe {
         exp = libc::malloc(len as usize) as *mut libc::c_char;
         libc::strncpy(exp, s, (len - 1 as libc::c_int) as libc::c_ulong as usize);
@@ -1622,12 +1634,12 @@ pub fn array_variable_name(
     subp: *mut *mut libc::c_char,
     lenp: *mut libc::c_int,
 ) -> *mut libc::c_char {
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ind: libc::c_int = 0;
-    let mut ni: libc::c_int = 0;
+    let mut t: *mut libc::c_char;
+    let ret: *mut libc::c_char;
+    // let ind: libc::c_int ;
+    // let mut ni: libc::c_int = 0 ;
     unsafe {
-        t = mbschr(s, '[' as i32);
+        t = c_mbschr(s, '[' as i32);
         if t.is_null() {
             if !subp.is_null() {
                 *subp = t;
@@ -1637,8 +1649,8 @@ pub fn array_variable_name(
             }
             return 0 as *mut libc::c_void as *mut libc::c_char;
         }
-        ind = t.offset_from(s) as libc::c_long as libc::c_int;
-        ni = skipsubscript(s, ind, flags); /* XXX - was 0 not flags */
+        let ind = t.offset_from(s) as libc::c_long as libc::c_int;
+        let ni = skipsubscript(s, ind, flags); /* XXX - was 0 not flags */
         if ni <= ind + 1 as libc::c_int || *s.offset(ni as isize) as libc::c_int != ']' as i32 {
             err_badarraysub(s);
             if !subp.is_null() {
@@ -1654,7 +1666,7 @@ pub fn array_variable_name(
         ret = savestring!(s);
         let fresh20 = t;
         t = t.offset(1);
-        *fresh20 = '[' as i32 as libc::c_char; /* ] */
+        *fresh20 = '[' as i32 as libc::c_char;
 
         if !subp.is_null() {
             *subp = t;
@@ -1676,19 +1688,20 @@ pub fn array_variable_part(
     subp: *mut *mut libc::c_char,
     lenp: *mut libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    unsafe {
-        t = array_variable_name(s, flags, subp, lenp);
+    let t: *mut libc::c_char;
+    let var: *mut SHELL_VAR;
 
-        if t.is_null() {
-            return 0 as *mut libc::c_void as *mut SHELL_VAR;
-        }
-        var = find_variable(t); /* XXX - handle namerefs here? */
+    t = array_variable_name(s, flags, subp, lenp);
 
-        libc::free(t as *mut libc::c_void);
-        return var; /* now return invisible variables; caller must handle */
+    if t.is_null() {
+        return 0 as *mut libc::c_void as *mut SHELL_VAR;
     }
+    var = find_variable(t); /* XXX - handle namerefs here? */
+
+    unsafe {
+        libc::free(t as *mut libc::c_void);
+    }
+    return var; /* now return invisible variables; caller must handle */
 }
 
 /* Return a string containing the elements in the array and subscript
@@ -1705,12 +1718,12 @@ fn array_value_internal(
 ) -> *mut libc::c_char {
     let mut len: libc::c_int = 0;
     let mut ind: arrayind_t = 0;
-    let mut akey: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut retval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut akey: *mut libc::c_char;
+    let retval: *mut libc::c_char;
     let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let temp: *mut libc::c_char;
+    let l: *mut WORD_LIST;
+    let var: *mut SHELL_VAR;
 
     var = array_variable_part(
         s,
@@ -1896,48 +1909,51 @@ pub fn array_keys(
     pflags: libc::c_int,
 ) -> *mut libc::c_char {
     let mut len: libc::c_int = 0;
-    let mut retval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let retval: *mut libc::c_char;
     let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let temp: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    unsafe {
-        var = array_variable_part(s, 0 as libc::c_int, &mut t, &mut len);
+    // let temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let l: *mut WORD_LIST;
+    let var: *mut SHELL_VAR;
 
-        /* [ */
-        if var.is_null()
+    var = array_variable_part(s, 0 as libc::c_int, &mut t, &mut len);
+
+    /* [ */
+    if unsafe {
+        var.is_null()
             || ALL_ELEMENT_SUB!(*t.offset(0 as libc::c_int as isize) as libc::c_int) as libc::c_int
                 == 0 as libc::c_int
             || *t.offset(1 as libc::c_int as isize) as libc::c_int != ']' as i32
-        {
-            return 0 as *mut libc::c_void as *mut libc::c_char;
-        }
+    } {
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
 
-        if var_isset!(var) as libc::c_int == 0 as libc::c_int || invisible_p!(var) != 0 {
-            return 0 as *mut libc::c_void as *mut libc::c_char;
-        }
+    if unsafe { var_isset!(var) as libc::c_int == 0 as libc::c_int || invisible_p!(var) != 0 } {
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
 
-        if array_p!(var) == 0 as libc::c_int && assoc_p!(var) == 0 as libc::c_int {
-            l = make_word_list(
-                make_word(b"0\0" as *const u8 as *const libc::c_char),
-                0 as *mut libc::c_void as *mut WORD_LIST,
-            );
-        } else if assoc_p!(var) != 0 {
-            l = assoc_keys_to_word_list(assoc_cell!(var));
-        } else {
-            l = array_keys_to_word_list(array_cell!(var));
-        }
-        if l.is_null() {
-            return 0 as *mut libc::c_void as *mut libc::c_char;
-        }
+    if unsafe { array_p!(var) == 0 as libc::c_int && assoc_p!(var) == 0 as libc::c_int } {
+        l = make_word_list(
+            make_word(b"0\0" as *const u8 as *const libc::c_char),
+            0 as *mut libc::c_void as *mut WORD_LIST,
+        );
+    } else if unsafe { assoc_p!(var) != 0 } {
+        l = unsafe { assoc_keys_to_word_list(assoc_cell!(var)) };
+    } else {
+        l = unsafe { array_keys_to_word_list(array_cell!(var)) };
+    }
+    if l.is_null() {
+        return 0 as *mut libc::c_void as *mut libc::c_char;
+    }
 
-        retval = string_list_pos_params(
+    retval = unsafe {
+        string_list_pos_params(
             *t.offset(0 as libc::c_int as isize) as libc::c_int,
             l,
             quoted,
             pflags,
-        );
-    }
+        )
+    };
+
     dispose_words(l);
     return retval;
 }
