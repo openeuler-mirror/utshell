@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::src_common::*;
 
 use super::alias::{alias_builtin, unalias_builtin};
@@ -1010,7 +1007,6 @@ pub static mut num_shell_builtins: libc::c_int =
     (::std::mem::size_of::<[builtin; 77]>() as libc::c_ulong)
         .wrapping_div(::std::mem::size_of::<builtin>() as libc::c_ulong)
         .wrapping_sub(1 as libc::c_int as libc::c_ulong) as libc::c_int;
-// pub static mut num_shell_builtins: libc::c_int = 0;
 
 #[no_mangle]
 pub static mut alias_doc: [*mut libc::c_char; 2] = [
@@ -1468,11 +1464,11 @@ pub static mut readarray_doc: [*mut libc::c_char; 2] = [
         as *const u8 as *const libc::c_char as *mut libc::c_char,
     0 as *const libc::c_void as *mut libc::c_void as *mut libc::c_char,
 ];
-fn run_static_initializers() {
-    unsafe {
-        num_shell_builtins = (::std::mem::size_of::<[builtin; 77]>() as libc::c_ulong)
-            .wrapping_div(::std::mem::size_of::<builtin>() as libc::c_ulong)
-            .wrapping_sub(1 as libc::c_int as libc::c_ulong)
-            as libc::c_int
-    };
-}
+// fn run_static_initializers() {
+//     unsafe {
+//         num_shell_builtins = (::std::mem::size_of::<[builtin; 77]>() as libc::c_ulong)
+//             .wrapping_div(::std::mem::size_of::<builtin>() as libc::c_ulong)
+//             .wrapping_sub(1 as libc::c_int as libc::c_ulong)
+//             as libc::c_int
+//     };
+// }
