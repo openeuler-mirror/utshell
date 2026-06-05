@@ -1,11 +1,12 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::builtins::common::{no_options, sh_chkwrite};
 use crate::src_common::*;
 
 extern "C" {
-    pub fn print_timeval(fp: *mut libc::FILE, tvp: *mut libc::timeval);
+    fn print_timeval(fp: *mut libc::FILE, tvp: *mut libc::timeval);
+}
+
+pub fn c_print_timeval(fp: *mut libc::FILE, tvp: *mut libc::timeval) -> () {
+    unsafe { print_timeval(fp, tvp) }
 }
 
 #[no_mangle]
@@ -21,14 +22,14 @@ pub fn times_builtin(list: *mut WordList) -> i32 {
         libc::getrusage(libc::RUSAGE_SELF, std::mem::transmute(&curr));
         libc::getrusage(libc::RUSAGE_CHILDREN, std::mem::transmute(&kids));
 
-        print_timeval(stdout, std::mem::transmute(&curr.ru_utime));
+        c_print_timeval(stdout, std::mem::transmute(&curr.ru_utime));
         libc::putchar(b' ' as libc::c_int);
-        print_timeval(stdout, std::mem::transmute(&curr.ru_stime));
+        c_print_timeval(stdout, std::mem::transmute(&curr.ru_stime));
         libc::putchar(b'\n' as libc::c_int);
 
-        print_timeval(stdout, std::mem::transmute(&kids.ru_utime));
+        c_print_timeval(stdout, std::mem::transmute(&kids.ru_utime));
         libc::putchar(b' ' as libc::c_int);
-        print_timeval(stdout, std::mem::transmute(&kids.ru_stime));
+        c_print_timeval(stdout, std::mem::transmute(&kids.ru_stime));
         libc::putchar(b'\n' as libc::c_int);
     }
     return sh_chkwrite(EXECUTION_SUCCESS);
