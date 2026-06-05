@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::array::array_reference;
 use crate::builtins::common::builtin_address_internal;
 use crate::dispose_cmd::{dispose_word, dispose_words};
@@ -10,9 +7,9 @@ use crate::list::list_reverse;
 use crate::src_common::*;
 use crate::stringlib::substring;
 use crate::subst::{skip_to_delim, string_quote_removal};
+use crate::utshell::set_exit_status;
 use crate::variables::{bind_function_def, find_function};
 use crate::y_tab::{line_number, parser_state, read_secondary_line};
-
 #[no_mangle]
 pub fn cmd_init() {
     unsafe {
@@ -23,7 +20,7 @@ pub fn cmd_init() {
 
 #[no_mangle]
 pub fn alloc_word_desc() -> *mut WordDesc {
-    let mut temp: *mut WordDesc = 0 as *mut WordDesc;
+    let temp: *mut WordDesc;
     unsafe {
         ocache_alloc!(wdcache, WordDesc, temp);
         (*temp).flags = 0;
@@ -34,7 +31,7 @@ pub fn alloc_word_desc() -> *mut WordDesc {
 
 #[no_mangle]
 pub fn make_bare_word(string: *const libc::c_char) -> *mut WordDesc {
-    let mut temp: *mut WordDesc = 0 as *mut WordDesc;
+    let temp: *mut WordDesc;
     temp = alloc_word_desc();
     unsafe {
         if *string != 0 {
@@ -60,9 +57,8 @@ fn is_basic(c: libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn make_word_flags(w: *mut WordDesc, string: *const libc::c_char) -> *mut WordDesc {
-    let mut i: libc::c_int = 0;
-    let mut slen: size_t = 0;
-    // DECLARE_MBSTATE!();
+    let mut i: libc::c_int;
+    let slen: size_t;
     let mut state: mbstate_t = mbstate_t {
         __count: 0,
         __value: mbstate_t_value { __wch: 0 },
@@ -98,11 +94,9 @@ pub fn make_word_flags(w: *mut WordDesc, string: *const libc::c_char) -> *mut Wo
 
 #[no_mangle]
 pub fn make_word(string: *const libc::c_char) -> *mut WordDesc {
-    unsafe {
-        let mut temp: *mut WordDesc = 0 as *mut WordDesc;
-        temp = make_bare_word(string);
-        return make_word_flags(temp, string);
-    }
+    let temp: *mut WordDesc;
+    temp = make_bare_word(string);
+    return make_word_flags(temp, string);
 }
 
 #[no_mangle]
@@ -116,7 +110,7 @@ pub fn make_word_from_token(token: libc::c_int) -> *mut WordDesc {
 
 #[no_mangle]
 pub fn make_word_list(word: *mut WordDesc, wlink: *mut WordList) -> *mut WordList {
-    let mut temp: *mut WordList = 0 as *mut WordList;
+    let temp: *mut WordList;
     unsafe {
         ocache_alloc!(wlcache, WordList, temp);
 
@@ -128,7 +122,7 @@ pub fn make_word_list(word: *mut WordDesc, wlink: *mut WordList) -> *mut WordLis
 
 #[no_mangle]
 pub fn make_command(type_0: command_type, pointer: *mut SIMPLE_COM) -> *mut COMMAND {
-    let mut temp: *mut COMMAND = 0 as *mut COMMAND;
+    let temp: *mut COMMAND;
     unsafe {
         temp = malloc(std::mem::size_of::<COMMAND>() as usize) as *mut COMMAND;
         (*temp).type_0 = type_0;
@@ -146,7 +140,7 @@ pub fn command_connect(
     com2: *mut COMMAND,
     connector: libc::c_int,
 ) -> *mut COMMAND {
-    let mut temp: *mut CONNECTION = 0 as *mut CONNECTION;
+    let temp: *mut CONNECTION;
     unsafe {
         temp = malloc(std::mem::size_of::<CONNECTION>() as usize) as *mut CONNECTION;
         (*temp).connector = connector;
@@ -163,7 +157,7 @@ fn make_for_or_select(
     action: *mut COMMAND,
     lineno: libc::c_int,
 ) -> *mut COMMAND {
-    let mut temp: *mut FOR_COM = 0 as *mut FOR_COM;
+    let temp: *mut FOR_COM;
     unsafe {
         temp = malloc(std::mem::size_of::<FOR_COM>() as usize) as *mut FOR_COM;
         (*temp).flags = 0;
@@ -195,8 +189,8 @@ pub fn make_select_command(
 }
 
 fn make_arith_for_expr(s: *mut libc::c_char) -> *mut WordList {
-    let mut result: *mut WordList = 0 as *mut WordList;
-    let mut wd: *mut WordDesc = 0 as *mut WordDesc;
+    let result: *mut WordList;
+    let wd: *mut WordDesc;
     unsafe {
         if s.is_null() || *s as libc::c_int == '\u{0}' as i32 {
             return 0 as *mut WordList;
@@ -215,62 +209,67 @@ pub fn make_arith_for_command(
     action: *mut COMMAND,
     lineno: libc::c_int,
 ) -> *mut COMMAND {
-    let mut temp: *mut ARITH_FOR_COM = 0 as *mut ARITH_FOR_COM;
-    let mut init: *mut WordList = 0 as *mut WordList;
-    let mut test: *mut WordList = 0 as *mut WordList;
-    let mut step: *mut WordList = 0 as *mut WordList;
-    let mut s: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut start: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut nsemi: libc::c_int = 0;
-    let mut i: libc::c_int = 0;
+    let temp: *mut ARITH_FOR_COM;
+    let mut init: *mut WordList;
+    let mut test: *mut WordList;
+    let mut step: *mut WordList;
+    let mut s: *mut libc::c_char;
+    let mut t: *mut libc::c_char;
+    let mut start: *mut libc::c_char;
+    let mut nsemi: libc::c_int;
+    let mut i: libc::c_int;
 
     step = 0 as *mut WordList;
     test = step;
     init = test;
-    unsafe {
-        s = (*(*exprs).word).word;
-        t = s;
-        start = t;
-        nsemi = 0;
-        loop {
+
+    s = unsafe { (*(*exprs).word).word };
+    // t = s;
+    // start = t;
+    nsemi = 0;
+    loop {
+        unsafe {
             while whitespace!(*s) {
                 s = s.offset(1);
             }
-            start = s;
-            i = skip_to_delim(
-                start,
-                0,
-                b";\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-                SD_NOJMP as libc::c_int | SD_NOPROCSUB as libc::c_int,
-            );
-            s = start.offset(i as isize);
+        }
+        start = s;
+        i = skip_to_delim(
+            start,
+            0,
+            b";\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+            SD_NOJMP as libc::c_int | SD_NOPROCSUB as libc::c_int,
+        );
+        s = unsafe { start.offset(i as isize) };
 
-            t = if i > 0 as libc::c_int {
-                substring(start, 0, i)
-            } else {
-                0 as *mut libc::c_char
-            };
+        t = if i > 0 as libc::c_int {
+            substring(start, 0, i)
+        } else {
+            0 as *mut libc::c_char
+        };
 
-            nsemi += 1;
-            match nsemi {
-                1 => {
-                    init = make_arith_for_expr(t);
-                }
-                2 => {
-                    test = make_arith_for_expr(t);
-                }
-                3 => {
-                    step = make_arith_for_expr(t);
-                }
-                _ => {}
+        nsemi += 1;
+        match nsemi {
+            1 => {
+                init = make_arith_for_expr(t);
             }
+            2 => {
+                test = make_arith_for_expr(t);
+            }
+            3 => {
+                step = make_arith_for_expr(t);
+            }
+            _ => {}
+        }
+        unsafe {
             FREE!(t);
             if *s as libc::c_int == '\u{0}' as i32 {
                 break;
             }
             s = s.offset(1);
         }
+    }
+    unsafe {
         if nsemi != 3 {
             if nsemi < 3 {
                 parser_error(
@@ -322,14 +321,13 @@ pub fn make_arith_for_command(
 
 #[no_mangle]
 pub fn make_group_command(command: *mut COMMAND) -> *mut COMMAND {
+    let temp: *mut GROUP_COM;
     unsafe {
-        let mut temp: *mut GROUP_COM = 0 as *mut GROUP_COM;
         temp = malloc(std::mem::size_of::<GROUP_COM>() as usize) as *mut GROUP_COM;
 
         (*temp).command = command;
-
-        return make_command(command_type_cm_group, temp as *mut SIMPLE_COM);
     }
+    return make_command(command_type_cm_group, temp as *mut SIMPLE_COM);
 }
 
 #[no_mangle]
@@ -338,7 +336,7 @@ pub fn make_case_command(
     clauses: *mut PATTERN_LIST,
     lineno: libc::c_int,
 ) -> *mut COMMAND {
-    let mut temp: *mut CASE_COM = 0 as *mut CASE_COM;
+    let temp: *mut CASE_COM;
     unsafe {
         temp = malloc(std::mem::size_of::<CASE_COM>() as usize) as *mut CASE_COM;
         (*temp).flags = 0;
@@ -351,7 +349,7 @@ pub fn make_case_command(
 
 #[no_mangle]
 pub fn make_pattern_list(patterns: *mut WordList, action: *mut COMMAND) -> *mut PATTERN_LIST {
-    let mut temp: *mut PATTERN_LIST = 0 as *mut PATTERN_LIST;
+    let temp: *mut PATTERN_LIST;
     unsafe {
         temp = malloc(std::mem::size_of::<PATTERN_LIST>() as usize) as *mut PATTERN_LIST;
         (*temp).patterns = REVERSE_LIST!(patterns, *mut WordList);
@@ -368,7 +366,7 @@ pub fn make_if_command(
     true_case: *mut COMMAND,
     false_case: *mut COMMAND,
 ) -> *mut COMMAND {
-    let mut temp: *mut IF_COM = 0 as *mut IF_COM;
+    let temp: *mut IF_COM;
     unsafe {
         temp = malloc(std::mem::size_of::<IF_COM>() as usize) as *mut IF_COM;
         (*temp).flags = 0;
@@ -384,7 +382,7 @@ fn make_until_or_while(
     test: *mut COMMAND,
     action: *mut COMMAND,
 ) -> *mut COMMAND {
-    let mut temp: *mut WHILE_COM = 0 as *mut WHILE_COM;
+    let temp: *mut WHILE_COM;
     unsafe {
         temp = malloc(std::mem::size_of::<WHILE_COM>() as usize) as *mut WHILE_COM;
         (*temp).flags = 0 as libc::c_int;
@@ -406,8 +404,8 @@ pub fn make_until_command(test: *mut COMMAND, action: *mut COMMAND) -> *mut COMM
 
 #[no_mangle]
 pub fn make_arith_command(exp: *mut WordList) -> *mut COMMAND {
-    let mut command: *mut COMMAND = 0 as *mut COMMAND;
-    let mut temp: *mut ARITH_COM = 0 as *mut ARITH_COM;
+    let command: *mut COMMAND;
+    let temp: *mut ARITH_COM;
     unsafe {
         command = malloc(std::mem::size_of::<COMMAND>() as usize) as *mut COMMAND;
         temp = malloc(std::mem::size_of::<ARITH_COM>() as usize) as *mut ARITH_COM;
@@ -429,7 +427,7 @@ pub fn make_cond_node(
     left: *mut cond_com,
     right: *mut cond_com,
 ) -> *mut COND_COM {
-    let mut temp: *mut COND_COM = 0 as *mut COND_COM;
+    let temp: *mut COND_COM;
     unsafe {
         temp = malloc(std::mem::size_of::<COND_COM>() as usize) as *mut COND_COM;
         (*temp).flags = 0;
@@ -444,7 +442,7 @@ pub fn make_cond_node(
 
 #[no_mangle]
 pub fn make_cond_command(cond_node: *mut COND_COM) -> *mut COMMAND {
-    let mut command: *mut COMMAND = 0 as *mut COMMAND;
+    let command: *mut COMMAND;
     unsafe {
         command = malloc(std::mem::size_of::<COMMAND>() as usize) as *mut COMMAND;
         (*command).value.Cond = cond_node;
@@ -462,8 +460,8 @@ pub fn make_cond_command(cond_node: *mut COND_COM) -> *mut COMMAND {
 
 #[no_mangle]
 pub fn make_bare_simple_command() -> *mut COMMAND {
-    let mut command: *mut COMMAND = 0 as *mut COMMAND;
-    let mut temp: *mut SIMPLE_COM = 0 as *mut SIMPLE_COM;
+    let command: *mut COMMAND;
+    let temp: *mut SIMPLE_COM;
     unsafe {
         command = malloc(std::mem::size_of::<COMMAND>() as usize) as *mut COMMAND;
         temp = malloc(std::mem::size_of::<SIMPLE_COM>() as usize) as *mut SIMPLE_COM;
@@ -506,15 +504,15 @@ pub fn make_simple_command(element: ELEMENT, mut command: *mut COMMAND) -> *mut 
 
 #[no_mangle]
 pub fn make_here_document(temp: *mut REDIRECT, lineno: libc::c_int) {
-    let mut current_block: u64;
-    let mut kill_leading: libc::c_int = 0;
-    let mut redir_len: libc::c_int = 0;
-    let mut redir_word: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut document: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut full_line: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut document_index: libc::c_int = 0;
-    let mut document_size: libc::c_int = 0;
-    let mut delim_unquoted: libc::c_int = 0;
+    // let mut current_block: u64;
+    let kill_leading: libc::c_int;
+    let redir_len: libc::c_int;
+    let redir_word: *mut libc::c_char;
+    let mut document: *mut libc::c_char;
+    let mut full_line: *mut libc::c_char;
+    let mut document_index: libc::c_int;
+    let mut document_size: libc::c_int;
+    let delim_unquoted: libc::c_int;
     unsafe {
         if (*temp).instruction != r_instruction_r_deblank_reading_until
             && (*temp).instruction != r_instruction_r_reading_until
@@ -631,12 +629,11 @@ pub fn make_redirection(
     dest_and_filename: REDIRECTEE,
     flags: libc::c_int,
 ) -> *mut REDIRECT {
+    let temp: *mut REDIRECT;
+    let w: *mut WordDesc;
+    let wlen: libc::c_int;
+    let mut lfd: intmax_t = 0;
     unsafe {
-        let mut temp: *mut REDIRECT = 0 as *mut REDIRECT;
-        let mut w: *mut WordDesc = 0 as *mut WordDesc;
-        let mut wlen: libc::c_int = 0;
-        let mut lfd: intmax_t = 0;
-
         temp = malloc(std::mem::size_of::<REDIRECT>() as usize) as *mut REDIRECT;
 
         (*temp).redirector = source;
@@ -645,7 +642,7 @@ pub fn make_redirection(
         (*temp).instruction = instruction;
         (*temp).flags = 0;
         (*temp).rflags = flags;
-        let ref mut fresh47 = (*temp).next;
+        // let ref mut fresh47 = (*temp).next;
         (*temp).next = 0 as *mut REDIRECT;
 
         match instruction as u32 {
@@ -730,13 +727,13 @@ pub fn make_function_def(
     lineno: libc::c_int,
     lstart: libc::c_int,
 ) -> *mut COMMAND {
-    let mut temp: *mut FUNCTION_DEF = 0 as *mut FUNCTION_DEF;
-    let mut bash_source_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut bash_source_a: *mut ARRAY = 0 as *mut ARRAY;
+    let temp: *mut FUNCTION_DEF;
+    let bash_source_v: *mut SHELL_VAR;
+    let bash_source_a: *mut ARRAY;
     unsafe {
         temp = malloc(std::mem::size_of::<FUNCTION_DEF>() as usize) as *mut FUNCTION_DEF;
         (*temp).command = command;
-        let ref mut fresh49 = (*temp).name;
+        // let ref mut fresh49 = (*temp).name;
         (*temp).name = name;
         (*temp).line = lineno;
         (*temp).flags = 0;
@@ -760,7 +757,7 @@ pub fn make_function_def(
         }
 
         bind_function_def((*name).word, temp, 0);
-        let ref mut fresh53 = (*temp).source_file;
+        // let ref mut fresh53 = (*temp).source_file;
         (*temp).source_file = if !((*temp).source_file).is_null() {
             savestring!((*temp).source_file)
         } else {
@@ -773,7 +770,7 @@ pub fn make_function_def(
 #[no_mangle]
 pub fn make_subshell_command(command: *mut COMMAND) -> *mut COMMAND {
     unsafe {
-        let mut temp: *mut SUBSHELL_COM = 0 as *mut SUBSHELL_COM;
+        let temp: *mut SUBSHELL_COM;
         temp = malloc(std::mem::size_of::<SUBSHELL_COM>() as usize) as *mut SUBSHELL_COM;
 
         (*temp).command = command;
@@ -785,12 +782,12 @@ pub fn make_subshell_command(command: *mut COMMAND) -> *mut COMMAND {
 
 #[no_mangle]
 pub fn make_coproc_command(name: *mut libc::c_char, command: *mut COMMAND) -> *mut COMMAND {
-    let mut temp: *mut COPROC_COM = 0 as *mut COPROC_COM;
+    let temp: *mut COPROC_COM;
     unsafe {
         temp = malloc(std::mem::size_of::<COPROC_COM>() as usize) as *mut COPROC_COM;
-        let ref mut fresh55 = (*temp).name;
+        // let ref mut fresh55 = (*temp).name;
         (*temp).name = savestring!(name);
-        let ref mut fresh56 = (*temp).command;
+        // let ref mut fresh56 = (*temp).command;
         (*temp).command = command;
         (*temp).flags = CMD_WANT_SUBSHELL as libc::c_int | CMD_COPROC_SUBSHELL as libc::c_int;
     }
@@ -834,37 +831,41 @@ pub fn clean_simple_command(command: *mut COMMAND) -> *mut COMMAND {
             (*(*command).value.Simple).redirects =
                 REVERSE_LIST!((*(*command).value.Simple).redirects, *mut REDIRECT);
         }
+    }
+    if unsafe { rpm_requires != 0 && !((*(*command).value.Simple).words).is_null() } {
+        let cmd0: *mut libc::c_char;
+        let mut cmd1: *mut libc::c_char;
+        let b: *mut builtin;
 
-        if rpm_requires != 0 && !((*(*command).value.Simple).words).is_null() {
-            let mut cmd0: *mut libc::c_char = 0 as *mut libc::c_char;
-            let mut cmd1: *mut libc::c_char = 0 as *mut libc::c_char;
-            let mut b: *mut builtin = 0 as *mut builtin;
-
+        unsafe {
             cmd0 = (*(*(*(*command).value.Simple).words).word).word;
-            b = builtin_address_internal(cmd0, 0);
-            cmd1 = 0 as *mut libc::c_char;
+        }
+        b = builtin_address_internal(cmd0, 0);
+        cmd1 = 0 as *mut libc::c_char;
+        unsafe {
             if !((*(*(*command).value.Simple).words).next).is_null() {
                 cmd1 = (*(*(*(*(*command).value.Simple).words).next).word).word;
             }
-
-            if !b.is_null() {
-                if (*b).flags & REQUIRES_BUILTIN as libc::c_int != 0 && !cmd1.is_null() {
-                    output_requirement(b"executable\0" as *const u8 as *const libc::c_char, cmd1);
-                }
-            } else if assignment(cmd0, 0 as libc::c_int) == 0 {
-                output_requirement(
-                    if !(find_function(cmd0)).is_null() {
-                        b"function\0" as *const u8 as *const libc::c_char
-                    } else {
-                        b"executable\0" as *const u8 as *const libc::c_char
-                    },
-                    cmd0,
-                );
-            }
         }
-        parser_state &= !(PST_REDIRLIST as libc::c_int);
-        return command;
+        if !b.is_null() {
+            if unsafe { (*b).flags & REQUIRES_BUILTIN as libc::c_int != 0 && !cmd1.is_null() } {
+                output_requirement(b"executable\0" as *const u8 as *const libc::c_char, cmd1);
+            }
+        } else if assignment(cmd0, 0 as libc::c_int) == 0 {
+            output_requirement(
+                if !(find_function(cmd0)).is_null() {
+                    b"function\0" as *const u8 as *const libc::c_char
+                } else {
+                    b"executable\0" as *const u8 as *const libc::c_char
+                },
+                cmd0,
+            );
+        }
     }
+    unsafe {
+        parser_state &= !(PST_REDIRLIST as libc::c_int);
+    }
+    return command;
 }
 
 #[no_mangle]
@@ -873,9 +874,9 @@ pub fn connect_async_list(
     command2: *mut COMMAND,
     connector: libc::c_int,
 ) -> *mut COMMAND {
-    let mut t: *mut COMMAND = 0 as *mut COMMAND;
-    let mut t1: *mut COMMAND = 0 as *mut COMMAND;
-    let mut t2: *mut COMMAND = 0 as *mut COMMAND;
+    let mut t: *mut COMMAND;
+    let mut t1: *mut COMMAND;
+    let t2: *mut COMMAND;
     unsafe {
         t1 = command;
         t = (*(*command).value.Connection).second;
