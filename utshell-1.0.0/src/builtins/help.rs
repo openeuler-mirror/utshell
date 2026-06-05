@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::builtins::bashgetopt::{internal_getopt, reset_internal_getopt};
 use crate::builtins::builtins::current_builtin;
 use crate::builtins::common::{builtin_address_internal, builtin_usage, get_local_str};
@@ -14,7 +11,6 @@ pub enum Option<T> {
     Some(T),
 }
 extern "C" {
-    fn __ctype_get_mb_cur_max() -> size_t;
     fn xstrmatch(
         string1: *mut libc::c_char,
         string2: *mut libc::c_char,
@@ -22,9 +18,16 @@ extern "C" {
     ) -> libc::c_char;
 }
 
+fn c_xstrmatch(
+    string1: *mut libc::c_char,
+    string2: *mut libc::c_char,
+    i: libc::c_char,
+) -> libc::c_char {
+    unsafe { xstrmatch(string1, string2, i) }
+}
+
 #[no_mangle]
 pub fn help_builtin(mut list: *mut WordList) -> i32 {
-    // let mut i:i32;
     let mut plen: usize;
     let mut _match_found: i32;
     let mut sflag: i32 = 0;
@@ -71,17 +74,15 @@ pub fn help_builtin(mut list: *mut WordList) -> i32 {
     }
 
     if list == std::ptr::null_mut() {
-        unsafe {
-            show_shell_version(0);
-        }
+        show_shell_version(0);
 
         show_builtin_command_help();
         return EXECUTION_SUCCESS!();
     }
 
     unsafe {
-        let mut pattern = 0;
-        pattern = glob_pattern_p((*(*list).word).word);
+        //  pattern  ;
+        let pattern = c_glob_pattern_p((*(*list).word).word);
         if pattern == 1 {
             println!("Shell commands matching keyword, Shell commands matching keyword");
             if list != std::ptr::null_mut() && (*list).next != std::ptr::null_mut() {
@@ -91,7 +92,6 @@ pub fn help_builtin(mut list: *mut WordList) -> i32 {
             }
             println!("{:?} ,", list);
         }
-        //  let mut  loptendt=*list;
 
         let mut match_found = 0;
         let mut pattern: *mut libc::c_char = 0 as *mut libc::c_char;
@@ -101,7 +101,6 @@ pub fn help_builtin(mut list: *mut WordList) -> i32 {
             let mut this_found = 0;
             let mut v: Vec<*mut libc::c_char> = Vec::new();
             for val in 0..=75 {
-                //let nname = &shell_builtins[val].name;
                 let builtin1 = &(*((shell_builtins as usize + (val * BUILTIN_SIZEOF!()) as usize)
                     as *mut builtin));
                 if builtin1.name != std::ptr::null_mut() {
@@ -109,16 +108,14 @@ pub fn help_builtin(mut list: *mut WordList) -> i32 {
                 }
             }
             for val in 1..3 {
-                //for &mut namee in &mut v {
                 for i in 0..v.len() {
                     QUIT();
                     /* First val: look for exact string or pattern matches.
                     Second val: look for prefix matches like bash-4.2 */
                     if val == 1 {
                         m = (libc::strcmp(pattern, v[i]) == 0)
-                            || (strmatch(pattern, v[i], FNMATCH_EXTFLAG!() as libc::c_char)
+                            || (c_strmatch(pattern, v[i], FNMATCH_EXTFLAG!() as libc::c_char)
                                 != FNM_NOMATCH!());
-                    //FNMATCH_EXTFLAG C 的宏并不是0，重构后为啥是0了呢？
                     } else {
                         m = libc::strncmp(pattern, v[i], plen) == 0;
                     }
@@ -168,16 +165,15 @@ pub fn help_builtin(mut list: *mut WordList) -> i32 {
         }
     }
 
-    std::io::stdout().flush();
+    let _ = std::io::stdout().flush();
 
     return EXECUTION_SUCCESS!();
 }
 
 #[no_mangle]
 pub fn help_null_builtin(_list: *mut WordList) -> i32 {
-    unsafe {
-        show_shell_version(0);
-    }
+    show_shell_version(0);
+
     show_builtin_command_help();
     return EXECUTION_SUCCESS!();
 }
@@ -195,8 +191,7 @@ fn QUIT() {
 }
 
 pub fn builtin_help() {
-    // print  all  command usage
-    let mut ind: i32 = 5;
+    // let mut ind: i32 = 5;
     let d: i32;
     unsafe {
         current_builtin = builtin_address_internal(this_command_name, 0);
@@ -206,7 +201,7 @@ pub fn builtin_help() {
 
         d = (current_builtin as usize - shell_builtins as usize) as i32;
     }
-    ind = d / BUILTIN_SIZEOF!();
+    let ind = d / BUILTIN_SIZEOF!();
     unsafe {
         print!("{}:", CStr::from_ptr(this_command_name).to_str().unwrap());
     }
@@ -214,17 +209,17 @@ pub fn builtin_help() {
     show_longdoc(ind);
 }
 
-fn open_helpfile(name: *mut libc::c_char) -> i32 {
-    let fd: i32;
-    unsafe {
-        fd = open(name, 0);
-    }
-    if fd == -1 {
-        return -1;
-    } else {
-        fd
-    }
-}
+// fn open_helpfile(name: *mut libc::c_char) -> i32 {
+//     let fd: i32;
+//     unsafe {
+//         fd = open(name, 0);
+//     }
+//     if fd == -1 {
+//         return -1;
+//     } else {
+//         fd
+//     }
+// }
 
 fn show_longdoc(i: i32) {
     let builtin1 = unsafe {
@@ -327,9 +322,9 @@ fn show_manpage(_name: *mut libc::c_char, i: i32) {
     /* IMPLEMENTATION */
     println!("IMPLEMENTATION\n");
     println!("    ");
-    unsafe {
-        show_shell_version(0);
-    }
+
+    show_shell_version(0);
+
     println!("    ");
     unsafe {
         println!("{:?}", CStr::from_ptr(bash_copyright));
@@ -376,7 +371,7 @@ pub fn dispcolumn(
     dispcols = unsafe { libc::strlen(buf) };
     /* two spaces */
     for _j in dispcols..width {
-        std::io::stdout().write(b" ");
+        let _ = std::io::stdout().write(b" ");
     }
     /* second column */
     builtin1 = unsafe {
@@ -386,7 +381,6 @@ pub fn dispcolumn(
     helpdoc = builtin1.short_doc as *mut libc::c_char;
     unsafe {
         if builtin1.flags != 0 && BUILTIN_ENABLED!() == 1 {
-            //修改过，原为if builtin1.flags && BUILTIN_ENABLED!() == 1
             *((buf as usize) as *mut libc::c_char) = ' ' as libc::c_char;
         } else {
             *((buf as usize) as *mut libc::c_char) = '*' as libc::c_char;
@@ -408,7 +402,6 @@ pub fn wdispcolumn(i: i32, _buf: *mut libc::c_char, _bufsize: i32, _width: i32, 
 }
 
 fn show_builtin_command_help() {
-    // println!("enter show_builtin_command_help");
     let mut _i: i32;
     let mut _j: i32;
     let height: i32 = 76;
@@ -424,13 +417,10 @@ fn show_builtin_command_help() {
     let mut errors = vec![];
     let msg1 = bundle.format_pattern(&pattern, None, &mut errors);
     println!("{}\n", msg1);
-    //println!("{}",("These shell commands are defined internally.  Type `help' to see this list.\n Type `help name' to find out more about the function `name'.\n Use `info bash' to find out more about the shell in general.\n Use `man -k' or `info' to find out more about commands not in this list.\n A star (*) next to a name means that the command is disabled.\n"));
-
     let ref2: &mut libc::c_char = &mut blurb[0];
 
-    unsafe {
-        width = default_columns() as usize;
-    }
+    width = default_columns() as usize;
+
     width /= 2;
     if width > (std::mem::size_of::<libc::c_char>() * 128) {
         width = std::mem::size_of::<libc::c_char>() * 128;
@@ -442,16 +432,14 @@ fn show_builtin_command_help() {
     for i in 0..height {
         QUIT();
 
-        unsafe {
-            if __ctype_get_mb_cur_max() > 1 {
-                let ptr2: *mut libc::c_char = ref2 as *mut libc::c_char;
-                wdispcolumn(i, ptr2, 128, width as i32, height);
-            }
+        if c___ctype_get_mb_cur_max() > 1 {
+            let ptr2: *mut libc::c_char = ref2 as *mut libc::c_char;
+            wdispcolumn(i, ptr2, 128, width as i32, height);
         }
     }
 }
-//#endif /* HELP_BUILTIN */
-fn strmatch(
+
+fn c_strmatch(
     pattern: *mut libc::c_char,
     string: *mut libc::c_char,
     flags: libc::c_char,
@@ -461,39 +449,18 @@ fn strmatch(
     {
         return FNM_NOMATCH!();
     }
-    return unsafe { xstrmatch(pattern, string, flags) };
+    return c_xstrmatch(pattern, string, flags);
 }
 
-struct Thing {
-    pointer_to_self: *mut Thing,
-}
+// struct Thing {
+//     pointer_to_self: *mut Thing,
+// }
 
-fn xmalloc(size: usize) -> *mut c_void {
-    let ret: *mut c_void;
-    unsafe {
-        ret = libc::malloc(size);
-    }
-    // 	if (ret == 0) {
-    //     println!("man2html: out of memory");
-    // //		fprintf(stderr, "man2html: out of memory");
-    // 		（1）
-    // 	}
-    ret
-}
+// fn xmalloc(size: usize) -> *mut c_void {
+//     let ret: *mut c_void;
+//     unsafe {
+//         ret = libc::malloc(size);
+//     }
 
-/*
-fn wcswidth(pwcs : *mut libc::wchar_t , n : i32) -> i32{
-  let mut wc : libc::wchar_t;
-  let mut len : i32 = 0;
-  let mut l : i32;
-
-  while n-1 > 0 && *(pwcs as usize + 1 as usize) != '\0' as libc::wchar_t{
-    wc = *(pwcs  += 1);
-      if wcwidth(wc) < 0 {
-        return -1;
-      }
-      len += l;
-    }
-  len
-}
-*/
+//     ret
+// }
