@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::hashlib::{
     hash_create, hash_dispose, hash_flush, hash_insert, hash_remove, hash_search, hash_walk,
 };
@@ -79,7 +76,6 @@ pub fn compspec_copy(cs: *mut COMPSPEC) -> *mut COMPSPEC {
         return new;
     }
 }
-// pub const COMPLETE_HASH_BUCKETS: libc::c_int = 256;
 
 #[no_mangle]
 pub fn progcomp_create() {
@@ -151,7 +147,7 @@ pub fn progcomp_insert(cmd: *mut libc::c_char, cs: *mut COMPSPEC) -> libc::c_int
         let item: *mut BUCKET_CONTENTS;
         if cs.is_null() {
             programming_error(
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"progcomp_insert: %s: NULL COMPSPEC\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
@@ -179,19 +175,17 @@ pub fn progcomp_insert(cmd: *mut libc::c_char, cs: *mut COMPSPEC) -> libc::c_int
 
 #[no_mangle]
 pub fn progcomp_search(cmd: *const libc::c_char) -> *mut COMPSPEC {
-    unsafe {
-        let item: *mut BUCKET_CONTENTS;
-        let cs: *mut COMPSPEC;
-        if prog_completes.is_null() {
-            return 0 as *mut libc::c_void as *mut COMPSPEC;
-        }
-        item = hash_search(cmd, prog_completes, 0 as libc::c_int);
-        if item.is_null() {
-            return 0 as *mut libc::c_void as *mut COMPSPEC;
-        }
-        cs = (*item).data as *mut COMPSPEC;
-        return cs;
+    let item: *mut BUCKET_CONTENTS;
+    let cs: *mut COMPSPEC;
+    if unsafe { prog_completes.is_null() } {
+        return 0 as *mut libc::c_void as *mut COMPSPEC;
     }
+    item = unsafe { hash_search(cmd, prog_completes, 0 as libc::c_int) };
+    if item.is_null() {
+        return 0 as *mut libc::c_void as *mut COMPSPEC;
+    }
+    cs = unsafe { (*item).data as *mut COMPSPEC };
+    return cs;
 }
 
 #[no_mangle]
