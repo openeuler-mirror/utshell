@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::src_common::*;
 use std::convert::TryInto;
 
@@ -75,26 +72,26 @@ pub fn shell_version_string() -> *mut libc::c_char {
 pub fn show_shell_version(extended: libc::c_int) {
     unsafe {
         printf(
-            dcgettext(
+            c_dcgettext(
                 0 as *const libc::c_char,
                 b"GNU utshell, version %s (%s)\n\0" as *const u8 as *const libc::c_char,
                 5 as libc::c_int,
             ),
             shell_version_string(),
-            get_mach_type(),
+            c_get_mach_type(),
         );
         if extended != 0 {
             printf(
                 b"%s\n\0" as *const u8 as *const libc::c_char,
-                dcgettext(0 as *const libc::c_char, bash_copyright, 5 as libc::c_int),
+                c_dcgettext(0 as *const libc::c_char, bash_copyright, 5 as libc::c_int),
             );
             printf(
                 b"%s\n\0" as *const u8 as *const libc::c_char,
-                dcgettext(0 as *const libc::c_char, bash_license, 5 as libc::c_int),
+                c_dcgettext(0 as *const libc::c_char, bash_license, 5 as libc::c_int),
             );
             printf(
                 b"%s\n\0" as *const u8 as *const libc::c_char,
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"This is free software; you are free to change and redistribute it.\0"
                         as *const u8 as *const libc::c_char,
@@ -103,7 +100,7 @@ pub fn show_shell_version(extended: libc::c_int) {
             );
             printf(
                 b"%s\n\0" as *const u8 as *const libc::c_char,
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"There is NO WARRANTY, to the extent permitted by law.\0" as *const u8
                         as *const libc::c_char,
