@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use super::help::builtin_help;
 use crate::bashline::{enable_hostname_completion, set_directory_hook};
 use crate::builtins::bashgetopt::{internal_getopt, reset_internal_getopt};
@@ -25,6 +22,10 @@ use crate::y_tab::{expand_aliases, extended_quote, promptvars};
 extern "C" {
     fn shell_is_restricted(_: *mut libc::c_char) -> i32;
     static mut no_exit_on_failed_exec: i32;
+}
+
+fn c_shell_is_restricted(a: *mut libc::c_char) -> i32 {
+    unsafe { shell_is_restricted(a) }
 }
 
 #[derive(Copy, Clone)]
@@ -204,7 +205,7 @@ static mut SHOPT_VARS: [RShoptVars; 54] = unsafe {
         },
         {
             let init = RShoptVars {
-                name: b"dirspell\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                name: b"c_dirspell\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 value: &dircomplete_spelling as *const i32 as *mut libc::c_int,
                 set_func: ::std::mem::transmute::<*mut libc::c_void, Option<ShoptSetFuncT>>(
                     0 as *const libc::c_void as *mut libc::c_void,
@@ -585,7 +586,7 @@ static mut OFF: *const libc::c_char = b"off\0" as *const u8 as *const libc::c_ch
 pub fn shopt_builtin(mut list: *mut WordList) -> i32 {
     let mut opt: i32;
     let mut flags: i32 = 0;
-    let mut rval: i32 = 0;
+    let rval: i32;
 
     reset_internal_getopt();
     let psuoq = CString::new("psuoq").expect("CString::new failed");
@@ -623,7 +624,7 @@ pub fn shopt_builtin(mut list: *mut WordList) -> i32 {
     list = unsafe { loptend };
     if flags & (SFLAG | UFLAG) == SFLAG | UFLAG {
         unsafe {
-            builtin_error(dcgettext(
+            builtin_error(c_dcgettext(
                 0 as *const libc::c_char,
                 b"cannot set and unset shell options simultaneously\0" as *const u8
                     as *const libc::c_char,
@@ -633,7 +634,7 @@ pub fn shopt_builtin(mut list: *mut WordList) -> i32 {
         return EXECUTION_FAILURE!();
     }
 
-    rval = EXECUTION_SUCCESS;
+    // rval = EXECUTION_SUCCESS;
     if (flags & OFLAG != 0) && ((flags & (SFLAG | UFLAG)) == 0)
     // shopt -o
     {
@@ -648,7 +649,7 @@ pub fn shopt_builtin(mut list: *mut WordList) -> i32 {
                 '+' as i32 /*off*/
             },
             list,
-            flags & QFLAG, //是否沉默?
+            flags & QFLAG,
         );
     } else if flags & OFLAG != 0 {
         // shopt -so
@@ -658,7 +659,6 @@ pub fn shopt_builtin(mut list: *mut WordList) -> i32 {
         rval = toggle_shopts(if flags & SFLAG != 0 { 1 } else { 0 }, list, flags & QFLAG);
     } else if flags & (SFLAG | UFLAG) == 0 {
         // shopt [args]
-        //println!("shopt   ===list all ");
         rval = list_shopts(list, flags);
     } else {
         // shopt -su
@@ -735,7 +735,7 @@ fn find_shopt(name: *mut libc::c_char) -> i32 {
 fn shopt_error(s: *mut libc::c_char) {
     unsafe {
         builtin_error(
-            dcgettext(
+            c_dcgettext(
                 0 as *const libc::c_char,
                 b"%s: invalid shell option name\0" as *const u8 as *const libc::c_char,
                 5 as i32,
@@ -765,15 +765,6 @@ fn toggle_shopts(mode: i32, list: *mut WordList, _quiet: i32) -> i32 {
                         SHOPT_VARS[ind as usize].name,
                         mode,
                     );
-                    /*
-                    (Some(
-                        ((*SHOPT_VARS.as_mut_ptr().offset(ind as isize)).set_func)
-                            .expect("non-null function pointer"),
-                    ))
-                        .expect(
-                            "non-null function pointer",
-                        )(SHOPT_VARS[ind as usize].name, mode);
-                    */
                 }
             }
             l = (*l).next;
@@ -806,10 +797,10 @@ fn print_shopt(name: *mut libc::c_char, val: i32, flags: i32) {
 }
 
 fn list_shopts(list: *mut WORD_LIST, flags: libc::c_int) -> libc::c_int {
-    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut i: libc::c_int = 0;
-    let mut val: libc::c_int = 0;
-    let mut rval: libc::c_int = 0;
+    let mut l: *mut WORD_LIST;
+    let mut i: libc::c_int;
+    let mut val: libc::c_int;
+    let mut rval: libc::c_int;
 
     if list.is_null() {
         i = 0 as libc::c_int;
@@ -860,8 +851,8 @@ fn list_some_shopts(mode: i32, flags: i32) -> i32 {
 }
 
 fn list_shopt_o_options(list: *mut WordList, flags: i32) -> i32 {
-    let mut l: *mut WordList = 0 as *mut WordList;
-    let mut val: i32 = 0;
+    let mut l: *mut WordList;
+    let mut val: i32;
     let mut rval: i32 = EXECUTION_SUCCESS!();
     if list.is_null() {
         if flags & QFLAG == 0 {
@@ -914,7 +905,6 @@ fn list_some_o_options(mode: i32, flags: i32) -> i32 {
     return sh_chkwrite(EXECUTION_SUCCESS!());
 }
 fn set_shopt_o_options(mode: i32, list: *mut WordList, _quiet: i32) -> i32 {
-    //let mut l: *mut WordList =0 as *mut WordList;
     let mut l: *mut WordList;
     let mut rval: i32;
     l = list;
@@ -949,8 +939,8 @@ fn shopt_enable_hostname_completion(_option_name: *mut libc::c_char, mode: i32) 
     return enable_hostname_completion(mode);
 }
 fn set_compatibility_level(option_name: *mut libc::c_char, mode: i32) -> i32 {
-    let mut ind: i32 = 0;
-    let mut rhs: *mut libc::c_char = 0 as *mut libc::c_char;
+    // let mut ind: i32 ;
+    // let mut rhs: *mut libc::c_char ;
     unsafe {
         if mode != 0 {
             SHOPT_COMPAT32 = 0 as i32;
@@ -960,7 +950,7 @@ fn set_compatibility_level(option_name: *mut libc::c_char, mode: i32) -> i32 {
             SHOPT_COMPAT41 = SHOPT_COMPAT42;
             SHOPT_COMPAT40 = SHOPT_COMPAT41;
             SHOPT_COMPAT44 = 0 as i32;
-            ind = find_shopt(option_name);
+            let ind = find_shopt(option_name);
             *SHOPT_VARS[ind as usize].value = mode;
         }
         if SHOPT_COMPAT31 != 0 {
@@ -980,7 +970,7 @@ fn set_compatibility_level(option_name: *mut libc::c_char, mode: i32) -> i32 {
         } else {
             shell_compatibility_level = 51 as i32;
         }
-        rhs = itos(shell_compatibility_level as intmax_t);
+        let rhs = c_itos(shell_compatibility_level as intmax_t);
         bind_variable(
             b"BASH_COMPAT\0" as *const u8 as *const libc::c_char,
             rhs,
@@ -1034,7 +1024,7 @@ fn set_restricted_shell(_option_name: *mut libc::c_char, _mode: i32) -> i32 {
     static mut SAVE_RESTRICTED: i32 = -1;
     unsafe {
         if SAVE_RESTRICTED == -1 {
-            SAVE_RESTRICTED = shell_is_restricted(shell_name);
+            SAVE_RESTRICTED = c_shell_is_restricted(shell_name);
         }
         restricted_shell = SAVE_RESTRICTED;
     }
@@ -1050,14 +1040,15 @@ pub fn set_login_shell(_option_name: *mut libc::c_char, _mode: i32) -> i32 {
 #[no_mangle]
 pub fn get_shopt_options() -> *mut *mut libc::c_char {
     unsafe {
-        let mut ret: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-        let mut n: i32 = 0;
-        let mut i: i32 = 0;
-        n = (::std::mem::size_of::<[RShoptVars; 54]>() as libc::c_ulong)
-            .wrapping_div(::std::mem::size_of::<RShoptVars>() as libc::c_ulong) as i32;
+        // let mut ret: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+        // let mut n: i32 = 0;
+        // let mut i: i32 = 0;
+        let n: i32 = (::std::mem::size_of::<[RShoptVars; 54]>() as libc::c_ulong)
+            .wrapping_div(::std::mem::size_of::<RShoptVars>() as libc::c_ulong)
+            as i32;
 
-        ret = strvec_create(n + 1 as i32);
-        i = 0 as i32;
+        let ret = c_strvec_create(n + 1 as i32);
+        let mut i = 0 as i32;
         while !(SHOPT_VARS[i as usize].name).is_null() {
             let ref mut fresh0 = *ret.offset(i as isize);
             *fresh0 = strcpy(
@@ -1078,28 +1069,21 @@ pub fn get_shopt_options() -> *mut *mut libc::c_char {
 
 #[no_mangle]
 pub fn shopt_setopt(name: *mut libc::c_char, mode: i32) -> i32 {
-    unsafe {
-        let wl: *mut WordList;
-        let r: i32;
+    let wl: *mut WordList;
+    let r: i32;
 
-        wl = make_word_list(make_word(name), std::ptr::null_mut());
-        //wl = make_word_list(make_word(name), 0 as *mut libc::c_void as *mut WordList);
-        r = toggle_shopts(mode, wl, 0);
-        dispose_words(wl);
-        return r;
-    }
+    wl = make_word_list(make_word(name), std::ptr::null_mut());
+    r = toggle_shopts(mode, wl, 0);
+    dispose_words(wl);
+    return r;
 }
 #[no_mangle]
 pub fn shopt_listopt(name: *mut libc::c_char, reusable: i32) -> i32 {
-    let mut i: i32 = 0;
+    // let mut i: i32 = 0;
     if name.is_null() {
-        return list_shopts(
-            // 0 as *mut libc::c_void as *mut WordList,
-            std::ptr::null_mut(),
-            if reusable != 0 { PFLAG } else { 0 },
-        );
+        return list_shopts(std::ptr::null_mut(), if reusable != 0 { PFLAG } else { 0 });
     }
-    i = find_shopt(name);
+    let i = find_shopt(name);
     if i < 0 {
         shopt_error(name);
         return 1;
@@ -1118,9 +1102,6 @@ pub fn set_bashopts() {
     let mut vsize: i32;
     let mut i: i32;
     let mut vptr: i32;
-    /*
-    let mut ip: *mut i32;
-    */
     let exported: i32;
     let mut v: *mut ShellVar;
     unsafe {
@@ -1131,13 +1112,6 @@ pub fn set_bashopts() {
             if *SHOPT_VARS[i as usize].value != 0 {
                 vsize += strlen(SHOPT_VARS[i as usize].name) as i32;
                 vsize += 1;
-                /*
-                vsize = (vsize as libc::c_ulong)
-                    .wrapping_add(
-                        (strlen(SHOPT_VARS[i as usize].name))
-                            .wrapping_add(1 as i32 as libc::c_ulong),
-                    ) as i32 as libc::c_int;
-                */
                 tflag[i as usize] = 1 as libc::c_char;
             }
             i += 1;
@@ -1157,7 +1131,6 @@ pub fn set_bashopts() {
             }
             i += 1;
         }
-        //printf(b"the values=%s" as *const u8 as *const libc::c_char, value);
         if vptr != 0 {
             vptr -= 1;
         }
@@ -1179,17 +1152,17 @@ pub fn set_bashopts() {
 }
 #[no_mangle]
 pub fn parse_bashopts(value: *mut libc::c_char) {
-    let mut vname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut vptr: i32 = 0;
-    let mut ind: i32 = 0;
-    vptr = 0 as i32;
+    // let mut vname: *mut libc::c_char = 0 as *mut libc::c_char;
+    // let mut vptr: i32 = 0;
+    // let mut ind: i32 = 0;
+    let mut vptr = 0 as i32;
     unsafe {
         loop {
-            vname = extract_colon_unit(value, &mut vptr);
+            let vname = extract_colon_unit(value, &mut vptr);
             if vname.is_null() {
                 break;
             }
-            ind = find_shopt(vname);
+            let ind = find_shopt(vname);
             if ind >= 0 as i32 {
                 *SHOPT_VARS[ind as usize].value = 1 as i32;
                 if (SHOPT_VARS[ind as usize].set_func).is_some() {
