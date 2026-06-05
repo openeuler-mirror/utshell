@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::builtins::bashgetopt::{internal_getopt, reset_internal_getopt};
 use crate::builtins::common::{builtin_usage, sh_chkwrite, sh_erange, sh_invalidnum};
 use crate::builtins::help::builtin_help;
@@ -199,14 +196,27 @@ extern "C" {
     fn setrlimit(__resource: __rlimit_resource_t, __rlimits: *const rlimit) -> i32;
 }
 
+fn c_getdtablesize() -> libc::c_int {
+    unsafe { getdtablesize() }
+}
+
+fn c_strerror(a: i32) -> *mut libc::c_char {
+    unsafe { strerror(a) }
+}
+
+fn c_getrlimit(__resource: __rlimit_resource_t, __rlimits: *mut rlimit) -> i32 {
+    unsafe { getrlimit(__resource, __rlimits) }
+}
+
+fn c_setrlimit(__resource: __rlimit_resource_t, __rlimits: *const rlimit) -> i32 {
+    unsafe { setrlimit(__resource, __rlimits) }
+}
+
 static mut optstring: [libc::c_char; 4 + 2 * NCMDS!() as usize] = [0; 4 + 2 * NCMDS!() as usize];
 static mut cmdlist: *mut ULCMD = 0 as *const ULCMD as *mut ULCMD;
 static mut ncmd: i32 = 0;
 
 fn _findlim(opt: i32) -> i32 {
-    //  let mut register : i32;
-    //let i : i32 = 0;
-
     for i in 0..17 {
         if limits[i].option > 0 {
             if limits[i].option == opt {
@@ -220,10 +230,10 @@ fn _findlim(opt: i32) -> i32 {
 #[no_mangle]
 pub fn ulimit_builtin(mut list: *mut WordList) -> i32 {
     let mut s: *mut libc::c_char;
-    let c: i32;
+    // let c: i32;
     let mut limind: i32;
     let mut mode: i32 = 0;
-    let mut opt: i32 = 0;
+    let mut opt: i32;
     let mut all_limits: i32 = 0;
     unsafe {
         if optstring[0] == 0 {
@@ -235,7 +245,7 @@ pub fn ulimit_builtin(mut list: *mut WordList) -> i32 {
             s = s.offset(1);
             *s = 'H' as libc::c_char;
             s = s.offset(1);
-            c = 0;
+            // c = 0;
             for i in 0..17 {
                 if limits[i].option > 0 {
                     *s = limits[i].option as libc::c_char;
@@ -290,24 +300,14 @@ pub fn ulimit_builtin(mut list: *mut WordList) -> i32 {
                             ((cmdlistsz as libc::c_ulong)
                                 .wrapping_mul(::std::mem::size_of::<ULCMD>() as libc::c_ulong))
                                 as usize,
-                            //(cmdlistsz as u64) * std::mem::size_of::<ULCMD>() as usize,
                         ) as *mut ULCMD
                     };
                 }
                 unsafe {
                     (*cmdlist.offset(ncmd as isize)).cmd = opt;
                     let fresh5 = ncmd;
-                    //ncmd = ncmd + 1;
                     let ref mut fresh6 = (*cmdlist.offset(fresh5 as isize)).arg;
                     *fresh6 = list_optarg;
-                    // let mut cmm =&mut  (*((cmdlist as usize +
-                    //                     (ncmd as usize)*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD);
-                    // cmm.cmd = opt;
-                    // cmm.arg = list_optarg;
-                    // (*((cmdlist as usize + (ncmd as usize)*std::mem::size_of::<ULCMD>())
-                    // as *mut ULCMD) as ULCMD).cmd = opt ;
-                    //  (*((cmdlist as usize + (ncmd as usize) * std::mem::size_of::<ULCMD>())
-                    //  as *mut ULCMD) as ULCMD).arg = list_optarg;
                     ncmd = ncmd + 1;
                 }
             }
@@ -315,7 +315,6 @@ pub fn ulimit_builtin(mut list: *mut WordList) -> i32 {
         opt = internal_getopt(list, unsafe { optstring.as_ptr() } as *mut libc::c_char);
     }
 
-    //  as *mut ULCMD) as ULCMD).cmd );
     list = unsafe { loptend };
 
     if all_limits != 0 {
@@ -330,32 +329,25 @@ pub fn ulimit_builtin(mut list: *mut WordList) -> i32 {
     if unsafe { ncmd } == 0 {
         unsafe {
             (*cmdlist.offset(ncmd as isize)).cmd = 'f' as i32;
-            //   let mut cmm =  *((cmdlist as usize + (ncmd as usize )*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD;
-            //   cmm.cmd = 'f' as i32;
         }
         /* `ulimit something' is same as `ulimit -f something' */
         if !list.is_null() {
             unsafe {
                 (*cmdlist.offset(ncmd as isize)).arg = (*(*list).word).word;
-                // let mut cmm =  *((cmdlist as usize + (ncmd as usize )*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD;
-                // cmm.arg =  (*(*list).word).word;
                 ncmd = ncmd + 1;
             }
         } else {
             unsafe {
                 (*cmdlist.offset(ncmd as isize)).arg = std::ptr::null_mut();
-                // let mut cmm = *((cmdlist as usize + (ncmd as usize )*std::mem::size_of::<ULCMD>())as *mut ULCMD) as ULCMD;
-                // cmm.arg  =  std::ptr::null_mut();
                 ncmd = ncmd + 1;
             }
         }
-        if !list.is_null() {
-            list = (unsafe { *list }).next;
-        }
+        // if !list.is_null() {
+        //     list = (unsafe { *list }).next;
+        // }
     }
 
     for d in 0..unsafe { ncmd } {
-        //as *mut ULCMD) as ULCMD).cmd);
         let cmm = unsafe {
             *((cmdlist as usize + (d as usize) * std::mem::size_of::<ULCMD>()) as *mut ULCMD)
         } as ULCMD;
@@ -367,7 +359,7 @@ pub fn ulimit_builtin(mut list: *mut WordList) -> i32 {
                 builtin_error(
                     b"%s: bad command : %s\0" as *const u8 as *const libc::c_char,
                     (*cmdlist.offset(d as isize)).cmd,
-                    strerror(errno!()) as *const libc::c_char,
+                    c_strerror(*c___errno_location()) as *const libc::c_char,
                 );
             }
             return EX_USAGE as libc::c_int;
@@ -377,10 +369,6 @@ pub fn ulimit_builtin(mut list: *mut WordList) -> i32 {
         for d in 0..ncmd {
             let dmd = (*cmdlist.offset(d as isize)).cmd;
             let drg = (*cmdlist.offset(d as isize)).arg;
-            // let dmd =   (*((cmdlist as usize + (d as usize )*std::mem::size_of::<ULCMD>())
-            // as *mut ULCMD) as ULCMD).cmd;
-            // let drg =  (*((cmdlist as usize + (d as usize )*std::mem::size_of::<ULCMD>())
-            // as *mut ULCMD) as ULCMD).arg;
             if (ulimit_internal(dmd, drg, mode, d - 1)) == EXECUTION_FAILURE!() {
                 return EXECUTION_FAILURE!();
             }
@@ -396,7 +384,7 @@ fn ulimit_internal(cmd: i32, cmdarg: *mut libc::c_char, mut mode: i32, multiple:
     let block_factor: i32;
     let mut soft_limit: RLIMTYPE = 0;
     let mut hard_limit: RLIMTYPE = 0;
-    let mut real_limit: RLIMTYPE = 0;
+    let real_limit: RLIMTYPE;
     let limit: RLIMTYPE;
 
     if cmdarg != std::ptr::null_mut() {
@@ -419,7 +407,7 @@ fn ulimit_internal(cmd: i32, cmdarg: *mut libc::c_char, mut mode: i32, multiple:
             builtin_error(
                 b"%s: cannot get limit : %s\0" as *const u8 as *const libc::c_char,
                 limits[limind as usize].description,
-                strerror(errno!()) as *const libc::c_char,
+                c_strerror(*c___errno_location()) as *const libc::c_char,
             );
         }
 
@@ -447,7 +435,18 @@ fn ulimit_internal(cmd: i32, cmdarg: *mut libc::c_char, mut mode: i32, multiple:
             real_limit = RLIM_INFINITY!();
         } else if all_digits(cmdarg) != 0 {
             limit = string_to_rlimtype(cmdarg) as i64;
-            block_factor = BLOCKSIZE!(limits[limind as usize].block_factor);
+            // block_factor = BLOCKSIZE!(limits[limind as usize].block_factor);
+
+            block_factor = if limits[limind as usize].block_factor == -2 {
+                if posixly_correct != 0 {
+                    512
+                } else {
+                    1024
+                }
+            } else {
+                limits[limind as usize].block_factor
+            };
+
             real_limit = limit * block_factor as i64;
 
             if (real_limit / block_factor as i64) != limit {
@@ -465,7 +464,7 @@ fn ulimit_internal(cmd: i32, cmdarg: *mut libc::c_char, mut mode: i32, multiple:
             builtin_error(
                 b"%s: cannot modify limit : %s\0" as *const u8 as *const libc::c_char,
                 limits[limind as usize].description,
-                strerror(errno!()) as *const libc::c_char,
+                c_strerror(*c___errno_location()) as *const libc::c_char,
             )
         };
         return EXECUTION_FAILURE!();
@@ -493,7 +492,7 @@ fn get_limit(ind: i32, softlim: *mut RLIMTYPE, hardlim: *mut RLIMTYPE) -> i32 {
                 }
             }
             RLIMIT_OPENFILES!() => {
-                value = unsafe { getdtablesize() } as RLIMTYPE;
+                value = c_getdtablesize() as RLIMTYPE;
             }
             RLIMIT_VIRTMEM!() => {
                 return getmaxvm(softlim, hardlim as *mut libc::c_char);
@@ -504,7 +503,7 @@ fn get_limit(ind: i32, softlim: *mut RLIMTYPE, hardlim: *mut RLIMTYPE) -> i32 {
                 }
             }
             _ => unsafe {
-                errno!() = libc::EINVAL;
+                *c___errno_location() = libc::EINVAL;
             },
         }
         unsafe {
@@ -513,17 +512,15 @@ fn get_limit(ind: i32, softlim: *mut RLIMTYPE, hardlim: *mut RLIMTYPE) -> i32 {
         }
         return 0;
     } else {
-        unsafe {
-            let ii = getrlimit(
-                limits[ind as u32 as usize].parameter as __rlimit_resource_t,
-                &mut limit,
-            );
-            if ii < 0 {
-                return -1;
-            }
+        let ii = c_getrlimit(
+            limits[ind as u32 as usize].parameter as __rlimit_resource_t,
+            &mut limit,
+        );
+        if ii < 0 {
+            return -1;
         }
+
         unsafe {
-            // limit.rlim_max as i64);
             *softlim = limit.rlim_cur as i64;
             *hardlim = limit.rlim_max as i64;
         }
@@ -536,13 +533,13 @@ fn set_limit(ind: i32, newlim: RLIMTYPE, mode: i32) -> i32 {
         rlim_cur: 0,
         rlim_max: 0,
     };
-    let mut val: RLIMTYPE = 0;
+    let val: RLIMTYPE;
 
     if limits[ind as usize].parameter >= 256 {
         match limits[ind as usize].parameter {
             RLIMIT_FILESIZE!() => {
                 unsafe {
-                    errno!() = libc::EINVAL;
+                    *c___errno_location() = libc::EINVAL;
                 }
                 return -1;
             }
@@ -552,18 +549,16 @@ fn set_limit(ind: i32, newlim: RLIMTYPE, mode: i32) -> i32 {
             | RLIMIT_MAXUPROC!()
             | _ => {
                 unsafe {
-                    errno!() = libc::EINVAL;
+                    *c___errno_location() = libc::EINVAL;
                 }
                 return -1;
             }
         }
     } else {
-        if unsafe {
-            getrlimit(
-                limits[ind as usize].parameter as __rlimit_resource_t,
-                &mut limit,
-            )
-        } < 0
+        if c_getrlimit(
+            limits[ind as usize].parameter as __rlimit_resource_t,
+            &mut limit,
+        ) < 0
         {
             return -1;
         }
@@ -582,12 +577,10 @@ fn set_limit(ind: i32, newlim: RLIMTYPE, mode: i32) -> i32 {
         if mode & LIMIT_HARD!() != 0 {
             limit.rlim_max = val as u64;
         }
-        return unsafe {
-            setrlimit(
-                limits[ind as usize].parameter as __rlimit_resource_t,
-                &mut limit,
-            )
-        };
+        return c_setrlimit(
+            limits[ind as usize].parameter as __rlimit_resource_t,
+            &mut limit,
+        );
     }
 }
 
@@ -601,10 +594,10 @@ fn getmaxvm(softlim: *mut RLIMTYPE, hardlim: *mut libc::c_char) -> i32 {
         rlim_max: 0,
     };
 
-    if unsafe { getrlimit(RLIMIT_DATA, &mut datalim) } < 0 {
+    if c_getrlimit(RLIMIT_DATA, &mut datalim) < 0 {
         return -1;
     }
-    if unsafe { getrlimit(RLIMIT_STACK, &mut stacklim) } < 0 {
+    if c_getrlimit(RLIMIT_STACK, &mut stacklim) < 0 {
         return -1;
     }
     unsafe {
@@ -620,7 +613,7 @@ fn getmaxvm(softlim: *mut RLIMTYPE, hardlim: *mut libc::c_char) -> i32 {
 
 fn filesize(_valuep: *mut rlim_t) -> i32 {
     unsafe {
-        errno!() = libc::EINVAL;
+        *c___errno_location() = libc::EINVAL;
     }
     return -1;
 }
@@ -631,11 +624,11 @@ fn pipesize(valuep: *mut rlim_t) -> i32 {
 }
 
 fn getmaxuprc(valuep: *mut rlim_t) -> i32 {
-    let mut maxchild: i64 = 0;
-    maxchild = unsafe { getmaxchild() };
+    // let mut maxchild: i64 ;
+    let maxchild = c_getmaxchild();
     if maxchild < 0 as i32 as libc::c_long {
         unsafe {
-            errno!() = libc::EINVAL;
+            *c___errno_location() = libc::EINVAL;
         }
         return -1;
     } else {
@@ -662,12 +655,12 @@ fn print_all_limits(mut mode: i32) {
             } else {
                 printone(i, hardlim, 1);
             }
-        } else if unsafe { errno!() != libc::EINVAL } {
+        } else if unsafe { *c___errno_location() != libc::EINVAL } {
             unsafe {
                 builtin_error(
                     b"%s: cannot get limit : %s\0" as *const u8 as *const libc::c_char,
                     limits[i as usize].description,
-                    strerror(errno!()) as *const libc::c_char,
+                    c_strerror(*c___errno_location()) as *const libc::c_char,
                 );
             }
         }
@@ -679,7 +672,18 @@ fn printone(limind: i32, curlim: RLIMTYPE, pdesc: i32) {
     let mut unitstr: [libc::c_char; 64] = [0; 64];
     let factor: i32;
 
-    factor = BLOCKSIZE!(limits[limind as usize].block_factor);
+    // factor = BLOCKSIZE!(limits[limind as usize].block_factor);
+
+    factor = if limits[limind as usize].block_factor == -2 {
+        if unsafe { posixly_correct != 0 } {
+            512
+        } else {
+            1024
+        }
+    } else {
+        limits[limind as usize].block_factor
+    };
+
     if pdesc > 0 {
         if !limits[limind as usize].units.is_null() {
             unsafe {
@@ -715,13 +719,11 @@ fn printone(limind: i32, curlim: RLIMTYPE, pdesc: i32) {
             CStr::from_ptr(c_str_unlimited).to_str().unwrap()
         });
     } else if curlim == RLIM_SAVED_MAX!() {
-        //println!("hard");
         let c_str_hard = b"hard" as *const u8 as *const libc::c_char;
         println!("{}", unsafe {
             CStr::from_ptr(c_str_hard).to_str().unwrap()
         });
     } else if curlim == RLIM_SAVED_CUR!() {
-        //println!("soft");
         let c_str_soft = b"soft" as *const u8 as *const libc::c_char;
         println!("{}", unsafe {
             CStr::from_ptr(c_str_soft).to_str().unwrap()
@@ -752,35 +754,35 @@ fn print_rlimtype(num: u64, nl: i32) {
     }
 }
 
-fn set_all_limits(mut mode: i32, newlim: RLIMTYPE) -> i32 {
-    let mut i: i32;
-    let mut retval: i32 = 0;
+// fn set_all_limits(mut mode: i32, newlim: RLIMTYPE) -> i32 {
+//     let mut i: i32;
+//     let mut retval: i32 = 0;
 
-    if newlim != RLIM_INFINITY!() {
-        unsafe {
-            errno!() = libc::EINVAL;
-        }
-        return -1;
-    }
+//     if newlim != RLIM_INFINITY!() {
+//         unsafe {
+//             *c___errno_location() = libc::EINVAL;
+//         }
+//         return -1;
+//     }
 
-    if mode == 0 {
-        mode = LIMIT_SOFT!() | LIMIT_HARD!();
-    }
-    retval = 0;
-    i = 0;
+//     if mode == 0 {
+//         mode = LIMIT_SOFT!() | LIMIT_HARD!();
+//     }
+//     retval = 0;
+//     i = 0;
 
-    while limits[i as usize].option > 0 {
-        if set_limit(i, newlim, mode) < 0 {
-            unsafe {
-                builtin_error(
-                    b"%s: cannot modify limit : %s\0" as *const u8 as *const libc::c_char,
-                    limits[i as usize].description,
-                    strerror(errno!()) as *const libc::c_char,
-                );
-            }
-            retval = 1;
-            i = i + 1;
-        }
-    }
-    return retval;
-}
+//     while limits[i as usize].option > 0 {
+//         if set_limit(i, newlim, mode) < 0 {
+//             unsafe {
+//                 builtin_error(
+//                     b"%s: cannot modify limit : %s\0" as *const u8 as *const libc::c_char,
+//                     limits[i as usize].description,
+//                     c_strerror(*c___errno_location()) as *const libc::c_char,
+//                 );
+//             }
+//             retval = 1;
+//             i = i + 1;
+//         }
+//     }
+//     return retval;
+// }
