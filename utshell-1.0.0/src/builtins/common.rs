@@ -81,14 +81,14 @@ pub fn builtin_usage() {
 builtins that do not accept arguments. */
 #[no_mangle]
 pub fn no_args(list: *mut WordList) {
-    unsafe {
-        if !list.is_null() {
-            let c_str = CString::new("too many arguments").unwrap();
-            let c_ptr = c_str.as_ptr();
+    if !list.is_null() {
+        let c_str = CString::new("too many arguments").unwrap();
+        let c_ptr = c_str.as_ptr();
+        unsafe {
             builtin_error(c_ptr);
-            top_level_cleanup();
-            jump_to_top_level(DISCARD!());
         }
+        top_level_cleanup();
+        jump_to_top_level(DISCARD!());
     }
 }
 
@@ -115,27 +115,27 @@ pub fn no_options(list: *mut WordList) -> i32 {
 
 #[no_mangle]
 pub fn sh_needarg(s: *mut libc::c_char) {
+    let c_str = CString::new("%s: option requires an argument").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        let c_str = CString::new("%s: option requires an argument").unwrap();
-        let c_ptr = c_str.as_ptr();
         builtin_error(c_ptr, s);
     }
 }
 
 #[no_mangle]
 pub fn sh_neednumarg(s: *mut libc::c_char) {
+    let c_str = CString::new("%s: numeric argument requited").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        let c_str = CString::new("%s: numeric argument requited").unwrap();
-        let c_ptr = c_str.as_ptr();
         builtin_error(c_ptr, s);
     }
 }
 
 #[no_mangle]
 pub fn sh_notfound(s: *mut libc::c_char) {
+    let c_str = CString::new("%s: not found").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        let c_str = CString::new("%s: not found").unwrap();
-        let c_ptr = c_str.as_ptr();
         builtin_error(c_ptr, s);
     }
 }
@@ -144,124 +144,127 @@ pub fn sh_notfound(s: *mut libc::c_char) {
 option. */
 #[no_mangle]
 pub fn sh_invalidopt(s: *mut libc::c_char) {
+    let c_str = CString::new("%s: invalid option").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        let c_str = CString::new("%s: invalid option").unwrap();
-        let c_ptr = c_str.as_ptr();
         builtin_error(c_ptr, s);
     }
 }
 
 #[no_mangle]
 pub fn sh_invalidoptname(s: *mut libc::c_char) {
+    let c_str = CString::new("%s: invalid option name").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        let c_str = CString::new("%s: invalid option name").unwrap();
-        let c_ptr = c_str.as_ptr();
         builtin_error(c_ptr, s);
     }
 }
 
 #[no_mangle]
 pub fn sh_invalidid(s: *mut libc::c_char) {
+    let c_str = CString::new("`%s': not a valid identifier").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        let c_str = CString::new("`%s': not a valid identifier").unwrap();
-        let c_ptr = c_str.as_ptr();
         builtin_error(c_ptr, s);
     }
 }
 
 #[no_mangle]
 pub fn sh_invalidnum(s: *mut libc::c_char) {
+    let mut msg = String::new();
+    let mag_ptr: *const libc::c_char;
+
+    if unsafe { *s == b'0' as libc::c_char && isdigit(*s.offset(1) as libc::c_int) != 0 } {
+        msg.push_str("invalid octal number");
+        mag_ptr = msg.as_ptr() as *mut libc::c_char;
+    } else if unsafe { *s == b'0' as libc::c_char && *s.offset(1) == b'x' as libc::c_char } {
+        msg.push_str("invalid hex number");
+        mag_ptr = msg.as_ptr() as *mut libc::c_char;
+    } else {
+        msg.push_str("invalid number");
+        mag_ptr = msg.as_ptr() as *mut libc::c_char;
+    }
+
+    let c_str = CString::new("%s: %s").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        // let msg:*mut libc::c_char;
-        let mut msg = String::new();
-        let mut mag_ptr: *const libc::c_char = std::ptr::null_mut();
-
-        if *s == b'0' as libc::c_char && isdigit(*s.offset(1) as libc::c_int) != 0 {
-            msg.push_str("invalid octal number");
-            mag_ptr = msg.as_ptr() as *mut libc::c_char;
-        } else if *s == b'0' as libc::c_char && *s.offset(1) == b'x' as libc::c_char {
-            msg.push_str("invalid hex number");
-            mag_ptr = msg.as_ptr() as *mut libc::c_char;
-        } else {
-            msg.push_str("invalid number");
-            mag_ptr = msg.as_ptr() as *mut libc::c_char;
-        }
-
-        let c_str = CString::new("%s: %s").unwrap();
-        let c_ptr = c_str.as_ptr();
         builtin_error(c_ptr, s, mag_ptr);
     }
 }
 
 #[no_mangle]
 pub fn sh_invalidsig(s: *mut libc::c_char) {
+    let c_str = CString::new("%s: invalid signal specification").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        let c_str = CString::new("%s: invalid signal specification").unwrap();
-        let c_ptr = c_str.as_ptr();
         builtin_error(c_ptr, s);
     }
 }
 
 #[no_mangle]
 pub fn sh_badpid(s: *mut libc::c_char) {
+    let c_str = CString::new("`%s': not a pid or valid job spec").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        let c_str = CString::new("`%s': not a pid or valid job spec").unwrap();
-        let c_ptr = c_str.as_ptr();
         builtin_error(c_ptr, s);
     }
 }
 
 #[no_mangle]
 pub fn sh_readonly(s: *mut libc::c_char) {
+    let c_str = CString::new("%s: readonly variable").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        let c_str = CString::new("%s: readonly variable").unwrap();
-        let c_ptr = c_str.as_ptr();
         builtin_error(c_ptr, s);
     }
 }
 
 #[no_mangle]
 pub fn sh_erange(s: *mut libc::c_char, desc: *mut libc::c_char) {
-    unsafe {
-        if !s.is_null() {
-            let c_str = CString::new("%s: %s out of range").unwrap();
-            let c_ptr = c_str.as_ptr();
-            if !desc.is_null() {
+    if !s.is_null() {
+        let c_str = CString::new("%s: %s out of range").unwrap();
+        let c_ptr = c_str.as_ptr();
+        if !desc.is_null() {
+            unsafe {
                 builtin_error(c_ptr, s, desc);
-            } else {
-                let desc_str = CString::new("argument").unwrap();
-                let desc_ptr = desc_str.as_ptr();
-                builtin_error(c_ptr, s, desc_ptr);
             }
         } else {
-            let c_str = CString::new("%s out of range").unwrap();
-            let c_ptr = c_str.as_ptr();
             let desc_str = CString::new("argument").unwrap();
             let desc_ptr = desc_str.as_ptr();
-            builtin_error(c_ptr, desc_ptr)
+            unsafe {
+                builtin_error(c_ptr, s, desc_ptr);
+            }
         }
+    } else {
+        let c_str = CString::new("%s out of range").unwrap();
+        let c_ptr = c_str.as_ptr();
+        let desc_str = CString::new("argument").unwrap();
+        let desc_ptr = desc_str.as_ptr();
+        unsafe { builtin_error(c_ptr, desc_ptr) }
     }
 }
 
 #[no_mangle]
 pub fn sh_badjob(s: *mut libc::c_char) {
+    let c_str = CString::new("%s: no job control").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        let c_str = CString::new("%s: no job control").unwrap();
-        let c_ptr = c_str.as_ptr();
         builtin_error(c_ptr, s);
     }
 }
 
 #[no_mangle]
 pub fn sh_nojobs(s: *mut libc::c_char) {
-    unsafe {
-        if !s.is_null() {
-            let c_str = CString::new("%s: no job control").unwrap();
-            let c_ptr = c_str.as_ptr();
+    if !s.is_null() {
+        let c_str = CString::new("%s: no job control").unwrap();
+        let c_ptr = c_str.as_ptr();
+        unsafe {
             builtin_error(c_ptr, s);
-        } else {
-            let c_str = CString::new("no job control").unwrap();
-            let c_ptr = c_str.as_ptr();
+        }
+    } else {
+        let c_str = CString::new("no job control").unwrap();
+        let c_ptr = c_str.as_ptr();
+        unsafe {
             builtin_error(c_ptr);
         }
     }
@@ -269,14 +272,16 @@ pub fn sh_nojobs(s: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sh_restricted(s: *mut libc::c_char) {
-    unsafe {
-        if !s.is_null() {
-            let c_str = CString::new("%s: restricted").unwrap();
-            let c_ptr = c_str.as_ptr();
+    if !s.is_null() {
+        let c_str = CString::new("%s: restricted").unwrap();
+        let c_ptr = c_str.as_ptr();
+        unsafe {
             builtin_error(c_ptr, s);
-        } else {
-            let c_str = CString::new("restricted").unwrap();
-            let c_ptr = c_str.as_ptr();
+        }
+    } else {
+        let c_str = CString::new("restricted").unwrap();
+        let c_ptr = c_str.as_ptr();
+        unsafe {
             builtin_error(c_ptr);
         }
     }
@@ -284,33 +289,35 @@ pub fn sh_restricted(s: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sh_notbuiltin(s: *mut libc::c_char) {
+    let c_str = CString::new("%s: not a shell builtin").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        let c_str = CString::new("%s: not a shell builtin").unwrap();
-        let c_ptr = c_str.as_ptr();
         builtin_error(c_ptr, s);
     }
 }
 
 #[no_mangle]
 pub fn sh_wrerror() {
+    let c_str = CString::new("write error: %s").unwrap();
+    let c_ptr = c_str.as_ptr();
     unsafe {
-        let c_str = CString::new("write error: %s").unwrap();
-        let c_ptr = c_str.as_ptr();
-        builtin_error(c_ptr, strerror(*__errno_location()));
+        builtin_error(c_ptr, strerror(*c___errno_location()));
     }
 }
 
 #[no_mangle]
 pub fn sh_ttyerror(set: i32) {
-    unsafe {
-        if set != 0 {
-            let c_str = CString::new("error setting terminal attributes: %s").unwrap();
-            let c_str_ptr = c_str.as_ptr();
-            builtin_error(c_str_ptr, strerror(*__errno_location()));
-        } else {
-            let c_str = CString::new("error getting terminal attributes: %s").unwrap();
-            let c_str_ptr = c_str.as_ptr();
-            builtin_error(c_str_ptr, strerror(*__errno_location()));
+    if set != 0 {
+        let c_str = CString::new("error setting terminal attributes: %s").unwrap();
+        let c_str_ptr = c_str.as_ptr();
+        unsafe {
+            builtin_error(c_str_ptr, strerror(*c___errno_location()));
+        }
+    } else {
+        let c_str = CString::new("error getting terminal attributes: %s").unwrap();
+        let c_str_ptr = c_str.as_ptr();
+        unsafe {
+            builtin_error(c_str_ptr, strerror(*c___errno_location()));
         }
     }
 }
@@ -324,7 +331,7 @@ pub fn sh_chkwrite(s: i32) -> i32 {
 
         if ferror(stdout) != 0 {
             sh_wrerror();
-            fpurge(stdout);
+            c_fpurge(stdout);
             libc::clearerr(stdout);
             return EXECUTION_FAILURE!();
         }
@@ -344,11 +351,12 @@ loadable builtins; also used by `test'. */
 #[no_mangle]
 pub fn make_builtin_argv(list: *mut WordList, ip: *mut i32) -> *mut *mut libc::c_char {
     let argv: *mut *mut libc::c_char;
+
+    argv = c_strvec_from_word_list(list, 0, 1, ip);
     unsafe {
-        argv = strvec_from_word_list(list, 0, 1, ip);
         *argv.offset(0) = this_command_name;
-        return argv;
     }
+    return argv;
 }
 
 /* Remember LIST in $1 ... $9, and REST_OF_ARGS.  If DESTRUCTIVE is
@@ -361,44 +369,49 @@ pub fn remember_args(mut list: *mut WordList, destructive: i32) {
 
     unsafe {
         posparam_count = 0;
-        i = 1;
-        while i < 10 {
-            if (destructive != 0 || list != std::ptr::null_mut())
-                && *dollar_vars.as_ptr().offset(i as isize) != std::ptr::null_mut()
-            {
+    }
+    i = 1;
+    while i < 10 {
+        if (destructive != 0 || list != std::ptr::null_mut())
+            && unsafe { *dollar_vars.as_ptr().offset(i as isize) != std::ptr::null_mut() }
+        {
+            unsafe {
                 free(*dollar_vars.as_ptr().offset(i as isize) as *mut c_void);
                 *dollar_vars.as_mut_ptr().offset(i as isize) = std::ptr::null_mut();
             }
+        }
 
-            if !list.is_null() {
+        if !list.is_null() {
+            unsafe {
                 posparam_count = i;
                 *dollar_vars.as_mut_ptr().offset(posparam_count as isize) =
                     savestring!((*(*list).word).word);
                 list = (*list).next;
             }
-            i += 1;
         }
+        i += 1;
+    }
 
-        /* If arguments remain, assign them to REST_OF_ARGS.
-        Note that copy_word_list (NULL) returns NULL, and
-        that dispose_words (NULL) does nothing. */
-        if destructive != 0 || !list.is_null() {
+    /* If arguments remain, assign them to REST_OF_ARGS.
+    Note that copy_word_list (NULL) returns NULL, and
+    that dispose_words (NULL) does nothing. */
+    if destructive != 0 || !list.is_null() {
+        unsafe {
             dispose_words(rest_of_args);
             rest_of_args = copy_word_list(list);
             posparam_count += list_length(list as *mut GENERIC_LIST); //there is may be problems
         }
-
-        if destructive != 0 {
-            set_dollar_vars_changed();
-        }
-        invalidate_cached_quoted_dollar_at();
     }
+
+    if destructive != 0 {
+        set_dollar_vars_changed();
+    }
+    invalidate_cached_quoted_dollar_at();
 }
 
 #[no_mangle]
 pub fn shift_args(mut times: i32) {
     let mut temp: *mut WordList;
-    // let mut count:i32;
 
     unsafe {
         if times <= 0 {
@@ -486,42 +499,52 @@ number by setting *NUMOK == 0 and return -1. */
 #[no_mangle]
 pub fn get_numeric_arg(mut list: *mut WordList, fatal: i32, count: *mut intmax_t) -> i32 {
     let arg: *mut libc::c_char;
-    unsafe {
-        if !count.is_null() {
+
+    if !count.is_null() {
+        unsafe {
             *count = 1;
         }
+    }
 
-        if !list.is_null()
+    if unsafe {
+        !list.is_null()
             && !(*list).word.is_null()
             && ISOPTION((*(*list).word).word, b'-' as libc::c_char)
-        {
+    } {
+        unsafe {
             list = (*list).next;
         }
+    }
 
-        if !list.is_null() {
+    if !list.is_null() {
+        unsafe {
             arg = (*(*list).word).word;
-            if arg.is_null() || legal_number(arg, count) == 0 {
-                if !(*(*list).word).word.is_null() {
+        }
+        if arg.is_null() || legal_number(arg, count) == 0 {
+            if unsafe { !(*(*list).word).word.is_null() } {
+                unsafe {
                     sh_neednumarg((*(*list).word).word);
-                } else {
-                    sh_neednumarg(String::from("`'").as_ptr() as *mut libc::c_char);
                 }
-
-                if fatal == 0 {
-                    return 0;
-                } else if fatal == 1 {
-                    /* fatal == 1; abort */
-                    throw_to_top_level();
-                } else {
-                    /* fatal == 2; discard current command */
-                    top_level_cleanup();
-                    jump_to_top_level(DISCARD!());
-                }
+            } else {
+                sh_neednumarg(String::from("`'").as_ptr() as *mut libc::c_char);
             }
+
+            if fatal == 0 {
+                return 0;
+            } else if fatal == 1 {
+                /* fatal == 1; abort */
+                throw_to_top_level();
+            } else {
+                /* fatal == 2; discard current command */
+                top_level_cleanup();
+                jump_to_top_level(DISCARD!());
+            }
+        }
+        unsafe {
             no_args((*list).next);
         }
-        return 1;
     }
+    return 1;
 }
 
 /* Get an eight-bit status value from LIST */
@@ -531,46 +554,56 @@ pub fn get_exitstat(mut list: *mut WordList) -> i32 {
     let mut sval: intmax_t = 0;
     let arg: *mut libc::c_char;
 
-    unsafe {
-        if !list.is_null()
+    if unsafe {
+        !list.is_null()
             && !(*list).word.is_null()
             && ISOPTION((*(*list).word).word, b'-' as libc::c_char)
-        {
+    } {
+        unsafe {
             list = (*list).next;
         }
+    }
 
-        if list.is_null() {
-            /* If we're not running the DEBUG trap, the return builtin, when not
-            given any arguments, uses the value of $? before the trap ran.  If
-            given an argument, return uses it.  This means that the trap can't
-            change $?.  The DEBUG trap gets to change $?, though, since that is
-            part of its reason for existing, and because the extended debug mode
-            does things with the return value. */
-            if this_shell_builtin == Some(return_builtin)
+    if list.is_null() {
+        /* If we're not running the DEBUG trap, the return builtin, when not
+        given any arguments, uses the value of $? before the trap ran.  If
+        given an argument, return uses it.  This means that the trap can't
+        change $?.  The DEBUG trap gets to change $?, though, since that is
+        part of its reason for existing, and because the extended debug mode
+        does things with the return value. */
+        if unsafe {
+            this_shell_builtin == Some(return_builtin)
                 && running_trap > 0
                 && running_trap != DEBUG_TRAP!() + 1
-            {
+        } {
+            unsafe {
                 return trap_saved_exit_value;
             }
-            return last_command_exit_value;
         }
-
-        arg = (*(*list).word).word;
-        if arg.is_null() || legal_number(arg, &mut sval) == 0 {
-            if !(*(*list).word).word.is_null() {
-                sh_neednumarg((*(*list).word).word);
-            } else {
-                sh_neednumarg(String::from("`'").as_ptr() as *mut libc::c_char);
-            }
-
-            return EX_BADUSAGE!();
-        }
-
-        no_args((*list).next);
-
-        status = (sval & 255) as i32;
-        return status;
+        return unsafe { last_command_exit_value };
     }
+
+    unsafe {
+        arg = (*(*list).word).word;
+    }
+    if arg.is_null() || legal_number(arg, &mut sval) == 0 {
+        if unsafe { !(*(*list).word).word.is_null() } {
+            unsafe {
+                sh_neednumarg((*(*list).word).word);
+            }
+        } else {
+            sh_neednumarg(String::from("`'").as_ptr() as *mut libc::c_char);
+        }
+
+        return EX_BADUSAGE!();
+    }
+
+    unsafe {
+        no_args((*list).next);
+    }
+
+    status = (sval & 255) as i32;
+    return status;
 }
 
 /* Return the octal number parsed from STRING, or -1 to indicate
@@ -580,22 +613,20 @@ pub fn read_octal(mut string: *mut libc::c_char) -> i32 {
     let mut result: i32 = 0;
     let mut digits: i32 = 0;
 
-    unsafe {
-        while *string != 0 && ISOCTAL!(*string) {
-            digits += 1;
-            result = (result * 8) + (*string - b'0' as libc::c_char) as i32;
-            string = (string as usize + 1) as *mut libc::c_char;
-            if result > 0o7777 {
-                return -1;
-            }
+    while unsafe { *string != 0 && ISOCTAL!(*string) } {
+        digits += 1;
+        result = (result * 8) + unsafe { (*string - b'0' as libc::c_char) as i32 };
+        string = (string as usize + 1) as *mut libc::c_char;
+        if result > 0o7777 {
+            return -1;
         }
-
-        if digits == 0 || *string != 0 {
-            result = -1;
-        }
-
-        return result;
     }
+
+    if digits == 0 || unsafe { *string != 0 } {
+        result = -1;
+    }
+
+    return result;
 }
 
 /* **************************************************************** */
@@ -621,7 +652,7 @@ pub fn get_working_directory(for_whom: *mut libc::c_char) -> *mut libc::c_char {
             the_current_working_directory = getcwd(0 as *mut libc::c_char, 0);
 
             if the_current_working_directory.is_null() {
-                let strerror_str = CStr::from_ptr(strerror(errno!()));
+                let strerror_str = CStr::from_ptr(strerror(*c___errno_location()));
                 let strerror_string = strerror_str.to_str().unwrap().to_owned();
                 let bash_getcwd_errstr = String::from("getcwd: cannot access parent directories");
                 if !for_whom.is_null() && *for_whom != 0 {
@@ -766,8 +797,8 @@ pub fn get_job_spec(list: *mut WordList) -> i32 {
             }
             _ => {}
         }
-        return get_job_by_name(word, jflags);
     }
+    return get_job_by_name(word, jflags);
 }
 
 /*
@@ -782,13 +813,13 @@ pub fn display_signal_list(mut list: *mut WordList, forcecols: i32) -> i32 {
     let mut dflags: i32;
     let mut lsignum: intmax_t = 0;
 
-    unsafe {
-        result = EXECUTION_SUCCESS!();
-        if list.is_null() {
-            column = 0;
-            for i in 1..65 {
-                name = signal_name(i);
-                if STREQN!(
+    result = EXECUTION_SUCCESS!();
+    if list.is_null() {
+        column = 0;
+        for i in 1..65 {
+            name = signal_name(i);
+            if unsafe {
+                STREQN!(
                     name,
                     String::from("SIGJUNK").as_ptr() as *mut libc::c_char,
                     7
@@ -798,13 +829,14 @@ pub fn display_signal_list(mut list: *mut WordList, forcecols: i32) -> i32 {
                         String::from("Unknown").as_ptr() as *mut libc::c_char,
                         7
                     ) != 0
-                {
-                    continue;
-                }
+            } {
+                continue;
+            }
 
-                if posixly_correct != 0 && forcecols == 0 {
-                    /* This is for the kill builtin.  POSIX.2 says the signal names
-                    are displayed without the `SIG' prefix. */
+            if unsafe { posixly_correct != 0 && forcecols == 0 } {
+                /* This is for the kill builtin.  POSIX.2 says the signal names
+                are displayed without the `SIG' prefix. */
+                unsafe {
                     if STREQN!(name, String::from("SIG").as_ptr() as *mut libc::c_char, 3) != 0 {
                         name = name.offset(3);
                     }
@@ -813,48 +845,56 @@ pub fn display_signal_list(mut list: *mut WordList, forcecols: i32) -> i32 {
                     } else {
                         print!("{} ", CStr::from_ptr(name).to_str().unwrap().to_owned());
                     }
-                } else {
+                }
+            } else {
+                unsafe {
                     print!(
                         "{:>2}{} {}",
                         i,
                         ")",
                         CStr::from_ptr(name).to_str().unwrap().to_owned()
                     );
+                }
 
-                    column += 1;
-                    if column < 5 {
-                        print! {"\t"};
-                    } else {
-                        print!("\n");
-                        column = 0;
-                    }
+                column += 1;
+                if column < 5 {
+                    print! {"\t"};
+                } else {
+                    print!("\n");
+                    column = 0;
                 }
             }
+        }
 
-            if posixly_correct != 0 && forcecols != 0 || column != 0 {
-                print!("\n");
+        if unsafe { posixly_correct != 0 && forcecols != 0 || column != 0 } {
+            print!("\n");
+        }
+        return result;
+    }
+
+    /* List individual signal names or numbers. */
+    while !list.is_null() {
+        if unsafe { legal_number((*(*list).word).word, &mut lsignum) != 0 } {
+            /* This is specified by Posix.2 so that exit statuses can be
+            mapped into signal numbers. */
+            if lsignum > 128 {
+                lsignum -= 128;
             }
-            return result;
-        } //if list.is_null()
-
-        /* List individual signal names or numbers. */
-        while !list.is_null() {
-            if legal_number((*(*list).word).word, &mut lsignum) != 0 {
-                /* This is specified by Posix.2 so that exit statuses can be
-                mapped into signal numbers. */
-                if lsignum > 128 {
-                    lsignum -= 128;
-                }
-                if lsignum < 0 || lsignum >= NSIG!() {
+            if lsignum < 0 || lsignum >= NSIG!() {
+                unsafe {
                     sh_invalidsig((*(*list).word).word);
-                    result = EXECUTION_FAILURE!();
-                    list = (*list).next;
-                    continue;
                 }
+                result = EXECUTION_FAILURE!();
+                unsafe {
+                    list = (*list).next;
+                }
+                continue;
+            }
 
-                signum = lsignum as i32;
-                name = signal_name(signum);
-                if STREQN!(
+            signum = lsignum as i32;
+            name = signal_name(signum);
+            if unsafe {
+                STREQN!(
                     name,
                     String::from("SIGJUNK").as_ptr() as *mut libc::c_char,
                     7
@@ -864,14 +904,16 @@ pub fn display_signal_list(mut list: *mut WordList, forcecols: i32) -> i32 {
                         String::from("Unknow").as_ptr() as *mut libc::c_char,
                         7
                     ) != 0
-                {
+            } {
+                unsafe {
                     list = (*list).next;
-                    continue;
                 }
-                /* POSIX.2 says that `kill -l signum' prints the signal name without
-                the `SIG' prefix. */
+                continue;
+            }
+            /* POSIX.2 says that `kill -l signum' prints the signal name without
+            the `SIG' prefix. */
+            unsafe {
                 if this_shell_builtin == Some(kill_builtin) && signum > 0 {
-                    // name = name.offset(3);
                     println!(
                         "{}",
                         CStr::from_ptr(name.offset(3)).to_str().unwrap().to_owned()
@@ -879,7 +921,9 @@ pub fn display_signal_list(mut list: *mut WordList, forcecols: i32) -> i32 {
                 } else {
                     println!("{}", CStr::from_ptr(name).to_str().unwrap().to_owned());
                 }
-            } else {
+            }
+        } else {
+            unsafe {
                 dflags = DSIG_NOCASE!();
                 if posixly_correct == 0 || this_shell_builtin != Some(kill_builtin) {
                     dflags |= DSIG_SIGPREFIX!();
@@ -893,10 +937,12 @@ pub fn display_signal_list(mut list: *mut WordList, forcecols: i32) -> i32 {
                 }
                 println!("{}", signum);
             }
+        }
+        unsafe {
             list = (*list).next;
-        } //while
-        return result;
+        }
     }
+    return result;
 }
 
 /* **************************************************************** */
@@ -910,69 +956,55 @@ whose name is NAME.  If the function couldn't be found, or the builtin
 is disabled or has no function associated with it, return NULL.
 Return the address of the builtin.
 DISABLED_OKAY means find it even if the builtin is disabled. */
-
-fn print_builtin_name() {
-    let hi: i32;
-    let lo: i32;
-    let _mid: i32 = 0;
-    let mut _j: i32;
-
-    unsafe {
-        hi = num_shell_builtins - 1;
-        lo = 0;
-
-        while lo <= hi {
-            //printf(b" builtin command name is :%s\n", (*shell_builtins.offset(mid as isize)).name);
-        }
-    }
-}
-
 #[no_mangle]
 pub fn builtin_address_internal(name: *mut libc::c_char, disabled_okay: i32) -> *mut builtin {
     let mut hi: i32;
     let mut lo: i32;
-    let mut mid: i32 = 0;
+    let mut mid: i32;
     let mut j: i32;
 
     unsafe {
         hi = num_shell_builtins - 1;
-        lo = 0;
+    }
+    lo = 0;
 
-        while lo <= hi {
-            mid = (lo + hi) / 2;
+    while lo <= hi {
+        mid = (lo + hi) / 2;
 
+        unsafe {
             j = *((*shell_builtins.offset(mid as isize)).name).offset(0 as libc::c_int as isize)
                 as libc::c_int
                 - *name.offset(0 as libc::c_int as isize) as libc::c_int;
+        }
 
-            if j == 0 {
-                j = strcmp((*shell_builtins.offset(mid as isize)).name, name);
-            }
+        if j == 0 {
+            j = unsafe { strcmp((*shell_builtins.offset(mid as isize)).name, name) };
+        }
 
-            if j == 0 {
-                /* It must have a function pointer.  It must be enabled, or we
-                must have explicitly allowed disabled functions to be found,
-                and it must not have been deleted. */
-                if ((*shell_builtins.offset(mid as isize)).function).is_some()
+        if j == 0 {
+            /* It must have a function pointer.  It must be enabled, or we
+            must have explicitly allowed disabled functions to be found,
+            and it must not have been deleted. */
+            if unsafe {
+                ((*shell_builtins.offset(mid as isize)).function).is_some()
                     && (*shell_builtins.offset(mid as isize)).flags & BUILTIN_DELETED!() == 0
-                    && (*shell_builtins.offset(mid as isize)).flags & BUILTIN_ENABLED!() != 0 //应该是 !=0
-                    || disabled_okay != 0
-                {
-                    return &mut *shell_builtins.offset(mid as isize);
-                } else {
-                    return 0 as *mut builtin;
-                }
-            }
-
-            if j > 0 {
-                hi = mid - 1;
+                    && (*shell_builtins.offset(mid as isize)).flags & BUILTIN_ENABLED!() != 0
+            } || disabled_okay != 0
+            {
+                return unsafe { &mut *shell_builtins.offset(mid as isize) };
             } else {
-                lo = mid + 1;
+                return 0 as *mut builtin;
             }
         }
 
-        return 0 as *mut builtin;
+        if j > 0 {
+            hi = mid - 1;
+        } else {
+            lo = mid + 1;
+        }
     }
+
+    return 0 as *mut builtin;
 }
 
 /* Return the pointer to the function implementing builtin command NAME. */
@@ -1017,7 +1049,7 @@ pub fn find_special_builtin(name: *mut libc::c_char) -> Option<sh_builtin_func_t
 #[no_mangle]
 fn shell_builtin_compare(sbp1: *mut builtin, sbp2: *mut builtin) -> i32 {
     unsafe {
-        let mut result: libc::c_int = 0;
+        let mut result: libc::c_int;
         result = *((*sbp1).name).offset(0 as libc::c_int as isize) as libc::c_int
             - *((*sbp2).name).offset(0 as libc::c_int as isize) as libc::c_int;
         if result == 0 as libc::c_int {
@@ -1032,7 +1064,7 @@ in find_shell_builtin. */
 #[no_mangle]
 pub fn initialize_shell_builtins() {
     unsafe {
-        qsort(
+        c_qsort(
             shell_builtins as *mut c_void,
             num_shell_builtins as usize,
             size_of::<builtin>(),
@@ -1059,34 +1091,33 @@ pub fn builtin_bind_variable(
 ) -> *mut SHELL_VAR {
     let v: *mut SHELL_VAR;
 
+    let opt: i32;
+    if unsafe { assoc_expand_once != 0 } {
+        opt = VA_NOEXPAND!() | VA_ONEWORD!();
+    } else {
+        opt = 0;
+    }
+
+    if valid_array_reference(name, opt) == 0 {
+        v = bind_variable(name, value, flags);
+    } else {
+        v = assign_array_element(
+            name,
+            value,
+            flags
+                | (if unsafe { assoc_expand_once != 0 } {
+                    ASS_NOEXPAND!()
+                } else {
+                    0
+                }),
+        );
+    }
     unsafe {
-        let opt: i32;
-        if assoc_expand_once != 0 {
-            opt = VA_NOEXPAND!() | VA_ONEWORD!();
-        } else {
-            opt = 0;
-        }
-
-        if valid_array_reference(name, opt) == 0 {
-            v = bind_variable(name, value, flags);
-        } else {
-            v = assign_array_element(
-                name,
-                value,
-                flags
-                    | (if assoc_expand_once != 0 {
-                        ASS_NOEXPAND!()
-                    } else {
-                        0
-                    }),
-            );
-        }
-
         if !v.is_null() && readonly_p!(v) == 0 && noassign_p!(v) == 0 {
             VUNSETATTR!(v, att_invisible!());
         }
-        return v;
     }
+    return v;
 }
 
 /* Like check_unbind_variable, but for use by builtins (only matters for
@@ -1094,22 +1125,24 @@ error messages). */
 pub fn builtin_unbind_variable(vname: *const libc::c_char) -> i32 {
     let v: *mut SHELL_VAR;
 
-    unsafe {
-        v = find_variable(vname);
-        if !v.is_null() && readonly_p!(v) != 0 {
-            let c_str = CString::new("%s: cannot unset: readonly %s").unwrap();
-            let c_str_ptr = c_str.as_ptr();
+    v = find_variable(vname);
+    if !v.is_null() && unsafe { readonly_p!(v) != 0 } {
+        let c_str = CString::new("%s: cannot unset: readonly %s").unwrap();
+        let c_str_ptr = c_str.as_ptr();
+        unsafe {
             builtin_error(c_str_ptr, vname, "variable");
-            return -2;
-        } else if !v.is_null() && non_unsettable_p!(v) != 0 {
-            let c_str = CString::new("%s: cannot unset").unwrap();
-            let c_str_ptr = c_str.as_ptr();
-            builtin_error(c_str_ptr, vname);
-            return -2;
         }
-
-        return unbind_variable(vname);
+        return -2;
+    } else if !v.is_null() && unsafe { non_unsettable_p!(v) != 0 } {
+        let c_str = CString::new("%s: cannot unset").unwrap();
+        let c_str_ptr = c_str.as_ptr();
+        unsafe {
+            builtin_error(c_str_ptr, vname);
+        }
+        return -2;
     }
+
+    return unbind_variable(vname);
 }
 
 pub fn get_local_str() -> Vec<LanguageIdentifier> {
@@ -1121,7 +1154,7 @@ pub fn get_local_str() -> Vec<LanguageIdentifier> {
             println!("err is {e:?}")
         }
     }
-    // println!("now language is {:?}",language);
+
     //parse() 用于类型转换
     let v: Vec<_> = language.split('.').collect();
     let langid: LanguageIdentifier = v[0].parse().expect("wrong language");
