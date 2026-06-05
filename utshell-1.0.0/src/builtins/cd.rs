@@ -27,42 +27,44 @@ static mut xattrfd: libc::c_int = -(1 as libc::c_int);
 pub fn setpwd(dirname: *mut libc::c_char) -> i32 {
     let old_anm: i32;
     let tvar: *mut SHELL_VAR;
+
     unsafe {
         old_anm = array_needs_making;
+    }
 
-        let c_str_pwd = CString::new("PWD").unwrap();
-        if dirname == std::ptr::null_mut() {
-            tvar = bind_variable(
-                c_str_pwd.as_ptr(),
-                CString::new("").unwrap().as_ptr() as *mut libc::c_char,
-                0,
-            );
-        } else {
-            tvar = bind_variable(c_str_pwd.as_ptr(), dirname, 0);
-        }
+    let c_str_pwd = CString::new("PWD").unwrap();
+    if dirname == std::ptr::null_mut() {
+        let msg = CString::new("").unwrap();
+        tvar = bind_variable(c_str_pwd.as_ptr(), msg.as_ptr() as *mut libc::c_char, 0);
+    } else {
+        tvar = bind_variable(c_str_pwd.as_ptr(), dirname, 0);
+    }
 
-        if tvar != std::ptr::null_mut() && readonly_p!(tvar) != 0 {
-            return EXECUTION_FAILURE!();
-        }
+    if unsafe { tvar != std::ptr::null_mut() && readonly_p!(tvar) != 0 } {
+        return EXECUTION_FAILURE!();
+    }
 
-        if tvar != std::ptr::null_mut()
+    if unsafe {
+        tvar != std::ptr::null_mut()
             && old_anm == 0
             && array_needs_making != 0
             && exported_p!(tvar) != 0
-        {
-            if dirname == std::ptr::null_mut() {
-                update_export_env_inplace(
-                    c_str_pwd.as_ptr() as *mut libc::c_char,
-                    4,
-                    CString::new("").unwrap().as_ptr() as *mut libc::c_char,
-                );
-            } else {
-                update_export_env_inplace(c_str_pwd.as_ptr() as *mut libc::c_char, 4, dirname);
-            }
+    } {
+        if dirname == std::ptr::null_mut() {
+            let msg = CString::new("").unwrap();
+            update_export_env_inplace(
+                c_str_pwd.as_ptr() as *mut libc::c_char,
+                4,
+                msg.as_ptr() as *mut libc::c_char,
+            );
+        } else {
+            update_export_env_inplace(c_str_pwd.as_ptr() as *mut libc::c_char, 4, dirname);
+        }
+        unsafe {
             array_needs_making = 0;
         }
-        return EXECUTION_SUCCESS!();
     }
+    return EXECUTION_SUCCESS!();
 }
 
 #[no_mangle]
@@ -73,57 +75,63 @@ pub fn bindpwd(no_symlinks: i32) -> i32 {
     let mut r: i32;
     let mut canon_failed: i32;
     let tvar: *mut SHELL_VAR;
-    unsafe {
-        r = sh_chkwrite(EXECUTION_SUCCESS!());
-        if the_current_working_directory != std::ptr::null_mut() {
+
+    r = sh_chkwrite(EXECUTION_SUCCESS!());
+    if unsafe { the_current_working_directory != std::ptr::null_mut() } {
+        unsafe {
             if no_symlinks != 0 {
-                dirname = sh_physpath(the_current_working_directory, 0);
+                dirname = c_sh_physpath(the_current_working_directory, 0);
             } else {
                 dirname = the_current_working_directory;
             }
-        } else {
-            let c_str_cd = CString::new("cd").unwrap();
-            dirname = get_working_directory(c_str_cd.as_ptr() as *mut libc::c_char);
         }
+    } else {
+        let c_str_cd = CString::new("cd").unwrap();
+        dirname = get_working_directory(c_str_cd.as_ptr() as *mut libc::c_char);
+    }
 
-        /* If canonicalization fails, reset dirname to the_current_working_directory */
-        canon_failed = 0;
-        if dirname == std::ptr::null_mut() {
-            canon_failed = 1;
+    /* If canonicalization fails, reset dirname to the_current_working_directory */
+    canon_failed = 0;
+    if dirname == std::ptr::null_mut() {
+        canon_failed = 1;
+        unsafe {
             dirname = the_current_working_directory;
         }
+    }
 
+    unsafe {
         old_anm = array_needs_making;
-        let c_str_pwd = CString::new("PWD").unwrap();
-        pwdvar = get_string_value(c_str_pwd.as_ptr());
+    }
+    let c_str_pwd = CString::new("PWD").unwrap();
+    pwdvar = get_string_value(c_str_pwd.as_ptr());
+    let msg1 = CString::new("OLDPWD").unwrap();
+    tvar = bind_variable(msg1.as_ptr(), pwdvar, 0);
+    if unsafe { tvar != std::ptr::null_mut() && readonly_p!(tvar) != 0 } {
+        r = EXECUTION_FAILURE!();
+    }
 
-        tvar = bind_variable(CString::new("OLDPWD").unwrap().as_ptr(), pwdvar, 0);
-        if tvar != std::ptr::null_mut() && readonly_p!(tvar) != 0 {
-            r = EXECUTION_FAILURE!();
-        }
-
-        if old_anm == 0 && array_needs_making != 0 && exported_p!(tvar) != 0 {
-            update_export_env_inplace(
-                CString::new("OLDPWD").unwrap().as_ptr() as *mut libc::c_char,
-                7,
-                pwdvar,
-            );
+    if unsafe { old_anm == 0 && array_needs_making != 0 && exported_p!(tvar) != 0 } {
+        let msg2 = CString::new("OLDPWD").unwrap();
+        update_export_env_inplace(msg2.as_ptr() as *mut libc::c_char, 7, pwdvar);
+        unsafe {
             array_needs_making = 0;
         }
+    }
 
-        if setpwd(dirname) == EXECUTION_FAILURE!() {
-            r = EXECUTION_FAILURE!();
-        }
+    if setpwd(dirname) == EXECUTION_FAILURE!() {
+        r = EXECUTION_FAILURE!();
+    }
 
-        if canon_failed != 0 && eflag != 0 {
-            r = EXECUTION_FAILURE!();
-        }
+    if unsafe { canon_failed != 0 && eflag != 0 } {
+        r = EXECUTION_FAILURE!();
+    }
 
+    unsafe {
         if dirname != std::ptr::null_mut() && dirname != the_current_working_directory {
             libc::free(dirname as *mut libc::c_void);
         }
-        return r;
     }
+    return r;
 }
 
 /* Call get_working_directory to reset the value of
@@ -134,13 +142,13 @@ pub fn resetpwd(caller: *mut libc::c_char) -> *mut libc::c_char {
     unsafe {
         libc::free(the_current_working_directory as *mut libc::c_void);
         the_current_working_directory = 0 as *mut libc::c_char;
-        tdir = get_working_directory(caller);
-        return tdir;
     }
+    tdir = get_working_directory(caller);
+    return tdir;
 }
 
 #[no_mangle]
-pub fn cdxattr(dir: *mut libc::c_char, ndirp: *mut libc::c_char) -> i32 {
+pub fn cdxattr(_dir: *mut libc::c_char, _ndirp: *mut libc::c_char) -> i32 {
     return -1;
 }
 
@@ -153,7 +161,7 @@ pub fn resetxattr() {
 
 #[no_mangle]
 pub fn cd_builtin(list: *mut WordList) -> i32 {
-    let mut dirname: *mut libc::c_char = std::ptr::null_mut();
+    let dirname: *mut libc::c_char;
     let cdpath: *mut libc::c_char;
     let mut path: *mut libc::c_char;
     let mut temp: *mut libc::c_char;
@@ -163,91 +171,96 @@ pub fn cd_builtin(list: *mut WordList) -> i32 {
     let mut lflag: i32;
     let e: i32;
 
+    if unsafe { restricted != 0 } {
+        sh_restricted(0 as *mut libc::c_char);
+        return EXECUTION_FAILURE!();
+    }
     unsafe {
-        if restricted != 0 {
-            sh_restricted(0 as *mut libc::c_char);
-            return EXECUTION_FAILURE!();
-        }
-
         eflag = 0;
         no_symlinks = no_symbolic_links;
         xattrflag = 0;
-        reset_internal_getopt();
+    }
+    reset_internal_getopt();
 
-        let c_str_elp = CString::new("eLP").unwrap(); // from a &str, creates a new allocation
-        opt = internal_getopt(list, c_str_elp.as_ptr() as *mut libc::c_char);
-        while opt != -1 {
-            let optu8: u8 = opt as u8;
-            let optChar: char = char::from(optu8);
-            match optChar {
-                'P' => {
-                    no_symlinks = 1;
-                }
-                'L' => {
-                    no_symlinks = 0;
-                }
-                'e' => {
-                    eflag = 1;
-                }
-                _ => {
-                    if opt == -99 {
-                        builtin_help();
-                        return EX_USAGE!();
-                    }
-                    builtin_usage();
+    let c_str_elp = CString::new("eLP").unwrap(); // from a &str, creates a new allocation
+    opt = internal_getopt(list, c_str_elp.as_ptr() as *mut libc::c_char);
+    while opt != -1 {
+        let optu8: u8 = opt as u8;
+        let optChar: char = char::from(optu8);
+        match optChar {
+            'P' => {
+                no_symlinks = 1;
+            }
+            'L' => {
+                no_symlinks = 0;
+            }
+            'e' => unsafe {
+                eflag = 1;
+            },
+            _ => {
+                if opt == -99 {
+                    builtin_help();
                     return EX_USAGE!();
                 }
+                builtin_usage();
+                return EX_USAGE!();
             }
-            opt = internal_getopt(list, c_str_elp.as_ptr() as *mut libc::c_char);
         }
+        opt = internal_getopt(list, c_str_elp.as_ptr() as *mut libc::c_char);
+    }
 
-        // list = loptend;     //后加的
+    if unsafe { cdable_vars != 0 } {
+        lflag = LCD_DOVARS!();
+    } else {
+        lflag = 0;
+    }
 
-        if cdable_vars != 0 {
-            lflag = LCD_DOVARS!();
-        } else {
-            lflag = 0;
-        }
-
-        if interactive != 0 && cdspelling != 0 {
-            lflag = lflag | LCD_DOSPELL!();
-        } else {
-            lflag = lflag | 0;
-        }
-
+    if unsafe { interactive != 0 && cdspelling != 0 } {
+        lflag = lflag | LCD_DOSPELL!();
+    } else {
+        lflag = lflag | 0;
+    }
+    unsafe {
         if eflag != 0 && no_symlinks == 0 {
             eflag = 0;
         }
 
         if loptend == std::ptr::null_mut() {
             /* `cd' without arguments is equivalent to `cd $HOME' */
-            dirname = get_string_value(CString::new("HOME").unwrap().as_ptr());
+            let msg1 = CString::new("HOME").unwrap();
+            dirname = get_string_value(msg1.as_ptr());
 
             if dirname == std::ptr::null_mut() {
-                builtin_error(CString::new("HOME not set").unwrap().as_ptr());
+                let msg2 = CString::new("HOME not set").unwrap();
+                builtin_error(msg2.as_ptr());
                 return EXECUTION_FAILURE!();
             }
             lflag = 0;
         } else if (*loptend).next != std::ptr::null_mut() {
-            builtin_error(CString::new("too many arguments").unwrap().as_ptr());
+            let msg3 = CString::new("too many arguments").unwrap();
+            builtin_error(msg3.as_ptr());
             return EXECUTION_FAILURE!();
         } else if char::from((*(*(*loptend).word).word) as u8) == '-'
             && char::from(*((((*(*loptend).word).word) as usize + 1) as *mut libc::c_char) as u8)
                 == '\0'
         {
             /* This is `cd -', equivalent to `cd $OLDPWD' */
-            dirname = get_string_value(CString::new("OLDPWD").unwrap().as_ptr());
+            let msg5 = CString::new("OLDPWD").unwrap();
+            dirname = get_string_value(msg5.as_ptr());
             if dirname == std::ptr::null_mut() {
-                builtin_error(CString::new("OLDPWD not set").unwrap().as_ptr());
+                let msg6 = CString::new("OLDPWD not set").unwrap();
+                builtin_error(msg6.as_ptr());
                 return EXECUTION_FAILURE!();
             }
             lflag = LCD_PRINTPATH!(); /* According to SUSv3 */
         } else if absolute_pathname((*(*loptend).word).word) != 0 {
             dirname = (*(*loptend).word).word;
-        } else if privileged_mode == 0
-            && get_string_value(CString::new("CDPATH").unwrap().as_ptr()) != std::ptr::null_mut()
-        {
-            cdpath = get_string_value(CString::new("CDPATH").unwrap().as_ptr());
+        } else if privileged_mode == 0 && {
+            let msg = CString::new("CDPATH").unwrap();
+            get_string_value(msg.as_ptr()) != std::ptr::null_mut()
+        } {
+            let msg7 = CString::new("CDPATH").unwrap();
+            cdpath = get_string_value(msg7.as_ptr());
             dirname = (*(*loptend).word).word;
 
             /* Find directory in $CDPATH. */
@@ -257,7 +270,7 @@ pub fn cd_builtin(list: *mut WordList) -> i32 {
             while path != std::ptr::null_mut() {
                 /* OPT is 1 if the path element is non-empty */
                 opt = (char::from(*path as u8) != '\0') as i32;
-                temp = sh_makepath(path, dirname, MP_DOTILDE!());
+                temp = c_sh_makepath(path, dirname, MP_DOTILDE!());
                 libc::free(path as *mut c_void);
 
                 if change_to_directory(temp, no_symlinks, xattrflag) != 0 {
@@ -273,10 +286,8 @@ pub fn cd_builtin(list: *mut WordList) -> i32 {
                         }
 
                         if path != std::ptr::null_mut() {
-                            libc::printf(
-                                CString::new("%s\n").unwrap().as_ptr() as *const libc::c_char,
-                                path,
-                            );
+                            let msg8 = CString::new("%s\n").unwrap();
+                            libc::printf(msg8.as_ptr() as *const libc::c_char, path);
                         }
                     }
 
@@ -296,10 +307,8 @@ pub fn cd_builtin(list: *mut WordList) -> i32 {
         chdir successfully, just return. */
         if 0 != change_to_directory(dirname, no_symlinks, xattrflag) {
             if (lflag & LCD_PRINTPATH!()) != 0 {
-                libc::printf(
-                    CString::new("%s\n").unwrap().as_ptr() as *const libc::c_char,
-                    dirname,
-                );
+                let msg = CString::new("%s\n").unwrap();
+                libc::printf(msg.as_ptr() as *const libc::c_char, dirname);
             }
             return bindpwd(no_symlinks);
         }
@@ -312,10 +321,8 @@ pub fn cd_builtin(list: *mut WordList) -> i32 {
             if temp != std::ptr::null_mut()
                 && change_to_directory(temp, no_symlinks, xattrflag) != 0
             {
-                libc::printf(
-                    CString::new("%s\n").unwrap().as_ptr() as *const libc::c_char,
-                    temp,
-                );
+                let msg = CString::new("%s\n").unwrap();
+                libc::printf(msg.as_ptr() as *const libc::c_char, temp);
                 return bindpwd(no_symlinks);
             }
         }
@@ -324,7 +331,7 @@ pub fn cd_builtin(list: *mut WordList) -> i32 {
         spelling to the one requested, in case the user made a simple
         typo.  This is similar to the UNIX 8th and 9th Edition shells. */
         if (lflag & LCD_DOSPELL!()) != 0 {
-            temp = dirspell(dirname);
+            temp = c_dirspell(dirname);
             if temp != std::ptr::null_mut()
                 && change_to_directory(temp, no_symlinks, xattrflag) != 0
             {
@@ -336,19 +343,16 @@ pub fn cd_builtin(list: *mut WordList) -> i32 {
             }
         }
 
-        e = errno!();
+        e = *c___errno_location();
         temp = printable_filename(dirname, 0);
-        builtin_error(
-            CString::new("%s: %s").unwrap().as_ptr(),
-            temp,
-            libc::strerror(e),
-        );
+        let msg = CString::new("%s: %s").unwrap();
+        builtin_error(msg.as_ptr(), temp, libc::strerror(e));
 
         if temp != dirname {
             libc::free(temp as *mut c_void);
         }
-        return EXECUTION_FAILURE!();
     }
+    return EXECUTION_FAILURE!();
 }
 
 #[no_mangle]
@@ -356,69 +360,78 @@ pub fn pwd_builtin(list: *mut WordList) -> i32 {
     let mut directory: *mut libc::c_char;
     let mut opt: i32;
     let mut pflag: i32;
+
     unsafe {
         verbatim_pwd = no_symbolic_links;
-        pflag = 0;
-        reset_internal_getopt();
-        let c_str_lp = CString::new("LP").unwrap(); // from a &str, creates a new allocation
-        opt = internal_getopt(list, c_str_lp.as_ptr() as *mut libc::c_char);
-        while opt != -1 {
-            let optu8: u8 = opt as u8;
-            let optChar: char = char::from(optu8);
-            match optChar {
-                'P' => {
+    }
+    pflag = 0;
+    reset_internal_getopt();
+    let c_str_lp = CString::new("LP").unwrap(); // from a &str, creates a new allocation
+    opt = internal_getopt(list, c_str_lp.as_ptr() as *mut libc::c_char);
+    while opt != -1 {
+        let optu8: u8 = opt as u8;
+        let optChar: char = char::from(optu8);
+        match optChar {
+            'P' => {
+                unsafe {
                     verbatim_pwd = 1;
-                    pflag = 1;
                 }
-                'L' => {
-                    verbatim_pwd = 0;
-                }
-                _ => {
-                    if opt == -99 {
-                        builtin_help();
-                        return EX_USAGE!();
-                    }
-                    builtin_usage();
+                pflag = 1;
+            }
+            'L' => unsafe {
+                verbatim_pwd = 0;
+            },
+            _ => {
+                if opt == -99 {
+                    builtin_help();
                     return EX_USAGE!();
                 }
+                builtin_usage();
+                return EX_USAGE!();
             }
-            opt = internal_getopt(list, c_str_lp.as_ptr() as *mut libc::c_char);
         }
-        if the_current_working_directory != std::ptr::null_mut() {
+        opt = internal_getopt(list, c_str_lp.as_ptr() as *mut libc::c_char);
+    }
+    if unsafe { the_current_working_directory != std::ptr::null_mut() } {
+        unsafe {
             if verbatim_pwd != 0 {
-                directory = sh_physpath(the_current_working_directory, 0);
+                directory = c_sh_physpath(the_current_working_directory, 0);
             } else {
                 directory = the_current_working_directory;
             }
-        } else {
-            directory =
-                get_working_directory(CString::new("pwd").unwrap().as_ptr() as *mut libc::c_char);
         }
+    } else {
+        let msg = CString::new("pwd").unwrap();
+        directory = get_working_directory(msg.as_ptr() as *mut libc::c_char);
+    }
 
-        /* Try again using getcwd() if canonicalization fails (for instance, if
-        the file system has changed state underneath bash). */
-        if (the_current_working_directory != std::ptr::null_mut()
-            && directory == std::ptr::null_mut())
+    /* Try again using getcwd() if canonicalization fails (for instance, if
+    the file system has changed state underneath bash). */
+    let msg1 = CString::new(".").unwrap();
+    if unsafe {
+        (the_current_working_directory != std::ptr::null_mut() && directory == std::ptr::null_mut())
             || (posixly_correct != 0
                 && same_file(
-                    CString::new(".").unwrap().as_ptr(),
+                    msg1.as_ptr(),
                     the_current_working_directory,
                     std::ptr::null_mut(),
                     std::ptr::null_mut(),
                 ) == 0)
-        {
+    } {
+        unsafe {
             if directory != std::ptr::null_mut() && directory != the_current_working_directory {
                 libc::free(directory as *mut c_void);
             }
-            directory = resetpwd(CString::new("pwd").unwrap().as_ptr() as *mut libc::c_char);
         }
+        let msg2 = CString::new("pwd").unwrap();
+        directory = resetpwd(msg2.as_ptr() as *mut libc::c_char);
+    }
 
-        if directory != std::ptr::null_mut() {
-            opt = EXECUTION_SUCCESS!();
-            libc::printf(
-                CString::new("%s\n").unwrap().as_ptr() as *const libc::c_char,
-                directory,
-            );
+    if directory != std::ptr::null_mut() {
+        opt = EXECUTION_SUCCESS!();
+        unsafe {
+            let msg = CString::new("%s\n").unwrap();
+            libc::printf(msg.as_ptr() as *const libc::c_char, directory);
             /* This is dumb but posix-mandated. */
             if posixly_correct != 0 && pflag != 0 {
                 opt = setpwd(directory);
@@ -427,10 +440,10 @@ pub fn pwd_builtin(list: *mut WordList) -> i32 {
             if directory != the_current_working_directory {
                 libc::free(directory as *mut c_void);
             }
-            return sh_chkwrite(opt);
-        } else {
-            return EXECUTION_FAILURE!();
         }
+        return sh_chkwrite(opt);
+    } else {
+        return EXECUTION_FAILURE!();
     }
 }
 
@@ -440,39 +453,44 @@ the_current_working_directory either set to NULL (in which case
 getcwd() will eventually be called), or set to a string corresponding
 to the working directory.  Return 1 on success, 0 on failure. */
 #[no_mangle]
-pub fn change_to_directory(newdir: *mut libc::c_char, nolinks: i32, xattr: i32) -> i32 {
+pub fn change_to_directory(newdir: *mut libc::c_char, nolinks: i32, _xattr: i32) -> i32 {
+    let mut t: *mut libc::c_char;
+    let mut tdir: *mut libc::c_char;
+    // let mut _ndir: *mut libc::c_char;
+    let err: i32;
+    let mut canon_failed: i32;
+    let mut r: i32;
+    let ndlen: i32;
+
+    // tdir = std::ptr::null_mut();
     unsafe {
-        let mut t: *mut libc::c_char;
-        let mut tdir: *mut libc::c_char;
-        let mut ndir: *mut libc::c_char;
-        let err: i32;
-        let mut canon_failed: i32;
-        let mut r: i32;
-        let ndlen: i32;
-
-        tdir = std::ptr::null_mut();
-
         if the_current_working_directory == std::ptr::null_mut() {
-            t = get_working_directory(CString::new("chdir").unwrap().as_ptr() as *mut libc::c_char);
+            let msg = CString::new("chdir").unwrap();
+            t = get_working_directory(msg.as_ptr() as *mut libc::c_char);
             libc::free(t as *mut c_void);
         }
-
+    }
+    unsafe {
         t = make_absolute(newdir, the_current_working_directory);
+    }
 
-        /* TDIR is either the canonicalized absolute pathname of NEWDIR
-        (nolinks == 0) or the absolute physical pathname of NEWDIR
-        (nolinks != 0). */
-        if nolinks != 0 {
-            tdir = sh_physpath(t, 0);
-        } else {
-            tdir = sh_canonpath(t, PATH_CHECKDOTDOT!() | PATH_CHECKEXISTS!());
-        }
+    /* TDIR is either the canonicalized absolute pathname of NEWDIR
+    (nolinks == 0) or the absolute physical pathname of NEWDIR
+    (nolinks != 0). */
+    if nolinks != 0 {
+        tdir = c_sh_physpath(t, 0);
+    } else {
+        tdir = c_sh_canonpath(t, PATH_CHECKDOTDOT!() | PATH_CHECKEXISTS!());
+    }
 
+    unsafe {
         ndlen = libc::strlen(newdir) as i32;
+    }
 
-        /* Use the canonicalized version of NEWDIR, or, if canonicalization
-        failed, use the non-canonical form. */
-        canon_failed = 0;
+    /* Use the canonicalized version of NEWDIR, or, if canonicalization
+    failed, use the non-canonical form. */
+    canon_failed = 0;
+    unsafe {
         if tdir != std::ptr::null_mut() && *tdir != 0 {
             libc::free(t as *mut c_void);
         } else {
@@ -480,17 +498,20 @@ pub fn change_to_directory(newdir: *mut libc::c_char, nolinks: i32, xattr: i32) 
             tdir = t;
             canon_failed = 1;
         }
+    }
 
-        /* In POSIX mode, if we're resolving symlinks logically and sh_canonpath
-        returns NULL (because it checks the path, it will return NULL if the
-        resolved path doesn't exist), fail immediately. */
+    /* In POSIX mode, if we're resolving symlinks logically and c_sh_canonpath
+    returns NULL (because it checks the path, it will return NULL if the
+    resolved path doesn't exist), fail immediately. */
+    unsafe {
         if posixly_correct != 0
             && nolinks == 0
             && canon_failed != 0
-            && (errno!() != libc::ENAMETOOLONG || ndlen > libc::PATH_MAX)
+            && (*c___errno_location() != libc::ENAMETOOLONG || ndlen > libc::PATH_MAX)
         {
-            if errno!() != libc::ENOENT && errno!() != libc::ENAMETOOLONG {
-                errno!() = libc::ENOTDIR;
+            if *c___errno_location() != libc::ENOENT && *c___errno_location() != libc::ENAMETOOLONG
+            {
+                *c___errno_location() = libc::ENOTDIR;
             }
             libc::free(tdir as *mut c_void);
             return 0;
@@ -507,53 +528,69 @@ pub fn change_to_directory(newdir: *mut libc::c_char, nolinks: i32, xattr: i32) 
                 resetxattr();
             }
         }
+    }
 
-        /* If the chdir succeeds, update the_current_working_directory. */
-        if r == 0 {
-            /* If canonicalization failed, but the chdir succeeded, reset the
-            shell's idea of the_current_working_directory. */
-            if canon_failed != 0 {
-                t = resetpwd(CString::new("cd").unwrap().as_ptr() as *mut libc::c_char);
-                if t == std::ptr::null_mut() {
-                    set_working_directory(tdir);
-                } else {
-                    libc::free(t as *mut c_void);
-                }
-            } else {
-                set_working_directory(tdir);
-            }
-
-            libc::free(tdir as *mut c_void);
-            return 1;
-        }
-
-        /* We failed to change to the appropriate directory name.  If we tried
-        what the user passed (nolinks != 0), punt now. */
-        if nolinks != 0 {
-            libc::free(tdir as *mut c_void);
-            return 0;
-        }
-
-        err = errno!();
-
-        /* We're not in physical mode (nolinks == 0), but we failed to change to
-        the canonicalized directory name (TDIR).  Try what the user passed
-        verbatim. If we succeed, reinitialize the_current_working_directory.
-        POSIX requires that we just fail here, so we do in posix mode. */
-        if posixly_correct == 0 && libc::chdir(newdir) == 0 {
-            t = resetpwd(CString::new("cd").unwrap().as_ptr() as *mut libc::c_char);
+    /* If the chdir succeeds, update the_current_working_directory. */
+    if r == 0 {
+        /* If canonicalization failed, but the chdir succeeded, reset the
+        shell's idea of the_current_working_directory. */
+        if canon_failed != 0 {
+            let msg = CString::new("cd").unwrap();
+            t = resetpwd(msg.as_ptr() as *mut libc::c_char);
             if t == std::ptr::null_mut() {
                 set_working_directory(tdir);
             } else {
-                libc::free(t as *mut c_void);
+                unsafe {
+                    libc::free(t as *mut c_void);
+                }
             }
-            r = 1;
         } else {
-            errno!() = err;
-            r = 0;
+            set_working_directory(tdir);
         }
 
-        libc::free(tdir as *mut c_void);
-        return r;
+        unsafe {
+            libc::free(tdir as *mut c_void);
+        }
+        return 1;
     }
+
+    /* We failed to change to the appropriate directory name.  If we tried
+    what the user passed (nolinks != 0), punt now. */
+    if nolinks != 0 {
+        unsafe {
+            libc::free(tdir as *mut c_void);
+        }
+        return 0;
+    }
+
+    unsafe {
+        err = *c___errno_location();
+    }
+
+    /* We're not in physical mode (nolinks == 0), but we failed to change to
+    the canonicalized directory name (TDIR).  Try what the user passed
+    verbatim. If we succeed, reinitialize the_current_working_directory.
+    POSIX requires that we just fail here, so we do in posix mode. */
+    if unsafe { posixly_correct == 0 && libc::chdir(newdir) == 0 } {
+        let msg = CString::new("cd").unwrap();
+        t = resetpwd(msg.as_ptr() as *mut libc::c_char);
+        if t == std::ptr::null_mut() {
+            set_working_directory(tdir);
+        } else {
+            unsafe {
+                libc::free(t as *mut c_void);
+            }
+        }
+        r = 1;
+    } else {
+        unsafe {
+            *c___errno_location() = err;
+        }
+        r = 0;
+    }
+
+    unsafe {
+        libc::free(tdir as *mut c_void);
+    }
+    return r;
 }
