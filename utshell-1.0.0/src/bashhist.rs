@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::bashline::bash_re_edit;
 use crate::general::file_exists;
 use crate::pathexp::setup_ignore_patterns;
@@ -17,7 +14,7 @@ use std::ffi::CStr;
 
 fn member(c: i32, s: *const libc::c_char) -> bool {
     if c != 0 {
-        return unsafe { mbschr(s, c) as libc::c_char != 0 as libc::c_char };
+        return c_mbschr(s, c) as libc::c_char != 0 as libc::c_char;
     } else {
         return false;
     }
@@ -40,8 +37,8 @@ static mut histignore: ignorevar = unsafe {
 };
 
 fn bash_history_inhibit_expansion(string: *mut libc::c_char, i: libc::c_int) -> libc::c_int {
-    let mut t: libc::c_int = 0;
-    let mut si: libc::c_int = 0;
+    let mut t: libc::c_int;
+    let mut si: libc::c_int;
     let mut hx: [libc::c_char; 2] = [0; 2];
     hx[0 as usize] = unsafe { history_expansion_char };
     hx[1 as usize] = '\u{0}' as i32 as libc::c_char;
@@ -177,108 +174,114 @@ pub fn bash_history_enable() {
 #[no_mangle]
 pub fn load_history() {
     let hf: *mut libc::c_char;
+
+    set_if_not(
+        b"HISTSIZE\0" as *const u8 as *mut libc::c_char,
+        HISTSIZE_DEFAULT!(),
+    );
+    sv_histsize(b"HISTSIZE\0" as *const u8 as *mut libc::c_char);
+
+    set_if_not(
+        b"HISTFILESIZE\0" as *const u8 as *mut libc::c_char,
+        get_string_value(b"HISTSIZE\0" as *const u8 as *mut libc::c_char),
+    );
+    sv_histsize(b"HISTFILESIZE\0" as *const u8 as *mut libc::c_char);
+
+    hf = get_string_value(b"HISTFILE\0" as *const u8 as *mut libc::c_char);
     unsafe {
-        set_if_not(
-            b"HISTSIZE\0" as *const u8 as *mut libc::c_char,
-            HISTSIZE_DEFAULT!(),
-        );
-        sv_histsize(b"HISTSIZE\0" as *const u8 as *mut libc::c_char);
-
-        set_if_not(
-            b"HISTFILESIZE\0" as *const u8 as *mut libc::c_char,
-            get_string_value(b"HISTSIZE\0" as *const u8 as *mut libc::c_char),
-        );
-        sv_histsize(b"HISTFILESIZE\0" as *const u8 as *mut libc::c_char);
-
-        hf = get_string_value(b"HISTFILE\0" as *const u8 as *mut libc::c_char);
-
         if !hf.is_null() && *hf as libc::c_int != 0 && file_exists(hf) != 0 {
-            read_history(hf);
+            c_read_history(hf);
             history_lines_in_file = history_lines_read_from_file;
-            using_history();
+            c_using_history();
         }
     }
 }
 
 #[no_mangle]
 pub fn bash_clear_history() {
+    c_clear_history();
     unsafe {
-        clear_history();
         history_lines_this_session = 0;
     }
 }
 
 #[no_mangle]
 pub fn bash_delete_histent(i: libc::c_int) -> libc::c_int {
-    let mut discard: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-    unsafe {
-        discard = remove_history(i);
-        if !discard.is_null() {
-            free_history_entry(discard);
+    let discard: *mut HIST_ENTRY;
+
+    discard = c_remove_history(i);
+    if !discard.is_null() {
+        c_free_history_entry(discard);
+        unsafe {
             history_lines_this_session -= 1;
         }
     }
+
     return (discard != 0 as *mut HIST_ENTRY) as libc::c_int;
 }
 
 #[no_mangle]
 pub fn bash_delete_history_range(first: libc::c_int, last: libc::c_int) -> libc::c_int {
-    let mut i: libc::c_int = 0;
-    let mut discard_list: *mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
+    let mut i: libc::c_int;
+    let discard_list: *mut *mut HIST_ENTRY;
+
+    discard_list = c_remove_history_range(first, last);
+    i = 0 as libc::c_int;
     unsafe {
-        discard_list = remove_history_range(first, last);
-        i = 0 as libc::c_int;
         while !discard_list.is_null() && !(*discard_list.offset(i as isize)).is_null() {
-            free_history_entry(*discard_list.offset(i as isize));
+            c_free_history_entry(*discard_list.offset(i as isize));
             i += 1;
         }
         history_lines_this_session -= i;
     }
+
     return 1 as libc::c_int;
 }
 
 #[no_mangle]
 pub fn bash_delete_last_history() -> libc::c_int {
-    let mut i: libc::c_int = 0;
-    let mut hlist: *mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
-    let mut histent: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-    let mut r: libc::c_int = 0;
+    let mut i: libc::c_int;
+    let hlist: *mut *mut HIST_ENTRY;
+    let histent: *mut HIST_ENTRY;
+    let r: libc::c_int;
+
+    hlist = c_history_list();
+    if hlist.is_null() {
+        return 0;
+    }
+
+    i = 0;
+    while unsafe { !(*hlist.offset(i as isize)).is_null() } {
+        i += 1;
+    }
+
+    i -= 1;
+    histent = unsafe { c_history_get(history_base + i) };
+    if histent.is_null() {
+        return 0;
+    }
+
+    r = bash_delete_histent(i);
     unsafe {
-        hlist = history_list();
-        if hlist.is_null() {
-            return 0;
-        }
-
-        i = 0;
-        while !(*hlist.offset(i as isize)).is_null() {
-            i += 1;
-        }
-
-        i -= 1;
-        histent = history_get(history_base + i);
-        if histent.is_null() {
-            return 0;
-        }
-
-        r = bash_delete_histent(i);
-        if where_history() > history_length {
-            history_set_pos(history_length);
+        if c_where_history() > history_length {
+            c_history_set_pos(history_length);
         }
     }
+
     return r;
 }
 
 #[no_mangle]
 pub fn maybe_append_history(filename: *mut libc::c_char) -> libc::c_int {
-    let mut fd: libc::c_int = 0;
-    let mut result: libc::c_int = 0;
-    let mut histlen: libc::c_int = 0;
+    let fd: libc::c_int;
+    let mut result: libc::c_int;
+    let histlen: libc::c_int;
     let mut buf: crate::src_common::stat = crate::src_common::stat_init;
 
     result = EXECUTION_SUCCESS as i32;
     unsafe {
         if history_lines_this_session > 0 {
-            if stat(filename, &mut buf) == -1 && errno!() == ENOENT!() {
+            if c_stat(filename, &mut buf) == -1 && *c___errno_location() == ENOENT!() {
                 fd = libc::open(
                     filename,
                     O_WRONLY as i32 | O_CREAT as i32,
@@ -288,17 +291,17 @@ pub fn maybe_append_history(filename: *mut libc::c_char) -> libc::c_int {
                     builtin_error(
                         b"%s: cannot create: %s\0" as *const u8 as *const libc::c_char,
                         filename,
-                        libc::strerror(errno!()),
+                        libc::strerror(*c___errno_location()),
                     );
                     return 1 as libc::c_int;
                 }
                 libc::close(fd);
             }
-            histlen = where_history();
+            histlen = c_where_history();
             if histlen > 0 && history_lines_this_session > histlen {
                 history_lines_this_session = histlen;
             }
-            result = append_history(history_lines_this_session, filename);
+            result = c_append_history(history_lines_this_session, filename);
             history_lines_in_file += history_lines_this_session;
             history_lines_this_session = 0;
         } else {
@@ -310,15 +313,15 @@ pub fn maybe_append_history(filename: *mut libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn maybe_save_shell_history() -> libc::c_int {
-    let mut result: libc::c_int = 0;
-    let mut hf: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut result: libc::c_int;
+    let hf: *mut libc::c_char;
     result = 0;
     unsafe {
         if history_lines_this_session > 0 {
             hf = get_string_value(b"HISTFILE\0" as *const u8 as *const libc::c_char);
             if !hf.is_null() && *hf as libc::c_int != 0 {
                 if file_exists(hf) == 0 {
-                    let mut file: libc::c_int = 0;
+                    let file: libc::c_int;
                     file = libc::open(
                         hf,
                         O_CREAT as libc::c_int | O_TRUNC as libc::c_int | O_WRONLY as libc::c_int,
@@ -328,12 +331,12 @@ pub fn maybe_save_shell_history() -> libc::c_int {
                         libc::close(file);
                     }
                 }
-                using_history();
-                if history_lines_this_session <= where_history() || force_append_history != 0 {
-                    result = append_history(history_lines_this_session, hf);
+                c_using_history();
+                if history_lines_this_session <= c_where_history() || force_append_history != 0 {
+                    result = c_append_history(history_lines_this_session, hf);
                     history_lines_in_file += history_lines_this_session;
                 } else {
-                    result = write_history(hf);
+                    result = c_write_history(hf);
                     history_lines_in_file = history_lines_written_to_file;
                 }
                 history_lines_this_session = 0;
@@ -345,15 +348,13 @@ pub fn maybe_save_shell_history() -> libc::c_int {
 }
 
 fn re_edit(text: *mut libc::c_char) {
-    unsafe {
-        if bash_input.type_0 as libc::c_uint == st_stdin as libc::c_int as libc::c_uint {
-            bash_re_edit(text);
-        }
+    if unsafe { bash_input.type_0 as libc::c_uint == st_stdin as libc::c_int as libc::c_uint } {
+        bash_re_edit(text);
     }
 }
 
 fn history_expansion_p(line: *mut libc::c_char) -> libc::c_int {
-    let mut s: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut s: *mut libc::c_char;
     s = line;
     unsafe {
         while *s != 0 {
@@ -375,16 +376,16 @@ pub fn pre_process_line(
     addit: libc::c_int,
 ) -> *mut libc::c_char {
     let mut history_value: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut return_value: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut expanded: libc::c_int = 0;
+    let mut return_value: *mut libc::c_char;
+    let expanded: libc::c_int;
     return_value = line;
-    expanded = 0;
+    // expanded = 0;
     unsafe {
         if history_expansion_inhibited == 0
             && history_expansion != 0
             && history_expansion_p(line) != 0
         {
-            let mut old_len: libc::c_int = 0;
+            let old_len: libc::c_int;
             old_len = history_length;
             if history_length > 0
                 && command_oriented_history != 0
@@ -393,7 +394,7 @@ pub fn pre_process_line(
             {
                 history_length -= 1;
             }
-            expanded = history_expand(line, &mut history_value);
+            expanded = c_history_expand(line, &mut history_value);
             if history_length >= 0
                 && command_oriented_history != 0
                 && current_command_first_line_saved != 0
@@ -428,7 +429,7 @@ pub fn pre_process_line(
                     return 0 as *mut libc::c_char;
                 }
             }
-            expanded = 1;
+            // expanded = 1;
             return_value = history_value;
         }
         if addit != 0 && remember_on_history != 0 && *return_value as libc::c_int != 0 {
@@ -439,8 +440,8 @@ pub fn pre_process_line(
 }
 
 fn shell_comment(line: *mut libc::c_char) -> libc::c_int {
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut n: libc::c_int = 0;
+    let mut p: *mut libc::c_char;
+    let n: libc::c_int;
     if line.is_null() {
         return 0;
     }
@@ -470,8 +471,8 @@ fn shell_comment(line: *mut libc::c_char) -> libc::c_int {
 }
 
 fn check_history_control(line: *mut libc::c_char) -> libc::c_int {
-    let mut temp: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-    let mut r: libc::c_int = 0;
+    let temp: *mut HIST_ENTRY;
+    let r: libc::c_int;
     unsafe {
         if history_control == 0 {
             return 1;
@@ -480,10 +481,10 @@ fn check_history_control(line: *mut libc::c_char) -> libc::c_int {
             return 0;
         }
         if history_control & HC_IGNDUPS as libc::c_int != 0 {
-            using_history();
-            temp = previous_history();
+            c_using_history();
+            temp = c_previous_history();
             r = (temp.is_null() || STREQ!((*temp).line, line) == false) as libc::c_int;
-            using_history();
+            c_using_history();
             if r == 0 {
                 return r;
             }
@@ -493,30 +494,29 @@ fn check_history_control(line: *mut libc::c_char) -> libc::c_int {
 }
 
 fn hc_erasedups(line: *mut libc::c_char) {
-    let mut temp: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-    let mut r: libc::c_int = 0;
-    unsafe {
-        using_history();
-        loop {
-            temp = previous_history();
-            if temp.is_null() {
-                break;
-            }
-            if STREQ!((*temp).line, line) {
-                r = where_history();
-                temp = remove_history(r);
-                if !temp.is_null() {
-                    free_history_entry(temp);
-                }
+    let mut temp: *mut HIST_ENTRY;
+    let mut r: libc::c_int;
+
+    c_using_history();
+    loop {
+        temp = c_previous_history();
+        if temp.is_null() {
+            break;
+        }
+        if unsafe { STREQ!((*temp).line, line) } {
+            r = c_where_history();
+            temp = c_remove_history(r);
+            if !temp.is_null() {
+                c_free_history_entry(temp);
             }
         }
-        using_history();
     }
+    c_using_history();
 }
 
 #[no_mangle]
 pub fn maybe_add_history(line: *mut libc::c_char) {
-    let mut is_comment: libc::c_int = 0;
+    let is_comment: libc::c_int;
     unsafe {
         hist_last_line_added = 0;
         is_comment = if parser_state & PST_HEREDOC as libc::c_int != 0 {
@@ -551,33 +551,32 @@ pub fn maybe_add_history(line: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn check_add_history(line: *mut libc::c_char, force: libc::c_int) -> libc::c_int {
-    unsafe {
-        if check_history_control(line) != 0 && history_should_ignore(line) == 0 {
-            if history_control & HC_ERASEDUPS as libc::c_int != 0 {
-                hc_erasedups(line);
-            }
-            if force != 0 {
-                really_add_history(line);
-                using_history();
-            } else {
-                bash_add_history(line);
-            }
-            return 1;
+    if check_history_control(line) != 0 && history_should_ignore(line) == 0 {
+        if unsafe { history_control & HC_ERASEDUPS as libc::c_int != 0 } {
+            hc_erasedups(line);
         }
+        if force != 0 {
+            really_add_history(line);
+            c_using_history();
+        } else {
+            bash_add_history(line);
+        }
+        return 1;
     }
+
     return 0;
 }
 
 #[no_mangle]
 pub fn bash_add_history(line: *mut libc::c_char) {
-    let mut add_it: libc::c_int = 0;
-    let mut offset: libc::c_int = 0;
-    let mut curlen: libc::c_int = 0;
-    let mut is_comment: libc::c_int = 0;
-    let mut current: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-    let mut old: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-    let mut chars_to_add: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut new_line: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut add_it: libc::c_int;
+    let offset: libc::c_int;
+    let mut curlen: libc::c_int;
+    let is_comment: libc::c_int;
+    let current: *mut HIST_ENTRY;
+    let old: *mut HIST_ENTRY;
+    let mut chars_to_add: *mut libc::c_char;
+    let new_line: *mut libc::c_char;
 
     add_it = 1;
     unsafe {
@@ -599,8 +598,8 @@ pub fn bash_add_history(line: *mut libc::c_char) {
             } else {
                 chars_to_add = history_delimiting_chars(line);
             }
-            using_history();
-            current = previous_history();
+            c_using_history();
+            current = c_previous_history();
             current_command_line_comment = if is_comment != 0 {
                 current_command_line_count
             } else {
@@ -638,18 +637,18 @@ pub fn bash_add_history(line: *mut libc::c_char) {
                     chars_to_add,
                     line,
                 );
-                offset = where_history();
-                old = replace_history_entry(offset, new_line, (*current).data);
+                offset = c_where_history();
+                old = c_replace_history_entry(offset, new_line, (*current).data);
 
                 libc::free(new_line as *mut libc::c_void);
                 if !old.is_null() {
-                    free_history_entry(old);
+                    c_free_history_entry(old);
                 }
                 add_it = 0 as libc::c_int;
             }
         }
         if add_it != 0
-            && history_is_stifled() != 0
+            && c_history_is_stifled() != 0
             && history_length == 0 as libc::c_int
             && history_length == history_max_entries
         {
@@ -658,7 +657,7 @@ pub fn bash_add_history(line: *mut libc::c_char) {
         if add_it != 0 {
             really_add_history(line);
         }
-        using_history();
+        c_using_history();
     }
 }
 
@@ -666,7 +665,7 @@ fn really_add_history(line: *mut libc::c_char) {
     unsafe {
         hist_last_line_added = 1;
         hist_last_line_pushed = 0;
-        add_history(line);
+        c_add_history(line);
         history_lines_this_session += 1;
     }
 }
@@ -674,9 +673,9 @@ fn really_add_history(line: *mut libc::c_char) {
 #[no_mangle]
 pub fn history_number() -> libc::c_int {
     unsafe {
-        using_history();
+        c_using_history();
         return if remember_on_history != 0 || enable_history_list != 0 {
-            history_base + where_history()
+            history_base + c_where_history()
         } else {
             1
         };
@@ -684,7 +683,7 @@ pub fn history_number() -> libc::c_int {
 }
 
 fn should_expand(s: *mut libc::c_char) -> libc::c_int {
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut p: *mut libc::c_char;
     p = s;
     unsafe {
         while !p.is_null() && *p as libc::c_int != 0 {
@@ -709,25 +708,25 @@ fn histignore_item_func(ign: *mut ign) -> libc::c_int {
 }
 
 #[no_mangle]
-pub fn setup_history_ignore(varname: *mut libc::c_char) {
+pub fn setup_history_ignore(_varname: *mut libc::c_char) {
     unsafe {
         setup_ignore_patterns(&mut histignore);
     }
 }
 
 fn last_history_entry() -> *mut HIST_ENTRY {
-    let mut he: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-    unsafe {
-        using_history();
-        he = previous_history();
-        using_history();
-    }
+    let he: *mut HIST_ENTRY;
+
+    c_using_history();
+    he = c_previous_history();
+    c_using_history();
+
     return he;
 }
 
 #[no_mangle]
 pub fn last_history_line() -> *mut libc::c_char {
-    let mut he: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
+    let he: *mut HIST_ENTRY;
 
     he = last_history_entry();
     if he.is_null() {
@@ -737,8 +736,8 @@ pub fn last_history_line() -> *mut libc::c_char {
 }
 
 fn expand_histignore_pattern(pat: *mut libc::c_char) -> *mut libc::c_char {
-    let mut phe: *mut HIST_ENTRY = 0 as *mut HIST_ENTRY;
-    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
+    let phe: *mut HIST_ENTRY;
+    let ret: *mut libc::c_char;
 
     phe = last_history_entry();
     unsafe {
@@ -751,9 +750,9 @@ fn expand_histignore_pattern(pat: *mut libc::c_char) -> *mut libc::c_char {
 }
 
 fn history_should_ignore(line: *mut libc::c_char) -> libc::c_int {
-    let mut i: libc::c_int = 0;
-    let mut match_0: libc::c_int = 0;
-    let mut npat: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut i: libc::c_int;
+    let mut match_0: libc::c_int;
+    let mut npat: *mut libc::c_char;
     unsafe {
         if histignore.num_ignores == 0 {
             return 0;
@@ -766,7 +765,7 @@ fn history_should_ignore(line: *mut libc::c_char) -> libc::c_int {
             } else {
                 npat = (*(histignore.ignores).offset(i as isize)).val;
             }
-            match_0 = (strmatch(npat, line, FNMATCH_EXTFLAG!()) != FNM_NOMATCH!() as libc::c_int)
+            match_0 = (c_strmatch(npat, line, FNMATCH_EXTFLAG!()) != FNM_NOMATCH!() as libc::c_int)
                 as libc::c_int;
 
             if (*(histignore.ignores).offset(i as isize)).flags & HIGN_EXPAND!() != 0 {
