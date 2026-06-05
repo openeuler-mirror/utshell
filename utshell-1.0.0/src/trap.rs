@@ -1,6 +1,4 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
+use crate::array::array_dispose;
 use crate::bashline::bashline_set_event_hook;
 use crate::builtins::evalstring::evalstring;
 use crate::builtins::wait::wait_builtin;
@@ -15,7 +13,7 @@ use crate::jobs::run_sigchld_trap;
 use crate::jobs::save_pgrp_pipe;
 use crate::jobs::save_pipeline;
 use crate::jobs::stop_making_children;
-use crate::readline::array_dispose;
+use crate::parse_and_execute;
 use crate::sig::initialize_terminating_signals;
 use crate::sig::jump_to_top_level;
 use crate::sig::set_signal_handler;
@@ -27,7 +25,6 @@ use crate::variables::save_pipestatus_array;
 use crate::y_tab::reset_parser;
 use crate::y_tab::restore_parser_state;
 use crate::y_tab::save_parser_state;
-
 static mut sigmodes: [libc::c_int; 68] = [0; 68];
 static mut catch_flag: libc::c_int = 0;
 
@@ -79,36 +76,33 @@ pub fn initialize_traps() {
 
 #[no_mangle]
 pub fn signal_name(sig: libc::c_int) -> *mut libc::c_char {
-    unsafe {
-        let ret: *mut libc::c_char = if sig >= BASH_NSIG as libc::c_int
-            || sig < 0 as libc::c_int
-            || (signal_names[sig as usize]).is_null()
-        {
-            dcgettext(
-                0 as *const libc::c_char,
-                b"invalid signal number\0" as *const u8 as *const libc::c_char,
-                5 as libc::c_int,
-            )
-        } else {
-            signal_names[sig as usize]
-        };
-        return ret;
-    }
+    let ret: *mut libc::c_char = if sig >= BASH_NSIG as libc::c_int
+        || sig < 0 as libc::c_int
+        || unsafe { (signal_names[sig as usize]).is_null() }
+    {
+        c_dcgettext(
+            0 as *const libc::c_char,
+            b"invalid signal number\0" as *const u8 as *const libc::c_char,
+            5 as libc::c_int,
+        )
+    } else {
+        unsafe { signal_names[sig as usize] }
+    };
+    return ret;
 }
 
 #[no_mangle]
 pub fn decode_signal(string: *mut libc::c_char, flags: libc::c_int) -> libc::c_int {
+    let mut sig: intmax_t = 0;
+    let mut name: *mut libc::c_char;
+    if legal_number(string, &mut sig) != 0 {
+        return if sig >= 0 as libc::c_int as intmax_t && sig < NSIG as intmax_t {
+            sig as libc::c_int
+        } else {
+            NO_SIG as libc::c_int
+        };
+    }
     unsafe {
-        let mut sig: intmax_t = 0;
-        let mut name: *mut libc::c_char;
-        if legal_number(string, &mut sig) != 0 {
-            return if sig >= 0 as libc::c_int as intmax_t && sig < NSIG as intmax_t {
-                sig as libc::c_int
-            } else {
-                NO_SIG as libc::c_int
-            };
-        }
-
         if (libc::strncmp(
             string,
             b"SIGRTMIN+\0" as *const u8 as *const libc::c_char,
@@ -228,7 +222,7 @@ pub fn run_pending_traps() {
             }
             if evalnest_max > 0 as libc::c_int && evalnest > evalnest_max {
                 internal_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"trap handler: maximum trap handler level exceeded (%d)\0" as *const u8
                             as *const libc::c_char,
@@ -248,7 +242,6 @@ pub fn run_pending_traps() {
         ps = save_pipestatus_array();
         old_running = running_trap;
 
-        //let mut current_block_56: u64;
         sig = 1 as libc::c_int;
         while sig < NSIG as i32 {
             if pending_traps[sig as usize] != 0 {
@@ -260,7 +253,6 @@ pub fn run_pending_traps() {
                         &mut interrupt_state as *mut sig_atomic_t,
                         0 as libc::c_int,
                     );
-                    //current_block_56 = 1345366029464561491;
                 } else if sig == libc::SIGCHLD as libc::c_int
                     && trap_list[libc::SIGCHLD as libc::c_int as usize]
                         != ::core::mem::transmute::<fn() -> (), *mut libc::c_char>(initialize_traps)
@@ -281,7 +273,7 @@ pub fn run_pending_traps() {
                     /* continue here rather than reset pending_traps[SIGCHLD] below in
                     case there are recursive calls to run_pending_traps and children
                     have been reaped while run_sigchld_trap was running. */
-                    continue; //current_block_56 = 10599921512955367680;
+                    continue;
                 } else if sig == libc::SIGCHLD as libc::c_int
                     && trap_list[libc::SIGCHLD as libc::c_int as usize]
                         == ::core::mem::transmute::<fn() -> (), *mut libc::c_char>(initialize_traps)
@@ -290,14 +282,13 @@ pub fn run_pending_traps() {
                 {
                     running_trap = 0 as libc::c_int;
                     sig += 1;
-                    continue; // current_block_56 = 10599921512955367680;
+                    continue;
                 } else if sig == libc::SIGCHLD as libc::c_int
                     && sigmodes[libc::SIGCHLD as usize] & SIG_INPROGRESS as libc::c_int != 0
-                //else if (sig == libc::SIGCHLD && (sigmodes[libc::SIGCHLD] & SIG_INPROGRESS))
                 {
                     running_trap = 0 as libc::c_int;
                     sig += 1;
-                    continue; //current_block_56 = 10599921512955367680;
+                    continue;
                 } else {
                     if (trap_list[sig as usize]).is_null()
                         || trap_list[sig as usize]
@@ -312,7 +303,7 @@ pub fn run_pending_traps() {
                             )
                     {
                         internal_warning(
-                            dcgettext(
+                            c_dcgettext(
                                 0 as *const libc::c_char,
                                 b"run_pending_traps: bad value in trap_list[%d]: %p\0" as *const u8
                                     as *const libc::c_char,
@@ -323,7 +314,7 @@ pub fn run_pending_traps() {
                         );
                         if (trap_list[sig as usize]).is_null() {
                             internal_warning(
-                            dcgettext(
+                            c_dcgettext(
                                 0 as *const libc::c_char,
                                 b"run_pending_traps: signal handler is SIG_DFL, resending %d (%s) to myself\0"
                                     as *const u8 as *const libc::c_char,
@@ -354,7 +345,6 @@ pub fn run_pending_traps() {
                         restore_parser_state(&mut pstate);
                         temporary_env = save_tempenv;
                     }
-                    //current_block_56 = 1345366029464561491;
                 }
 
                 pending_traps[sig as usize] = 0 as libc::c_int;
@@ -393,7 +383,7 @@ pub fn trap_handler(sig: libc::c_int) {
                 == ::core::mem::transmute::<libc::size_t, *mut libc::c_char>(libc::SIG_IGN)
         {
             programming_error(
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"trap_handler: bad signal %d\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
@@ -401,18 +391,18 @@ pub fn trap_handler(sig: libc::c_int) {
                 sig,
             );
         } else {
-            oerrno = *__errno_location();
+            oerrno = *c___errno_location();
             set_trap_state(sig);
             if this_shell_builtin.is_some() && this_shell_builtin == Some(wait_builtin) {
                 wait_signal_received = sig;
                 if waiting_for_child != 0 && wait_intr_flag != 0 {
-                    siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
+                    c_siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
                 }
             }
             if RL_ISSTATE!(RL_STATE_SIGHANDLER) != 0 {
                 bashline_set_event_hook();
             }
-            *__errno_location() = oerrno;
+            *c___errno_location() = oerrno;
         };
     }
 }
@@ -453,11 +443,12 @@ pub fn any_signals_trapped() -> libc::c_int {
 #[no_mangle]
 pub fn clear_pending_traps() {
     let mut i: libc::c_int = 1 as libc::c_int;
-    unsafe {
-        while i < NSIG as libc::c_int + 1 as libc::c_int {
+
+    while i < NSIG as libc::c_int + 1 as libc::c_int {
+        unsafe {
             pending_traps[i as usize] = 0 as libc::c_int;
-            i += 1;
         }
+        i += 1;
     }
 }
 
@@ -512,10 +503,8 @@ pub fn queue_sigchld_trap(nchild: libc::c_int) {
 
 #[inline]
 fn trap_if_untrapped(sig: libc::c_int, command: *mut libc::c_char) {
-    unsafe {
-        if sigmodes[sig as usize] & SIG_TRAPPED == 0 as libc::c_int {
-            set_signal(sig, command);
-        }
+    if unsafe { sigmodes[sig as usize] & SIG_TRAPPED == 0 as libc::c_int } {
+        set_signal(sig, command);
     }
 }
 
@@ -525,9 +514,7 @@ pub fn set_debug_trap(command: *mut libc::c_char) {
 }
 #[no_mangle]
 pub fn maybe_set_debug_trap(command: *mut libc::c_char) {
-    unsafe {
-        trap_if_untrapped(DEBUG_TRAP as libc::c_int, command);
-    }
+    trap_if_untrapped(DEBUG_TRAP as libc::c_int, command);
 }
 #[no_mangle]
 pub fn set_error_trap(command: *mut libc::c_char) {
@@ -590,7 +577,6 @@ pub fn set_signal(sig: libc::c_int, string: *mut libc::c_char) {
     let mut set: sigset_t = sigset_t { __val: [0; 16] };
     let mut oset: sigset_t = sigset_t { __val: [0; 16] };
     unsafe {
-        //#define SPECIAL_TRAP(s) ((s) == EXIT_TRAP || (s) == DEBUG_TRAP || (s) == ERROR_TRAP || (s) == RETURN_TRAP)
         if SPECIAL_TRAP!(sig) {
             change_signal(sig, savestring!(string));
             if sig == EXIT_TRAP as libc::c_int && interactive == 0 as libc::c_int {
@@ -629,10 +615,10 @@ pub fn set_signal(sig: libc::c_int, string: *mut libc::c_char) {
             }
         }
         if sigmodes[sig as usize] & SIG_NO_TRAP as libc::c_int == 0 as libc::c_int {
-            sigemptyset(&mut set);
-            sigaddset(&mut set, sig);
-            sigemptyset(&mut oset);
-            sigprocmask(0 as libc::c_int, &mut set, &mut oset);
+            c_sigemptyset(&mut set);
+            c_sigaddset(&mut set, sig);
+            c_sigemptyset(&mut oset);
+            c_sigprocmask(0 as libc::c_int, &mut set, &mut oset);
             change_signal(sig, savestring!(string));
             set_signal_handler(
                 sig,
@@ -640,7 +626,7 @@ pub fn set_signal(sig: libc::c_int, string: *mut libc::c_char) {
                     ::core::mem::transmute::<fn(libc::c_int) -> (), fn() -> ()>(trap_handler),
                 )),
             );
-            sigprocmask(
+            c_sigprocmask(
                 2 as libc::c_int,
                 &mut oset,
                 0 as *mut libc::c_void as *mut sigset_t,
@@ -941,47 +927,45 @@ pub fn run_trap_cleanup(sig: libc::c_int) {
     }
 }
 fn _run_trap_internal(sig: libc::c_int, tag: *mut libc::c_char) -> libc::c_int {
+    let trap_command: *mut libc::c_char;
+    let old_trap: *mut libc::c_char;
+    let mut trap_exit_value: libc::c_int;
+    let mut save_return_catch_flag: libc::c_int = 0;
+    let mut function_code: libc::c_int = 0;
+    let old_modes: libc::c_int;
+    let old_running: libc::c_int;
+    let old_int: libc::c_int;
+    let mut flags: libc::c_int;
+    let mut save_return_catch: sigjmp_buf = [__jmp_buf_tag {
+        __jmpbuf: [0; 8],
+        __mask_was_saved: 0,
+        __saved_mask: sigset_t { __val: [0; 16] },
+    }; 1];
+    let save_subst_varlist: *mut WordList;
+    let save_tempenv: *mut HASH_TABLE;
+    let mut pstate: sh_parser_state_t = _sh_parser_state_t {
+        parser_state: 0,
+        token_state: 0 as *mut libc::c_int,
+        token: 0 as *mut libc::c_char,
+        token_buffer_size: 0,
+        input_line_terminator: 0,
+        eof_encountered: 0,
+        prompt_string_pointer: 0 as *mut *mut libc::c_char,
+        current_command_line_count: 0,
+        remember_on_history: 0,
+        history_expansion_inhibited: 0,
+        last_command_exit_value: 0,
+        pipestatus: 0 as *mut ARRAY,
+        last_shell_builtin: None,
+        this_shell_builtin: None,
+        expand_aliases: 0,
+        echo_input_at_read: 0,
+        need_here_doc: 0,
+        here_doc_first_line: 0,
+        redir_stack: [0 as *mut REDIRECT; 16],
+    };
+    let ps: *mut ARRAY;
     unsafe {
-        let trap_command: *mut libc::c_char;
-        let old_trap: *mut libc::c_char;
-        let mut trap_exit_value: libc::c_int;
-        let mut save_return_catch_flag: libc::c_int = 0;
-        let mut function_code: libc::c_int = 0;
-        let old_modes: libc::c_int;
-        let old_running: libc::c_int;
-        let old_int: libc::c_int;
-        let mut flags: libc::c_int;
-        let mut save_return_catch: sigjmp_buf = [__jmp_buf_tag {
-            __jmpbuf: [0; 8],
-            __mask_was_saved: 0,
-            __saved_mask: sigset_t { __val: [0; 16] },
-        }; 1];
-        let save_subst_varlist: *mut WordList;
-        let save_tempenv: *mut HASH_TABLE;
-        let mut pstate: sh_parser_state_t = _sh_parser_state_t {
-            parser_state: 0,
-            token_state: 0 as *mut libc::c_int,
-            token: 0 as *mut libc::c_char,
-            token_buffer_size: 0,
-            input_line_terminator: 0,
-            eof_encountered: 0,
-            prompt_string_pointer: 0 as *mut *mut libc::c_char,
-            current_command_line_count: 0,
-            remember_on_history: 0,
-            history_expansion_inhibited: 0,
-            last_command_exit_value: 0,
-            pipestatus: 0 as *mut ARRAY,
-            last_shell_builtin: None,
-            this_shell_builtin: None,
-            expand_aliases: 0,
-            echo_input_at_read: 0,
-            need_here_doc: 0,
-            here_doc_first_line: 0,
-            redir_stack: [0 as *mut REDIRECT; 16],
-        };
-        let ps: *mut ARRAY;
-        //old_running = -(1 as libc::c_int);
-        //old_modes = old_running;
         ::core::ptr::write_volatile(&mut function_code as *mut libc::c_int, 0 as libc::c_int);
         trap_exit_value =
             ::core::ptr::read_volatile::<libc::c_int>(&function_code as *const libc::c_int);
@@ -1077,7 +1061,7 @@ fn _run_trap_internal(sig: libc::c_int, tag: *mut libc::c_char) -> libc::c_int {
                     ::core::mem::size_of::<sigjmp_buf>() as libc::c_ulong as libc::c_int,
                 );
                 if function_code != 0 {
-                    siglongjmp(return_catch.as_mut_ptr(), 1 as libc::c_int);
+                    c_siglongjmp(return_catch.as_mut_ptr(), 1 as libc::c_int);
                 }
             }
         }
@@ -1086,12 +1070,12 @@ fn _run_trap_internal(sig: libc::c_int, tag: *mut libc::c_char) -> libc::c_int {
 }
 #[no_mangle]
 pub fn run_debug_trap() -> libc::c_int {
+    let mut trap_exit_value: libc::c_int;
+    let old_verbose: libc::c_int;
+    let save_pgrp: pid_t;
+    let mut save_pipe: [libc::c_int; 2] = [0; 2];
+    trap_exit_value = 0 as libc::c_int;
     unsafe {
-        let mut trap_exit_value: libc::c_int;
-        let old_verbose: libc::c_int;
-        let save_pgrp: pid_t;
-        let mut save_pipe: [libc::c_int; 2] = [0; 2];
-        trap_exit_value = 0 as libc::c_int;
         if sigmodes[(DEBUG_TRAP as libc::c_int + 1 as libc::c_int) as usize]
             & SIG_TRAPPED as libc::c_int
             != 0
@@ -1132,7 +1116,7 @@ pub fn run_debug_trap() -> libc::c_int {
             if debugging_mode != 0 && trap_exit_value == 2 as libc::c_int && return_catch_flag != 0
             {
                 return_catch_value = trap_exit_value;
-                siglongjmp(return_catch.as_mut_ptr(), 1 as libc::c_int);
+                c_siglongjmp(return_catch.as_mut_ptr(), 1 as libc::c_int);
             }
         }
         return trap_exit_value;
@@ -1189,27 +1173,28 @@ pub fn run_interrupt_trap(will_throw: libc::c_int) {
 }
 #[no_mangle]
 pub fn free_trap_strings() {
-    unsafe {
-        let mut i: libc::c_int;
-        i = 0 as libc::c_int;
-        while i < NSIG as libc::c_int {
-            if trap_list[i as usize]
+    let mut i: libc::c_int;
+    i = 0 as libc::c_int;
+    while i < NSIG as libc::c_int {
+        if unsafe {
+            trap_list[i as usize]
                 != ::core::mem::transmute::<libc::intptr_t, *mut libc::c_char>(
                     libc::SIG_IGN as libc::intptr_t,
                 )
-            {
-                free_trap_string(i);
-            }
-            i += 1;
+        } {
+            free_trap_string(i);
         }
-        i = NSIG as libc::c_int;
-        while i < BASH_NSIG as libc::c_int {
-            if sigmodes[i as usize] & SIG_TRAPPED == 0 as libc::c_int {
-                free_trap_string(i);
+        i += 1;
+    }
+    i = NSIG as libc::c_int;
+    while i < BASH_NSIG as libc::c_int {
+        if unsafe { sigmodes[i as usize] & SIG_TRAPPED == 0 as libc::c_int } {
+            free_trap_string(i);
+            unsafe {
                 trap_list[i as usize] = 0 as *mut libc::c_void as *mut libc::c_char;
             }
-            i += 1;
         }
+        i += 1;
     }
 }
 
@@ -1236,15 +1221,15 @@ fn restore_signal(sig: libc::c_int) {
         set_signal_handler(sig, original_signals[sig as usize]);
         change_signal(
             sig,
-            libc::SIG_DFL as *const libc::c_char as *mut libc::c_char, //::core::mem::transmute::<libc::intptr_t, *mut libc::c_char>(libc::SIG_DFL as libc::intptr_t),
+            libc::SIG_DFL as *const libc::c_char as *mut libc::c_char,
         );
         sigmodes[sig as usize] &= !(SIG_TRAPPED);
     }
 }
 
 fn reset_or_restore_signal_handlers(reset: Option<sh_resetsig_func_t>) {
+    let mut i: libc::c_int;
     unsafe {
-        let mut i: libc::c_int;
         if sigmodes[EXIT_TRAP as libc::c_int as usize] & SIG_TRAPPED != 0 {
             sigmodes[EXIT_TRAP as libc::c_int as usize] &= !(SIG_TRAPPED);
             if reset
@@ -1314,32 +1299,31 @@ pub fn restore_original_signals() {
 
 #[no_mangle]
 pub fn maybe_call_trap_handler(sig: libc::c_int) -> libc::c_int {
-    unsafe {
-        if sigmodes[sig as usize] & SIG_TRAPPED != 0
+    if unsafe {
+        sigmodes[sig as usize] & SIG_TRAPPED != 0
             && sigmodes[sig as usize] & SIG_IGNORED == 0 as libc::c_int
-        {
-            match sig as usize {
-                2 => {
-                    run_interrupt_trap(0 as libc::c_int);
-                }
-                EXIT_TRAP => {
-                    run_exit_trap();
-                }
-                DEBUG_TRAP => {
-                    run_debug_trap();
-                }
-                ERROR_TRAP => {
-                    run_error_trap();
-                }
-                _ => {
-                    trap_handler(sig);
-                }
+    } {
+        match sig as usize {
+            2 => {
+                run_interrupt_trap(0 as libc::c_int);
             }
-            return 1 as libc::c_int;
-        } else {
-            return 0 as libc::c_int;
-        };
-    }
+            EXIT_TRAP => {
+                run_exit_trap();
+            }
+            DEBUG_TRAP => {
+                run_debug_trap();
+            }
+            ERROR_TRAP => {
+                run_error_trap();
+            }
+            _ => {
+                trap_handler(sig);
+            }
+        }
+        return 1 as libc::c_int;
+    } else {
+        return 0 as libc::c_int;
+    };
 }
 
 #[no_mangle]
