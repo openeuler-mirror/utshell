@@ -19,19 +19,16 @@ use crate::pcomplib::{
     compspec_create, compspec_dispose, progcomp_flush, progcomp_insert, progcomp_remove,
     progcomp_search, progcomp_walk,
 };
+use crate::readline::{c_rl_completion_matches, c_rl_filename_completion_function};
 use crate::src_common::*;
 
 extern "C" {
     static mut rl_readline_state: libc::c_ulong;
-    fn rl_filename_completion_function(text: *const libc::c_char, state: i32) -> *mut libc::c_char;
-    fn rl_completion_matches(
-        text: *const libc::c_char,
-        entry_function: unsafe extern "C" fn(
-            text: *const libc::c_char,
-            state: i32,
-        ) -> *mut libc::c_char,
-    ) -> *mut *mut libc::c_char;
     fn strlist_print(strlist: *mut STRINGLIST, text: *mut libc::c_char);
+}
+
+fn c_strlist_print(strlist: *mut STRINGLIST, text: *mut libc::c_char) -> () {
+    unsafe { strlist_print(strlist, text) }
 }
 
 #[repr(C)]
@@ -285,17 +282,18 @@ fn RL_ISSTATE(x: libc::c_ulong) -> libc::c_ulong {
 #[no_mangle]
 pub fn find_compact(name: *mut libc::c_char) -> i32 {
     let mut i: i32 = 0;
-    unsafe {
-        let compacts: CompactsArray = CompactsArray::new();
-        while compacts.compactsArr[i as usize].actname != std::ptr::null_mut() {
-            let tmp = CStr::from_ptr(compacts.compactsArr[i as usize].actname);
-            if STREQ(name, compacts.compactsArr[i as usize].actname) {
-                return i;
-            }
-            i += 1;
+
+    let compacts: CompactsArray = CompactsArray::new();
+    while compacts.compactsArr[i as usize].actname != std::ptr::null_mut() {
+        unsafe {
+            let _ = CStr::from_ptr(compacts.compactsArr[i as usize].actname);
         }
-        return -1;
+        if STREQ(name, compacts.compactsArr[i as usize].actname) {
+            return i;
+        }
+        i += 1;
     }
+    return -1;
 }
 
 #[no_mangle]
@@ -314,7 +312,7 @@ pub fn find_compopt(name: *mut libc::c_char) -> i32 {
 
 #[no_mangle]
 pub fn build_actions(
-    mut list: *mut WordList,
+    list: *mut WordList,
     flagp: *mut _optflags,
     actp: *mut libc::c_ulong,
     optp: *mut libc::c_ulong,
@@ -329,185 +327,197 @@ pub fn build_actions(
         flags: 0,
     };
 
-    unsafe {
-        reset_internal_getopt();
-        opt = internal_getopt(
-            list,
-            CString::new("abcdefgjko:prsuvA:G:W:P:S:X:F:C:DEI")
-                .unwrap()
-                .as_ptr() as *mut libc::c_char,
-        );
-        while opt != -1 {
-            opt_given = 1;
-            let optu8: u8 = opt as u8;
-            let optChar: char = char::from(optu8);
-            match optChar {
-                'r' => {
-                    if flagp != std::ptr::null_mut() {
+    reset_internal_getopt();
+    let mag = CString::new("abcdefgjko:prsuvA:G:W:P:S:X:F:C:DEI").unwrap();
+    opt = internal_getopt(list, mag.as_ptr() as *mut libc::c_char);
+    while opt != -1 {
+        opt_given = 1;
+        let optu8: u8 = opt as u8;
+        let optChar: char = char::from(optu8);
+        match optChar {
+            'r' => {
+                if flagp != std::ptr::null_mut() {
+                    unsafe {
                         (*flagp).rflag = 1;
-                    } else {
-                        sh_invalidopt(CString::new("-r").unwrap().as_ptr() as *mut libc::c_char);
-                        builtin_usage();
-                        return EX_USAGE!();
                     }
+                } else {
+                    let msg = CString::new("-r").unwrap();
+                    sh_invalidopt(msg.as_ptr() as *mut libc::c_char);
+                    builtin_usage();
+                    return EX_USAGE!();
                 }
-                'p' => {
-                    if flagp != std::ptr::null_mut() {
+            }
+            'p' => {
+                if flagp != std::ptr::null_mut() {
+                    unsafe {
                         (*flagp).pflag = 1;
-                    } else {
-                        sh_invalidopt(CString::new("-p").unwrap().as_ptr() as *mut libc::c_char);
-                        builtin_usage();
-                        return EX_USAGE!();
                     }
+                } else {
+                    let msg = CString::new("-p").unwrap();
+                    sh_invalidopt(msg.as_ptr() as *mut libc::c_char);
+                    builtin_usage();
+                    return EX_USAGE!();
                 }
-                'a' => {
-                    acts |= CA_ALIAS!();
-                }
-                'b' => {
-                    acts |= CA_BUILTIN!();
-                }
-                'c' => {
-                    acts |= CA_COMMAND!();
-                }
-                'd' => {
-                    acts |= CA_DIRECTORY!();
-                }
-                'e' => {
-                    acts |= CA_EXPORT!();
-                }
-                'f' => {
-                    acts |= CA_FILE!();
-                }
-                'g' => {
-                    acts |= CA_GROUP!();
-                }
-                'j' => {
-                    acts |= CA_GROUP!();
-                }
-                'k' => {
-                    acts |= CA_KEYWORD!();
-                }
-                's' => {
-                    acts |= CA_SERVICE!();
-                }
-                'u' => {
-                    acts |= CA_USER!();
-                }
-                'v' => {
-                    acts |= CA_VARIABLE!();
-                }
-                'o' => {
+            }
+            'a' => {
+                acts |= CA_ALIAS!();
+            }
+            'b' => {
+                acts |= CA_BUILTIN!();
+            }
+            'c' => {
+                acts |= CA_COMMAND!();
+            }
+            'd' => {
+                acts |= CA_DIRECTORY!();
+            }
+            'e' => {
+                acts |= CA_EXPORT!();
+            }
+            'f' => {
+                acts |= CA_FILE!();
+            }
+            'g' => {
+                acts |= CA_GROUP!();
+            }
+            'j' => {
+                acts |= CA_GROUP!();
+            }
+            'k' => {
+                acts |= CA_KEYWORD!();
+            }
+            's' => {
+                acts |= CA_SERVICE!();
+            }
+            'u' => {
+                acts |= CA_USER!();
+            }
+            'v' => {
+                acts |= CA_VARIABLE!();
+            }
+            'o' => {
+                unsafe {
                     ind = find_compopt(list_optarg);
                     if ind < 0 {
                         sh_invalidoptname(list_optarg);
                         return EX_USAGE!();
                     }
-                    let compopts: CompoptArray = CompoptArray::new();
-                    copts |= compopts.compoptArr[ind as usize].optflag;
                 }
-                'A' => {
+                let compopts: CompoptArray = CompoptArray::new();
+                copts |= compopts.compoptArr[ind as usize].optflag;
+            }
+            'A' => {
+                unsafe {
                     ind = find_compact(list_optarg);
-                    if ind < 0 {
-                        builtin_error(
-                            CString::new("%s: invalid action name").unwrap().as_ptr(),
-                            list_optarg,
-                        );
-                        return EX_USAGE!();
+                }
+                if ind < 0 {
+                    unsafe {
+                        let msg = CString::new("%s: invalid action name").unwrap();
+                        builtin_error(msg.as_ptr(), list_optarg);
                     }
-                    let compacts: CompactsArray = CompactsArray::new();
-                    acts |= compacts.compactsArr[ind as usize].actflag;
+                    return EX_USAGE!();
                 }
-                'C' => {
-                    Carg = list_optarg;
-                }
-                'D' => {
-                    if flagp != std::ptr::null_mut() {
+                let compacts: CompactsArray = CompactsArray::new();
+                acts |= compacts.compactsArr[ind as usize].actflag;
+            }
+            'C' => unsafe {
+                Carg = list_optarg;
+            },
+            'D' => {
+                if flagp != std::ptr::null_mut() {
+                    unsafe {
                         (*flagp).Dflag = 1;
-                    } else {
-                        sh_invalidopt(CString::new("-D").unwrap().as_ptr() as *mut libc::c_char);
-                        builtin_usage();
-                        return EX_USAGE!();
                     }
-                }
-                'E' => {
-                    if flagp != std::ptr::null_mut() {
-                        (*flagp).Eflag = 1;
-                    } else {
-                        sh_invalidopt(CString::new("-E").unwrap().as_ptr() as *mut libc::c_char);
-                        builtin_usage();
-                        return EX_USAGE!();
-                    }
-                }
-                'I' => {
-                    if flagp != std::ptr::null_mut() {
-                        (*flagp).Iflag = 1;
-                    } else {
-                        sh_invalidopt(CString::new("-I").unwrap().as_ptr() as *mut libc::c_char);
-                        builtin_usage();
-                        return EX_USAGE!();
-                    }
-                }
-                'F' => {
-                    w.word = list_optarg;
-                    Farg = list_optarg;
-                    w.flags = 0;
-                    if check_identifier(&mut w, posixly_correct) == 0
-                        || libc::strpbrk(Farg, shell_break_chars()) != std::ptr::null_mut()
-                    {
-                        sh_invalidid(Farg);
-                        return EX_USAGE!();
-                    }
-                }
-                'G' => {
-                    Garg = list_optarg;
-                }
-                'P' => {
-                    Parg = list_optarg;
-                }
-                'S' => {
-                    Sarg = list_optarg;
-                }
-                'W' => {
-                    Warg = list_optarg;
-                }
-                'X' => {
-                    Xarg = list_optarg;
-                }
-                _ => {
-                    if opt == -99 {
-                        builtin_help();
-                        return EX_USAGE!();
-                    }
+                } else {
+                    let msg = CString::new("-D").unwrap();
+                    sh_invalidopt(msg.as_ptr() as *mut libc::c_char);
                     builtin_usage();
                     return EX_USAGE!();
                 }
             }
-            opt = internal_getopt(
-                list,
-                CString::new("abcdefgjko:prsuvA:G:W:P:S:X:F:C:DEI")
-                    .unwrap()
-                    .as_ptr() as *mut libc::c_char,
-            );
+            'E' => {
+                if flagp != std::ptr::null_mut() {
+                    unsafe {
+                        (*flagp).Eflag = 1;
+                    }
+                } else {
+                    let msg = CString::new("-E").unwrap();
+                    sh_invalidopt(msg.as_ptr() as *mut libc::c_char);
+                    builtin_usage();
+                    return EX_USAGE!();
+                }
+            }
+            'I' => {
+                if flagp != std::ptr::null_mut() {
+                    unsafe {
+                        (*flagp).Iflag = 1;
+                    }
+                } else {
+                    let msg = CString::new("-I").unwrap();
+                    sh_invalidopt(msg.as_ptr() as *mut libc::c_char);
+                    builtin_usage();
+                    return EX_USAGE!();
+                }
+            }
+            'F' => unsafe {
+                w.word = list_optarg;
+                Farg = list_optarg;
+                w.flags = 0;
+                if check_identifier(&mut w, posixly_correct) == 0
+                    || libc::strpbrk(Farg, shell_break_chars()) != std::ptr::null_mut()
+                {
+                    sh_invalidid(Farg);
+                    return EX_USAGE!();
+                }
+            },
+            'G' => unsafe {
+                Garg = list_optarg;
+            },
+            'P' => unsafe {
+                Parg = list_optarg;
+            },
+            'S' => unsafe {
+                Sarg = list_optarg;
+            },
+            'W' => unsafe {
+                Warg = list_optarg;
+            },
+            'X' => unsafe {
+                Xarg = list_optarg;
+            },
+            _ => {
+                if opt == -99 {
+                    builtin_help();
+                    return EX_USAGE!();
+                }
+                builtin_usage();
+                return EX_USAGE!();
+            }
         }
+        let msg = CString::new("abcdefgjko:prsuvA:G:W:P:S:X:F:C:DEI").unwrap();
+
+        opt = internal_getopt(list, msg.as_ptr() as *mut libc::c_char);
+    }
+    unsafe {
         *actp = acts;
         *optp = copts;
-        list = loptend.clone();
-        if opt_given != 0 {
-            return EXECUTION_SUCCESS!();
-        } else {
-            return EXECUTION_FAILURE!();
-        }
+        // list = loptend.clone();
+    }
+    if opt_given != 0 {
+        return EXECUTION_SUCCESS!();
+    } else {
+        return EXECUTION_FAILURE!();
     }
 }
 
 /* Add, remove, and display completion specifiers. */
 #[no_mangle]
 pub fn complete_builtin(listt: *mut WordList) -> i32 {
-    let mut opt_given: i32 = 0;
+    let opt_given: i32;
     let mut rval: i32;
     let mut acts: libc::c_ulong = 0;
     let mut copts: libc::c_ulong = 0;
-    let mut cs: *mut COMPSPEC;
+    let cs: *mut COMPSPEC;
     let mut oflags: _optflags = _optflags {
         pflag: 0,
         rflag: 0,
@@ -518,19 +528,18 @@ pub fn complete_builtin(listt: *mut WordList) -> i32 {
     let mut l: *mut WordList;
     let wl: *mut WordList;
 
+    let mut list: *mut WordList = listt.clone();
+    if list == std::ptr::null_mut() {
+        print_all_completions();
+        return EXECUTION_SUCCESS!();
+    }
+
+    oflags.pflag = 0;
+    oflags.rflag = 0;
+    oflags.Dflag = 0;
+    oflags.Eflag = 0;
+    oflags.Iflag = 0;
     unsafe {
-        let mut list: *mut WordList = listt.clone();
-        if list == std::ptr::null_mut() {
-            print_all_completions();
-            return EXECUTION_SUCCESS!();
-        }
-
-        oflags.pflag = 0;
-        oflags.rflag = 0;
-        oflags.Dflag = 0;
-        oflags.Eflag = 0;
-        oflags.Iflag = 0;
-
         Garg = std::ptr::null_mut();
         Warg = std::ptr::null_mut();
         Parg = std::ptr::null_mut();
@@ -538,65 +547,68 @@ pub fn complete_builtin(listt: *mut WordList) -> i32 {
         Xarg = std::ptr::null_mut();
         Farg = std::ptr::null_mut();
         Carg = std::ptr::null_mut();
+    }
+    // cs = std::ptr::null_mut();
 
-        cs = std::ptr::null_mut();
+    /* Build the actions from the arguments.  Also sets the [A-Z]arg variables
+    as a side effect if they are supplied as options. */
+    rval = build_actions(list, &mut oflags, &mut acts, &mut copts);
+    if rval == EX_USAGE!() {
+        return rval;
+    }
 
-        /* Build the actions from the arguments.  Also sets the [A-Z]arg variables
-        as a side effect if they are supplied as options. */
-        rval = build_actions(list, &mut oflags, &mut acts, &mut copts);
-        if rval == EX_USAGE!() {
-            return rval;
-        }
+    opt_given = (rval != EXECUTION_FAILURE!()) as i32;
 
-        opt_given = (rval != EXECUTION_FAILURE!()) as i32;
-
+    unsafe {
         list = loptend.clone();
+    }
 
-        if oflags.Dflag != 0 {
-            wl = make_word_list(make_bare_word(DEFAULTCMD()), std::ptr::null_mut());
-        } else if oflags.Eflag != 0 {
-            wl = make_word_list(make_bare_word(EMPTYCMD()), std::ptr::null_mut());
-        } else if oflags.Iflag != 0 {
-            wl = make_word_list(make_bare_word(INITIALWORD()), std::ptr::null_mut());
-        } else {
-            wl = std::ptr::null_mut();
+    if oflags.Dflag != 0 {
+        wl = make_word_list(make_bare_word(DEFAULTCMD()), std::ptr::null_mut());
+    } else if oflags.Eflag != 0 {
+        wl = make_word_list(make_bare_word(EMPTYCMD()), std::ptr::null_mut());
+    } else if oflags.Iflag != 0 {
+        wl = make_word_list(make_bare_word(INITIALWORD()), std::ptr::null_mut());
+    } else {
+        wl = std::ptr::null_mut();
+    }
+
+    /* -p overrides everything else */
+    if oflags.pflag != 0 || (list == std::ptr::null_mut() && opt_given == 0) {
+        if wl != std::ptr::null_mut() {
+            rval = print_cmd_completions(wl);
+            dispose_words(wl);
+            return rval;
+        } else if list == std::ptr::null_mut() {
+            //给了P,但没给参数，直接打印全部并退出
+            print_all_completions();
+            return EXECUTION_SUCCESS!();
         }
+        return print_cmd_completions(list);
+    }
 
-        /* -p overrides everything else */
-        if oflags.pflag != 0 || (list == std::ptr::null_mut() && opt_given == 0) {
-            if wl != std::ptr::null_mut() {
-                rval = print_cmd_completions(wl);
-                dispose_words(wl);
-                return rval;
-            } else if list == std::ptr::null_mut() {
-                //给了P,但没给参数，直接打印全部并退出
-                print_all_completions();
-                return EXECUTION_SUCCESS!();
-            }
-            return print_cmd_completions(list);
+    /* next, -r overrides everything else. */
+    if oflags.rflag != 0 {
+        if wl != std::ptr::null_mut() {
+            rval = remove_cmd_completions(wl);
+            dispose_words(wl);
+            return rval;
+        } else if list == std::ptr::null_mut() {
+            progcomp_flush();
+            return EXECUTION_SUCCESS!();
         }
+        return remove_cmd_completions(list);
+    }
 
-        /* next, -r overrides everything else. */
-        if oflags.rflag != 0 {
-            if wl != std::ptr::null_mut() {
-                rval = remove_cmd_completions(wl);
-                dispose_words(wl);
-                return rval;
-            } else if list == std::ptr::null_mut() {
-                progcomp_flush();
-                return EXECUTION_SUCCESS!();
-            }
-            return remove_cmd_completions(list);
-        }
+    if wl == std::ptr::null_mut() && list == std::ptr::null_mut() && opt_given != 0 {
+        builtin_usage();
+        return EX_USAGE!();
+    }
 
-        if wl == std::ptr::null_mut() && list == std::ptr::null_mut() && opt_given != 0 {
-            builtin_usage();
-            return EX_USAGE!();
-        }
-
-        /* If we get here, we need to build a compspec and add it for each
-        remaining argument. */
-        cs = compspec_create();
+    /* If we get here, we need to build a compspec and add it for each
+    remaining argument. */
+    cs = compspec_create();
+    unsafe {
         (*cs).actions = acts;
         (*cs).options = copts;
 
@@ -607,66 +619,64 @@ pub fn complete_builtin(listt: *mut WordList) -> i32 {
         (*cs).funcname = STRDUP(Farg);
         (*cs).command = STRDUP(Carg);
         (*cs).filterpat = STRDUP(Xarg);
+    }
+    rval = EXECUTION_SUCCESS!();
 
-        rval = EXECUTION_SUCCESS!();
+    if wl != std::ptr::null_mut() {
+        l = wl.clone();
+    } else {
+        l = list.clone();
+    }
 
-        if wl != std::ptr::null_mut() {
-            l = wl.clone();
-        } else {
-            l = list.clone();
+    while l != std::ptr::null_mut() {
+        /* Add CS as the compspec for the specified commands. */
+        if unsafe { progcomp_insert((*(*l).word).word, cs) == 0 } {
+            rval = EXECUTION_FAILURE!();
         }
-
-        while l != std::ptr::null_mut() {
-            /* Add CS as the compspec for the specified commands. */
-            if progcomp_insert((*(*l).word).word, cs) == 0 {
-                rval = EXECUTION_FAILURE!();
-            }
+        unsafe {
             l = (*l).next;
         }
-
-        dispose_words(wl);
-        return rval;
     }
+
+    dispose_words(wl);
+    return rval;
 }
 
 #[no_mangle]
 pub fn remove_cmd_completions(list: *mut WordList) -> i32 {
     let mut l: *mut WordList;
     let mut ret: i32;
-    unsafe {
-        ret = EXECUTION_SUCCESS!();
-        l = list.clone();
-        while l != std::ptr::null_mut() {
-            if progcomp_remove((*(*l).word).word) == 0 {
-                builtin_error(
-                    CString::new("%s: no completion specification")
-                        .unwrap()
-                        .as_ptr(),
-                    (*(*l).word).word,
-                );
-                ret = EXECUTION_FAILURE!();
+
+    ret = EXECUTION_SUCCESS!();
+    l = list.clone();
+    while l != std::ptr::null_mut() {
+        if unsafe { progcomp_remove((*(*l).word).word) == 0 } {
+            unsafe {
+                let msg = CString::new("%s: no completion specification").unwrap();
+                builtin_error(msg.as_ptr(), (*(*l).word).word);
             }
+            ret = EXECUTION_FAILURE!();
+        }
+        unsafe {
             l = (*l).next;
         }
-        return ret;
     }
+    return ret;
 }
 
 #[no_mangle]
 pub fn print_compoptions(copts: libc::c_ulong, full: i32) {
-    unsafe {
-        let compopts: CompoptArray = CompoptArray::new();
-        for i in 0..compopts.compoptArr.len() {
-            if (copts & compopts.compoptArr[i].optflag) != 0 {
-                libc::printf(
-                    CString::new("-o %s ").unwrap().as_ptr(),
-                    compopts.compoptArr[i].optname,
-                );
-            } else if full != 0 {
-                libc::printf(
-                    CString::new("+o %s ").unwrap().as_ptr(),
-                    compopts.compoptArr[i].optname,
-                );
+    let compopts: CompoptArray = CompoptArray::new();
+    for i in 0..compopts.compoptArr.len() {
+        if (copts & compopts.compoptArr[i].optflag) != 0 {
+            unsafe {
+                let msg = CString::new("-o %s ").unwrap();
+                libc::printf(msg.as_ptr(), compopts.compoptArr[i].optname);
+            }
+        } else if full != 0 {
+            unsafe {
+                let msg = CString::new("+o %s ").unwrap();
+                libc::printf(msg.as_ptr(), compopts.compoptArr[i].optname);
             }
         }
     }
@@ -674,25 +684,21 @@ pub fn print_compoptions(copts: libc::c_ulong, full: i32) {
 
 #[no_mangle]
 pub fn print_compactions(acts: libc::c_ulong) {
-    unsafe {
-        let compacts: CompactsArray = CompactsArray::new();
-        for i in 0..compacts.compactsArr.len() {
-            if compacts.compactsArr[i].actopt != 0 && (acts & compacts.compactsArr[i].actflag) != 0
-            {
-                libc::printf(
-                    CString::new("-%c ").unwrap().as_ptr(),
-                    compacts.compactsArr[i].actopt,
-                );
+    let compacts: CompactsArray = CompactsArray::new();
+    for i in 0..compacts.compactsArr.len() {
+        if compacts.compactsArr[i].actopt != 0 && (acts & compacts.compactsArr[i].actflag) != 0 {
+            unsafe {
+                let msg = CString::new("-%c ").unwrap();
+                libc::printf(msg.as_ptr(), compacts.compactsArr[i].actopt);
             }
         }
+    }
 
-        for i in 0..compacts.compactsArr.len() {
-            if compacts.compactsArr[i].actopt == 0 && (acts & compacts.compactsArr[i].actflag) != 0
-            {
-                libc::printf(
-                    CString::new("-A %s ").unwrap().as_ptr(),
-                    compacts.compactsArr[i].actname,
-                );
+    for i in 0..compacts.compactsArr.len() {
+        if compacts.compactsArr[i].actopt == 0 && (acts & compacts.compactsArr[i].actflag) != 0 {
+            unsafe {
+                let msg = CString::new("-A %s ").unwrap();
+                libc::printf(msg.as_ptr(), compacts.compactsArr[i].actname);
             }
         }
     }
@@ -701,15 +707,17 @@ pub fn print_compactions(acts: libc::c_ulong) {
 #[no_mangle]
 pub fn print_arg(arg: *const libc::c_char, flag: *const libc::c_char, quote: i32) {
     let x: *mut libc::c_char;
-    unsafe {
-        if arg != std::ptr::null_mut() {
-            if quote != 0 {
-                // 复制arg 增加单引号返给x
-                x = sh_single_quote(arg as *mut libc::c_char);
-            } else {
-                x = arg as *mut libc::c_char;
-            }
-            libc::printf(CString::new("%s %s ").unwrap().as_ptr(), flag, x);
+
+    if arg != std::ptr::null_mut() {
+        if quote != 0 {
+            // 复制arg 增加单引号返给x
+            x = c_sh_single_quote(arg as *mut libc::c_char);
+        } else {
+            x = arg as *mut libc::c_char;
+        }
+        unsafe {
+            let msg = CString::new("%s %s ").unwrap();
+            libc::printf(msg.as_ptr(), flag, x);
             if x != arg as *mut libc::c_char {
                 libc::free(x as *mut c_void);
             }
@@ -721,16 +729,21 @@ pub fn print_arg(arg: *const libc::c_char, flag: *const libc::c_char, quote: i32
 pub fn print_cmd_name(cmd: *const libc::c_char) {
     unsafe {
         if STREQ(cmd, DEFAULTCMD()) {
-            libc::printf(CString::new("-D").unwrap().as_ptr());
+            let msg = CString::new("-D").unwrap();
+            libc::printf(msg.as_ptr());
         } else if STREQ(cmd, EMPTYCMD()) {
-            libc::printf(CString::new("-E").unwrap().as_ptr());
+            let msg = CString::new("-E").unwrap();
+            libc::printf(msg.as_ptr());
         } else if STREQ(cmd, INITIALWORD()) {
-            libc::printf(CString::new("-I").unwrap().as_ptr());
+            let msg = CString::new("-I").unwrap();
+            libc::printf(msg.as_ptr());
         } else if *cmd == 0 {
             /* XXX - can this happen? */
-            libc::printf(CString::new("''").unwrap().as_ptr());
+            let msg = CString::new("''").unwrap();
+            libc::printf(msg.as_ptr());
         } else {
-            libc::printf(CString::new("%s").unwrap().as_ptr(), cmd);
+            let msg = CString::new("%s").unwrap();
+            libc::printf(msg.as_ptr(), cmd);
         }
     }
 }
@@ -738,7 +751,8 @@ pub fn print_cmd_name(cmd: *const libc::c_char) {
 #[no_mangle]
 pub fn print_one_completion(cmd: *mut libc::c_char, cs: *mut COMPSPEC) -> i32 {
     unsafe {
-        libc::printf(CString::new("complete ").unwrap().as_ptr());
+        let msg1 = CString::new("complete ").unwrap();
+        libc::printf(msg1.as_ptr());
 
         print_compoptions((*cs).options, 0);
         print_compactions((*cs).actions);
@@ -746,19 +760,26 @@ pub fn print_one_completion(cmd: *mut libc::c_char, cs: *mut COMPSPEC) -> i32 {
         /* now the rest of the arguments */
 
         /* arguments that require quoting */
-        print_arg((*cs).globpat, CString::new("-G").unwrap().as_ptr(), 1);
-        print_arg((*cs).words, CString::new("-W").unwrap().as_ptr(), 1);
-        print_arg((*cs).prefix, CString::new("-P").unwrap().as_ptr(), 1);
-        print_arg((*cs).suffix, CString::new("-S").unwrap().as_ptr(), 1);
-        print_arg((*cs).filterpat, CString::new("-X").unwrap().as_ptr(), 1);
-
-        print_arg((*cs).command, CString::new("-C").unwrap().as_ptr(), 1);
+        let msg2 = CString::new("-G").unwrap();
+        print_arg((*cs).globpat, msg2.as_ptr(), 1);
+        let msg3 = CString::new("-W").unwrap();
+        print_arg((*cs).words, msg3.as_ptr(), 1);
+        let msg4 = CString::new("-P").unwrap();
+        print_arg((*cs).prefix, msg4.as_ptr(), 1);
+        let msg5 = CString::new("-S").unwrap();
+        print_arg((*cs).suffix, msg5.as_ptr(), 1);
+        let msg6 = CString::new("-X").unwrap();
+        print_arg((*cs).filterpat, msg6.as_ptr(), 1);
+        let msg8 = CString::new("-C").unwrap();
+        print_arg((*cs).command, msg8.as_ptr(), 1);
 
         /* simple arguments that don't require quoting */
-        print_arg((*cs).funcname, CString::new("-F").unwrap().as_ptr(), 0);
+        let msg7 = CString::new("-F").unwrap();
+        print_arg((*cs).funcname, msg7.as_ptr(), 0);
 
         print_cmd_name(cmd);
-        libc::printf(CString::new("\n").unwrap().as_ptr());
+        let msg9 = CString::new("\n").unwrap();
+        libc::printf(msg9.as_ptr());
 
         return 0;
     }
@@ -767,12 +788,13 @@ pub fn print_one_completion(cmd: *mut libc::c_char, cs: *mut COMPSPEC) -> i32 {
 #[no_mangle]
 pub fn print_compopts(cmd: *mut libc::c_char, cs: *mut COMPSPEC, full: i32) {
     unsafe {
-        libc::printf(CString::new("compopt ").unwrap().as_ptr());
+        let msg1 = CString::new("compopt ").unwrap();
+        libc::printf(msg1.as_ptr());
 
         print_compoptions((*cs).options, full);
         print_cmd_name(cmd);
-
-        libc::printf(CString::new("\n").unwrap().as_ptr());
+        let msg2 = CString::new("\n").unwrap();
+        libc::printf(msg2.as_ptr());
     }
 }
 
@@ -799,26 +821,23 @@ pub fn print_cmd_completions(list: *mut WordList) -> i32 {
     let mut cs: *mut COMPSPEC;
     let mut ret: i32;
 
-    unsafe {
-        ret = EXECUTION_SUCCESS!();
-        l = list.clone();
-        while l != std::ptr::null_mut() {
+    ret = EXECUTION_SUCCESS!();
+    l = list.clone();
+    while l != std::ptr::null_mut() {
+        unsafe {
             cs = progcomp_search((*(*l).word).word);
             if cs != std::ptr::null_mut() {
                 print_one_completion((*(*l).word).word, cs);
             } else {
-                builtin_error(
-                    CString::new("%s: no completion specification")
-                        .unwrap()
-                        .as_ptr(),
-                    (*(*l).word).word,
-                );
+                let msg = CString::new("%s: no completion specification").unwrap();
+
+                builtin_error(msg.as_ptr(), (*(*l).word).word);
                 ret = EXECUTION_FAILURE!();
             }
             l = (*l).next;
         }
-        return sh_chkwrite(ret);
     }
+    return sh_chkwrite(ret);
 }
 
 #[no_mangle]
@@ -826,18 +845,18 @@ pub fn compgen_builtin(listt: *mut WordList) -> i32 {
     let mut rval: i32;
     let mut acts: libc::c_ulong = 0;
     let mut copts: libc::c_ulong = 0;
-    let mut cs: *mut COMPSPEC;
+    let cs: *mut COMPSPEC;
     let mut sl: *mut STRINGLIST;
     let word: *mut libc::c_char;
     let mut matches: *mut *mut libc::c_char;
     let old_line: *mut libc::c_char;
     let old_ind: i32;
-    unsafe {
-        let mut list: *mut WordList = listt.clone();
-        if list == std::ptr::null_mut() {
-            return EXECUTION_SUCCESS!();
-        }
 
+    let mut list: *mut WordList = listt.clone();
+    if list == std::ptr::null_mut() {
+        return EXECUTION_SUCCESS!();
+    }
+    unsafe {
         Garg = std::ptr::null_mut();
         Warg = std::ptr::null_mut();
         Parg = std::ptr::null_mut();
@@ -845,47 +864,46 @@ pub fn compgen_builtin(listt: *mut WordList) -> i32 {
         Xarg = std::ptr::null_mut();
         Farg = std::ptr::null_mut();
         Carg = std::ptr::null_mut();
+    }
+    // cs = std::ptr::null_mut();
 
-        cs = std::ptr::null_mut();
+    /* Build the actions from the arguments.  Also sets the [A-Z]arg variables
+    as a side effect if they are supplied as options. */
+    rval = build_actions(list, std::ptr::null_mut(), &mut acts, &mut copts);
+    if rval == EX_USAGE!() {
+        return rval;
+    }
 
-        /* Build the actions from the arguments.  Also sets the [A-Z]arg variables
-        as a side effect if they are supplied as options. */
-        rval = build_actions(list, std::ptr::null_mut(), &mut acts, &mut copts);
-        if rval == EX_USAGE!() {
-            return rval;
-        }
+    if rval == EXECUTION_FAILURE!() {
+        return EXECUTION_SUCCESS!();
+    }
 
-        if rval == EXECUTION_FAILURE!() {
-            return EXECUTION_SUCCESS!();
-        }
-
+    unsafe {
         list = loptend.clone();
+    }
 
-        let wordtmp = CString::new("").unwrap();
-        if list != std::ptr::null_mut() && (*list).word != std::ptr::null_mut() {
+    let wordtmp = CString::new("").unwrap();
+    if unsafe { list != std::ptr::null_mut() && (*list).word != std::ptr::null_mut() } {
+        unsafe {
             word = (*((*list).word)).word;
-        } else {
-            word = wordtmp.as_ptr() as *mut libc::c_char;
         }
-
+    } else {
+        word = wordtmp.as_ptr() as *mut libc::c_char;
+    }
+    unsafe {
         if Farg != std::ptr::null_mut() {
-            builtin_error(
-                CString::new("warning: -F option may not work as you expect")
-                    .unwrap()
-                    .as_ptr(),
-            );
+            let msg = CString::new("warning: -F option may not work as you expect").unwrap();
+            builtin_error(msg.as_ptr());
         }
 
         if Carg != std::ptr::null_mut() {
-            builtin_error(
-                CString::new("warning: -C option may not work as you expect")
-                    .unwrap()
-                    .as_ptr(),
-            );
+            let msg = CString::new("warning: -C option may not work as you expect").unwrap();
+            builtin_error(msg.as_ptr());
         }
-
-        /* If we get here, we need to build a compspec and evaluate it. */
-        cs = compspec_create();
+    }
+    /* If we get here, we need to build a compspec and evaluate it. */
+    cs = compspec_create();
+    unsafe {
         (*cs).actions = acts;
         (*cs).options = copts;
         (*cs).refcount = 1;
@@ -897,10 +915,11 @@ pub fn compgen_builtin(listt: *mut WordList) -> i32 {
         (*cs).funcname = STRDUP(Farg);
         (*cs).command = STRDUP(Carg);
         (*cs).filterpat = STRDUP(Xarg);
+    }
+    rval = EXECUTION_FAILURE!();
 
-        rval = EXECUTION_FAILURE!();
-
-        /* probably don't have to save these, just being safe */
+    /* probably don't have to save these, just being safe */
+    unsafe {
         old_line = pcomp_line;
         old_ind = pcomp_ind;
         pcomp_line = std::ptr::null_mut();
@@ -909,36 +928,38 @@ pub fn compgen_builtin(listt: *mut WordList) -> i32 {
         sl = gen_compspec_completions(cs, compgenStr.as_ptr(), word, 0, 0, std::ptr::null_mut());
         pcomp_line = old_line;
         pcomp_ind = old_ind;
-
-        /* If the compspec wants the bash default completions, temporarily
-        turn off programmable completion and call the bash completion code. */
-        if (sl == std::ptr::null_mut() || (*sl).list_len == 0) && (copts & COPT_BASHDEFAULT!()) != 0
-        {
-            matches = bash_default_completion(word, 0, 0, 0, 0);
-            sl = completions_to_stringlist(matches);
-            strvec_dispose(matches);
-        }
-
-        /* This isn't perfect, but it's the best we can do, given what readline
-        exports from its set of completion utility functions. */
-        if (sl == std::ptr::null_mut() || (*sl).list_len == 0) && (copts & COPT_DEFAULT!()) != 0 {
-            matches = rl_completion_matches(word, rl_filename_completion_function);
-            strlist_dispose(sl);
-            sl = completions_to_stringlist(matches);
-            strvec_dispose(matches);
-        }
-
-        if sl != std::ptr::null_mut() {
-            if (*sl).list != std::ptr::null_mut() && (*sl).list_len != 0 {
-                rval = EXECUTION_SUCCESS!();
-                strlist_print(sl, std::ptr::null_mut());
-            }
-            strlist_dispose(sl);
-        }
-
-        compspec_dispose(cs);
-        return rval;
     }
+    /* If the compspec wants the bash default completions, temporarily
+    turn off programmable completion and call the bash completion code. */
+    if (sl == std::ptr::null_mut() || unsafe { (*sl).list_len == 0 })
+        && (copts & COPT_BASHDEFAULT!()) != 0
+    {
+        matches = bash_default_completion(word, 0, 0, 0, 0);
+        sl = completions_to_stringlist(matches);
+        c_strvec_dispose(matches);
+    }
+
+    /* This isn't perfect, but it's the best we can do, given what c_readline
+    exports from its set of completion utility functions. */
+    if (sl == std::ptr::null_mut() || unsafe { (*sl).list_len == 0 })
+        && (copts & COPT_DEFAULT!()) != 0
+    {
+        matches = c_rl_completion_matches(word, Some(c_rl_filename_completion_function));
+        c_strlist_dispose(sl);
+        sl = completions_to_stringlist(matches);
+        c_strvec_dispose(matches);
+    }
+
+    if sl != std::ptr::null_mut() {
+        if unsafe { (*sl).list != std::ptr::null_mut() && (*sl).list_len != 0 } {
+            rval = EXECUTION_SUCCESS!();
+            c_strlist_print(sl, std::ptr::null_mut());
+        }
+        c_strlist_dispose(sl);
+    }
+
+    compspec_dispose(cs);
+    return rval;
 }
 
 #[no_mangle]
@@ -957,129 +978,140 @@ pub fn compopt_builtin(listt: *mut WordList) -> i32 {
     let mut cs: *mut COMPSPEC;
 
     ret = EXECUTION_SUCCESS!();
-    unsafe {
-        let mut list: *mut WordList = listt.clone();
-        reset_internal_getopt();
 
-        opt = internal_getopt(
-            list,
-            CString::new("+o:DEI").unwrap().as_ptr() as *mut libc::c_char,
-        );
+    let mut list: *mut WordList = listt.clone();
+    reset_internal_getopt();
 
-        while opt != -1 {
-            if list_opttype == '-' as i32 {
-                opts = &mut opts_on;
-            } else {
-                opts = &mut opts_off;
-            }
+    let msg = CString::new("+o:DEI").unwrap();
+    opt = internal_getopt(list, msg.as_ptr() as *mut libc::c_char);
 
-            let optu8: u8 = opt as u8;
-            let optChar: char = char::from(optu8);
+    while opt != -1 {
+        if unsafe { list_opttype == '-' as i32 } {
+            opts = &mut opts_on;
+        } else {
+            opts = &mut opts_off;
+        }
 
-            match optChar {
-                'o' => {
+        let optu8: u8 = opt as u8;
+        let optChar: char = char::from(optu8);
+
+        match optChar {
+            'o' => {
+                unsafe {
                     oind = find_compopt(list_optarg);
-                    if oind < 0 {
+                }
+                if oind < 0 {
+                    unsafe {
                         sh_invalidoptname(list_optarg);
-                        return EX_USAGE!();
                     }
-                    let compopts: CompoptArray = CompoptArray::new();
-                    *opts |= compopts.compoptArr[oind as usize].optflag as i32;
-                }
-                'D' => {
-                    Dflag = 1;
-                }
-                'E' => {
-                    Eflag = 1;
-                }
-                'I' => {
-                    Iflag = 1;
-                }
-                _ => {
-                    builtin_usage();
                     return EX_USAGE!();
                 }
+                let compopts: CompoptArray = CompoptArray::new();
+                unsafe {
+                    *opts |= compopts.compoptArr[oind as usize].optflag as i32;
+                }
             }
-            opt = internal_getopt(
-                list,
-                CString::new("+o:DEI").unwrap().as_ptr() as *mut libc::c_char,
-            );
+            'D' => {
+                Dflag = 1;
+            }
+            'E' => {
+                Eflag = 1;
+            }
+            'I' => {
+                Iflag = 1;
+            }
+            _ => {
+                builtin_usage();
+                return EX_USAGE!();
+            }
         }
+        let msg = CString::new("+o:DEI").unwrap();
+        opt = internal_getopt(list, msg.as_ptr() as *mut libc::c_char);
+    }
 
+    unsafe {
         list = loptend.clone();
+    }
 
-        if Dflag != 0 {
-            wl = make_word_list(make_bare_word(DEFAULTCMD()), std::ptr::null_mut());
-        } else if Eflag != 0 {
-            wl = make_word_list(make_bare_word(EMPTYCMD()), std::ptr::null_mut());
-        } else if Iflag != 0 {
-            wl = make_word_list(make_bare_word(INITIALWORD()), std::ptr::null_mut());
-        } else {
-            wl = std::ptr::null_mut();
-        }
+    if Dflag != 0 {
+        wl = make_word_list(make_bare_word(DEFAULTCMD()), std::ptr::null_mut());
+    } else if Eflag != 0 {
+        wl = make_word_list(make_bare_word(EMPTYCMD()), std::ptr::null_mut());
+    } else if Iflag != 0 {
+        wl = make_word_list(make_bare_word(INITIALWORD()), std::ptr::null_mut());
+    } else {
+        wl = std::ptr::null_mut();
+    }
 
-        if list == std::ptr::null_mut() && wl == std::ptr::null_mut() {
-            if RL_ISSTATE(RL_STATE_COMPLETING!()) == 0 || pcomp_curcs == std::ptr::null_mut() {
-                builtin_error(
-                    CString::new("not currently executing completion function")
-                        .unwrap()
-                        .as_ptr(),
-                );
-                return EXECUTION_FAILURE!();
+    if list == std::ptr::null_mut() && wl == std::ptr::null_mut() {
+        if RL_ISSTATE(RL_STATE_COMPLETING!()) == 0 || unsafe { pcomp_curcs == std::ptr::null_mut() }
+        {
+            unsafe {
+                let msg = CString::new("not currently executing completion function").unwrap();
+                builtin_error(msg.as_ptr());
             }
+            return EXECUTION_FAILURE!();
+        }
+        unsafe {
             cs = pcomp_curcs.clone();
+        }
 
-            if opts_on == 0 && opts_off == 0 {
+        if opts_on == 0 && opts_off == 0 {
+            unsafe {
                 print_compopts(pcomp_curcmd as *mut libc::c_char, cs, 1);
-                return sh_chkwrite(ret);
             }
-
-            /* Set the compspec options */
-            pcomp_set_compspec_options(cs, opts_on, 1);
-            pcomp_set_compspec_options(cs, opts_off, 0);
-
-            /* And change the readline variables the options control */
-            pcomp_set_readline_variables(opts_on, 1);
-            pcomp_set_readline_variables(opts_off, 0);
-
-            return ret;
+            return sh_chkwrite(ret);
         }
 
-        if wl != std::ptr::null_mut() {
-            l = wl.clone();
-        } else {
-            l = list.clone();
-        }
+        /* Set the compspec options */
+        pcomp_set_compspec_options(cs, opts_on, 1);
+        pcomp_set_compspec_options(cs, opts_off, 0);
 
-        while l != std::ptr::null_mut() {
-            cs = progcomp_search((*((*list).word)).word);
-            if cs == std::ptr::null_mut() {
-                builtin_error(
-                    CString::new("%s: no completion specification")
-                        .unwrap()
-                        .as_ptr(),
-                    (*((*list).word)).word,
-                );
-                ret = EXECUTION_FAILURE!();
-                l = (*l).next;
-                continue;
-            }
-            if opts_on == 0 && opts_off == 0 {
-                print_compopts((*((*list).word)).word, cs, 1);
-                l = (*l).next;
-                continue; /* XXX -- fill in later */
-            }
-
-            /* Set the compspec options */
-            pcomp_set_compspec_options(cs, opts_on, 1);
-            pcomp_set_compspec_options(cs, opts_off, 0);
-            l = (*l).next;
-        }
-
-        if wl != std::ptr::null_mut() {
-            dispose_words(wl);
-        }
+        /* And change the c_readline variables the options control */
+        pcomp_set_readline_variables(opts_on, 1);
+        pcomp_set_readline_variables(opts_off, 0);
 
         return ret;
     }
+
+    if wl != std::ptr::null_mut() {
+        l = wl.clone();
+    } else {
+        l = list.clone();
+    }
+
+    while l != std::ptr::null_mut() {
+        unsafe {
+            cs = progcomp_search((*((*list).word)).word);
+        }
+        if cs == std::ptr::null_mut() {
+            unsafe {
+                let msg = CString::new("%s: no completion specification").unwrap();
+                builtin_error(msg.as_ptr(), (*((*list).word)).word);
+                ret = EXECUTION_FAILURE!();
+                l = (*l).next;
+            }
+            continue;
+        }
+        if opts_on == 0 && opts_off == 0 {
+            unsafe {
+                print_compopts((*((*list).word)).word, cs, 1);
+                l = (*l).next;
+            }
+            continue; /* XXX -- fill in later */
+        }
+
+        /* Set the compspec options */
+        pcomp_set_compspec_options(cs, opts_on, 1);
+        pcomp_set_compspec_options(cs, opts_off, 0);
+        unsafe {
+            l = (*l).next;
+        }
+    }
+
+    if wl != std::ptr::null_mut() {
+        dispose_words(wl);
+    }
+
+    return ret;
 }
