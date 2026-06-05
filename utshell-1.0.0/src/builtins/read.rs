@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use super::help::builtin_help;
 use crate::array::array_flush;
 use crate::arrayfunc::{
@@ -14,7 +11,7 @@ use crate::builtins::common::{
 use crate::dispose_cmd::dispose_words;
 use crate::general::{legal_identifier, legal_number, sh_validfd};
 use crate::input::{fd_is_bash_input, sync_buffered_stream};
-use crate::readline::{rl_insert, rl_newline};
+use crate::readline::{c_rl_insert, c_rl_newline};
 use crate::sig::{
     initialize_terminating_signals, set_signal_handler, termsig_handler, throw_to_top_level,
 };
@@ -55,7 +52,7 @@ static mut default_buffered_input: libc::c_int = -1;
 
 #[no_mangle]
 pub fn read_builtin(mut list: *mut WordList) -> i32 {
-    let mut varname: *mut libc::c_char = libc::PT_NULL as *mut libc::c_char;
+    let mut varname: *mut libc::c_char;
     let mut size: libc::c_int = 0;
     let mut nr: libc::c_int = 0;
     let mut pass_next: libc::c_int = 0;
@@ -69,7 +66,7 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
 
     let mut i: libc::c_int = 0;
 
-    let mut input_is_tty: libc::c_int = 0;
+    let input_is_tty: libc::c_int;
     let mut input_is_pipe: libc::c_int = 0;
     let mut unbuffered_read: libc::c_int = 0;
     let mut skip_ctlesc: libc::c_int;
@@ -98,7 +95,7 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
     let mut c: libc::c_char = 0;
 
     let mut input_string: *mut libc::c_char;
-    let mut orig_input_string: *mut libc::c_char;
+    let orig_input_string: *mut libc::c_char;
     let ifs_chars_null = CString::new("").unwrap();
     let mut ifs_chars: *mut libc::c_char;
     let mut prompt: *mut libc::c_char = PT_NULL as *mut libc::c_char;
@@ -112,13 +109,13 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
 
     let mut tsb: libc::stat;
 
-    let mut var: *mut SHELL_VAR = PT_NULL as *mut SHELL_VAR;
+    let mut var: *mut SHELL_VAR;
 
     let mut ttattrs: libc::termios;
-    let mut ttset: libc::termios;
+    let ttset: libc::termios;
     unsafe {
         ttattrs = std::mem::zeroed();
-        ttset = std::mem::zeroed();
+        // ttset = std::mem::zeroed();
     }
 
     let alist: *mut WordList;
@@ -134,12 +131,6 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
     let mut mb_cur_max: libc::c_int = 1;
 
     unsafe {
-        // if termsave.is_none() {
-        //     let tmp: tty_save  = std::mem::zeroed();
-        //     termsave = Some(tmp);
-        // }
-        // ptermsave = std::mem::transmute(&termsave.unwrap());
-
         reset_internal_getopt();
         let opt_str = CString::new("ersa:d:i:n:p:t:u:N:").unwrap();
         opt = internal_getopt(list, opt_str.as_ptr() as *mut libc::c_char);
@@ -153,7 +144,7 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
                 'i' => itext = list_optarg,
                 'a' => arrayname = list_optarg,
                 't' => {
-                    code = uconvert(
+                    code = c_uconvert(
                         list_optarg,
                         &mut ival,
                         &mut uval,
@@ -221,7 +212,7 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
 
         //-t
         if have_timeout != 0 && tmsec == 0 && tmusec == 0 {
-            return if input_avail(fd) != 0 {
+            return if c_input_avail(fd) != 0 {
                 EXECUTION_SUCCESS
             } else {
                 EXECUTION_FAILURE
@@ -237,7 +228,6 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
             && legal_identifier((*(*list).word).word) == 0
             && valid_array_reference((*(*list).word).word, vflags) == 0
         {
-            // sh_invalidid((*(*list).word).word);
             sh_invalidid((*(*list).word).word);
             return EXECUTION_FAILURE;
         }
@@ -290,7 +280,7 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
             let str_val = CString::new("TMOUT").unwrap();
             e = get_string_value(str_val.as_ptr());
             if have_timeout == 0 && !e.is_null() {
-                code = uconvert(e, &mut ival, &mut uval, 0 as *mut *mut libc::c_char);
+                code = c_uconvert(e, &mut ival, &mut uval, 0 as *mut *mut libc::c_char);
                 if code == 0 || ival < 0 || uval < 0 {
                     tmsec = 0;
                     tmusec = 0;
@@ -300,7 +290,7 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
                 }
             }
 
-            let frame_name = CString::new("r_read_builtin").unwrap(); //有没有可能是r_read_builtin?
+            let frame_name = CString::new("r_read_builtin").unwrap();
             begin_unwind_frame(frame_name.as_ptr() as *mut libc::c_char);
 
             if interactive == 0 && default_buffered_input >= 0 && fd_is_bash_input(fd) != 0 {
@@ -310,7 +300,8 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
             input_is_tty = libc::isatty(fd);
             if input_is_tty == 0 {
                 input_is_pipe = (libc::lseek(fd, 0, libc::SEEK_CUR) < 0
-                    && (errno!() == libc::ESPIPE)) as libc::c_int;
+                    && (*c___errno_location() == libc::ESPIPE))
+                    as libc::c_int;
             }
 
             //如果设置 -p,-e,-s但输入不是终端，忽略
@@ -341,7 +332,7 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
                 code = __sigsetjmp(&mut alrmbuf as *mut __jmp_buf_tag, 0);
                 if code != 0 {
                     sigalrm_seen = 0;
-                    orig_input_string = PT_NULL as *mut libc::c_char;
+                    // orig_input_string = PT_NULL as *mut libc::c_char;
                     *input_string.offset(i as isize) = b'\0' as libc::c_char;
                     if i == 0 {
                         t = libc::malloc(1) as *mut libc::c_char;
@@ -383,7 +374,7 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
                         0 as *mut libc::c_void as *mut libc::c_char,
                     );
                 }
-                falarm(tmsec, tmusec);
+                c_falarm(tmsec, tmusec);
             }
 
             if nchars > 0 || delim != b'\n' as libc::c_char {
@@ -408,24 +399,23 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
                     }
                 } else if input_is_tty != 0 {
                     //-d  -n
-                    // termsave.unwrap().fd = fd;
+
                     termsave.fd = fd;
-                    ttgetattr(fd, &mut ttattrs as *mut libc::termios);
-                    // termsave.unwrap().attrs = ttattrs;
+                    c_ttgetattr(fd, &mut ttattrs as *mut libc::termios);
+
                     termsave.attrs = ttattrs;
 
                     ttset = ttattrs;
                     if silent != 0 {
-                        i = ttfd_cbreak(fd, std::mem::transmute(&ttset));
+                        i = c_ttfd_cbreak(fd, std::mem::transmute(&ttset));
                     } else {
-                        i = ttfd_onechar(fd, std::mem::transmute(&ttset));
+                        i = c_ttfd_onechar(fd, std::mem::transmute(&ttset));
                     }
 
                     if i < 0 {
                         sh_ttyerror(1);
                     }
                     tty_modified = 1;
-                    // add_unwind_protect(ttyrestore as *mut c_void, ptermsave);
                     add_unwind_protect(
                         std::mem::transmute::<fn(ttp: *mut tty_save), Option<Function>>(ttyrestore),
                         &mut termsave as *mut tty_save as *mut libc::c_char,
@@ -436,21 +426,18 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
                 }
             } else if silent != 0 {
                 //-s
-                // termsave.unwrap().fd = fd;
+
                 termsave.fd = fd;
-                ttgetattr(fd, &mut ttattrs as *mut libc::termios);
-                // termsave.unwrap().attrs = ttattrs;
+                c_ttgetattr(fd, &mut ttattrs as *mut libc::termios);
                 termsave.attrs = ttattrs;
 
                 ttset = ttattrs;
-                i = ttfd_noecho(fd, std::mem::transmute(&ttset));
+                i = c_ttfd_noecho(fd, std::mem::transmute(&ttset));
                 if i < 0 {
                     sh_ttyerror(1);
                 }
 
                 tty_modified = 1;
-                // add_unwind_protect(ttyrestore as *mut c_void, ptermsave);
-                // add_unwind_protect(ttyrestore as *mut c_void, &mut termsave);
                 add_unwind_protect(
                     std::mem::transmute::<fn(ttp: *mut tty_save), Option<Function>>(ttyrestore),
                     &mut termsave as *mut tty_save as *mut libc::c_char,
@@ -487,7 +474,6 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
 
             if !prompt.is_null() && edit == 0 {
                 //-p no -e
-                // eprintln!("{}", CStr::from_ptr(prompt).to_str().unwrap());
                 eprint!("{}", CStr::from_ptr(prompt).to_str().unwrap());
             }
 
@@ -497,7 +483,7 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
             retval = 0;
             'get_input_string: loop {
                 if sigalrm_seen != 0 {
-                    siglongjmp(std::mem::transmute(&alrmbuf), 1);
+                    c_siglongjmp(std::mem::transmute(&alrmbuf), 1);
                 }
 
                 if edit != 0 {
@@ -512,8 +498,6 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
                     if rlbuf.is_null() {
                         reading = 1;
                         rlbuf = if prompt.is_null() {
-                            // edit_line("".as_ptr() as *mut libc::c_char, itext)}
-                            // let c_str = b'\0';   //  b'\0'代表的是空字符串，和String::from("")不是同一个东西。
                             edit_line(b'\0' as *mut libc::c_char, itext) //  b'\0'代表的是空字符串，和String::from("")不是同一个东西。
                         } else {
                             edit_line(prompt, itext)
@@ -541,23 +525,23 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
                     *(libc::__errno_location()) = 0;
                     if unbuffered_read == 2 {
                         retval = if posixly_correct != 0 {
-                            zreadintr(fd, &mut c as *mut libc::c_char, 1) as libc::c_int
+                            c_zreadintr(fd, &mut c as *mut libc::c_char, 1) as libc::c_int
                         } else {
-                            zreadn(fd, &mut c as *mut libc::c_char, (nchars - nr) as size_t)
+                            c_zreadn(fd, &mut c as *mut libc::c_char, (nchars - nr) as size_t)
                                 as libc::c_int
                         };
                     } else if unbuffered_read != 0 {
                         retval = if posixly_correct != 0 {
-                            zreadintr(fd, &mut c as *mut libc::c_char, 1) as libc::c_int
+                            c_zreadintr(fd, &mut c as *mut libc::c_char, 1) as libc::c_int
                         } else {
-                            zread(fd, &mut c as *mut libc::c_char, 1) as libc::c_int
+                            c_zread(fd, &mut c as *mut libc::c_char, 1) as libc::c_int
                         };
                     } else {
                         retval = if posixly_correct != 0 {
-                            zreadcintr(fd, &mut c as *mut libc::c_char) as libc::c_int
+                            c_zreadcintr(fd, &mut c as *mut libc::c_char) as libc::c_int
                         } else {
                             //-a  -t
-                            zreadc(fd, &mut c as *mut libc::c_char) as libc::c_int
+                            c_zreadc(fd, &mut c as *mut libc::c_char) as libc::c_int
                         };
                     }
                     reading = 0;
@@ -566,7 +550,6 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
                         let t = *libc::__errno_location();
                         if retval < 0 && *libc::__errno_location() == libc::EINTR {
                             check_signals();
-                            //lastsig = LASTSIG();
                             if terminating_signal != 0 {
                                 lastsig = terminating_signal;
                             } else {
@@ -584,7 +567,6 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
                             lastsig = 0;
                         }
                         if terminating_signal != 0 && tty_modified != 0 {
-                            // ttyrestore();
                             ttyrestore(&mut termsave);
                         }
                         check_alrm();
@@ -736,17 +718,14 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
                         reset_eol_delim(0 as *mut libc::c_char);
                     }
                 } else if input_is_tty != 0 {
-                    // ttyrestore();
                     ttyrestore(&mut termsave);
                 }
             } else if silent != 0 {
-                // ttyrestore();
                 ttyrestore(&mut termsave);
             }
 
-            // if unbuffered_read != 0 {
             if unbuffered_read == 0 {
-                zsyncfd(fd);
+                c_zsyncfd(fd);
             }
 
             if !save_instream.is_null() {
@@ -768,7 +747,6 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
             //和-a有关
             if legal_identifier(arrayname) == 0 {
                 //标签不符合规范
-                // sh_invalidid(arrayname);
                 sh_invalidid(arrayname);
                 libc::free(input_string as *mut c_void);
                 return EXECUTION_FAILURE;
@@ -851,7 +829,6 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
             varname = (*((*list).word)).word;
 
             if legal_identifier(varname) == 0 && valid_array_reference(varname, vflags) == 0 {
-                // sh_invalidid(varname);
                 sh_invalidid(varname);
                 libc::free(orig_input_string as *mut c_void);
                 return EXECUTION_FAILURE;
@@ -904,7 +881,6 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
         if legal_identifier((*((*list).word)).word) == 0
             && valid_array_reference((*((*list).word)).word, vflags) == 0
         {
-            // sh_invalidid((*((*list).word)).word);
             sh_invalidid((*((*list).word)).word);
             libc::free(orig_input_string as *mut c_void);
             return EXECUTION_FAILURE;
@@ -954,17 +930,8 @@ pub fn read_builtin(mut list: *mut WordList) -> i32 {
         }
         libc::free(orig_input_string as *mut c_void);
         return retval;
-    } //unsafe
+    }
 }
-
-/* ---------------------------------------------------------------------------------- */
-
-// pub fn is_basic(c: i8) -> u32 {
-//     let is_basic_table :[c_uint; 8] = [ 0x00001a00, 0xffffffef, 0xfffffffe, 0x7ffffffe, 0,0,0,0];
-
-//     let index = (c >> 5) as usize;
-//     return (is_basic_table[index] >> (c & 31) ) & 1;
-// }
 
 #[inline]
 fn is_basic(c: libc::c_char) -> libc::c_int {
@@ -979,18 +946,16 @@ fn is_basic(c: libc::c_char) -> libc::c_int {
 
 pub fn bind_read_variable(name: *mut libc::c_char, value: *mut libc::c_char) -> *mut SHELL_VAR {
     let v: *mut SHELL_VAR;
-    unsafe {
-        // v = builtin_bind_variable(name, value, 0);
-        v = builtin_bind_variable(name, value, 0);
 
-        if v.is_null() {
-            return v;
+    v = builtin_bind_variable(name, value, 0);
+
+    if v.is_null() {
+        return v;
+    } else {
+        if unsafe { ((*v).attributes & 0x0000002) != 0 || ((*v).attributes & 0x0004000) != 0 } {
+            return PT_NULL as *mut SHELL_VAR;
         } else {
-            if ((*v).attributes & 0x0000002) != 0 || ((*v).attributes & 0x0004000) != 0 {
-                return PT_NULL as *mut SHELL_VAR;
-            } else {
-                return v;
-            }
+            return v;
         }
     }
 }
@@ -1010,14 +975,14 @@ fn read_mbchar(
     unsafe {
         let mut mbchar: [libc::c_char; MB_LEN_MAX as usize + 1] = std::mem::zeroed();
         let mut ps: mbstate_t = std::mem::zeroed();
-        let mut ps_back: mbstate_t = std::mem::zeroed();
+        // let mut ps_back: mbstate_t  ;
         let wc: libc::wchar_t = std::mem::zeroed();
 
         'out: loop {
             mbchar[0] = ch as libc::c_char;
             for _n in 0..=MB_LEN_MAX {
-                ps_back = ps;
-                ret = mbrtowc(
+                let ps_back = ps;
+                ret = c_mbrtowc(
                     std::mem::transmute(&wc),
                     std::mem::transmute(&mbchar),
                     i,
@@ -1028,11 +993,11 @@ fn read_mbchar(
 
                     /* We don't want to be interrupted during a multibyte char read */
                     if unbuffered == 2 {
-                        r = zreadn(fd, std::mem::transmute(&c), 1) as ssize_t;
+                        r = c_zreadn(fd, std::mem::transmute(&c), 1) as ssize_t;
                     } else if unbuffered != 0 {
-                        r = zread(fd, std::mem::transmute(&c), 1) as ssize_t;
+                        r = c_zread(fd, std::mem::transmute(&c), 1) as ssize_t;
                     } else {
-                        r = zreadc(fd, std::mem::transmute(&c)) as ssize_t;
+                        r = c_zreadc(fd, std::mem::transmute(&c)) as ssize_t;
                     }
                     if r <= 0 {
                         break 'out;
@@ -1074,13 +1039,11 @@ fn quit() {
 fn check_alrm() {
     unsafe {
         if sigalrm_seen != 0 {
-            siglongjmp(std::mem::transmute(&alrmbuf), 1);
-            // siglongjmp (&mut alrmbuf as *mut __jmp_buf_tag, 1);
+            c_siglongjmp(std::mem::transmute(&alrmbuf), 1);
         }
     }
 }
 
-// static mut old_attempted_completion_function: usize = 0;
 static mut old_attempted_completion_function: Option<rl_completion_func_t> = None;
 pub fn reset_attempted_completion_function(_cp: *mut libc::c_char) {
     unsafe {
@@ -1105,7 +1068,7 @@ fn set_itext() -> libc::c_int {
             r1 = fp();
         }
         if !deftext.is_null() {
-            r2 = rl_insert_text(deftext as *const libc::c_char);
+            r2 = c_rl_insert_text(deftext as *const libc::c_char);
             deftext = PT_NULL as *mut libc::c_char;
             rl_startup_hook = std::mem::transmute(old_startup_hook);
             old_startup_hook = std::mem::transmute(0 as usize);
@@ -1130,7 +1093,7 @@ fn edit_line(p: *mut libc::c_char, itext: *mut libc::c_char) -> *mut libc::c_cha
             deftext = itext;
         }
 
-        let mut ret = readline(p);
+        let mut ret = c_readline(p);
 
         rl_attempted_completion_function = std::mem::transmute(old_attempted_completion_function);
         old_attempted_completion_function = std::mem::transmute(0 as usize);
@@ -1156,15 +1119,15 @@ fn sigalrm(_s: libc::c_int) {
 }
 
 fn reset_alarm() {
+    c_falarm(0, 0);
     unsafe {
-        falarm(0, 0);
         set_signal_handler(libc::SIGALRM, old_alrm);
     }
 }
 
 fn ttyrestore(ttp: *mut tty_save) {
     unsafe {
-        ttsetattr((*ttp).fd, &mut (*ttp).attrs);
+        c_ttsetattr((*ttp).fd, &mut (*ttp).attrs);
         tty_modified = 0 as libc::c_int;
     }
 }
@@ -1186,10 +1149,8 @@ pub fn read_tty_modified() -> libc::c_int {
 }
 
 static mut old_delim_ctype: libc::c_int = 0;
-// static mut old_delim_func: usize = 0;
 static mut old_delim_func: Option<rl_command_func_t> = None;
 static mut old_newline_ctype: libc::c_int = 0;
-// static mut old_newline_func: usize = 0;
 static mut old_newline_func: Option<rl_command_func_t> = None;
 
 static mut delim_char: u8 = 0;
@@ -1201,8 +1162,7 @@ fn set_eol_delim(c: libc::c_int) {
             initialize_readline();
         }
 
-        // let cmap = rl_get_keymap();
-        cmap = rl_get_keymap();
+        cmap = c_rl_get_keymap();
 
         old_newline_ctype = (*cmap.offset((b'M' as i32 & 0x1f) as isize)).Type as libc::c_int;
         old_newline_func = (*cmap.offset((b'M' as i32 & 0x1f) as isize)).function;
@@ -1212,16 +1172,16 @@ fn set_eol_delim(c: libc::c_int) {
         /* Change newline to self-insert */
         (*cmap.offset((b'M' as i32 & 0x1f) as isize)).Type = ISFUNC as libc::c_char;
         (*cmap.offset((b'M' as i32 & 0x1f) as isize)).function = Some(std::mem::transmute::<
-            unsafe extern "C" fn(libc::c_int, libc::c_int) -> libc::c_int,
+            fn(libc::c_int, libc::c_int) -> libc::c_int,
             rl_command_func_t,
-        >(rl_insert));
+        >(c_rl_insert));
 
         /* Bind the delimiter character to accept-line. */
         (*cmap.offset(c as isize)).Type = ISFUNC as libc::c_char;
         (*cmap.offset(c as isize)).function = Some(std::mem::transmute::<
-            unsafe extern "C" fn(libc::c_int, libc::c_int) -> libc::c_int,
+            fn(libc::c_int, libc::c_int) -> libc::c_int,
             rl_command_func_t,
-        >(rl_newline));
+        >(c_rl_newline));
 
         delim_char = c as u8;
     }
@@ -1229,7 +1189,7 @@ fn set_eol_delim(c: libc::c_int) {
 
 fn reset_eol_delim(_cp: *mut libc::c_char) {
     unsafe {
-        let cmap = rl_get_keymap();
+        let cmap = c_rl_get_keymap();
         let n = std::mem::size_of_val(&*cmap);
         let ret_pos = (b'M' & 0x1f) as usize * n;
         let delim_pos = (delim_char & 0x1f) as usize * n;
