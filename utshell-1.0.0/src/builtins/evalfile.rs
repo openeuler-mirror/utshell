@@ -1,7 +1,4 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
-use libc::{__errno_location, close, free, malloc, memmove, open, read, strlen};
+use libc::{close, free, malloc, memmove, open, read, strlen};
 
 use crate::array::{array_dispose_element, array_rshift, array_shift};
 use crate::builtins::evalstring::{parse_and_execute, parse_and_execute_cleanup};
@@ -22,37 +19,38 @@ use crate::y_tab::{current_token, push_token};
 #[no_mangle]
 pub static mut sourcelevel: libc::c_int = 0 as libc::c_int;
 fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
+    let mut old_interactive: libc::c_int = 0;
+    let mut old_return_catch: sigjmp_buf = [__jmp_buf_tag {
+        __jmpbuf: [0; 8],
+        __mask_was_saved: 0,
+        __saved_mask: __sigset_t { __val: [0; 16] },
+    }; 1];
+    let mut return_val: libc::c_int;
+    let fd: libc::c_int;
+    let result: libc::c_int;
+    let mut pflags: libc::c_int;
+    let mut i: libc::c_int;
+    let mut nnull: libc::c_int;
+    let mut nr: ssize_t;
+    let mut string: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
+    let file_size: size_t;
+    let errfunc: sh_vmsg_func_t;
+    let funcname_v: *mut SHELL_VAR;
+    let bash_source_v: *mut SHELL_VAR;
+    let bash_lineno_v: *mut SHELL_VAR;
+    let funcname_a: *mut ARRAY;
+    let bash_source_a: *mut ARRAY;
+    let bash_lineno_a: *mut ARRAY;
+    let fa: *mut func_array_state;
+    let bash_argv_v: *mut SHELL_VAR;
+    let bash_argc_v: *mut SHELL_VAR;
+    let bash_argv_a: *mut ARRAY;
+    let bash_argc_a: *mut ARRAY;
+    let t: *mut libc::c_char;
+    let mut tt: [libc::c_char; 2] = [0; 2];
+
     unsafe {
-        let mut old_interactive: libc::c_int = 0;
-        let mut old_return_catch: sigjmp_buf = [__jmp_buf_tag {
-            __jmpbuf: [0; 8],
-            __mask_was_saved: 0,
-            __saved_mask: __sigset_t { __val: [0; 16] },
-        }; 1];
-        let mut return_val: libc::c_int = 0;
-        let mut fd: libc::c_int = 0;
-        let mut result: libc::c_int = 0;
-        let mut pflags: libc::c_int = 0;
-        let mut i: libc::c_int = 0;
-        let mut nnull: libc::c_int = 0;
-        let mut nr: ssize_t = 0;
-        let mut string: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
-        let mut file_size: size_t = 0;
-        let mut errfunc: sh_vmsg_func_t = None;
-        let mut funcname_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-        let mut bash_source_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-        let mut bash_lineno_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-        let mut funcname_a: *mut ARRAY = 0 as *mut ARRAY;
-        let mut bash_source_a: *mut ARRAY = 0 as *mut ARRAY;
-        let mut bash_lineno_a: *mut ARRAY = 0 as *mut ARRAY;
-        let mut fa: *mut func_array_state = 0 as *mut func_array_state;
-        let mut bash_argv_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-        let mut bash_argc_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-        let mut bash_argv_a: *mut ARRAY = 0 as *mut ARRAY;
-        let mut bash_argc_a: *mut ARRAY = 0 as *mut ARRAY;
-        let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut tt: [libc::c_char; 2] = [0; 2];
         funcname_v = find_variable(b"FUNCNAME\0" as *const u8 as *const libc::c_char);
         funcname_a = if !funcname_v.is_null()
             && (*funcname_v).attributes & FEVAL_UNWINDPROT!() as libc::c_int != 0
@@ -95,14 +93,14 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
         };
 
         fd = open(filename, 0 as libc::c_int);
-        if fd < 0 as libc::c_int || fstat(fd, &mut finfo) == -(1 as libc::c_int) {
-            i = *__errno_location();
+        if fd < 0 as libc::c_int || c_fstat(fd, &mut finfo) == -(1 as libc::c_int) {
+            i = *c___errno_location();
             if fd >= 0 as libc::c_int {
                 close(fd);
             }
-            *__errno_location() = i;
+            *c___errno_location() = i;
             if flags & FEVAL_ENOENTOK!() as libc::c_int == 0 as libc::c_int
-                || *__errno_location() != 2 as libc::c_int
+                || *c___errno_location() != 2 as libc::c_int
             {
                 file_error(filename);
             }
@@ -115,7 +113,7 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
             }
             return if flags & FEVAL_BUILTIN!() as libc::c_int != 0 {
                 1 as libc::c_int
-            } else if *__errno_location() == 2 as libc::c_int
+            } else if *c___errno_location() == 2 as libc::c_int
                 && flags & FEVAL_ENOENTOK!() as libc::c_int != 0 as libc::c_int
             {
                 0 as libc::c_int
@@ -133,7 +131,7 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
             {
                 (Some(errfunc.expect("non-null function pointer")))
                     .expect("non-null function pointer")(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: is a directory\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
@@ -155,7 +153,7 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
                 {
                     (Some(errfunc.expect("non-null function pointer")))
                         .expect("non-null function pointer")(
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"%s: not a regular file\0" as *const u8 as *const libc::c_char,
                             5 as libc::c_int,
@@ -176,7 +174,7 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
             {
                 (Some(errfunc.expect("non-null function pointer")))
                     .expect("non-null function pointer")(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: file is too large\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
@@ -201,15 +199,15 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
                     *string.offset(nr as isize) = '\u{0}' as i32 as libc::c_char;
                 }
             } else {
-                nr = zmapfd(fd, &mut string, 0 as *mut libc::c_char) as ssize_t;
+                nr = c_zmapfd(fd, &mut string, 0 as *mut libc::c_char) as ssize_t;
             }
-            return_val = *__errno_location();
+            return_val = *c___errno_location();
             close(fd);
-            *__errno_location() = return_val;
+            *c___errno_location() = return_val;
             if nr < 0 as libc::c_int as libc::c_long {
                 free(string as *mut libc::c_void);
                 if flags & FEVAL_ENOENTOK!() as libc::c_int == 0 as libc::c_int
-                    || *__errno_location() != 2 as libc::c_int
+                    || *c___errno_location() != 2 as libc::c_int
                 {
                     file_error(filename);
                 }
@@ -222,7 +220,7 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
                 }
                 return if flags & FEVAL_BUILTIN!() as libc::c_int != 0 {
                     1 as libc::c_int
-                } else if *__errno_location() == 2 as libc::c_int
+                } else if *c___errno_location() == 2 as libc::c_int
                     && flags & FEVAL_ENOENTOK!() as libc::c_int != 0 as libc::c_int
                 {
                     0 as libc::c_int
@@ -251,7 +249,7 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
                     free(string as *mut libc::c_void);
                     (Some(errfunc.expect("non-null function pointer")))
                         .expect("non-null function pointer")(
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"%s: cannot execute binary file\0" as *const u8 as *const libc::c_char,
                             5 as libc::c_int,
@@ -284,7 +282,7 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
                                 free(string as *mut libc::c_void);
                                 (Some(errfunc.expect("non-null function pointer")))
                                     .expect("non-null function pointer")(
-                                    dcgettext(
+                                    c_dcgettext(
                                         0 as *const libc::c_char,
                                         b"%s: cannot execute binary file\0" as *const u8
                                             as *const libc::c_char,
@@ -347,7 +345,7 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
                     1 as libc::c_int,
                     filename as *mut libc::c_char,
                 );
-                t = itos(executing_line_number() as intmax_t);
+                t = c_itos(executing_line_number() as intmax_t);
                 array_rshift(bash_lineno_a, 1 as libc::c_int, t);
                 free(t as *mut libc::c_void);
                 array_rshift(
@@ -369,7 +367,6 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
                 *fresh4 = funcname_a;
                 let ref mut fresh5 = (*fa).funcname_v;
                 *fresh5 = funcname_v;
-                // let rfs: Option<Function> = Some(restore_funcarray_state);
                 if flags & FEVAL_UNWINDPROT!() as libc::c_int != 0 {
                     add_unwind_protect(
                         std::mem::transmute::<fn(*mut func_array_state) -> (), Option<Function>>(
@@ -386,7 +383,6 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
                     tt[0 as libc::c_int as usize] = '1' as i32 as libc::c_char;
                     tt[1 as libc::c_int as usize] = '\u{0}' as i32 as libc::c_char;
                     array_rshift(bash_argc_a, 1 as libc::c_int, tt.as_mut_ptr());
-                    // let pa: Functions = Functions { pop_args };
                     if flags & FEVAL_UNWINDPROT!() as libc::c_int != 0 {
                         add_unwind_protect(
                             std::mem::transmute::<fn(), Option<Function>>(pop_args),
@@ -401,9 +397,9 @@ fn evalfile(filename: *const libc::c_char, flags: libc::c_int) -> libc::c_int {
                     FEVAL_UNWINDPROT!() as libc::c_int
                 };
                 if flags & FEVAL_BUILTIN!() as libc::c_int != 0 {
-                    result = 0 as libc::c_int;
+                    // result = 0 as libc::c_int;
                 }
-                return_val = __sigsetjmp(return_catch.as_mut_ptr(), 0 as libc::c_int); //问题
+                return_val = __sigsetjmp(return_catch.as_mut_ptr(), 0 as libc::c_int);
                 if return_val != 0 {
                     parse_and_execute_cleanup(-(1 as libc::c_int));
                     result = return_catch_value;
@@ -456,42 +452,42 @@ pub fn maybe_execute_file(
     fname: *const libc::c_char,
     force_noninteractive: libc::c_int,
 ) -> libc::c_int {
-    unsafe {
-        let mut filename: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut result: libc::c_int = 0;
-        let mut flags: libc::c_int = 0;
-        filename = bash_tilde_expand(fname, 0 as libc::c_int);
-        flags = FEVAL_ENOENTOK!() as libc::c_int;
-        if force_noninteractive != 0 {
-            flags |= FEVAL_NONINT!() as libc::c_int;
-        }
-        result = evalfile(filename, flags);
-        free(filename as *mut libc::c_void);
-        return result;
+    let filename: *mut libc::c_char;
+    let result: libc::c_int;
+    let mut flags: libc::c_int;
+    filename = bash_tilde_expand(fname, 0 as libc::c_int);
+    flags = FEVAL_ENOENTOK!() as libc::c_int;
+    if force_noninteractive != 0 {
+        flags |= FEVAL_NONINT!() as libc::c_int;
     }
+    result = evalfile(filename, flags);
+    unsafe {
+        free(filename as *mut libc::c_void);
+    }
+    return result;
 }
 #[no_mangle]
 pub fn force_execute_file(
     fname: *const libc::c_char,
     force_noninteractive: libc::c_int,
 ) -> libc::c_int {
-    unsafe {
-        let mut filename: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut result: libc::c_int = 0;
-        let mut flags: libc::c_int = 0;
-        filename = bash_tilde_expand(fname, 0 as libc::c_int);
-        flags = 0 as libc::c_int;
-        if force_noninteractive != 0 {
-            flags |= FEVAL_NONINT!() as libc::c_int;
-        }
-        result = evalfile(filename, flags);
-        free(filename as *mut libc::c_void);
-        return result;
+    let filename: *mut libc::c_char;
+    let result: libc::c_int;
+    // let flags: libc::c_int ;
+    filename = bash_tilde_expand(fname, 0 as libc::c_int);
+    let mut flags = 0 as libc::c_int;
+    if force_noninteractive != 0 {
+        flags |= FEVAL_NONINT!() as libc::c_int;
     }
+    result = evalfile(filename, flags);
+    unsafe {
+        free(filename as *mut libc::c_void);
+    }
+    return result;
 }
 #[no_mangle]
 pub fn fc_execute_file(filename: *const libc::c_char) -> libc::c_int {
-    let mut flags: libc::c_int = 0;
+    let flags: libc::c_int;
     flags = FEVAL_ENOENTOK!() as libc::c_int
         | FEVAL_HISTORY!() as libc::c_int
         | FEVAL_REGFILE!() as libc::c_int
@@ -500,8 +496,8 @@ pub fn fc_execute_file(filename: *const libc::c_char) -> libc::c_int {
 }
 #[no_mangle]
 pub fn source_file(filename: *const libc::c_char, sflags: libc::c_int) -> libc::c_int {
-    let mut flags: libc::c_int = 0;
-    let mut rval: libc::c_int = 0;
+    let mut flags: libc::c_int;
+    let rval: libc::c_int;
     flags = FEVAL_BUILTIN!() as libc::c_int
         | FEVAL_UNWINDPROT!() as libc::c_int
         | FEVAL_NONINT!() as libc::c_int;
