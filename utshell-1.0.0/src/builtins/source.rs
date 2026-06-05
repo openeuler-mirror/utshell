@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::builtins::common::{
     builtin_usage, dollar_vars_changed, no_options, remember_args, set_dollar_vars_unchanged,
     sh_restricted,
@@ -21,11 +18,11 @@ use crate::variables::{
 };
 use crate::version::shell_compatibility_level;
 
-pub union Functions {
-    f_xfree: fn(str1: *mut c_void),
-    f_maybe_pop_dollar_vars: fn(),
-    f_maybe_set_debug_trap: fn(*mut libc::c_char),
-}
+// pub union Functions {
+//     f_xfree: fn(str1: *mut c_void),
+//     f_maybe_pop_dollar_vars: fn(),
+//     f_maybe_set_debug_trap: fn(*mut libc::c_char),
+// }
 
 #[no_mangle]
 pub static mut source_uses_path: libc::c_int = 1 as libc::c_int;
@@ -34,28 +31,24 @@ pub static mut source_searches_cwd: libc::c_int = 1 as libc::c_int;
 
 #[no_mangle]
 pub fn maybe_pop_dollar_vars() {
-    unsafe {
-        if variable_context == 0 && (dollar_vars_changed() & ARGS_SETBLTIN!()) != 0 {
-            dispose_saved_dollar_vars();
-        } else {
-            pop_dollar_vars();
-        }
-        if debugging_mode != 0 {
-            pop_args(); /* restore BASH_ARGC and BASH_ARGV */
-        }
-
-        set_dollar_vars_unchanged();
-        invalidate_cached_quoted_dollar_at(); /* just invalidate to be safe */
+    if unsafe { variable_context == 0 && (dollar_vars_changed() & ARGS_SETBLTIN!()) != 0 } {
+        dispose_saved_dollar_vars();
+    } else {
+        pop_dollar_vars();
     }
+    if unsafe { debugging_mode != 0 } {
+        pop_args(); /* restore BASH_ARGC and BASH_ARGV */
+    }
+
+    set_dollar_vars_unchanged();
+    invalidate_cached_quoted_dollar_at(); /* just invalidate to be safe */
 }
 
 fn TRAP_STRING(s: i32) -> *mut libc::c_char {
-    unsafe {
-        if signal_is_trapped(s) != 0 && signal_is_ignored(s) == 0 {
-            return trap_list[s as usize];
-        } else {
-            return std::ptr::null_mut();
-        }
+    if signal_is_trapped(s) != 0 && signal_is_ignored(s) == 0 {
+        return unsafe { trap_list[s as usize] };
+    } else {
+        return std::ptr::null_mut();
     }
 }
 
@@ -65,16 +58,15 @@ unsafe fn DEBUG_TRAP() -> i32 {
 
 #[no_mangle]
 pub fn source_builtin(list: *mut WordList) -> i32 {
+    let result: i32;
+    let mut filename: *mut libc::c_char;
+    let mut debug_trap: *mut libc::c_char;
+    let x: *mut libc::c_char;
+
+    if no_options(list) != 0 {
+        return EX_USAGE;
+    }
     unsafe {
-        let result: i32;
-        let mut filename: *mut libc::c_char;
-        let mut debug_trap: *mut libc::c_char;
-        let x: *mut libc::c_char;
-
-        if no_options(list) != 0 {
-            return EX_USAGE;
-        }
-
         let llist: *mut WordList = loptend.clone();
 
         if list == std::ptr::null_mut() {
@@ -108,7 +100,8 @@ pub fn source_builtin(list: *mut WordList) -> i32 {
         if filename == std::ptr::null_mut() {
             if source_searches_cwd == 0 {
                 x = printable_filename((*(*llist).word).word, 0);
-                builtin_error(CString::new("%s: file not found").unwrap().as_ptr(), x);
+                let msg = CString::new("%s: file not found").unwrap();
+                builtin_error(msg.as_ptr(), x);
                 if x != (*(*llist).word).word {
                     libc::free(x as *mut c_void);
                 }
