@@ -20,7 +20,7 @@ pub fn eval_builtin(mut list: *mut WordList) -> i32 {
     if !list.is_null() {
         let c_str = CString::new("eval").unwrap();
         let c_ptr = c_str.as_ptr();
-        return unsafe { evalstring(string_list(list), c_ptr, SEVAL_NOHIST!()) };
+        return evalstring(string_list(list), c_ptr, SEVAL_NOHIST!());
     } else {
         return EXECUTION_SUCCESS!();
     }
