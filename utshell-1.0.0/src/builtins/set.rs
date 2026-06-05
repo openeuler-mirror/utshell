@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use super::help::builtin_help;
 use crate::arrayfunc::{array_variable_part, unbind_array_element, valid_array_reference};
 use crate::bashhist::{bash_history_disable, bash_history_enable, load_history};
@@ -10,6 +7,7 @@ use crate::builtins::common::{
 };
 use crate::flags::{change_flag, find_flag};
 use crate::general::{extract_colon_unit, get_posix_options, legal_identifier, num_posix_options};
+use crate::readline::c_rl_variable_bind;
 use crate::src_common::*;
 use crate::variables::{
     all_shell_functions, all_shell_variables, bind_variable, find_function, find_variable,
@@ -130,9 +128,6 @@ pub static mut o_options: [opp; 28] = unsafe {
             opp {
                 name: b"history\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 letter: b'\0' as i32,
-                // variable : 0 as *const libc::c_void
-                // as *mut libc::c_void
-                // as *mut i32,
                 variable: &enable_history_list as *const i32 as *mut i32,
                 set_func: Some(bash_set_history),
                 get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
@@ -144,9 +139,6 @@ pub static mut o_options: [opp; 28] = unsafe {
             opp {
                 name: b"ignoreeof\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 letter: b'\0' as i32,
-                /*variable : 0 as *const libc::c_void
-                as *mut libc::c_void
-                as *mut i32, */
                 variable: &ignoreeof as *const i32 as *mut i32,
                 set_func: Some(set_ignoreeof),
                 get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
@@ -159,9 +151,6 @@ pub static mut o_options: [opp; 28] = unsafe {
                 name: b"interactive-comments\0" as *const u8 as *const libc::c_char
                     as *mut libc::c_char,
                 letter: b'\0' as i32,
-                /*variable : 0 as *const libc::c_void
-                as *mut libc::c_void
-                as *mut i32, */
                 variable: &interactive_comments as *const i32 as *mut i32,
                 set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
                     0 as *const libc::c_void as *mut libc::c_void,
@@ -240,9 +229,6 @@ pub static mut o_options: [opp; 28] = unsafe {
             opp {
                 name: b"nolog\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 letter: b'\0' as i32,
-                /*variable : 0 as *const libc::c_void
-                as *mut libc::c_void
-                as *mut i32, */
                 variable: &dont_save_function_defs as *const i32 as *mut i32,
                 set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
                     0 as *const libc::c_void as *mut libc::c_void,
@@ -308,9 +294,6 @@ pub static mut o_options: [opp; 28] = unsafe {
             opp {
                 name: b"pipefail\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 letter: b'\0' as i32,
-                /*variable : 0 as *const libc::c_void
-                as *mut libc::c_void
-                as *mut i32, */
                 variable: &pipefail_opt as *const i32 as *mut i32,
                 set_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_set_func_t>>(
                     0 as *const libc::c_void as *mut libc::c_void,
@@ -324,9 +307,6 @@ pub static mut o_options: [opp; 28] = unsafe {
             opp {
                 name: b"posix\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 letter: b'\0' as i32,
-                /*variable : 0 as *const libc::c_void
-                as *mut libc::c_void
-                as *mut i32, */
                 variable: &posixly_correct as *const libc::c_int as *mut libc::c_int,
                 set_func: Some(set_posix_mode),
                 get_func: ::std::mem::transmute::<*mut libc::c_void, Option<setopt_get_func_t>>(
@@ -365,7 +345,7 @@ pub static mut o_options: [opp; 28] = unsafe {
                 name: b"vi\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 letter: b'\0' as i32,
                 variable: 0 as *const libc::c_void as *mut libc::c_void as *mut i32,
-                set_func: Some(set_edit_mode), //set_edit_mode as *mut setopt_set_func_t ,// unsafe {&mut set_edit_mode},
+                set_func: Some(set_edit_mode),
                 get_func: Some(get_edit_mode),
             }
         },
@@ -399,41 +379,44 @@ pub static mut o_options: [opp; 28] = unsafe {
 };
 
 extern "C" {
-    fn rl_variable_bind(_: *const libc::c_char, _: *const libc::c_char) -> i32;
+    // fn c_rl_variable_bind(_: *const libc::c_char, _: *const libc::c_char) -> i32;
     static mut rl_editing_mode: i32;
 }
+
+// fn c_rl_variable_bind(a: *const libc::c_char, b: *const libc::c_char) -> i32 {
+//     unsafe {
+//         c_rl_variable_bind(a, b)
+//     }
+// }
 
 static mut on: *const libc::c_char = b"on\0" as *const u8 as *const libc::c_char;
 static mut off: *const libc::c_char = b"off\0" as *const u8 as *const libc::c_char;
 static mut previous_option_value: i32 = 0;
-// pub type SHELL_VAR = variable;
-// pub type arrayind_t = i64;
 
 fn STREQ(a: *const libc::c_char, b: *const libc::c_char) -> bool {
     return unsafe { (*a == *b) && (libc::strcmp(a, b) == 0) };
 }
 
 fn find_minus_o_option(name: *mut libc::c_char) -> i32 {
-    let mut i: i32 = 0;
-    unsafe {
-        for j in 0..N_O_OPTIONS!() - 1 {
-            i = j as i32;
-            let _ooo = o_options[j];
+    // let mut i: i32 = 0;
 
-            if STREQ(name, o_options[j as usize].name) {
-                return i;
-            }
+    for j in 0..N_O_OPTIONS!() - 1 {
+        let i = j as i32;
+        let _ooo = unsafe { o_options[j] };
+
+        if unsafe { STREQ(name, o_options[j as usize].name) } {
+            return i;
         }
-        -1
     }
+    -1
 }
 
 #[no_mangle]
 pub fn minus_o_option_value(name: *mut libc::c_char) -> i32 {
-    let mut i: i32 = 0;
+    // let mut i: i32 = 0;
     let on_or_off: *mut i32 = 0 as *mut i32;
 
-    i = find_minus_o_option(name);
+    let i = find_minus_o_option(name);
     if i < 0 {
         return -1;
     }
@@ -468,15 +451,15 @@ fn print_minus_o_option(name: *mut libc::c_char, value: i32, pflag: i32) {
 
 #[no_mangle]
 pub fn list_minus_o_opts(mode: i32, reusable: i32) {
-    let mut i: i32 = 0;
-    let mut on_or_off: *mut i32 = 0 as *mut i32;
-    let mut value: i32 = 0;
+    // let mut i: i32 = 0;
+    // let mut on_or_off: *mut i32 = 0 as *mut i32;
+    let mut value: i32;
     unsafe {
         for j in 0..N_O_OPTIONS!() - 1 {
-            i = j as i32;
+            let i = j as i32;
             if o_options[j as usize].letter != 0 {
                 value = 0;
-                on_or_off = find_flag(o_options[i as usize].letter);
+                let mut on_or_off = find_flag(o_options[i as usize].letter);
                 if on_or_off == FLAG_UNKNOWN!() {
                     on_or_off = &mut value;
                 }
@@ -494,28 +477,26 @@ pub fn list_minus_o_opts(mode: i32, reusable: i32) {
 }
 
 pub fn get_minus_o_opts() -> *mut *mut libc::c_char {
-    let mut ret = 0 as *mut *mut libc::c_char;
+    // let mut ret ;
     let mut i: i32 = 0;
-    ret = unsafe { strvec_create(N_O_OPTIONS!() as i32 + 1) };
+    let ret = c_strvec_create(N_O_OPTIONS!() as i32 + 1);
     for j in 0..N_O_OPTIONS!() {
         i = j as i32;
         unsafe {
             if o_options[i as usize].name != std::ptr::null_mut() {
                 *ret.offset(i as isize) = o_options[i as usize].name;
-                //*ret.as_ptr().offset(i as isize) = o_options[i as usize].name ;
             }
         }
     }
     unsafe { *ret.offset(i as isize) = o_options[i as usize].name };
-    // *ret.as_ptr().offset(27 as usize) = std::ptr::null_mut();
     ret
 }
 
 pub fn get_current_options() -> *mut libc::c_char {
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let temp: *mut libc::c_char;
     let mut i: i32 = 0;
-    let mut posixopts: i32 = 0;
-    posixopts = unsafe { num_posix_options() }; /* shopts modified by posix mode */
+    let posixopts: i32;
+    posixopts = num_posix_options(); /* shopts modified by posix mode */
     /* Make the buffer big enough to hold the set -o options and the shopt
     options modified by posix mode. */
     temp = unsafe { malloc((1 + N_O_OPTIONS!() as i32 + posixopts) as usize) as *mut libc::c_char };
@@ -581,7 +562,18 @@ pub fn set_current_options(bitmap: *const libc::c_char) {
                 }
                 if v != cv {
                     unsafe {
-                        SET_BINARY_O_OPTION_VALUE!(i, v, o_options[i as usize].name);
+                        // SET_BINARY_O_OPTION_VALUE!(i, v, o_options[i as usize].name);
+                        if o_options[i as usize].set_func.is_some() {
+                            // (*o_options[i as usize].set_func.unwrap())(v, o_options[i as usize].name);
+                            let f = o_options[i as usize].set_func.unwrap();
+                            f(v, o_options[i as usize].name);
+                        } else {
+                            if v == FLAG_ON!() {
+                                *o_options[i as usize].variable = 1;
+                            } else {
+                                *o_options[i as usize].variable = 0;
+                            }
+                        }
                     }
                 }
             }
@@ -589,10 +581,14 @@ pub fn set_current_options(bitmap: *const libc::c_char) {
     }
 }
 
+// #define SET_BINARY_O_OPTION_VALUE(i, onoff, name) \
+//   ((o_options[i].set_func) ? (*o_options[i].set_func) (onoff, name) \
+// 			   : (*o_options[i].variable = (onoff == FLAG_ON)))
+
 fn set_ignoreeof(on_or_off: i32, _option_name: *mut libc::c_char) -> i32 {
-    on_or_off == FLAG_ON!();
+    // on_or_off == FLAG_ON!();
     unsafe {
-        ignoreeof = on_or_off;
+        ignoreeof = if on_or_off == FLAG_ON!() { 1 } else { 0 };
         unbind_variable_noref(b"ignoreeof\0" as *const u8 as *const libc::c_char);
         if ignoreeof != 0 {
             bind_variable(
@@ -609,63 +605,66 @@ fn set_ignoreeof(on_or_off: i32, _option_name: *mut libc::c_char) -> i32 {
 }
 
 fn set_posix_mode(on_or_off: i32, _option_name: *mut libc::c_char) -> i32 {
-    unsafe {
-        if (on_or_off == FLAG_ON!() && posixly_correct != 0)
+    if unsafe {
+        (on_or_off == FLAG_ON!() && posixly_correct != 0)
             || (on_or_off == FLAG_OFF!() && posixly_correct == 0)
-        {
-            return 0;
-        }
-        on_or_off == FLAG_ON!();
-        posixly_correct = on_or_off;
-
-        if posixly_correct != 0 {
-            unbind_variable_noref(b"POSIXLY_CORRECT\0" as *const u8 as *const libc::c_char);
-        } else {
-            bind_variable(
-                b"POSIXLY_CORRECT\0" as *const u8 as *const libc::c_char,
-                b"y\0" as *const u8 as *mut libc::c_char,
-                0,
-            );
-        }
-        sv_strict_posix(b"POSIXLY_CORRECT\0" as *const u8 as *mut libc::c_char);
+    } {
+        return 0;
     }
+    // on_or_off == FLAG_ON!();
+    unsafe {
+        posixly_correct = if on_or_off == FLAG_ON!() { 1 } else { 0 };
+    }
+
+    if unsafe { posixly_correct != 0 } {
+        unbind_variable_noref(b"POSIXLY_CORRECT\0" as *const u8 as *const libc::c_char);
+    } else {
+        bind_variable(
+            b"POSIXLY_CORRECT\0" as *const u8 as *const libc::c_char,
+            b"y\0" as *const u8 as *mut libc::c_char,
+            0,
+        );
+    }
+    sv_strict_posix(b"POSIXLY_CORRECT\0" as *const u8 as *mut libc::c_char);
+
     return 0;
 }
 
 fn set_edit_mode(on_or_off: i32, option_name: *mut libc::c_char) -> i32 {
-    unsafe {
-        let isemacs: i32;
+    let isemacs: i32;
 
-        if on_or_off == FLAG_ON!() {
-            rl_variable_bind(
-                b"editing-mode\0" as *const u8 as *const libc::c_char,
-                option_name,
-            );
-            if interactive > 0 {
-                with_input_from_stdin();
-            }
-
-            no_line_editing = 0;
-        } else {
-            if rl_editing_mode == 1 {
-                isemacs = 1;
-            } else {
-                isemacs = 0;
-            }
-            if isemacs != 0 && *option_name == b'e' as libc::c_char
-                || (isemacs == 0 && *option_name == b'v' as libc::c_char)
-            {
-                if interactive > 0 {
-                    with_input_from_stream(
-                        stdin as *mut libc::FILE,
-                        b"stdin\0" as *const u8 as *const libc::c_char,
-                    );
-                }
-            }
+    if on_or_off == FLAG_ON!() {
+        c_rl_variable_bind(
+            b"editing-mode\0" as *const u8 as *const libc::c_char,
+            option_name,
+        );
+        if unsafe { interactive > 0 } {
+            with_input_from_stdin();
         }
 
-        return 1 - no_line_editing;
+        unsafe {
+            no_line_editing = 0;
+        }
+    } else {
+        if unsafe { rl_editing_mode == 1 } {
+            isemacs = 1;
+        } else {
+            isemacs = 0;
+        }
+        if unsafe {
+            isemacs != 0 && *option_name == b'e' as libc::c_char
+                || (isemacs == 0 && *option_name == b'v' as libc::c_char)
+        } {
+            if unsafe { interactive > 0 } {
+                with_input_from_stream(
+                    stdin as *mut libc::FILE,
+                    b"stdin\0" as *const u8 as *const libc::c_char,
+                );
+            }
+        }
     }
+
+    return unsafe { 1 - no_line_editing };
 }
 
 fn get_edit_mode(name: *mut libc::c_char) -> i32 {
@@ -712,37 +711,54 @@ pub fn set_minus_o_option(on_or_off: i32, option_name: *mut libc::c_char) -> i32
         sh_invalidoptname(option_name);
         return EX_USAGE;
     }
-    unsafe {
-        if o_options[i as usize].letter == 0 {
+
+    if unsafe { o_options[i as usize].letter == 0 } {
+        unsafe {
             previous_option_value = GET_BINARY_O_OPTION_VALUE!(i, o_options[i as usize].name);
-            SET_BINARY_O_OPTION_VALUE!(i, on_or_off, option_name);
-            return EXECUTION_SUCCESS!();
-        } else {
-            previous_option_value = change_flag(o_options[i as usize].letter, on_or_off);
-            if previous_option_value == FLAG_ERROR!() {
-                sh_invalidoptname(option_name);
-                return EXECUTION_FAILURE!();
+            // SET_BINARY_O_OPTION_VALUE!(i, on_or_off, option_name);
+            if o_options[i as usize].set_func.is_some() {
+                // (*o_options[i as usize].set_func.unwrap())(v, o_options[i as usize].name);
+                let f = o_options[i as usize].set_func.unwrap();
+                f(on_or_off, option_name);
             } else {
-                return EXECUTION_SUCCESS!();
+                if on_or_off == FLAG_ON!() {
+                    *o_options[i as usize].variable = 1;
+                } else {
+                    *o_options[i as usize].variable = 0;
+                }
             }
+        }
+        return EXECUTION_SUCCESS!();
+    } else {
+        unsafe {
+            previous_option_value = change_flag(o_options[i as usize].letter, on_or_off);
+        }
+        if unsafe { previous_option_value == FLAG_ERROR!() } {
+            sh_invalidoptname(option_name);
+            return EXECUTION_FAILURE!();
+        } else {
+            return EXECUTION_SUCCESS!();
         }
     }
 }
 
 fn print_all_shell_variables() {
-    let mut vars = 0 as *mut *mut SHELL_VAR;
-    unsafe {
-        vars = all_shell_variables();
-        if vars != std::ptr::null_mut() {
-            print_var_list(vars);
+    // let mut vars ;
+
+    let mut vars = all_shell_variables();
+    if vars != std::ptr::null_mut() {
+        print_var_list(vars);
+        unsafe {
             libc::free(vars as *mut libc::c_void);
         }
-        /* POSIX.2 does not allow function names and definitions to be output when
-        `set' is invoked without options (PASC Interp #202). */
-        if posixly_correct == 0 {
-            vars = all_shell_functions();
-            if vars != std::ptr::null_mut() {
-                print_func_list(vars);
+    }
+    /* POSIX.2 does not allow function names and definitions to be output when
+    `set' is invoked without options (PASC Interp #202). */
+    if unsafe { posixly_correct == 0 } {
+        vars = all_shell_functions();
+        if vars != std::ptr::null_mut() {
+            print_func_list(vars);
+            unsafe {
                 libc::free(vars as *mut libc::c_void);
             }
         }
@@ -754,7 +770,7 @@ pub fn set_shellopts() {
     let value: *mut libc::c_char;
     let mut tflag: [libc::c_char; N_O_OPTIONS!()] = [0 as libc::c_char; N_O_OPTIONS!()];
     let mut vsize: i32 = 0;
-    let mut i: i32 = 0;
+    let mut i: i32;
     let mut vptr: i32;
     let mut ip: *mut i32;
     let exported: i32;
@@ -826,7 +842,7 @@ fn parse_shellopts(value: *mut libc::c_char) {
     let mut vname: *mut libc::c_char;
     let mut vptr: i32 = 0;
     loop {
-        vname = unsafe { extract_colon_unit(value, &mut vptr) };
+        vname = extract_colon_unit(value, &mut vptr);
         if vname != std::ptr::null_mut() {
             break;
         }
@@ -839,7 +855,7 @@ fn parse_shellopts(value: *mut libc::c_char) {
 
 pub fn initialize_shell_options(no_shellopts: i32) {
     let temp: *mut libc::c_char;
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
 
     if no_shellopts == 0 {
         var = find_variable(b"SHELLOPTS\0" as *const u8 as *const libc::c_char);
@@ -884,7 +900,7 @@ pub fn set_builtin(mut list: *mut WordList) -> i32 {
     let mut opts_changed: i32;
     let mut rv: i32;
     let mut r: i32;
-    let mut arg: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut arg: *mut libc::c_char;
     let mut s: [libc::c_char; 3] = [0 as libc::c_char; 3];
     let mut opt: i32;
     let _flag: bool = false;
@@ -928,7 +944,7 @@ pub fn set_builtin(mut list: *mut WordList) -> i32 {
                 }
             }
         }
-        // opt = unsafe {internal_getopt(list, optflags.as_ptr() as *mut libc::c_char)};
+
         opt = unsafe { internal_getopt(list, optflags.as_mut_ptr()) };
     }
     opts_changed = 0;
@@ -936,26 +952,22 @@ pub fn set_builtin(mut list: *mut WordList) -> i32 {
     while list != std::ptr::null_mut() {
         if unsafe { (*(*list).word).word != std::ptr::null_mut() } {
             arg = unsafe { (*(*list).word).word };
-            //if (arg[0] == '-' && (!arg[1] || (arg[1] == '-' && !arg[2])))
             if unsafe {
                 (*arg == b'-' as u8 as libc::c_char)
                     && (arg.offset(1 as isize) == std::ptr::null_mut()
                         || (*(arg.offset(1 as isize)) == b'-' as u8 as libc::c_char
                             && arg.offset(2 as isize) != std::ptr::null_mut()))
             } {
-                //println!("*arg == b'-' && arg[1] && arg[1]== b'-'");
                 unsafe {
                     list = (*list).next;
                     /* `set --' unsets the positional parameters. */
                     if *arg.offset(1 as isize) == b'-' as u8 as libc::c_char {
-                        //println!("arg[1]== b'-'");
                         force_assignment = 1;
                     }
                     /* Until told differently, the old shell behaviour of
                     `set - [arg ...]' being equivalent to `set +xv [arg ...]'
                     stands.  Posix.2 says the behaviour is marked as obsolescent. */
                     else {
-                        //println!("else .........");
                         change_flag('x' as i32, b'+' as i32);
                         change_flag('v' as i32, b'+' as i32);
                         opts_changed = 1;
@@ -981,7 +993,7 @@ pub fn set_builtin(mut list: *mut WordList) -> i32 {
                         /* -+o option-name */
 
                         let mut option_name: *mut libc::c_char = 0 as *mut libc::c_char;
-                        let mut opt: *mut WordList = 0 as *mut WordList;
+                        let opt: *mut WordList;
                         unsafe {
                             opt = (*list).next;
                         }
@@ -1014,8 +1026,6 @@ pub fn set_builtin(mut list: *mut WordList) -> i32 {
                                     || *option_name == '+' as libc::c_char
                             }
                         {
-                            //on_or_off == '+' as i32;
-
                             if on_or_off == '+' as i32 {
                                 list_minus_o_opts(-1, 1);
                             } else {
@@ -1032,13 +1042,13 @@ pub fn set_builtin(mut list: *mut WordList) -> i32 {
                         unsafe {
                             list = (*list).next; /* Skip over option name. */
                         }
-                        opts_changed = 1;
+                        // opts_changed = 1;
                         r = set_minus_o_option(on_or_off, option_name);
                         if r != EXECUTION_SUCCESS!() {
                             set_shellopts();
                             return r;
                         }
-                    } else if unsafe { change_flag(flag_name, on_or_off) == FLAG_ERROR!() } {
+                    } else if change_flag(flag_name, on_or_off) == FLAG_ERROR!() {
                         s[0] = on_or_off as libc::c_char;
                         s[1] = flag_name as libc::c_char;
                         s[2] = '\0' as i32 as libc::c_char;
@@ -1055,7 +1065,6 @@ pub fn set_builtin(mut list: *mut WordList) -> i32 {
                     }
 
                     flag_name = 0;
-                    //flag_name = unsafe{*arg as i32};
                 }
             } else {
                 break;
@@ -1080,108 +1089,114 @@ pub fn set_builtin(mut list: *mut WordList) -> i32 {
 #[no_mangle]
 pub fn unset_builtin(mut list: *mut WordList) -> i32 {
     let mut unset_function: i32 = 0;
-    let mut unset_variable: i32 = 0;
-    let mut unset_array: i32 = 0;
-    let mut opt: i32 = 0;
+    let mut unset_variable: i32;
+    let mut unset_array: i32;
+    let mut opt: i32;
     let mut nameref: i32 = 0;
     let mut any_failed: i32 = 0;
     let mut global_unset_func: i32 = 0;
     let mut global_unset_var: i32 = 0;
-    let mut vflags: i32 = 0;
-    let mut valid_id: i32 = 0;
-    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut tname: *mut libc::c_char = 0 as *mut libc::c_char;
+    let vflags: i32;
+    let mut valid_id: i32;
+    let mut name: *mut libc::c_char;
+    let mut tname: *mut libc::c_char;
 
     let c_str_fnv = CString::new("fnv").unwrap();
-    unsafe {
-        reset_internal_getopt();
-        opt = internal_getopt(list, c_str_fnv.as_ptr() as *mut libc::c_char);
 
-        while opt != -1 {
-            let optu8: u8 = opt as u8;
-            let optChar: char = char::from(optu8);
-            match optChar {
-                'f' => {
-                    global_unset_func = 1;
-                }
-                'v' => {
-                    global_unset_var = 0;
-                }
-                'n' => {
-                    nameref = 1;
-                }
-                _ => {
-                    if opt == -99 {
-                        builtin_help();
-                        return EX_USAGE;
-                    }
-                    builtin_usage();
+    reset_internal_getopt();
+    opt = internal_getopt(list, c_str_fnv.as_ptr() as *mut libc::c_char);
+
+    while opt != -1 {
+        let optu8: u8 = opt as u8;
+        let optChar: char = char::from(optu8);
+        match optChar {
+            'f' => {
+                global_unset_func = 1;
+            }
+            'v' => {
+                global_unset_var = 0;
+            }
+            'n' => {
+                nameref = 1;
+            }
+            _ => {
+                if opt == -99 {
+                    builtin_help();
                     return EX_USAGE;
                 }
+                builtin_usage();
+                return EX_USAGE;
             }
-            opt = internal_getopt(list, c_str_fnv.as_ptr() as *mut libc::c_char);
         }
-        //println!("unset func={},  unset val=%{}", global_unset_func, global_unset_var);
+        opt = internal_getopt(list, c_str_fnv.as_ptr() as *mut libc::c_char);
+    }
 
-        list = loptend;
+    list = unsafe { loptend };
 
-        if global_unset_func != 0 && global_unset_var != 0 {
+    if global_unset_func != 0 && global_unset_var != 0 {
+        unsafe {
             builtin_error(
                 b"cannot simultaneously unset a function and a variable \0" as *const u8
                     as *const libc::c_char,
             );
-            return EXECUTION_FAILURE!();
-        } else if unset_function != 0 && nameref != 0 {
-            nameref = 0;
         }
+        return EXECUTION_FAILURE!();
+    } else if unset_function != 0 && nameref != 0 {
+        nameref = 0;
+    }
 
-        if assoc_expand_once != 0 {
-            vflags = VA_NOEXPAND!() | VA_ONEWORD!();
-        } else {
-            vflags = 0;
-        }
-        while !list.is_null() {
-            let mut var: *mut SHELL_VAR;
-            let mut tem: i32 = 0;
+    if unsafe { assoc_expand_once != 0 } {
+        vflags = VA_NOEXPAND!() | VA_ONEWORD!();
+    } else {
+        vflags = 0;
+    }
+    while !list.is_null() {
+        let mut var: *mut SHELL_VAR;
+        let mut tem: i32 = 0;
 
-            let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+        let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
 
-            name = (*(*list).word).word;
-            unset_function = global_unset_func;
-            unset_variable = global_unset_var;
-            unset_array = 0;
+        name = unsafe { (*(*list).word).word };
+        unset_function = global_unset_func;
+        unset_variable = global_unset_var;
+        unset_array = 0;
 
-            if !unset_function == 0 && nameref == 0 && valid_array_reference(name, vflags) != 0 {
+        if !unset_function == 0 && nameref == 0 && valid_array_reference(name, vflags) != 0 {
+            unsafe {
                 t = libc::strchr(name, '[' as i32);
                 *t.offset(1 as isize) = b'\0' as i32 as libc::c_char;
-                unset_array = unset_array + 1;
             }
+            unset_array = unset_array + 1;
+        }
 
-            valid_id = legal_identifier(name);
+        valid_id = legal_identifier(name);
 
-            if global_unset_func == 0 && global_unset_var == 0 && valid_id == 0 {
-                unset_array = 0;
-                unset_variable = unset_array;
-                unset_function = 1;
-            }
+        if global_unset_func == 0 && global_unset_var == 0 && valid_id == 0 {
+            unset_array = 0;
+            unset_variable = unset_array;
+            unset_function = 1;
+        }
 
-            if unset_function == 0 && valid_id == 0 {
-                sh_invalidid(name);
-                any_failed = any_failed + 1;
-                list = (*list).next;
-            }
+        if unset_function == 0 && valid_id == 0 {
+            sh_invalidid(name);
+            any_failed = any_failed + 1;
+            list = unsafe { (*list).next };
+        }
 
-            if unset_function != 0 {
-                var = find_function(name);
+        if unset_function != 0 {
+            var = find_function(name);
+        } else {
+            if nameref != 0 {
+                var = find_variable_last_nameref(name, 0);
             } else {
-                if nameref != 0 {
-                    var = find_variable_last_nameref(name, 0);
-                } else {
-                    var = find_variable(name);
-                }
+                var = find_variable(name);
             }
+        }
 
-            if var != std::ptr::null_mut() && unset_function == 0 && non_unsettable_p!(var) != 0 {
+        if unsafe {
+            var != std::ptr::null_mut() && unset_function == 0 && non_unsettable_p!(var) != 0
+        } {
+            unsafe {
                 builtin_error(
                     b"%s: cannot unset \0" as *const u8 as *const libc::c_char,
                     name,
@@ -1189,100 +1204,110 @@ pub fn unset_builtin(mut list: *mut WordList) -> i32 {
                 any_failed = any_failed + 1;
                 list = (*list).next;
             }
+        }
 
-            if var != std::ptr::null_mut()
-                && unset_function == 0
-                && nameref == 0
-                && STREQ(name, name_cell!(var))
-            {
+        if var != std::ptr::null_mut()
+            && unset_function == 0
+            && nameref == 0
+            && unsafe { STREQ(name, name_cell!(var)) }
+        {
+            unsafe {
                 name = name_cell!(var);
             }
+        }
 
-            if var == std::ptr::null_mut()
-                && nameref == 0
-                && unset_variable == 0
-                && unset_function == 0
-            {
-                var = find_function(name);
-                if var != std::ptr::null_mut() {
-                    unset_function = 1;
-                }
+        if var == std::ptr::null_mut() && nameref == 0 && unset_variable == 0 && unset_function == 0
+        {
+            var = find_function(name);
+            if var != std::ptr::null_mut() {
+                unset_function = 1;
             }
+        }
 
-            if var != std::ptr::null_mut() && readonly_p!(var) != 0 {
-                if unset_function != 0 {
+        if unsafe { var != std::ptr::null_mut() && readonly_p!(var) != 0 } {
+            if unset_function != 0 {
+                unsafe {
                     builtin_error(
                         b"%s: cannot unset: readonly %s  \0 " as *const u8 as *mut libc::c_char,
                         (*var).name,
                         b"function\0" as *const u8 as *mut libc::c_char,
                     );
-                } else {
+                }
+            } else {
+                unsafe {
                     builtin_error(
                         b"%s: cannot unset: readonly %s \0" as *const u8 as *mut libc::c_char,
                         (*var).name,
                         b"variable\0" as *const u8 as *mut libc::c_char,
                     );
                 }
-                any_failed = any_failed + 1;
-                list = (*list).next;
             }
-            // #if defined (ARRAY_VARS)
-            if var != std::ptr::null_mut() && unset_array != 0 {
-                /* Let unbind_array_element decide what to do with non-array vars */
-                tem = unbind_array_element(var, t, vflags); /* XXX new third arg */
-                if tem == -2 && array_p!(var) == 0 && assoc_p!(var) == 0 {
+            any_failed = any_failed + 1;
+            list = unsafe { (*list).next };
+        }
+        if var != std::ptr::null_mut() && unset_array != 0 {
+            /* Let unbind_array_element decide what to do with non-array vars */
+            tem = unbind_array_element(var, t, vflags); /* XXX new third arg */
+            if unsafe { tem == -2 && array_p!(var) == 0 && assoc_p!(var) == 0 } {
+                unsafe {
                     builtin_error(
                         b"%s: not an array variable\0" as *const u8 as *const libc::c_char,
                         (*var).name,
                     );
                     any_failed = any_failed + 1;
                     list = (*list).next;
-                } else if tem < 0 {
-                    any_failed = any_failed + 1;
                 }
-            } else {
-                if var == std::ptr::null_mut() && nameref == 0 && unset_function == 0 {
-                    var = find_variable_last_nameref(name, 0);
-                    if var != std::ptr::null_mut() && nameref_p!(var) != 0 {
-                        if valid_array_reference(nameref_cell!(var), 0) != 0 {
+            } else if tem < 0 {
+                any_failed = any_failed + 1;
+            }
+        } else {
+            if var == std::ptr::null_mut() && nameref == 0 && unset_function == 0 {
+                var = find_variable_last_nameref(name, 0);
+                if unsafe { var != std::ptr::null_mut() && nameref_p!(var) != 0 } {
+                    if unsafe { valid_array_reference(nameref_cell!(var), 0) != 0 } {
+                        unsafe {
                             tname = savestring!(nameref_cell!(var));
-                            var = array_variable_part(tname, 0, &mut t, &mut 0);
-                            if var != std::ptr::null_mut() {
-                                tem = unbind_array_element(var, t, vflags); /* XXX new third arg */
-                            }
+                        }
+                        var = array_variable_part(tname, 0, &mut t, &mut 0);
+                        if var != std::ptr::null_mut() {
+                            tem = unbind_array_element(var, t, vflags); /* XXX new third arg */
+                        }
+                        unsafe {
                             libc::free(tname as *mut libc::c_void);
-                        } else {
-                            tem = unbind_variable(nameref_cell!(var));
                         }
                     } else {
-                        tem = unbind_variable(name);
+                        unsafe {
+                            tem = unbind_variable(nameref_cell!(var));
+                        }
                     }
                 } else {
-                    if unset_function != 0 {
-                        tem = unbind_func(name);
-                    } else if nameref != 0 {
-                        tem = unbind_nameref(name);
-                    } else {
-                        tem = unbind_variable(name);
-                    }
+                    tem = unbind_variable(name);
+                }
+            } else {
+                if unset_function != 0 {
+                    tem = unbind_func(name);
+                } else if nameref != 0 {
+                    tem = unbind_nameref(name);
+                } else {
+                    tem = unbind_variable(name);
                 }
             }
-
-            if tem == -1 && nameref == 0 && unset_function == 0 && unset_variable == 0 {
-                tem = unbind_func(name);
-            }
-            name = (*(*list).word).word;
-
-            if unset_function == 0 {
-                stupidly_hack_special_variables(name);
-            }
-            list = (*list).next;
         }
 
-        if any_failed != 0 {
-            return EXECUTION_FAILURE!();
-        } else {
-            return EXECUTION_SUCCESS!();
+        if tem == -1 && nameref == 0 && unset_function == 0 && unset_variable == 0 {
+            unbind_func(name);
         }
+        name = unsafe { (*(*list).word).word };
+
+        if unset_function == 0 {
+            stupidly_hack_special_variables(name);
+        }
+        list = unsafe { (*list).next };
+    }
+
+    if any_failed != 0 {
+        return EXECUTION_FAILURE!();
+    } else {
+        return EXECUTION_SUCCESS!();
     }
 }
