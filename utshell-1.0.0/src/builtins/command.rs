@@ -14,11 +14,11 @@ use crate::unwind_prot::{begin_unwind_frame, run_unwind_frame};
 
 #[no_mangle]
 pub fn command_builtin(mut list: *mut WordList) -> libc::c_int {
-    let mut result: libc::c_int = 0;
-    let mut verbose: libc::c_int = 0;
-    let mut use_standard_path: libc::c_int = 0;
-    let mut opt: libc::c_int = 0;
-    let mut command: *mut COMMAND = 0 as *mut COMMAND;
+    let result: libc::c_int;
+    let mut verbose: libc::c_int;
+    let mut use_standard_path: libc::c_int;
+    let mut opt: libc::c_int;
+    let command: *mut COMMAND;
     use_standard_path = 0 as libc::c_int;
     verbose = use_standard_path;
 
@@ -50,20 +50,23 @@ pub fn command_builtin(mut list: *mut WordList) -> libc::c_int {
             }
         }
     }
+
     unsafe {
         list = loptend;
-        if list.is_null() {
-            return EXECUTION_SUCCESS!();
-        }
-        if use_standard_path != 0 && restricted != 0 {
-            sh_restricted(b"-p\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
-            return EXECUTION_FAILURE!();
-        }
-        if verbose != 0 {
-            let mut found: libc::c_int = 0;
-            let mut any_found: libc::c_int = 0;
-            any_found = 0 as libc::c_int;
-            while !list.is_null() {
+    }
+    if list.is_null() {
+        return EXECUTION_SUCCESS!();
+    }
+    if unsafe { use_standard_path != 0 && restricted != 0 } {
+        sh_restricted(b"-p\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
+        return EXECUTION_FAILURE!();
+    }
+    if verbose != 0 {
+        let mut found: libc::c_int;
+        let mut any_found: libc::c_int;
+        any_found = 0 as libc::c_int;
+        while !list.is_null() {
+            unsafe {
                 found = describe_command((*(*list).word).word, verbose | use_standard_path);
                 if found == 0 as libc::c_int && verbose != CDESC_REUSABLE!() {
                     sh_notfound((*(*list).word).word);
@@ -71,15 +74,16 @@ pub fn command_builtin(mut list: *mut WordList) -> libc::c_int {
                 any_found += found;
                 list = (*list).next;
             }
-            return if any_found != 0 {
-                EXECUTION_SUCCESS!()
-            } else {
-                EXECUTION_FAILURE!()
-            };
         }
-        begin_unwind_frame(const_command_builtin);
-        command = make_bare_simple_command();
-
+        return if any_found != 0 {
+            EXECUTION_SUCCESS!()
+        } else {
+            EXECUTION_FAILURE!()
+        };
+    }
+    begin_unwind_frame(const_command_builtin);
+    command = make_bare_simple_command();
+    unsafe {
         (*(*command).value.Simple).words = copy_word_list(list);
 
         (*(*command).value.Simple).redirects = 0 as *mut libc::c_void as *mut REDIRECT;
@@ -100,17 +104,8 @@ pub fn command_builtin(mut list: *mut WordList) -> libc::c_int {
             } else {
                 0 as libc::c_int
             });
-        /*add_unwind_protect(
-            ::std::mem::transmute::<
-                Option::<unsafe extern "C" fn(*mut COMMAND) -> ()>,
-                *mut libc::c_char,
-            >(Some(dispose_command as unsafe extern "C" fn(*mut COMMAND) -> ())),
-            command,
-        );*/
-        result = execute_command(command);
-        run_unwind_frame(
-            b"command_builtin\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-        );
-        return result;
     }
+    result = execute_command(command);
+    run_unwind_frame(b"command_builtin\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
+    return result;
 }
