@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::src_common::*;
 
 use crate::alias::delete_all_aliases;
@@ -23,10 +20,12 @@ use crate::builtins::shopt::reset_shopt_options;
 use crate::builtins::source::source_builtin;
 use crate::copycmd::{copy_command, copy_word_list};
 use crate::dispose_cmd::{dispose_command, dispose_redirects, dispose_words};
+use crate::error::err_readonly;
 use crate::error::{command_error, file_error};
 use crate::expr::evalexp;
 use crate::findcmd::{executable_file, search_for_command};
 use crate::flags::{change_flag, reset_shell_flags};
+use crate::general::valid_nameref_value;
 use crate::general::{
     check_binary_file, check_identifier, default_columns, file_isdir, legal_identifier,
     legal_number, move_to_high_fd, printable_filename, sh_openpipe,
@@ -41,15 +40,20 @@ use crate::jobs::{
 use crate::list::list_length;
 use crate::local::locale_decpoint;
 use crate::make_cmd::{make_word, make_word_list};
+use crate::optimize_fork;
+use crate::optimize_shell_function;
 use crate::pathexp::quote_string_for_globbing;
+use crate::print_cmd::make_command_string;
 use crate::print_cmd::{
     print_arith_command, print_case_command_head, print_cond_command, print_for_command_head,
     print_select_command_head, print_simple_command, xtrace_print_arith_cmd,
     xtrace_print_case_command_head, xtrace_print_cond_term, xtrace_print_for_command_head,
     xtrace_print_select_command_head, xtrace_print_word_list,
 };
-use crate::readline::clearerr;
+use crate::readline::c_clearerr;
 use crate::redir::{do_redirections, stdin_redirects};
+use crate::sh_getopt_restore_istate;
+use crate::sh_getopt_save_istate;
 use crate::sig::{
     jump_to_top_level, reset_terminating_signals, set_signal_handler, throw_to_top_level,
 };
@@ -72,6 +76,12 @@ use crate::unwind_prot::{
     add_unwind_protect, begin_unwind_frame, clear_unwind_protect_list, discard_unwind_frame,
     run_unwind_frame, unwind_protect_mem, unwind_protect_tag_on_stack,
 };
+use crate::utshell::sh_exit;
+use crate::utshell::subshell_exit;
+use crate::utshell::unbind_args;
+use crate::utshell::unset_bash_input;
+use crate::variables::bind_function;
+use crate::variables::bind_function_def;
 use crate::variables::{
     adjust_shell_level, bind_variable, bind_variable_value, check_unbind_variable,
     dispose_used_env_vars, find_function, find_function_def, find_variable,
@@ -89,7 +99,7 @@ information from the shell to its children about file descriptors
 to close. */
 #[no_mangle]
 pub fn new_fd_bitmap(size: libc::c_int) -> *mut fd_bitmap {
-    let mut ret: *mut fd_bitmap = 0 as *mut fd_bitmap;
+    let ret: *mut fd_bitmap;
     unsafe {
         ret = malloc(size_of::<fd_bitmap>() as usize) as *mut fd_bitmap;
 
@@ -119,7 +129,7 @@ pub fn dispose_fd_bitmap(fdbp: *mut fd_bitmap) {
 
 #[no_mangle]
 pub fn close_fd_bitmap(fdbp: *mut fd_bitmap) {
-    let mut i: libc::c_int = 0;
+    let mut i: libc::c_int;
 
     if !fdbp.is_null() {
         i = 0;
@@ -167,29 +177,34 @@ pub fn executing_line_number() -> libc::c_int {
 
 #[no_mangle]
 pub fn execute_command(command: *mut COMMAND) -> libc::c_int {
-    let mut bitmap: *mut fd_bitmap = 0 as *mut fd_bitmap;
-    let mut result: libc::c_int = 0;
+    let bitmap: *mut fd_bitmap;
+    let result: libc::c_int;
+
     unsafe {
         current_fds_to_close = 0 as *mut fd_bitmap;
-        bitmap = new_fd_bitmap(FD_BITMAP_DEFAULT_SIZE!());
-        begin_unwind_frame(b"execute-command\0" as *const u8 as *mut libc::c_char);
+    }
+    bitmap = new_fd_bitmap(FD_BITMAP_DEFAULT_SIZE!());
+    begin_unwind_frame(b"execute-command\0" as *const u8 as *mut libc::c_char);
+    unsafe {
         add_unwind_protect(
             ::std::mem::transmute::<fn(*mut fd_bitmap) -> (), Option<Function>>(dispose_fd_bitmap),
             bitmap as *mut libc::c_char,
         );
+    }
+    //执行内部命令
+    result = execute_command_internal(command, 0, NO_PIPE, NO_PIPE, bitmap);
 
-        //执行内部命令
-        result = execute_command_internal(command, 0, NO_PIPE, NO_PIPE, bitmap);
+    dispose_fd_bitmap(bitmap);
+    discard_unwind_frame(b"execute-command\0" as *const u8 as *mut libc::c_char);
 
-        dispose_fd_bitmap(bitmap);
-        discard_unwind_frame(b"execute-command\0" as *const u8 as *mut libc::c_char);
+    if unsafe { variable_context == 0 && executing_list == 0 } {
+        unlink_fifo_list();
+    }
 
-        if variable_context == 0 && executing_list == 0 {
-            unlink_fifo_list();
-        }
-
+    unsafe {
         QUIT!();
     }
+
     return result;
 }
 
@@ -212,10 +227,8 @@ fn shell_control_structure(type_0: command_type) -> libc::c_int {
 }
 
 fn cleanup_redirects(list: *mut REDIRECT) {
-    unsafe {
-        do_redirections(list, RX_ACTIVE as libc::c_int);
-        dispose_redirects(list);
-    }
+    do_redirections(list, RX_ACTIVE as libc::c_int);
+    dispose_redirects(list);
 }
 
 #[no_mangle]
@@ -249,14 +262,12 @@ pub fn dispose_partial_redirects() {
 }
 
 fn restore_signal_mask(set: *mut sigset_t) -> libc::c_int {
-    unsafe {
-        return sigprocmask(SIG_SETMASK as libc::c_int, set, 0 as *mut sigset_t);
-    }
+    return c_sigprocmask(SIG_SETMASK as libc::c_int, set, 0 as *mut sigset_t);
 }
 
 #[no_mangle]
 pub fn async_redirect_stdin() {
-    let mut fd: libc::c_int = 0;
+    let fd: libc::c_int;
     unsafe {
         fd = open(
             b"/dev/null\0" as *const u8 as *const libc::c_char,
@@ -269,7 +280,7 @@ pub fn async_redirect_stdin() {
             internal_error(
                 b"cannot redirect standard input from /dev/null: %s\0" as *const u8
                     as *mut libc::c_char,
-                strerror(errno!()),
+                strerror(*c___errno_location()),
             );
         }
     }
@@ -295,23 +306,22 @@ pub fn execute_command_internal(
     pipe_out: libc::c_int,
     fds_to_close: *mut fd_bitmap,
 ) -> libc::c_int {
+    let mut exec_result: libc::c_int;
+    let user_subshell: libc::c_int;
+    let mut invert: libc::c_int;
+    let ignore_return: libc::c_int;
+    let mut was_error_trap: libc::c_int;
+    let fork_flags: libc::c_int;
+    let my_undo_list: *mut REDIRECT;
+    let exec_undo_list: *mut REDIRECT;
+    let tcmd: *mut libc::c_char;
+    let mut save_line_number: libc::c_int = 0;
+    let mut ofifo: libc::c_int = 0;
+    let nfifo: libc::c_int;
+    let mut osize: libc::c_int = 0;
+    let saved_fifo: libc::c_int;
+    let mut ofifo_list: *mut libc::c_void = 0 as *mut libc::c_void;
     unsafe {
-        let mut exec_result: libc::c_int = 0;
-        let mut user_subshell: libc::c_int = 0;
-        let mut invert: libc::c_int = 0;
-        let mut ignore_return: libc::c_int = 0;
-        let mut was_error_trap: libc::c_int = 0;
-        let mut fork_flags: libc::c_int = 0;
-        let mut my_undo_list: *mut REDIRECT = 0 as *mut REDIRECT;
-        let mut exec_undo_list: *mut REDIRECT = 0 as *mut REDIRECT;
-        let mut tcmd: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut save_line_number: libc::c_int = 0;
-        let mut ofifo: libc::c_int = 0;
-        let mut nfifo: libc::c_int = 0;
-        let mut osize: libc::c_int = 0;
-        let mut saved_fifo: libc::c_int = 0;
-        let mut ofifo_list: *mut libc::c_void = 0 as *mut libc::c_void;
-
         if breaking != 0 || continuing != 0 {
             return last_command_exit_value;
         }
@@ -363,9 +373,9 @@ pub fn execute_command_internal(
             || shell_control_structure((*command).type_0 as libc::c_uint) != 0
                 && (pipe_out != NO_PIPE || pipe_in != NO_PIPE || asynchronous != 0)
         {
-            let mut paren_pid: pid_t = 0;
-            let mut s: libc::c_int = 0;
-            let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+            let paren_pid: pid_t;
+            let mut s: libc::c_int;
+            let p: *mut libc::c_char;
 
             save_line_number = line_number;
             if (*command).type_0 == command_type_cm_subshell {
@@ -817,73 +827,87 @@ fn mkfmt(
     mut sec: time_t,
     mut sec_fraction: libc::c_int,
 ) -> libc::c_int {
-    let mut min: time_t = 0;
+    let mut min: time_t;
     let mut abuf: [libc::c_char; 22] = [0; 22];
-    let mut ind: libc::c_int = 0;
-    let mut aind: libc::c_int = 0;
-    unsafe {
-        ind = 0;
-        abuf[(size_of::<[libc::c_char; 22]>()) - 1] = '\u{0}' as libc::c_char;
+    let mut ind: libc::c_int;
+    let mut aind: libc::c_int;
 
-        if lng != 0 {
-            min = sec / 60 as libc::c_long;
-            sec %= 60 as libc::c_long;
-            aind = (size_of::<[libc::c_char; 22]>() - 2) as libc::c_int;
-            loop {
-                //有可能aind的值不正确
-                abuf[aind as usize] = (min % 10 + '0' as libc::c_long) as libc::c_char;
-                aind = aind - 1;
-                min /= 10 as libc::c_long;
-                if !(min != 0) {
-                    break;
-                }
-            }
-            aind += 1;
-            while abuf[aind as usize] != 0 {
-                //有可能ind，aind的值不正确
-                *buf.offset(ind as isize) = abuf[aind as usize];
-                aind = aind + 1;
-                ind = ind + 1;
-            }
-            *buf.offset(ind as isize) = 'm' as libc::c_char;
-            ind = ind + 1;
-        }
+    ind = 0;
+    abuf[(size_of::<[libc::c_char; 22]>()) - 1] = '\u{0}' as libc::c_char;
 
+    if lng != 0 {
+        min = sec / 60 as libc::c_long;
+        sec %= 60 as libc::c_long;
         aind = (size_of::<[libc::c_char; 22]>() - 2) as libc::c_int;
         loop {
-            abuf[aind as usize] = ((sec % 10) + '0' as libc::c_long) as libc::c_char;
+            //有可能aind的值不正确
+            abuf[aind as usize] = (min % 10 + '0' as libc::c_long) as libc::c_char;
             aind = aind - 1;
-            sec /= 10;
-            if !(sec != 0) {
+            min /= 10 as libc::c_long;
+            if !(min != 0) {
                 break;
             }
         }
         aind += 1;
         while abuf[aind as usize] != 0 {
-            *buf.offset(ind as isize) = abuf[aind as usize];
+            //有可能ind，aind的值不正确
+            unsafe {
+                *buf.offset(ind as isize) = abuf[aind as usize];
+            }
             aind = aind + 1;
             ind = ind + 1;
         }
+        unsafe {
+            *buf.offset(ind as isize) = 'm' as libc::c_char;
+        }
+        ind = ind + 1;
+    }
 
-        if prec != 0 {
+    aind = (size_of::<[libc::c_char; 22]>() - 2) as libc::c_int;
+    loop {
+        abuf[aind as usize] = ((sec % 10) + '0' as libc::c_long) as libc::c_char;
+        aind = aind - 1;
+        sec /= 10;
+        if !(sec != 0) {
+            break;
+        }
+    }
+    aind += 1;
+    while abuf[aind as usize] != 0 {
+        unsafe {
+            *buf.offset(ind as isize) = abuf[aind as usize];
+        }
+        aind = aind + 1;
+        ind = ind + 1;
+    }
+
+    if prec != 0 {
+        unsafe {
             *buf.offset(ind as isize) = locale_decpoint() as libc::c_char;
-            ind = ind + 1;
-            aind = 1;
-            while aind <= prec {
+        }
+        ind = ind + 1;
+        aind = 1;
+        while aind <= prec {
+            unsafe {
                 *buf.offset(ind as isize) =
                     (sec_fraction / precs[aind as usize] + '0' as i32) as libc::c_char;
                 ind = ind + 1;
                 sec_fraction %= precs[aind as usize];
-                aind += 1;
             }
+            aind += 1;
         }
+    }
 
-        if lng != 0 {
+    if lng != 0 {
+        unsafe {
             *buf.offset(ind as isize) = 's' as libc::c_char;
-            ind = ind + 1;
         }
+        ind = ind + 1;
+    }
+    unsafe {
         *buf.offset(ind as isize) = '\u{0}' as libc::c_char;
     }
+
     return ind;
 }
 
@@ -898,16 +922,16 @@ fn print_formatted_time(
     ssf: libc::c_int,
     cpu: libc::c_int,
 ) {
-    let mut prec: libc::c_int = 0;
-    let mut lng: libc::c_int = 0;
-    let mut len: libc::c_int = 0;
-    let mut str: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut s: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut prec: libc::c_int;
+    let mut lng: libc::c_int;
+    let mut len: libc::c_int;
+    let mut str: *mut libc::c_char;
+    let mut s: *mut libc::c_char;
     let mut ts: [libc::c_char; 30] = [0; 30];
-    let mut sum: time_t = 0;
-    let mut sum_frac: libc::c_int = 0;
-    let mut sindex: libc::c_int = 0;
-    let mut ssize: libc::c_int = 0;
+    let mut sum: time_t;
+    let mut sum_frac: libc::c_int;
+    let mut sindex: libc::c_int;
+    let mut ssize: libc::c_int;
     unsafe {
         len = strlen(format) as libc::c_int;
         ssize = (len + 64) - (len % 64);
@@ -987,18 +1011,18 @@ fn time_command(
     fds_to_close: *mut fd_bitmap,
 ) -> libc::c_int {
     let mut rv: libc::c_int = 0;
-    let mut posix_time: libc::c_int = 0;
-    let mut old_flags: libc::c_int = 0;
-    let mut nullcmd: libc::c_int = 0;
-    let mut code: libc::c_int = 0;
-    let mut rs: time_t = 0;
-    let mut us: time_t = 0;
-    let mut ss: time_t = 0;
-    let mut rsf: libc::c_int = 0;
-    let mut usf: libc::c_int = 0;
-    let mut ssf: libc::c_int = 0;
-    let mut cpu: libc::c_int = 0;
-    let mut time_format: *mut libc::c_char = 0 as *mut libc::c_char;
+    let posix_time: libc::c_int;
+    let old_flags: libc::c_int;
+    let nullcmd: libc::c_int;
+    let code: libc::c_int;
+    let mut rs: time_t;
+    let mut us: time_t;
+    let mut ss: time_t;
+    let mut rsf: libc::c_int;
+    let mut usf: libc::c_int;
+    let mut ssf: libc::c_int;
+    let mut cpu: libc::c_int;
+    let mut time_format: *mut libc::c_char;
     let mut save_top_level: sigjmp_buf = [__jmp_buf_tag {
         __jmpbuf: [0; 8],
         __mask_was_saved: 0,
@@ -1124,89 +1148,97 @@ fn time_command(
         __bindgen_anon_13: rusage__bindgen_ty_13 { ru_nvcsw: 0 },
         __bindgen_anon_14: rusage__bindgen_ty_14 { ru_nivcsw: 0 },
     };
-    unsafe {
-        gettimeofday(&mut before, &mut dtz);
-        getrusage(RUSAGE_SELF, &mut selfb);
-        getrusage(RUSAGE_CHILDREN, &mut kidsb);
 
-        posix_time = (!command.is_null() && (*command).flags & CMD_TIME_POSIX as libc::c_int != 0)
-            as libc::c_int;
-        nullcmd = (command.is_null()
+    c_gettimeofday(&mut before, &mut dtz);
+    c_getrusage(RUSAGE_SELF, &mut selfb);
+    c_getrusage(RUSAGE_CHILDREN, &mut kidsb);
+
+    posix_time = unsafe {
+        (!command.is_null() && (*command).flags & CMD_TIME_POSIX as libc::c_int != 0) as libc::c_int
+    };
+    nullcmd = unsafe {
+        (command.is_null()
             || (*command).type_0 == command_type_cm_simple
                 && ((*(*command).value.Simple).words).is_null()
-                && ((*(*command).value.Simple).redirects).is_null())
-            as libc::c_int;
-        if posixly_correct != 0 && nullcmd != 0 {
-            kidsb.ru_stime.tv_sec = 0 as __time_t;
-            selfb.ru_stime.tv_sec = kidsb.ru_stime.tv_sec;
-            kidsb.ru_utime.tv_sec = selfb.ru_stime.tv_sec;
-            selfb.ru_utime.tv_sec = kidsb.ru_utime.tv_sec;
-            kidsb.ru_stime.tv_usec = 0 as __suseconds_t;
-            selfb.ru_stime.tv_usec = kidsb.ru_stime.tv_usec;
-            kidsb.ru_utime.tv_usec = selfb.ru_stime.tv_usec;
-            selfb.ru_utime.tv_usec = kidsb.ru_utime.tv_usec;
-            before = shellstart;
-        }
-
+                && ((*(*command).value.Simple).redirects).is_null()) as libc::c_int
+    };
+    if unsafe { posixly_correct != 0 && nullcmd != 0 } {
+        kidsb.ru_stime.tv_sec = 0 as __time_t;
+        selfb.ru_stime.tv_sec = kidsb.ru_stime.tv_sec;
+        kidsb.ru_utime.tv_sec = selfb.ru_stime.tv_sec;
+        selfb.ru_utime.tv_sec = kidsb.ru_utime.tv_sec;
+        kidsb.ru_stime.tv_usec = 0 as __suseconds_t;
+        selfb.ru_stime.tv_usec = kidsb.ru_stime.tv_usec;
+        kidsb.ru_utime.tv_usec = selfb.ru_stime.tv_usec;
+        selfb.ru_utime.tv_usec = kidsb.ru_utime.tv_usec;
+        before = unsafe { shellstart };
+    }
+    unsafe {
         old_flags = (*command).flags;
         COPY_PROCENV!(top_level, save_top_level);
         (*command).flags &= !(CMD_TIME_PIPELINE as libc::c_int | CMD_TIME_POSIX as libc::c_int);
         code = setjmp_nosigs!(top_level.as_mut_ptr());
-        if code == NOT_JUMPED as libc::c_int {
-            rv = execute_command_internal(command, asynchronous, pipe_in, pipe_out, fds_to_close);
+    }
+    if code == NOT_JUMPED as libc::c_int {
+        rv = execute_command_internal(command, asynchronous, pipe_in, pipe_out, fds_to_close);
+        unsafe {
             (*command).flags = old_flags;
         }
+    }
+    unsafe {
         COPY_PROCENV!(save_top_level, top_level);
+    }
 
-        ss = 0 as time_t;
-        us = ss;
-        rs = us;
-        cpu = 0;
-        ssf = cpu;
-        usf = ssf;
-        rsf = usf;
+    ss = 0 as time_t;
+    us = ss;
+    rs = us;
+    cpu = 0;
+    ssf = cpu;
+    usf = ssf;
+    rsf = usf;
 
-        gettimeofday(&mut after, &mut dtz);
+    c_gettimeofday(&mut after, &mut dtz);
 
-        getrusage(RUSAGE_SELF, &mut selfa);
-        getrusage(RUSAGE_CHILDREN, &mut kidsa);
+    c_getrusage(RUSAGE_SELF, &mut selfa);
+    c_getrusage(RUSAGE_CHILDREN, &mut kidsa);
 
-        difftimeval(&mut real, &mut before, &mut after);
-        timeval_to_secs(&mut real, &mut rs, &mut rsf);
+    c_difftimeval(&mut real, &mut before, &mut after);
+    c_timeval_to_secs(&mut real, &mut rs, &mut rsf);
 
-        addtimeval(
-            &mut user,
-            difftimeval(&mut after, &mut selfb.ru_utime, &mut selfa.ru_utime),
-            difftimeval(&mut before, &mut kidsb.ru_utime, &mut kidsa.ru_utime),
-        );
-        timeval_to_secs(&mut user, &mut us, &mut usf);
+    c_addtimeval(
+        &mut user,
+        c_difftimeval(&mut after, &mut selfb.ru_utime, &mut selfa.ru_utime),
+        c_difftimeval(&mut before, &mut kidsb.ru_utime, &mut kidsa.ru_utime),
+    );
+    c_timeval_to_secs(&mut user, &mut us, &mut usf);
 
-        addtimeval(
-            &mut sys,
-            difftimeval(&mut after, &mut selfb.ru_stime, &mut selfa.ru_stime),
-            difftimeval(&mut before, &mut kidsb.ru_stime, &mut kidsa.ru_stime),
-        );
-        timeval_to_secs(&mut sys, &mut ss, &mut ssf);
+    c_addtimeval(
+        &mut sys,
+        c_difftimeval(&mut after, &mut selfb.ru_stime, &mut selfa.ru_stime),
+        c_difftimeval(&mut before, &mut kidsb.ru_stime, &mut kidsa.ru_stime),
+    );
+    c_timeval_to_secs(&mut sys, &mut ss, &mut ssf);
 
-        cpu = timeval_to_cpu(&mut real, &mut user, &mut sys);
+    cpu = c_timeval_to_cpu(&mut real, &mut user, &mut sys);
 
-        if posix_time != 0 {
-            time_format = POSIX_TIMEFORMAT!();
-        } else {
-            time_format = get_string_value(b"TIMEFORMAT\0" as *const u8 as *const libc::c_char);
-            if time_format.is_null() {
-                if posixly_correct != 0 && nullcmd != 0 {
-                    time_format = b"user\t%2lU\nsys\t%2lS\0" as *const u8 as *mut libc::c_char;
-                } else {
-                    time_format = BASH_TIMEFORMAT!();
-                }
+    if posix_time != 0 {
+        time_format = POSIX_TIMEFORMAT!();
+    } else {
+        time_format = get_string_value(b"TIMEFORMAT\0" as *const u8 as *const libc::c_char);
+        if time_format.is_null() {
+            if unsafe { posixly_correct != 0 && nullcmd != 0 } {
+                time_format = b"user\t%2lU\nsys\t%2lS\0" as *const u8 as *mut libc::c_char;
+            } else {
+                time_format = BASH_TIMEFORMAT!();
             }
         }
+    }
+    unsafe {
         if !time_format.is_null() && *time_format as libc::c_int != 0 {
             print_formatted_time(stderr, time_format, rs, rsf, us, usf, ss, ssf, cpu);
         }
         if code != 0 {
-            siglongjmp(top_level.as_mut_ptr(), code);
+            c_siglongjmp(top_level.as_mut_ptr(), code);
         }
     }
     return rv;
@@ -1219,15 +1251,15 @@ fn execute_in_subshell(
     pipe_out: libc::c_int,
     fds_to_close: *mut fd_bitmap,
 ) -> libc::c_int {
-    let mut user_subshell: libc::c_int = 0;
-    let mut user_coproc: libc::c_int = 0;
-    let mut invert: libc::c_int = 0;
-    let mut return_code: libc::c_int = 0;
-    let mut function_value: libc::c_int = 0;
-    let mut should_redir_stdin: libc::c_int = 0;
-    let mut ois: libc::c_int = 0;
-    let mut result: libc::c_int = 0;
-    let mut tcom: *mut COMMAND = 0 as *mut COMMAND;
+    let user_subshell: libc::c_int;
+    let user_coproc: libc::c_int;
+    let mut invert: libc::c_int;
+    let mut return_code: libc::c_int;
+    let mut function_value: libc::c_int;
+    let should_redir_stdin: libc::c_int;
+    let ois: libc::c_int;
+    let result: libc::c_int;
+    let tcom: *mut COMMAND;
     unsafe {
         subshell_level += 1;
         should_redir_stdin = (asynchronous != 0
@@ -1502,17 +1534,17 @@ pub fn cpl_delete(pid: pid_t) -> *mut cpelement {
 
 pub fn cpl_reap() {
     let mut p: *mut cpelement;
-    let mut next: *mut cpelement;
+    // let mut next: *mut cpelement;
     let mut nh: *mut cpelement;
     let mut nt: *mut cpelement;
 
     nh = 0 as *mut cpelement;
     nt = 0 as *mut cpelement;
-    next = 0 as *mut cpelement;
+    // let mut next = 0 as *mut cpelement;
     unsafe {
         p = coproc_list.head;
         while !p.is_null() {
-            next = (*p).next;
+            let next = (*p).next;
 
             if ((*(*p).coproc).c_flags & COPROC_DEAD as libc::c_int) != 0 {
                 coproc_list.ncoproc -= 0;
@@ -1655,7 +1687,7 @@ pub fn coproc_init(cp: *mut coproc) {
 
 #[no_mangle]
 pub fn coproc_alloc(name: *mut libc::c_char, pid: pid_t) -> *mut coproc {
-    let mut cp: *mut coproc = 0 as *mut coproc;
+    let cp: *mut coproc;
     unsafe {
         cp = &mut sh_coproc;
 
@@ -1684,17 +1716,22 @@ pub fn coproc_dispose(cp: *mut coproc) {
     if cp.is_null() {
         return;
     }
-    unsafe {
-        BLOCK_SIGNAL!(SIGCHLD, set, oset);
-        (*cp).c_lock = 3;
-        coproc_unsetvars(cp);
-        FREE!((*cp).c_name);
-        coproc_close(cp);
 
-        coproc_init(cp);
-        (*cp).c_lock = 0;
-        UNBLOCK_SIGNAL!(oset);
+    BLOCK_SIGNAL!(SIGCHLD, set, oset);
+    unsafe {
+        (*cp).c_lock = 3;
     }
+    coproc_unsetvars(cp);
+    unsafe {
+        FREE!((*cp).c_name);
+    }
+    coproc_close(cp);
+
+    coproc_init(cp);
+    unsafe {
+        (*cp).c_lock = 0;
+    }
+    UNBLOCK_SIGNAL!(oset);
 }
 
 #[no_mangle]
@@ -1715,7 +1752,7 @@ pub fn coproc_close(cp: *mut coproc) {
             close((*cp).c_wfd);
             (*cp).c_wfd = -1;
         }
-        let ref mut fresh27 = (*cp).c_wsave;
+        // let ref mut fresh27 = (*cp).c_wsave;
         (*cp).c_wsave = -1;
         (*cp).c_rsave = -1;
     }
@@ -1730,7 +1767,7 @@ pub fn coproc_closeall() {
 
 #[no_mangle]
 pub fn coproc_reap() {
-    let mut cp: *mut coproc = 0 as *mut coproc;
+    let cp: *mut coproc;
     unsafe {
         cp = &mut sh_coproc;
         if !cp.is_null() && (*cp).c_flags & COPROC_DEAD as libc::c_int != 0 {
@@ -1761,16 +1798,16 @@ pub fn coproc_wclose(cp: *mut coproc, fd: libc::c_int) {
 
 #[no_mangle]
 pub fn coproc_checkfd(cp: *mut coproc, fd: libc::c_int) {
-    let mut update: libc::c_int = 0;
+    let mut update: libc::c_int;
     unsafe {
         update = 0;
         if (*cp).c_rfd >= 0 && (*cp).c_rfd == fd {
-            let ref mut fresh28 = (*cp).c_rfd;
+            // let ref mut fresh28 = (*cp).c_rfd;
             (*cp).c_rfd = -1;
             update = -1;
         }
         if (*cp).c_wfd >= 0 && (*cp).c_wfd == fd {
-            let ref mut fresh29 = (*cp).c_wfd;
+            // let ref mut fresh29 = (*cp).c_wfd;
             (*cp).c_wfd = -1;
             update = -1;
         }
@@ -1822,7 +1859,7 @@ fn coproc_setstatus(cp: *mut coproc, status: libc::c_int) {
 
 #[no_mangle]
 pub fn coproc_pidchk(pid: pid_t, status: libc::c_int) {
-    let mut cp: *mut coproc = 0 as *mut coproc;
+    let cp: *mut coproc;
 
     cp = getcoprocbypid(pid);
     if !cp.is_null() {
@@ -1843,15 +1880,15 @@ pub fn coproc_active() -> pid_t {
 
 #[no_mangle]
 pub fn coproc_setvars(cp: *mut coproc) {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut namevar: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut l: libc::c_int = 0;
+    let mut v: *mut SHELL_VAR;
+    let namevar: *mut libc::c_char;
+    let mut t: *mut libc::c_char;
+    let l: libc::c_int;
     let mut w: WordDesc = WordDesc {
         word: 0 as *mut libc::c_char,
         flags: 0,
     };
-    let mut ind: arrayind_t = 0;
+    let mut ind: arrayind_t;
     unsafe {
         if ((*cp).c_name).is_null() {
             return;
@@ -1876,7 +1913,7 @@ pub fn coproc_setvars(cp: *mut coproc) {
             }
             if !v.is_null() && nameref_p!(v) != 0 {
                 free((*cp).c_name as *mut c_void);
-                let ref mut fresh30 = (*cp).c_name;
+                // let ref mut fresh30 = (*cp).c_name;
                 (*cp).c_name = savestring!(nameref_cell!(v));
                 v = make_new_array_variable((*cp).c_name);
             }
@@ -1893,17 +1930,17 @@ pub fn coproc_setvars(cp: *mut coproc) {
             v = make_new_array_variable((*cp).c_name);
         }
         if array_p!(v) == 0 {
-            v = convert_var_to_array(v);
+            convert_var_to_array(v);
         }
 
-        t = itos((*cp).c_rfd as intmax_t);
+        t = c_itos((*cp).c_rfd as intmax_t);
         ind = 0 as arrayind_t;
-        v = bind_array_variable((*cp).c_name, ind, t, 0);
+        bind_array_variable((*cp).c_name, ind, t, 0);
         free(t as *mut c_void);
 
-        t = itos((*cp).c_wfd as intmax_t);
+        t = c_itos((*cp).c_wfd as intmax_t);
         ind = 1 as arrayind_t;
-        v = bind_array_variable((*cp).c_name, ind, t, 0 as libc::c_int);
+        bind_array_variable((*cp).c_name, ind, t, 0 as libc::c_int);
         free(t as *mut c_void);
 
         sprintf(
@@ -1911,8 +1948,8 @@ pub fn coproc_setvars(cp: *mut coproc) {
             b"%s_PID\0" as *const u8 as *const libc::c_char,
             (*cp).c_name,
         );
-        t = itos((*cp).c_pid as intmax_t);
-        v = bind_variable(namevar, t, 0 as libc::c_int);
+        t = c_itos((*cp).c_pid as intmax_t);
+        bind_variable(namevar, t, 0 as libc::c_int);
         free(t as *mut c_void);
 
         free(namevar as *mut c_void);
@@ -1921,8 +1958,8 @@ pub fn coproc_setvars(cp: *mut coproc) {
 
 #[no_mangle]
 pub fn coproc_unsetvars(cp: *mut coproc) {
-    let mut l: libc::c_int = 0;
-    let mut namevar: *mut libc::c_char = 0 as *mut libc::c_char;
+    let l: libc::c_int;
+    let namevar: *mut libc::c_char;
     unsafe {
         if ((*cp).c_name).is_null() {
             return;
@@ -1952,13 +1989,13 @@ fn execute_coproc(
 ) -> libc::c_int {
     let mut rpipe: [libc::c_int; 2] = [0; 2];
     let mut wpipe: [libc::c_int; 2] = [0; 2];
-    let mut estat: libc::c_int = 0;
-    let mut invert: libc::c_int = 0;
-    let mut coproc_pid: pid_t = 0;
-    let mut cp: *mut Coproc = 0 as *mut Coproc;
-    let mut tcmd: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
+    let estat: libc::c_int;
+    let invert: libc::c_int;
+    let coproc_pid: pid_t;
+    let cp: *mut Coproc;
+    let tcmd: *mut libc::c_char;
+    let p: *mut libc::c_char;
+    let name: *mut libc::c_char;
     let mut set: sigset_t = __sigset_t { __val: [0; 16] };
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
     unsafe {
@@ -1988,15 +2025,17 @@ fn execute_coproc(
 
         command_string_index = 0;
         tcmd = make_command_string(command);
+    }
+    sh_openpipe(&mut rpipe as *mut [libc::c_int; 2] as *mut libc::c_int);
+    sh_openpipe(&mut wpipe as *mut [libc::c_int; 2] as *mut libc::c_int);
 
-        sh_openpipe(&mut rpipe as *mut [libc::c_int; 2] as *mut libc::c_int);
-        sh_openpipe(&mut wpipe as *mut [libc::c_int; 2] as *mut libc::c_int);
+    BLOCK_SIGNAL!(SIGCHLD, set, oset);
 
-        BLOCK_SIGNAL!(SIGCHLD, set, oset);
-
+    unsafe {
         p = savestring!(tcmd);
-        coproc_pid = make_child(p, FORK_ASYNC as libc::c_int);
-
+    }
+    coproc_pid = make_child(p, FORK_ASYNC as libc::c_int);
+    unsafe {
         if coproc_pid == 0 {
             close(rpipe[0 as libc::c_int as usize]);
             close(wpipe[1 as libc::c_int as usize]);
@@ -2022,20 +2061,22 @@ fn execute_coproc(
 
         fcntl((*cp).c_rfd, 2 as libc::c_int, 1 as libc::c_int);
         fcntl((*cp).c_wfd, 2 as libc::c_int, 1 as libc::c_int);
-        coproc_setvars(cp);
-
-        UNBLOCK_SIGNAL!(oset);
-
-        close_pipes(pipe_in, pipe_out);
-
-        unlink_fifo_list();
-
-        stop_pipeline(1, 0 as *mut libc::c_void as *mut COMMAND);
-        DESCRIBE_PID!(coproc_pid);
-        run_pending_traps();
-
-        return if invert != 0 { 1 } else { 0 };
     }
+    coproc_setvars(cp);
+
+    UNBLOCK_SIGNAL!(oset);
+
+    close_pipes(pipe_in, pipe_out);
+
+    unlink_fifo_list();
+
+    stop_pipeline(1, 0 as *mut libc::c_void as *mut COMMAND);
+    unsafe {
+        DESCRIBE_PID!(coproc_pid);
+    }
+    run_pending_traps();
+
+    return if invert != 0 { 1 } else { 0 };
 }
 
 fn restore_stdin(s: libc::c_int) {
@@ -2045,9 +2086,7 @@ fn restore_stdin(s: libc::c_int) {
     }
 }
 fn lastpipe_cleanup(s: libc::c_int) {
-    unsafe {
-        set_jobs_list_frozen(s);
-    }
+    set_jobs_list_frozen(s);
 }
 
 fn execute_pipeline(
@@ -2057,19 +2096,19 @@ fn execute_pipeline(
     pipe_out: libc::c_int,
     fds_to_close: *mut fd_bitmap,
 ) -> libc::c_int {
-    let mut prev: libc::c_int = 0;
+    let mut prev: libc::c_int;
     let mut fildes: [libc::c_int; 2] = [0; 2];
-    let mut new_bitmap_size: libc::c_int = 0;
-    let mut dummyfd: libc::c_int = 0;
-    let mut ignore_return: libc::c_int = 0;
-    let mut exec_result: libc::c_int = 0;
-    let mut lstdin: libc::c_int = 0;
-    let mut lastpipe_flag: libc::c_int = 0;
+    let mut new_bitmap_size: libc::c_int;
+    let mut dummyfd: libc::c_int;
+    let ignore_return: libc::c_int;
+    let mut exec_result: libc::c_int;
+    let mut lstdin: libc::c_int;
+    let mut lastpipe_flag: libc::c_int;
     let mut lastpipe_jid: libc::c_int = 0;
     let mut old_frozen: libc::c_int = 0;
-    let mut cmd: *mut COMMAND = 0 as *mut COMMAND;
-    let mut fd_bitmap: *mut fd_bitmap = 0 as *mut fd_bitmap;
-    let mut lastpid: pid_t = 0;
+    let mut cmd: *mut COMMAND;
+    let mut fd_bitmap: *mut fd_bitmap;
+    let lastpid: pid_t;
     let mut set: sigset_t = __sigset_t { __val: [0; 16] };
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
     unsafe {
@@ -2146,7 +2185,7 @@ fn execute_pipeline(
                 transmute::<fn(*mut sigset_t) -> libc::c_int, Option<Function>>(
                     restore_signal_mask,
                 ),
-                transmute::<*mut sigset_t, *mut libc::c_char>(&mut oset), //这个位置可能会存在问题
+                transmute::<*mut sigset_t, *mut libc::c_char>(&mut oset),
             );
 
             if ignore_return != 0 && !((*(*cmd).value.Connection).first).is_null() {
@@ -2279,13 +2318,13 @@ fn execute_connection(
     pipe_out: libc::c_int,
     fds_to_close: *mut fd_bitmap,
 ) -> libc::c_int {
-    let mut tc: *mut COMMAND = 0 as *mut COMMAND;
-    let mut second: *mut COMMAND = 0 as *mut COMMAND;
-    let mut ignore_return: libc::c_int = 0;
+    let tc: *mut COMMAND;
+    let second: *mut COMMAND;
+    let mut ignore_return: libc::c_int;
     let mut exec_result: libc::c_int = 0;
-    let mut was_error_trap: libc::c_int = 0;
-    let mut invert: libc::c_int = 0;
-    let mut save_line_number: libc::c_int = 0;
+    let was_error_trap: libc::c_int;
+    let mut invert: libc::c_int;
+    let save_line_number: libc::c_int;
     unsafe {
         ignore_return = ((*command).flags & CMD_IGNORE_RETURN as libc::c_int != 0) as libc::c_int;
 
@@ -2438,12 +2477,12 @@ fn execute_connection(
 }
 
 fn execute_for_command(for_command: *mut FOR_COM) -> libc::c_int {
-    let mut releaser: *mut WordList = 0 as *mut WordList;
-    let mut list: *mut WordList = 0 as *mut WordList;
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut identifier: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut retval: libc::c_int = 0;
-    let mut save_line_number: libc::c_int = 0;
+    let releaser: *mut WordList;
+    let mut list: *mut WordList;
+    let mut v: *mut SHELL_VAR;
+    let identifier: *mut libc::c_char;
+    let mut retval: libc::c_int;
+    let save_line_number: libc::c_int;
     unsafe {
         save_line_number = line_number;
         if check_identifier((*for_command).name, 1) == 0 {
@@ -2561,53 +2600,61 @@ fn execute_for_command(for_command: *mut FOR_COM) -> libc::c_int {
 }
 
 fn eval_arith_for_expr(l: *mut WordList, okp: *mut libc::c_int) -> intmax_t {
-    let mut new: *mut WordList = 0 as *mut WordList;
-    let mut expresult: intmax_t = 0;
-    let mut r: libc::c_int = 0;
+    let new: *mut WordList;
+    let expresult: intmax_t;
+    let r: libc::c_int;
 
     new = expand_words_no_vars(l);
-    unsafe {
-        if !new.is_null() {
-            if echo_command_at_execute != 0 {
-                xtrace_print_arith_cmd(new);
-            }
 
+    if !new.is_null() {
+        if unsafe { echo_command_at_execute != 0 } {
+            xtrace_print_arith_cmd(new);
+        }
+        unsafe {
             this_command_name = b"((\0" as *const u8 as *mut libc::c_char;
 
             command_string_index = 0;
-            print_arith_command(new);
+        }
+        print_arith_command(new);
+        unsafe {
             if signal_in_progress(DEBUG_TRAP as libc::c_int) == 0 && running_trap == 0 {
                 FREE!(the_printed_command_except_trap);
                 the_printed_command_except_trap = savestring!(the_printed_command);
             }
-
-            r = run_debug_trap();
-            if debugging_mode == 0 || r == EXECUTION_SUCCESS as libc::c_int {
+        }
+        r = run_debug_trap();
+        if unsafe { debugging_mode == 0 || r == EXECUTION_SUCCESS as libc::c_int } {
+            unsafe {
                 expresult = evalexp((*(*new).word).word, EXP_EXPANDED as libc::c_int, okp);
-            } else {
-                expresult = 0 as intmax_t;
-                if !okp.is_null() {
-                    *okp = 1;
-                }
             }
-
-            dispose_words(new);
         } else {
             expresult = 0 as intmax_t;
             if !okp.is_null() {
+                unsafe {
+                    *okp = 1;
+                }
+            }
+        }
+
+        dispose_words(new);
+    } else {
+        expresult = 0 as intmax_t;
+        if !okp.is_null() {
+            unsafe {
                 *okp = 1;
             }
         }
     }
+
     return expresult;
 }
 
 fn execute_arith_for_command(arith_for_command: *mut ARITH_FOR_COM) -> libc::c_int {
-    let mut expresult: intmax_t = 0;
+    let mut expresult: intmax_t;
     let mut expok: libc::c_int = 0;
-    let mut body_status: libc::c_int = 0;
-    let mut arith_lineno: libc::c_int = 0;
-    let mut save_lineno: libc::c_int = 0;
+    let mut body_status: libc::c_int;
+    let arith_lineno: libc::c_int;
+    let save_lineno: libc::c_int;
 
     body_status = EXECUTION_SUCCESS as libc::c_int;
     unsafe {
@@ -2628,7 +2675,7 @@ fn execute_arith_for_command(arith_for_command: *mut ARITH_FOR_COM) -> libc::c_i
                 line_number = 1;
             }
         }
-        expresult = eval_arith_for_expr((*arith_for_command).init, &mut expok);
+        eval_arith_for_expr((*arith_for_command).init, &mut expok);
         if expok == 0 {
             line_number = save_lineno;
             return EXECUTION_FAILURE as libc::c_int;
@@ -2664,7 +2711,7 @@ fn execute_arith_for_command(arith_for_command: *mut ARITH_FOR_COM) -> libc::c_i
                     }
 
                     line_number = arith_lineno;
-                    expresult = eval_arith_for_expr((*arith_for_command).step, &mut expok);
+                    eval_arith_for_expr((*arith_for_command).step, &mut expok);
                     line_number = save_lineno;
 
                     if !(expok == 0) {
@@ -2685,28 +2732,30 @@ static mut COLS: libc::c_int = 0;
 static mut tabsize: libc::c_int = 0;
 
 fn displen(s: *const libc::c_char) -> libc::c_int {
-    let mut wcstr: *mut wchar_t = 0 as *mut wchar_t;
-    let mut slen: size_t = 0;
-    let mut wclen: libc::c_int = 0;
-    unsafe {
-        wcstr = 0 as *mut wchar_t;
-        slen = mbstowcs(wcstr, s, 0 as usize) as size_t;
-        if slen == -(1 as libc::c_int) as libc::c_ulong {
-            slen = 0 as size_t;
-        }
+    let mut wcstr: *mut wchar_t;
+    let mut slen: size_t;
+    let wclen: libc::c_int;
 
-        wcstr = malloc((size_of::<wchar_t>() * (slen + 1) as usize) as usize) as *mut wchar_t;
-        mbstowcs(wcstr, s, (slen + 1) as usize);
-        wclen = wcswidth(wcstr, slen as usize);
-        free(wcstr as *mut c_void);
-
-        return (if wclen < 0 { STRLEN!(s) } else { wclen }) as libc::c_int;
+    wcstr = 0 as *mut wchar_t;
+    slen = c_mbstowcs(wcstr, s, 0 as usize) as size_t;
+    if slen == -(1 as libc::c_int) as libc::c_ulong {
+        slen = 0 as size_t;
     }
+
+    wcstr =
+        unsafe { malloc((size_of::<wchar_t>() * (slen + 1) as usize) as usize) as *mut wchar_t };
+    c_mbstowcs(wcstr, s, (slen + 1) as usize);
+    wclen = c_wcswidth(wcstr, slen as usize);
+    unsafe {
+        free(wcstr as *mut c_void);
+    }
+
+    return unsafe { (if wclen < 0 { STRLEN!(s) } else { wclen }) as libc::c_int };
 }
 
 fn print_index_and_element(len: libc::c_int, ind: libc::c_int, list: *mut WordList) -> libc::c_int {
-    let mut l: *mut WordList = 0 as *mut WordList;
-    let mut i: libc::c_int = 0;
+    let mut l: *mut WordList;
+    let mut i: libc::c_int;
 
     if list.is_null() {
         return 0;
@@ -2714,16 +2763,19 @@ fn print_index_and_element(len: libc::c_int, ind: libc::c_int, list: *mut WordLi
 
     i = ind;
     l = list;
-    unsafe {
-        while !l.is_null() && {
-            i -= 1;
-            i != 0
-        } {
+
+    while !l.is_null() && {
+        i -= 1;
+        i != 0
+    } {
+        unsafe {
             l = (*l).next;
         }
-        if l.is_null() {
-            return 0;
-        }
+    }
+    if l.is_null() {
+        return 0;
+    }
+    unsafe {
         fprintf(
             stderr,
             b"%*d%s%s\0" as *const u8 as *const libc::c_char,
@@ -2740,10 +2792,10 @@ fn indent(mut from: libc::c_int, to: libc::c_int) {
     unsafe {
         while from < to {
             if to / tabsize > from / tabsize {
-                putc('\t' as i32, stderr);
+                c_putc('\t' as i32, stderr);
                 from += tabsize - from % tabsize;
             } else {
-                putc(' ' as i32, stderr);
+                c_putc(' ' as i32, stderr);
                 from += 1;
             }
         }
@@ -2756,18 +2808,18 @@ fn print_select_list(
     max_elem_len: libc::c_int,
     mut indices_len: libc::c_int,
 ) {
-    let mut ind: libc::c_int = 0;
-    let mut row: libc::c_int = 0;
-    let mut elem_len: libc::c_int = 0;
-    let mut pos: libc::c_int = 0;
-    let mut cols: libc::c_int = 0;
-    let mut rows: libc::c_int = 0;
-    let mut first_column_indices_len: libc::c_int = 0;
-    let mut other_indices_len: libc::c_int = 0;
+    let mut ind: libc::c_int;
+    let mut row: libc::c_int;
+    let mut elem_len: libc::c_int;
+    let mut pos: libc::c_int;
+    let mut cols: libc::c_int;
+    let mut rows: libc::c_int;
+    let first_column_indices_len: libc::c_int;
+    let other_indices_len: libc::c_int;
 
     if list.is_null() {
         unsafe {
-            putc('\n' as i32, stderr);
+            c_putc('\n' as i32, stderr);
         }
         return;
     }
@@ -2793,7 +2845,7 @@ fn print_select_list(
     };
     if rows == 1 {
         rows = cols;
-        cols = 1;
+        // cols = 1;
     }
 
     first_column_indices_len = NUMBER_LEN!(rows);
@@ -2819,7 +2871,7 @@ fn print_select_list(
             pos += max_elem_len;
         }
         unsafe {
-            putc('\n' as i32, stderr);
+            c_putc('\n' as i32, stderr);
         }
 
         row += 1;
@@ -2832,84 +2884,95 @@ fn select_query(
     prompt: *mut libc::c_char,
     mut print_menu: libc::c_int,
 ) -> *mut libc::c_char {
-    let mut max_elem_len: libc::c_int = 0;
-    let mut indices_len: libc::c_int = 0;
-    let mut len: libc::c_int = 0;
-    let mut r: libc::c_int = 0;
-    let mut oe: libc::c_int = 0;
+    let mut max_elem_len: libc::c_int;
+    let indices_len: libc::c_int;
+    let mut len: libc::c_int;
+    let mut r: libc::c_int;
+    let mut oe: libc::c_int;
     let mut reply: intmax_t = 0;
-    let mut l: *mut WordList = 0 as *mut WordList;
-    let mut repl_string: *mut libc::c_char = 0 as *mut libc::c_char;
-    let t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut l: *mut WordList;
+    let mut repl_string: *mut libc::c_char;
+    // let t: *mut libc::c_char = 0 as *mut libc::c_char;
+
     unsafe {
         COLS = default_columns();
 
         tabsize = 8;
-        max_elem_len = 0;
-        l = list;
-        while !l.is_null() {
-            len = displen((*(*l).word).word);
-            if len > max_elem_len {
-                max_elem_len = len;
-            }
+    }
+    max_elem_len = 0;
+    l = list;
+    while !l.is_null() {
+        len = unsafe { displen((*(*l).word).word) };
+        if len > max_elem_len {
+            max_elem_len = len;
+        }
+        unsafe {
             l = (*l).next;
         }
-        indices_len = NUMBER_LEN!(list_len);
-        max_elem_len += indices_len + RP_SPACE_LEN!() + 2;
+    }
+    indices_len = NUMBER_LEN!(list_len);
+    max_elem_len += indices_len + RP_SPACE_LEN!() + 2;
 
-        loop {
-            if print_menu != 0 {
-                print_select_list(list, list_len, max_elem_len, indices_len);
-            }
+    loop {
+        if print_menu != 0 {
+            print_select_list(list, list_len, max_elem_len, indices_len);
+        }
+        unsafe {
             fprintf(stderr, b"%s\0" as *const u8 as *const libc::c_char, prompt);
             fflush(stderr);
             QUIT!();
 
             oe = executing_builtin;
             executing_builtin = 1;
-            r = read_builtin(0 as *mut WordList);
+        }
+        r = read_builtin(0 as *mut WordList);
+        unsafe {
             executing_builtin = oe;
-            if r != EXECUTION_SUCCESS as libc::c_int {
+        }
+        if r != EXECUTION_SUCCESS as libc::c_int {
+            unsafe {
                 putchar('\n' as i32);
-                return 0 as *mut libc::c_char;
             }
-            repl_string = get_string_value(b"REPLY\0" as *const u8 as *const libc::c_char);
-            if repl_string.is_null() {
-                return 0 as *mut libc::c_char;
+            return 0 as *mut libc::c_char;
+        }
+        repl_string = get_string_value(b"REPLY\0" as *const u8 as *const libc::c_char);
+        if repl_string.is_null() {
+            return 0 as *mut libc::c_char;
+        }
+        if unsafe { *repl_string as libc::c_int == 0 } {
+            print_menu = 1;
+        } else {
+            if legal_number(repl_string, &mut reply) == 0 {
+                return b"\0" as *const u8 as *mut libc::c_char;
             }
-            if *repl_string as libc::c_int == 0 {
-                print_menu = 1;
-            } else {
-                if legal_number(repl_string, &mut reply) == 0 {
-                    return b"\0" as *const u8 as *mut libc::c_char;
-                }
-                if reply < 1 || reply > list_len as libc::c_long {
-                    return b"\0" as *const u8 as *mut libc::c_char;
-                }
-                l = list;
-                while !l.is_null() && {
-                    reply -= 1;
-                    reply != 0
-                } {
+            if reply < 1 || reply > list_len as libc::c_long {
+                return b"\0" as *const u8 as *mut libc::c_char;
+            }
+            l = list;
+            while !l.is_null() && {
+                reply -= 1;
+                reply != 0
+            } {
+                unsafe {
                     l = (*l).next;
                 }
-                return (*(*l).word).word;
             }
+            return unsafe { (*(*l).word).word };
         }
     }
 }
 
 fn execute_select_command(select_command: *mut SELECT_COM) -> libc::c_int {
-    let mut releaser: *mut WordList = 0 as *mut WordList;
-    let mut list: *mut WordList = 0 as *mut WordList;
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut identifier: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ps3_prompt: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut selection: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut retval: libc::c_int = 0;
-    let mut list_len: libc::c_int = 0;
-    let mut show_menu: libc::c_int = 0;
-    let mut save_line_number: libc::c_int = 0;
+    let releaser: *mut WordList;
+    let list: *mut WordList;
+    let mut v: *mut SHELL_VAR;
+    let identifier: *mut libc::c_char;
+    let mut ps3_prompt: *mut libc::c_char;
+    let mut selection: *mut libc::c_char;
+    let mut retval: libc::c_int;
+    let list_len: libc::c_int;
+    let mut show_menu: libc::c_int;
+    let save_line_number: libc::c_int;
     unsafe {
         if check_identifier((*select_command).name, 1) == 0 {
             return EXECUTION_FAILURE as libc::c_int;
@@ -2958,7 +3021,7 @@ fn execute_select_command(select_command: *mut SELECT_COM) -> libc::c_int {
             (*(*select_command).action).flags |= CMD_IGNORE_RETURN as libc::c_int;
         }
 
-        retval = EXECUTION_SUCCESS as libc::c_int;
+        // retval = EXECUTION_SUCCESS as libc::c_int;
         show_menu = 1 as libc::c_int;
 
         loop {
@@ -3030,17 +3093,17 @@ fn execute_select_command(select_command: *mut SELECT_COM) -> libc::c_int {
 }
 
 fn execute_case_command(case_command: *mut CASE_COM) -> libc::c_int {
-    let mut list: *mut WordList = 0 as *mut WordList;
-    let mut wlist: *mut WordList = 0 as *mut WordList;
-    let mut es: *mut WordList = 0 as *mut WordList;
-    let mut clauses: *mut PATTERN_LIST = 0 as *mut PATTERN_LIST;
-    let mut word: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut pattern: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut retval: libc::c_int = 0;
-    let mut match_0: libc::c_int = 0;
-    let mut ignore_return: libc::c_int = 0;
-    let mut save_line_number: libc::c_int = 0;
-    let mut qflags: libc::c_int = 0;
+    let mut list: *mut WordList;
+    let wlist: *mut WordList;
+    let mut es: *mut WordList;
+    let mut clauses: *mut PATTERN_LIST;
+    let word: *mut libc::c_char;
+    let mut pattern: *mut libc::c_char;
+    let mut retval: libc::c_int;
+    let mut match_0: libc::c_int;
+    let ignore_return: libc::c_int;
+    let save_line_number: libc::c_int;
+    let mut qflags: libc::c_int;
     unsafe {
         save_line_number = line_number;
         line_number = (*case_command).line;
@@ -3065,7 +3128,7 @@ fn execute_case_command(case_command: *mut CASE_COM) -> libc::c_int {
         wlist = expand_word_leave_quoted((*case_command).word, 0);
 
         if !wlist.is_null() {
-            let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+            let t: *mut libc::c_char;
             t = string_list(wlist);
             word = dequote_string(t);
             free(t as *mut c_void);
@@ -3104,7 +3167,7 @@ fn execute_case_command(case_command: *mut CASE_COM) -> libc::c_int {
                     pattern = malloc(1 as usize) as *mut libc::c_char;
                     *pattern.offset(0 as isize) = '\u{0}' as i32 as libc::c_char;
                 }
-                match_0 = (strmatch(pattern, word, FNMATCH_EXTFLAG!() | FNMATCH_IGNCASE!())
+                match_0 = (c_strmatch(pattern, word, FNMATCH_EXTFLAG!() | FNMATCH_IGNCASE!())
                     != FNM_NOMATCH!()) as libc::c_int;
                 free(pattern as *mut c_void);
 
@@ -3142,31 +3205,17 @@ fn execute_case_command(case_command: *mut CASE_COM) -> libc::c_int {
     return retval;
 }
 
-// #[macro_export]
-// macro_rules! CMD_WHILE {
-//     () => {
-//         0
-//     };
-// }
-
 fn execute_while_command(while_command: *mut WHILE_COM) -> libc::c_int {
     return execute_while_or_until(while_command, CMD_WHILE!());
 }
-
-// #[macro_export]
-// macro_rules! CMD_UNTIL {
-//     () => {
-//         1
-//     };
-// }
 
 fn execute_until_command(while_command: *mut WHILE_COM) -> libc::c_int {
     return execute_while_or_until(while_command, CMD_UNTIL!());
 }
 
 fn execute_while_or_until(while_command: *mut WHILE_COM, type_0: libc::c_int) -> libc::c_int {
-    let mut return_value: libc::c_int = 0;
-    let mut body_status: libc::c_int = 0;
+    let mut return_value: libc::c_int;
+    let mut body_status: libc::c_int;
     unsafe {
         body_status = EXECUTION_SUCCESS as libc::c_int;
         loop_level += 1;
@@ -3220,8 +3269,8 @@ fn execute_while_or_until(while_command: *mut WHILE_COM, type_0: libc::c_int) ->
 }
 
 fn execute_if_command(if_command: *mut IF_COM) -> libc::c_int {
-    let mut return_value: libc::c_int = 0;
-    let mut save_line_number: libc::c_int = 0;
+    let return_value: libc::c_int;
+    let save_line_number: libc::c_int;
     unsafe {
         save_line_number = line_number;
         (*(*if_command).test).flags |= CMD_IGNORE_RETURN as libc::c_int;
@@ -3254,14 +3303,14 @@ fn execute_if_command(if_command: *mut IF_COM) -> libc::c_int {
 
 fn execute_arith_command(arith_command: *mut ARITH_COM) -> libc::c_int {
     let mut expok: libc::c_int = 0;
-    let mut save_line_number: libc::c_int = 0;
-    let mut retval: libc::c_int = 0;
-    let mut expresult: intmax_t = 0;
-    let mut new: *mut WordList = 0 as *mut WordList;
-    let mut exp: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let save_line_number: libc::c_int;
+    let retval: libc::c_int;
+    let expresult: intmax_t;
+    let mut new: *mut WordList;
+    let mut exp: *mut libc::c_char;
+    let mut t: *mut libc::c_char;
 
-    expresult = 0 as intmax_t;
+    // expresult = 0 as intmax_t;
     unsafe {
         save_line_number = line_number;
         this_command_name = b"((\0" as *const u8 as *mut libc::c_char;
@@ -3297,54 +3346,57 @@ fn execute_arith_command(arith_command: *mut ARITH_COM) -> libc::c_int {
         } else {
             exp = (*(*new).word).word;
         }
+    }
+    exp = expand_arith_string(exp, Q_DOUBLE_QUOTES as libc::c_int | Q_ARITH as libc::c_int);
 
-        exp = expand_arith_string(exp, Q_DOUBLE_QUOTES as libc::c_int | Q_ARITH as libc::c_int);
+    if unsafe { echo_command_at_execute != 0 } {
+        new = make_word_list(
+            make_word(if !exp.is_null() {
+                exp
+            } else {
+                b"\0" as *const u8 as *const libc::c_char
+            }),
+            0 as *mut WordList,
+        );
+        xtrace_print_arith_cmd(new);
+        dispose_words(new);
+    }
 
-        if echo_command_at_execute != 0 {
-            new = make_word_list(
-                make_word(if !exp.is_null() {
-                    exp
-                } else {
-                    b"\0" as *const u8 as *const libc::c_char
-                }),
-                0 as *mut WordList,
-            );
-            xtrace_print_arith_cmd(new);
-            dispose_words(new);
-        }
-
-        if !exp.is_null() {
-            expresult = evalexp(exp, EXP_EXPANDED as libc::c_int, &mut expok);
+    if !exp.is_null() {
+        expresult = evalexp(exp, EXP_EXPANDED as libc::c_int, &mut expok);
+        unsafe {
             line_number = save_line_number;
             free(exp as *mut c_void);
-        } else {
-            expresult = 0 as intmax_t;
-            expok = 1;
         }
-        FREE!(t);
-
-        if expok == 0 {
-            return EXECUTION_FAILURE as libc::c_int;
-        }
-        return if expresult == 0 {
-            EXECUTION_FAILURE as libc::c_int
-        } else {
-            EXECUTION_SUCCESS as libc::c_int
-        };
+    } else {
+        expresult = 0 as intmax_t;
+        expok = 1;
     }
+    unsafe {
+        FREE!(t);
+    }
+
+    if expok == 0 {
+        return EXECUTION_FAILURE as libc::c_int;
+    }
+    return if expresult == 0 {
+        EXECUTION_FAILURE as libc::c_int
+    } else {
+        EXECUTION_SUCCESS as libc::c_int
+    };
 }
 
 static mut nullstr: *mut libc::c_char = b"\0" as *const u8 as *mut libc::c_char;
 
 fn execute_cond_node(cond: *mut COND_COM) -> libc::c_int {
-    let mut result: libc::c_int = 0;
-    let mut invert: libc::c_int = 0;
-    let mut patmatch: libc::c_int = 0;
-    let mut rmatch: libc::c_int = 0;
-    let mut mflags: libc::c_int = 0;
-    let mut ignore: libc::c_int = 0;
-    let mut arg1: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut arg2: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut result: libc::c_int;
+    let invert: libc::c_int;
+    let patmatch: libc::c_int;
+    let rmatch: libc::c_int;
+    let mut mflags: libc::c_int;
+    let ignore: libc::c_int;
+    let mut arg1: *mut libc::c_char;
+    let mut arg2: *mut libc::c_char;
     unsafe {
         invert = (*cond).flags & CMD_INVERT_RETURN as libc::c_int;
         ignore = (*cond).flags & CMD_IGNORE_RETURN as libc::c_int;
@@ -3398,7 +3450,7 @@ fn execute_cond_node(cond: *mut COND_COM) -> libc::c_int {
                 free(arg1 as *mut c_void);
             }
         } else if (*cond).type_0 == COND_BINARY as libc::c_int {
-            rmatch = 0;
+            // rmatch = 0;
             patmatch = (*((*(*cond).op).word).offset(1 as isize) as libc::c_int == '=' as i32
                 && *((*(*cond).op).word).offset(2 as isize) as libc::c_int == '\u{0}' as i32
                 && (*((*(*cond).op).word).offset(0 as isize) as libc::c_int == '!' as i32
@@ -3448,9 +3500,9 @@ fn execute_cond_node(cond: *mut COND_COM) -> libc::c_int {
             if rmatch != 0 {
                 mflags = SHMAT_PWARN as libc::c_int;
                 mflags |= SHMAT_SUBEXP as libc::c_int;
-                result = sh_regmatch(arg1, arg2, mflags);
+                result = c_sh_regmatch(arg1, arg2, mflags);
             } else {
-                let mut oe: libc::c_int = 0;
+                let oe: libc::c_int;
 
                 oe = extended_glob;
                 extended_glob = 1;
@@ -3497,8 +3549,8 @@ fn execute_cond_node(cond: *mut COND_COM) -> libc::c_int {
 }
 
 fn execute_cond_command(cond_command: *mut COND_COM) -> libc::c_int {
-    let mut retval: libc::c_int = 0;
-    let mut save_line_number: libc::c_int = 0;
+    let mut retval: libc::c_int;
+    let save_line_number: libc::c_int;
     unsafe {
         save_line_number = line_number;
         this_command_name = b"[[\0" as *const u8 as *mut libc::c_char;
@@ -3531,7 +3583,7 @@ fn execute_cond_command(cond_command: *mut COND_COM) -> libc::c_int {
 }
 
 fn bind_lastarg(mut arg: *mut libc::c_char) {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
 
     if arg.is_null() {
         arg = b"\0" as *const u8 as *mut libc::c_char;
@@ -3551,15 +3603,16 @@ fn execute_null_command(
     pipe_out: libc::c_int,
     async_0: libc::c_int,
 ) -> libc::c_int {
-    let mut r: libc::c_int = 0;
-    let mut forcefork: libc::c_int = 0;
-    let mut fork_flags: libc::c_int = 0;
-    let mut rd: *mut REDIRECT = 0 as *mut REDIRECT;
+    let r: libc::c_int;
+    let mut forcefork: libc::c_int;
+    let fork_flags: libc::c_int;
+    let mut rd: *mut REDIRECT;
 
     forcefork = 0;
     rd = redirects;
-    unsafe {
-        while !rd.is_null() {
+
+    while !rd.is_null() {
+        unsafe {
             forcefork += (*rd).rflags & REDIR_VARASSIGN as libc::c_int;
             forcefork += ((*rd).redirector.dest == 0
                 || fd_is_bash_input((*rd).redirector.dest) != 0
@@ -3569,18 +3622,19 @@ fn execute_null_command(
                 as libc::c_int;
             rd = (*rd).next;
         }
+    }
 
-        if forcefork != 0 || pipe_in != NO_PIPE || pipe_out != NO_PIPE || async_0 != 0 {
-            fork_flags = if async_0 != 0 {
-                FORK_ASYNC as libc::c_int
-            } else {
-                0
-            };
-            if make_child(0 as *mut libc::c_char, fork_flags) == 0 {
-                restore_original_signals();
-                do_piping(pipe_in, pipe_out);
-                coproc_closeall();
-
+    if forcefork != 0 || pipe_in != NO_PIPE || pipe_out != NO_PIPE || async_0 != 0 {
+        fork_flags = if async_0 != 0 {
+            FORK_ASYNC as libc::c_int
+        } else {
+            0
+        };
+        if make_child(0 as *mut libc::c_char, fork_flags) == 0 {
+            restore_original_signals();
+            do_piping(pipe_in, pipe_out);
+            coproc_closeall();
+            unsafe {
                 interactive = 0;
 
                 subshell_environment = 0;
@@ -3595,18 +3649,20 @@ fn execute_null_command(
                 } else {
                     exit(EXECUTION_FAILURE as libc::c_int);
                 }
-            } else {
-                close_pipes(pipe_in, pipe_out);
-                if pipe_out == NO_PIPE {
-                    unlink_fifo_list();
-                }
-                return EXECUTION_SUCCESS as libc::c_int;
             }
         } else {
-            r = do_redirections(
-                redirects,
-                RX_ACTIVE as libc::c_int | RX_UNDOABLE as libc::c_int,
-            );
+            close_pipes(pipe_in, pipe_out);
+            if pipe_out == NO_PIPE {
+                unlink_fifo_list();
+            }
+            return EXECUTION_SUCCESS as libc::c_int;
+        }
+    } else {
+        r = do_redirections(
+            redirects,
+            RX_ACTIVE as libc::c_int | RX_UNDOABLE as libc::c_int,
+        );
+        unsafe {
             cleanup_redirects(redirection_undo_list);
             redirection_undo_list = 0 as *mut REDIRECT;
 
@@ -3617,19 +3673,18 @@ fn execute_null_command(
             } else {
                 return EXECUTION_SUCCESS as libc::c_int;
             }
-        };
-    }
-    return 0;
+        }
+    };
 }
 
 fn fix_assignment_words(words: *mut WordList) {
-    let mut w: *mut WordList = 0 as *mut WordList;
-    let mut wcmd: *mut WordList = 0 as *mut WordList;
-    let mut b: *mut builtin = 0 as *mut builtin;
-    let mut assoc: libc::c_int = 0;
-    let mut global: libc::c_int = 0;
-    let mut array: libc::c_int = 0;
-    let mut integer: libc::c_int = 0;
+    let mut w: *mut WordList;
+    let mut wcmd: *mut WordList;
+    let mut b: *mut builtin;
+    let mut assoc: libc::c_int;
+    let mut global: libc::c_int;
+    let mut array: libc::c_int;
+    let integer: libc::c_int;
 
     if words.is_null() {
         return;
@@ -3641,7 +3696,7 @@ fn fix_assignment_words(words: *mut WordList) {
     global = array;
     assoc = global;
 
-    wcmd = words;
+    // wcmd = words;
     wcmd = words;
     unsafe {
         while !wcmd.is_null() {
@@ -3744,18 +3799,9 @@ fn fix_assignment_words(words: *mut WordList) {
     }
 }
 
-// #[macro_export]
-// macro_rules! ISOPTION {
-//     ($s:expr, $c:expr) => {
-//         (*$s.offset(0 as isize) as libc::c_int == '-' as i32
-//             && *$s.offset(1 as isize) as libc::c_int == $c as i32
-//             && *$s.offset(2 as isize) == 0)
-//     };
-// }
-
 fn check_command_builtin(words: *mut WordList, typep: *mut libc::c_int) -> *mut WordList {
-    let mut type_0: libc::c_int = 0;
-    let mut w: *mut WordList = 0 as *mut WordList;
+    let mut type_0: libc::c_int;
+    let mut w: *mut WordList;
 
     #[macro_export]
     macro_rules! RETURN_NOT_COMMAND {
@@ -3796,17 +3842,19 @@ fn check_command_builtin(words: *mut WordList, typep: *mut libc::c_int) -> *mut 
 }
 
 fn is_dirname(pathname: *mut libc::c_char) -> libc::c_int {
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ret: libc::c_int = 0;
+    let temp: *mut libc::c_char;
+    let ret: libc::c_int;
+
+    temp = search_for_command(pathname, 0);
+    ret = if !temp.is_null() {
+        file_isdir(temp)
+    } else {
+        file_isdir(pathname)
+    };
     unsafe {
-        temp = search_for_command(pathname, 0);
-        ret = if !temp.is_null() {
-            file_isdir(temp)
-        } else {
-            file_isdir(pathname)
-        };
         free(temp as *mut c_void);
     }
+
     return ret;
 }
 
@@ -3817,27 +3865,26 @@ fn execute_simple_command(
     async_0: libc::c_int,
     fds_to_close: *mut fd_bitmap,
 ) -> libc::c_int {
+    let mut current_block: u64;
+    let mut words: *mut WordList;
+    let mut lastword: *mut WordList;
+    let mut command_line: *mut libc::c_char;
+    let lastarg: *mut libc::c_char;
+    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let first_word_quoted: libc::c_int;
+    let mut result: libc::c_int;
+    let mut builtin_is_special: libc::c_int;
+    let mut already_forked: libc::c_int;
+    let mut dofork: libc::c_int;
+    let fork_flags: libc::c_int;
+    let mut cmdflags: libc::c_int;
+    let old_last_async_pid: pid_t;
+    let mut builtin: Option<sh_builtin_func_t>;
+    let mut func: *mut SHELL_VAR;
+    let mut old_builtin: libc::c_int = 0;
+    let mut old_command_builtin: libc::c_int;
     unsafe {
-        let mut current_block: u64;
-        let mut words: *mut WordList = 0 as *mut WordList;
-        let mut lastword: *mut WordList = 0 as *mut WordList;
-        let mut command_line: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut lastarg: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut first_word_quoted: libc::c_int = 0;
-        let mut result: libc::c_int = 0;
-        let mut builtin_is_special: libc::c_int = 0;
-        let mut already_forked: libc::c_int = 0;
-        let mut dofork: libc::c_int = 0;
-        let mut fork_flags: libc::c_int = 0;
-        let mut cmdflags: libc::c_int = 0;
-        let mut old_last_async_pid: pid_t = 0;
-        let mut builtin: Option<sh_builtin_func_t> = None;
-        let mut func: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-        let mut old_builtin: libc::c_int = 0;
-        let mut old_command_builtin: libc::c_int = 0;
-
-        result = EXECUTION_SUCCESS as libc::c_int;
+        // result = EXECUTION_SUCCESS as libc::c_int;
         builtin_is_special = 0;
         special_builtin_failed = builtin_is_special;
         command_line = 0 as *mut libc::c_char;
@@ -3901,7 +3948,7 @@ fn execute_simple_command(
         }
 
         if dofork != 0 {
-            let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+            let p: *mut libc::c_char;
 
             maybe_make_export_env();
 
@@ -3945,7 +3992,7 @@ fn execute_simple_command(
                     result = last_command_exit_value;
                 }
                 close_pipes(pipe_in, pipe_out);
-                command_line = 0 as *mut libc::c_char;
+                // command_line = 0 as *mut libc::c_char;
                 return result;
             }
         }
@@ -3987,7 +4034,7 @@ fn execute_simple_command(
             }
         }
 
-        lastarg = 0 as *mut libc::c_char;
+        // lastarg = 0 as *mut libc::c_char;
         begin_unwind_frame(b"simple-command\0" as *const u8 as *mut libc::c_char);
 
         if echo_command_at_execute != 0 && cmdflags & CMD_COMMAND_BUILTIN as libc::c_int == 0 {
@@ -4022,9 +4069,9 @@ fn execute_simple_command(
         old_command_builtin = -1;
 
         if builtin.is_none() && func.is_null() {
-            let mut disposer: *mut WordList = 0 as *mut WordList;
-            let mut l: *mut WordList = 0 as *mut WordList;
-            let mut cmdtype: libc::c_int = 0;
+            let mut disposer: *mut WordList;
+            let mut l: *mut WordList;
+            let mut cmdtype: libc::c_int;
 
             builtin = find_shell_builtin((*(*words).word).word);
 
@@ -4100,9 +4147,9 @@ fn execute_simple_command(
                     !temp.is_null()
                 }
             {
-                let mut job: libc::c_int = 0;
-                let mut jflags: libc::c_int = 0;
-                let mut started_status: libc::c_int = 0;
+                let job: libc::c_int;
+                let mut jflags: libc::c_int;
+                let started_status: libc::c_int;
 
                 jflags = JM_STOPPED as libc::c_int | JM_FIRSTMATCH as libc::c_int;
                 if STREQ!(temp, b"exact" as *const u8 as *mut libc::c_char) {
@@ -4326,7 +4373,7 @@ fn execute_simple_command(
 }
 
 fn builtin_status(result: libc::c_int) -> libc::c_int {
-    let mut r: libc::c_int = 0;
+    let r: libc::c_int;
 
     match result as libc::c_uint {
         EX_USAGE!() | EX_BADSYNTAX => {
@@ -4358,28 +4405,27 @@ macro_rules! unwind_protect_int {
 
 fn execute_builtin(
     builtin: Option<sh_builtin_func_t>,
-    // mut builtin: sh_builtin_func_t,
     words: *mut WordList,
     flags: libc::c_int,
     subshell: libc::c_int,
 ) -> libc::c_int {
-    unsafe {
-        let mut result: libc::c_int = 0;
-        let mut eval_unwind: libc::c_int = 0;
-        let mut ignexit_flag: libc::c_int = 0;
-        let mut isbltinenv: libc::c_int = 0;
-        let mut should_keep: libc::c_int = 0;
-        let mut error_trap: *mut libc::c_char = 0 as *mut libc::c_char;
+    let result: libc::c_int;
+    let eval_unwind: libc::c_int;
+    let mut ignexit_flag: libc::c_int = 0;
+    let mut isbltinenv: libc::c_int;
+    let mut should_keep: libc::c_int;
+    let mut error_trap: *mut libc::c_char;
 
-        error_trap = 0 as *mut libc::c_char;
-        should_keep = 0 as libc::c_int;
+    error_trap = 0 as *mut libc::c_char;
+    // should_keep = 0 as libc::c_int;
 
-        if subshell == 0
-            && flags & CMD_IGNORE_RETURN as libc::c_int != 0
-            && (builtin == Some(eval_builtin)
-                || flags & 0x800 as libc::c_int != 0
-                || builtin == Some(source_builtin))
-        {
+    if subshell == 0
+        && flags & CMD_IGNORE_RETURN as libc::c_int != 0
+        && (builtin == Some(eval_builtin)
+            || flags & 0x800 as libc::c_int != 0
+            || builtin == Some(source_builtin))
+    {
+        unsafe {
             begin_unwind_frame(
                 b"eval_builtin\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             );
@@ -4413,32 +4459,36 @@ fn execute_builtin(
             ignexit_flag = builtin_ignoring_errexit;
             builtin_ignoring_errexit = 1;
             eval_unwind = 1;
-        } else {
-            eval_unwind = 0;
         }
+    } else {
+        eval_unwind = 0;
+    }
 
-        isbltinenv = (builtin == Some(source_builtin)
-            || builtin == Some(eval_builtin)
-            || builtin == Some(unset_builtin)
-            || builtin == Some(mapfile_builtin)) as libc::c_int;
-        should_keep = (isbltinenv != 0 && builtin != Some(mapfile_builtin)) as libc::c_int;
-        if builtin == Some(fc_builtin) || builtin == Some(read_builtin) {
-            isbltinenv = 1;
-            should_keep = 0;
+    isbltinenv = (builtin == Some(source_builtin)
+        || builtin == Some(eval_builtin)
+        || builtin == Some(unset_builtin)
+        || builtin == Some(mapfile_builtin)) as libc::c_int;
+    should_keep = (isbltinenv != 0 && builtin != Some(mapfile_builtin)) as libc::c_int;
+    if builtin == Some(fc_builtin) || builtin == Some(read_builtin) {
+        isbltinenv = 1;
+        should_keep = 0;
+    }
+
+    if isbltinenv != 0 {
+        if subshell == 0 {
+            begin_unwind_frame(
+                b"builtin_env\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+            );
         }
-
-        if isbltinenv != 0 {
-            if subshell == 0 {
-                begin_unwind_frame(
-                    b"builtin_env\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-                );
-            }
-            if !temporary_env.is_null() {
+        if unsafe { !temporary_env.is_null() } {
+            unsafe {
                 push_scope(VC_BLTNENV as libc::c_int, temporary_env);
-                if flags & CMD_COMMAND_BUILTIN as libc::c_int != 0 {
-                    should_keep = 0;
-                }
-                if subshell == 0 {
+            }
+            if flags & CMD_COMMAND_BUILTIN as libc::c_int != 0 {
+                should_keep = 0;
+            }
+            if subshell == 0 {
+                unsafe {
                     add_unwind_protect(
                         transmute::<fn(arg1: ::std::os::raw::c_int), Option<Function>>(pop_scope),
                         if should_keep != 0 {
@@ -4448,11 +4498,15 @@ fn execute_builtin(
                         },
                     );
                 }
-                temporary_env = 0 as *mut HASH_TABLE;
+                unsafe {
+                    temporary_env = 0 as *mut HASH_TABLE;
+                }
             }
         }
+    }
 
-        if subshell == 0 && builtin == Some(eval_builtin) {
+    if subshell == 0 && builtin == Some(eval_builtin) {
+        unsafe {
             if evalnest_max > 0 && evalnest >= evalnest_max {
                 internal_error(
                     b"eval: maximum eval nesting level exceeded (%d)\0" as *const u8
@@ -4464,7 +4518,9 @@ fn execute_builtin(
             }
             unwind_protect_int!(evalnest);
             evalnest += 1;
-        } else if subshell == 0 && builtin == Some(source_builtin) {
+        }
+    } else if subshell == 0 && builtin == Some(source_builtin) {
+        unsafe {
             if sourcenest_max > 0 && sourcenest >= sourcenest_max {
                 internal_error(
                     b"%s: maximum source nesting level exceeded (%d)\0" as *const u8
@@ -4478,7 +4534,8 @@ fn execute_builtin(
             unwind_protect_int!(sourcenest);
             sourcenest += 1;
         }
-
+    }
+    unsafe {
         if posixly_correct != 0
             && subshell == 0
             && builtin == Some(return_builtin)
@@ -4520,8 +4577,8 @@ fn execute_builtin(
             }
             discard_unwind_frame(b"eval_builtin\0" as *const u8 as *mut libc::c_char);
         }
-        return result;
     }
+    return result;
 }
 
 fn maybe_restore_getopt_state(gs: *mut sh_getopt_state_t) {
@@ -4536,8 +4593,8 @@ fn maybe_restore_getopt_state(gs: *mut sh_getopt_state_t) {
 
 #[no_mangle]
 pub fn restore_funcarray_state(fa: *mut func_array_state) {
-    let mut nfv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut funcname_a: *mut ARRAY = 0 as *mut ARRAY;
+    let nfv: *mut SHELL_VAR;
+    let funcname_a: *mut ARRAY;
     unsafe {
         array_pop!((*fa).source_a);
         array_pop!((*fa).lineno_a);
@@ -4562,29 +4619,27 @@ fn execute_function(
     async_0: libc::c_int,
     subshell: libc::c_int,
 ) -> libc::c_int {
-    let mut return_val: libc::c_int = 0;
-    let mut result: libc::c_int = 0;
-    let mut tc: *mut COMMAND = 0 as *mut COMMAND;
-    let mut fc: *mut COMMAND = 0 as *mut COMMAND;
-    let mut save_current: *mut COMMAND = 0 as *mut COMMAND;
-    let mut debug_trap: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut error_trap: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut return_trap: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut funcname_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut bash_source_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut bash_lineno_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut funcname_a: *mut ARRAY = 0 as *mut ARRAY;
-    let mut bash_source_a: *mut ARRAY = 0 as *mut ARRAY;
-    let mut bash_lineno_a: *mut ARRAY = 0 as *mut ARRAY;
-    let mut fa: *mut func_array_state = 0 as *mut func_array_state;
-    let mut shell_fn: *mut FUNCTION_DEF = 0 as *mut FUNCTION_DEF;
-    let mut sfile: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut gs: *mut sh_getopt_state_t = 0 as *mut sh_getopt_state_t;
-    let mut gv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let return_val: libc::c_int;
+    let mut result: libc::c_int;
+    let tc: *mut COMMAND;
+    let fc: *mut COMMAND;
+    let mut save_current: *mut COMMAND;
+    let mut debug_trap: *mut libc::c_char;
+    let mut error_trap: *mut libc::c_char;
+    let mut return_trap: *mut libc::c_char;
+    let funcname_v: *mut SHELL_VAR;
+    let bash_source_v: *mut SHELL_VAR;
+    let bash_lineno_v: *mut SHELL_VAR;
+    let funcname_a: *mut ARRAY;
+    let bash_source_a: *mut ARRAY;
+    let bash_lineno_a: *mut ARRAY;
+    let fa: *mut func_array_state;
+    let shell_fn: *mut FUNCTION_DEF;
+    let sfile: *mut libc::c_char;
+    let t: *mut libc::c_char;
+    let gs: *mut sh_getopt_state_t;
+    let gv: *mut SHELL_VAR;
     unsafe {
-        // USE_VAR!(fc);
-
         if funcnest_max > 0 && funcnest >= funcnest_max {
             internal_error(
                 b"%s: maximum function nesting level exceeded (%d)\0" as *const u8
@@ -4745,7 +4800,7 @@ fn execute_function(
         }) as *mut libc::c_char;
         array_push!(funcname_a, (*this_shell_function).name);
         array_push!(bash_source_a, sfile);
-        t = itos(executing_line_number() as intmax_t);
+        t = c_itos(executing_line_number() as intmax_t);
         array_push!(bash_lineno_a, t);
         free(t as *mut c_void);
 
@@ -4847,23 +4902,24 @@ fn execute_function(
 
 #[no_mangle]
 pub fn execute_shell_function(var: *mut SHELL_VAR, words: *mut WordList) -> libc::c_int {
-    let mut ret: libc::c_int = 0;
-    let mut bitmap: *mut fd_bitmap = 0 as *mut fd_bitmap;
+    let ret: libc::c_int;
+    let bitmap: *mut fd_bitmap;
+
+    bitmap = new_fd_bitmap(FD_BITMAP_DEFAULT_SIZE!());
+    begin_unwind_frame(b"execute-shell-function\0" as *const u8 as *mut libc::c_char);
     unsafe {
-        bitmap = new_fd_bitmap(FD_BITMAP_DEFAULT_SIZE!());
-        begin_unwind_frame(b"execute-shell-function\0" as *const u8 as *mut libc::c_char);
         add_unwind_protect(
             transmute::<fn(fdbp: *mut fd_bitmap), Option<Function>>(dispose_fd_bitmap),
             bitmap as *mut libc::c_char,
         );
-
-        ret = execute_function(var, words, 0, bitmap, 0, 0);
-
-        dispose_fd_bitmap(bitmap);
-        discard_unwind_frame(
-            b"execute-shell-function\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-        );
     }
+    ret = execute_function(var, words, 0, bitmap, 0, 0);
+
+    dispose_fd_bitmap(bitmap);
+    discard_unwind_frame(
+        b"execute-shell-function\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+    );
+
     return ret;
 }
 
@@ -4878,16 +4934,17 @@ fn execute_subshell_builtin_or_function(
     fds_to_close: *mut fd_bitmap,
     flags: libc::c_int,
 ) {
-    let mut result: libc::c_int = 0;
-    let mut r: libc::c_int = 0;
-    let mut funcvalue: libc::c_int = 0;
-    let mut jobs_hack: libc::c_int = 0;
+    let result: libc::c_int;
+    let mut r: libc::c_int;
+    let mut funcvalue: libc::c_int;
+    let jobs_hack: libc::c_int;
     unsafe {
         jobs_hack = (builtin == Some(jobs_builtin)
             && (subshell_environment & 0x1 as libc::c_int == 0 as libc::c_int
                 || pipe_out != -(1 as libc::c_int))) as libc::c_int;
         interactive = 0 as libc::c_int;
         login_shell = interactive;
+
         if builtin == Some(eval_builtin) {
             evalnest = 0 as libc::c_int;
         } else if builtin == Some(source_builtin) {
@@ -4899,72 +4956,83 @@ fn execute_subshell_builtin_or_function(
         if pipe_in != NO_PIPE || pipe_out != NO_PIPE {
             subshell_environment |= SUBSHELL_PIPE as libc::c_int;
         }
+    }
+    maybe_make_export_env();
 
-        maybe_make_export_env();
+    if jobs_hack != 0 {
+        kill_current_pipeline();
+    } else {
+        without_job_control();
+    }
 
-        if jobs_hack != 0 {
-            kill_current_pipeline();
-        } else {
-            without_job_control();
-        }
+    set_sigchld_handler();
 
-        set_sigchld_handler();
+    set_sigint_handler();
 
-        set_sigint_handler();
+    if !fds_to_close.is_null() {
+        close_fd_bitmap(fds_to_close);
+    }
 
-        if !fds_to_close.is_null() {
-            close_fd_bitmap(fds_to_close);
-        }
+    do_piping(pipe_in, pipe_out);
 
-        do_piping(pipe_in, pipe_out);
-
-        if do_redirections(redirects, RX_ACTIVE as libc::c_int) != 0 {
+    if do_redirections(redirects, RX_ACTIVE as libc::c_int) != 0 {
+        unsafe {
             exit(EXECUTION_FAILURE as libc::c_int);
         }
-        if builtin.is_some() {
-            result = setjmp_nosigs!(top_level.as_mut_ptr());
-            funcvalue = 0;
-            if return_catch_flag != 0 && builtin == Some(return_builtin) {
-                funcvalue = setjmp_nosigs!(return_catch.as_mut_ptr());
-            }
+    }
+    if builtin.is_some() {
+        result = unsafe { setjmp_nosigs!(top_level.as_mut_ptr()) };
+        funcvalue = 0;
+        if unsafe { return_catch_flag != 0 && builtin == Some(return_builtin) } {
+            funcvalue = unsafe { setjmp_nosigs!(return_catch.as_mut_ptr()) };
+        }
 
-            if result == EXITPROG as libc::c_int {
+        if result == EXITPROG as libc::c_int {
+            unsafe {
                 subshell_exit(last_command_exit_value);
-            } else if result != 0 {
-                subshell_exit(EXECUTION_FAILURE as libc::c_int);
-            } else if funcvalue != 0 {
+            }
+        } else if result != 0 {
+            subshell_exit(EXECUTION_FAILURE as libc::c_int);
+        } else if funcvalue != 0 {
+            unsafe {
                 subshell_exit(return_catch_value);
-            } else {
-                r = execute_builtin(builtin, words, flags, 1);
+            }
+        } else {
+            r = execute_builtin(builtin, words, flags, 1);
+            unsafe {
                 fflush(stdout);
-                if r == EX_USAGE as libc::c_int {
-                    r = EX_BADUSAGE as libc::c_int;
-                } else if r == EX_DISKFALLBACK as libc::c_int {
-                    let command_line: *mut libc::c_char = 0 as *mut libc::c_char;
+            }
+            if r == EX_USAGE as libc::c_int {
+                r = EX_BADUSAGE as libc::c_int;
+            } else if r == EX_DISKFALLBACK as libc::c_int {
+                let command_line: *mut libc::c_char = 0 as *mut libc::c_char;
+                unsafe {
                     savestring!(if !the_printed_command_except_trap.is_null() {
                         the_printed_command_except_trap
                     } else {
                         b"\0" as *const u8 as *mut libc::c_char
                     });
-                    r = execute_disk_command(
-                        words,
-                        0 as *mut REDIRECT,
-                        command_line,
-                        -1,
-                        -1,
-                        async_0,
-                        0 as *mut fd_bitmap,
-                        flags | CMD_NO_FORK as libc::c_int,
-                    );
                 }
-                subshell_exit(r);
+                r = execute_disk_command(
+                    words,
+                    0 as *mut REDIRECT,
+                    command_line,
+                    -1,
+                    -1,
+                    async_0,
+                    0 as *mut fd_bitmap,
+                    flags | CMD_NO_FORK as libc::c_int,
+                );
             }
-        } else {
-            r = execute_function(var, words, flags, fds_to_close, async_0, 1);
-            fflush(stdout);
             subshell_exit(r);
-        };
-    }
+        }
+    } else {
+        r = execute_function(var, words, flags, fds_to_close, async_0, 1);
+        unsafe {
+            fflush(stdout);
+        }
+        subshell_exit(r);
+    };
 }
 
 fn execute_builtin_or_function(
@@ -4975,17 +5043,18 @@ fn execute_builtin_or_function(
     fds_to_close: *mut fd_bitmap,
     flags: libc::c_int,
 ) -> libc::c_int {
-    let mut result: libc::c_int = 0;
-    let mut saved_undo_list: *mut REDIRECT = 0 as *mut REDIRECT;
-    let mut ofifo: libc::c_int = 0;
-    let mut nfifo: libc::c_int = 0;
+    let result: libc::c_int;
+    let mut saved_undo_list: *mut REDIRECT;
+    let ofifo: libc::c_int;
+    let nfifo: libc::c_int;
     let mut osize: libc::c_int = 0;
-    let mut ofifo_list: *mut libc::c_void = 0 as *mut libc::c_void;
-    unsafe {
-        begin_unwind_frame(b"saved_fifos\0" as *const u8 as *mut libc::c_char);
-        ofifo = num_fifos();
-        ofifo_list = copy_fifo_list(&mut osize);
-        if !ofifo_list.is_null() {
+    let ofifo_list: *mut libc::c_void;
+
+    begin_unwind_frame(b"saved_fifos\0" as *const u8 as *mut libc::c_char);
+    ofifo = num_fifos();
+    ofifo_list = copy_fifo_list(&mut osize);
+    if !ofifo_list.is_null() {
+        unsafe {
             add_unwind_protect(
                 transmute::<
                     unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_void),
@@ -4994,102 +5063,111 @@ fn execute_builtin_or_function(
                 ofifo_list as *mut libc::c_char,
             );
         }
+    }
 
-        if do_redirections(
-            redirects,
-            RX_ACTIVE as libc::c_int | RX_UNDOABLE as libc::c_int,
-        ) != 0
-        {
-            undo_partial_redirects();
-            dispose_exec_redirects();
+    if do_redirections(
+        redirects,
+        RX_ACTIVE as libc::c_int | RX_UNDOABLE as libc::c_int,
+    ) != 0
+    {
+        undo_partial_redirects();
+        dispose_exec_redirects();
+        unsafe {
             free(ofifo_list as *mut c_void);
-            return EX_REDIRFAIL as libc::c_int;
         }
-        saved_undo_list = redirection_undo_list;
-        if builtin == Some(exec_builtin) {
-            dispose_redirects(saved_undo_list);
+        return EX_REDIRFAIL as libc::c_int;
+    }
+    saved_undo_list = unsafe { redirection_undo_list };
+    if builtin == Some(exec_builtin) {
+        dispose_redirects(saved_undo_list);
+        unsafe {
             saved_undo_list = exec_redirection_undo_list;
             exec_redirection_undo_list = 0 as *mut REDIRECT;
-        } else {
-            dispose_exec_redirects();
         }
+    } else {
+        dispose_exec_redirects();
+    }
 
-        if !saved_undo_list.is_null() {
-            begin_unwind_frame(b"saved-redirects\0" as *const u8 as *mut libc::c_char);
+    if !saved_undo_list.is_null() {
+        begin_unwind_frame(b"saved-redirects\0" as *const u8 as *mut libc::c_char);
+        unsafe {
             add_unwind_protect(
                 transmute::<fn(*mut REDIRECT) -> (), Option<Function>>(cleanup_redirects),
                 saved_undo_list as *mut libc::c_char,
             );
         }
+    }
 
+    unsafe {
         redirection_undo_list = 0 as *mut REDIRECT;
+    }
 
-        if builtin.is_some() {
-            //tab键出现问题的地方
-            result = execute_builtin(builtin, words, flags, 0);
-        } else {
-            result = execute_function(var, words, flags, fds_to_close, 0, 0);
-        }
+    if builtin.is_some() {
+        result = execute_builtin(builtin, words, flags, 0);
+    } else {
+        result = execute_function(var, words, flags, fds_to_close, 0, 0);
+    }
 
+    unsafe {
         fflush(stdout);
-        fpurge(stdout);
+        c_fpurge(stdout);
         if ferror(stdout) != 0 {
-            clearerr(stdout);
+            c_clearerr(stdout);
         }
-        if builtin == Some(command_builtin) && this_shell_builtin == Some(exec_builtin) {
-            let mut discard: libc::c_int = 0;
+    }
+    if unsafe { builtin == Some(command_builtin) && this_shell_builtin == Some(exec_builtin) } {
+        let mut discard: libc::c_int;
 
-            discard = 0;
-            if !saved_undo_list.is_null() {
-                dispose_redirects(saved_undo_list);
-                discard = 1;
-            }
+        discard = 0;
+        if !saved_undo_list.is_null() {
+            dispose_redirects(saved_undo_list);
+            discard = 1;
+        }
+        unsafe {
             redirection_undo_list = exec_redirection_undo_list;
             exec_redirection_undo_list = 0 as *mut REDIRECT;
             saved_undo_list = exec_redirection_undo_list;
-            if discard != 0 {
-                discard_unwind_frame(b"saved-redirects\0" as *const u8 as *mut libc::c_char);
-            }
         }
-        if !saved_undo_list.is_null() {
-            redirection_undo_list = saved_undo_list;
+        if discard != 0 {
             discard_unwind_frame(b"saved-redirects\0" as *const u8 as *mut libc::c_char);
         }
-
-        undo_partial_redirects();
-
-        nfifo = num_fifos();
-        if nfifo > ofifo {
-            close_new_fifos(ofifo_list, osize);
+    }
+    if !saved_undo_list.is_null() {
+        unsafe {
+            redirection_undo_list = saved_undo_list;
         }
-        if !ofifo_list.is_null() {
+        discard_unwind_frame(b"saved-redirects\0" as *const u8 as *mut libc::c_char);
+    }
+
+    undo_partial_redirects();
+
+    nfifo = num_fifos();
+    if nfifo > ofifo {
+        close_new_fifos(ofifo_list, osize);
+    }
+    if !ofifo_list.is_null() {
+        unsafe {
             free(ofifo_list as *mut c_void);
         }
-        discard_unwind_frame(
-            b"saved_fifos\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-        );
     }
+    discard_unwind_frame(b"saved_fifos\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
+
     return result;
 }
 
 #[no_mangle]
 pub fn setup_async_signals() {
-    unsafe {
-        if job_control == 0 {
-            get_original_signal(SIGINT as libc::c_int);
+    if unsafe { job_control == 0 } {
+        get_original_signal(SIGINT as libc::c_int);
+        unsafe {
             set_signal_handler(SIGINT as libc::c_int, SIG_IGN!());
-            get_original_signal(SIGQUIT as libc::c_int);
+        }
+        get_original_signal(SIGQUIT as libc::c_int);
+        unsafe {
             set_signal_handler(SIGQUIT as libc::c_int, SIG_IGN!());
         }
     }
 }
-
-// #[macro_export]
-// macro_rules! NOTFOUND_HOOK {
-//     () => {
-//         b"command_not_found_handle\0" as *const u8 as *const libc::c_char
-//     };
-// }
 
 fn execute_disk_command(
     words: *mut WordList,
@@ -5101,26 +5179,26 @@ fn execute_disk_command(
     fds_to_close: *mut fd_bitmap,
     cmdflags: libc::c_int,
 ) -> libc::c_int {
-    let mut pathname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut command: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut args: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut nofork: libc::c_int = 0;
+    let mut pathname: *mut libc::c_char;
+    let mut command: *mut libc::c_char;
+    let args: *mut *mut libc::c_char;
+    let mut p: *mut libc::c_char;
+    let nofork: libc::c_int;
     let stdpath: libc::c_int = 0;
-    let mut result: libc::c_int = 0;
-    let mut fork_flags: libc::c_int = 0;
-    let mut pid: pid_t = 0;
-    let mut hookf: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut wl: *mut WordList = 0 as *mut WordList;
-    unsafe {
-        // stdpath = cmdflags & 0x4000 as libc::c_int;
-        nofork = cmdflags & CMD_NO_FORK as libc::c_int;
-        pathname = (*(*words).word).word;
+    let mut result: libc::c_int;
+    let fork_flags: libc::c_int;
+    let pid: pid_t;
+    let hookf: *mut SHELL_VAR;
+    let wl: *mut WordList;
 
-        p = 0 as *mut libc::c_char;
-        result = EXECUTION_SUCCESS as libc::c_int;
-        command = 0 as *mut libc::c_char;
-        if restricted != 0 && !(mbschr(pathname, '/' as i32)).is_null() {
+    nofork = cmdflags & CMD_NO_FORK as libc::c_int;
+    pathname = unsafe { (*(*words).word).word };
+
+    p = 0 as *mut libc::c_char;
+    result = EXECUTION_SUCCESS as libc::c_int;
+    command = 0 as *mut libc::c_char;
+    if unsafe { restricted != 0 && !(c_mbschr(pathname, '/' as i32)).is_null() } {
+        unsafe {
             internal_error(
                 b"%s: restricted: cannot specify `/' in command names\0" as *const u8
                     as *mut libc::c_char,
@@ -5132,107 +5210,129 @@ fn execute_disk_command(
             if nofork != 0 && pipe_in == NO_PIPE && pipe_out == NO_PIPE {
                 exit(last_command_exit_value);
             }
-        } else {
-            command = search_for_command(
-                pathname,
-                CMDSRCH_HASH as libc::c_int
-                    | (if stdpath != 0 {
-                        CMDSRCH_STDPATH as libc::c_int
-                    } else {
-                        0
-                    }),
-            );
-            QUIT!();
-
-            if !command.is_null() {
-                if nofork != 0 && pipe_in == NO_PIPE && pipe_out == NO_PIPE {
-                    adjust_shell_level(-1);
-                }
-                maybe_make_export_env();
-                put_command_name_into_env(command);
-            }
-
-            if nofork != 0 && pipe_in == NO_PIPE && pipe_out == NO_PIPE {
-                pid = 0;
-            } else {
-                fork_flags = if async_0 != 0 {
-                    FORK_ASYNC as libc::c_int
+        }
+    } else {
+        command = search_for_command(
+            pathname,
+            CMDSRCH_HASH as libc::c_int
+                | (if stdpath != 0 {
+                    CMDSRCH_STDPATH as libc::c_int
                 } else {
                     0
-                };
-                p = savestring!(command_line);
-                pid = make_child(p, fork_flags);
+                }),
+        );
+        unsafe {
+            QUIT!();
+        }
+
+        if !command.is_null() {
+            if nofork != 0 && pipe_in == NO_PIPE && pipe_out == NO_PIPE {
+                adjust_shell_level(-1);
+            }
+            maybe_make_export_env();
+            put_command_name_into_env(command);
+        }
+
+        if nofork != 0 && pipe_in == NO_PIPE && pipe_out == NO_PIPE {
+            pid = 0;
+        } else {
+            fork_flags = if async_0 != 0 {
+                FORK_ASYNC as libc::c_int
+            } else {
+                0
+            };
+            p = unsafe { savestring!(command_line) };
+            pid = make_child(p, fork_flags);
+        }
+
+        if pid == 0 {
+            let old_interactive: libc::c_int;
+
+            reset_terminating_signals();
+            restore_original_signals();
+
+            unsafe {
+                FREE!(p);
             }
 
-            if pid == 0 {
-                let mut old_interactive: libc::c_int = 0;
-
-                reset_terminating_signals();
-                restore_original_signals();
-
-                FREE!(p);
-
-                if async_0 != 0 {
-                    if cmdflags & CMD_STDIN_REDIR as libc::c_int != 0
-                        && pipe_in == NO_PIPE
-                        && stdin_redirects(redirects) == 0
-                    {
-                        async_redirect_stdin();
-                    }
-                    setup_async_signals();
+            if async_0 != 0 {
+                if cmdflags & CMD_STDIN_REDIR as libc::c_int != 0
+                    && pipe_in == NO_PIPE
+                    && stdin_redirects(redirects) == 0
+                {
+                    async_redirect_stdin();
                 }
+                setup_async_signals();
+            }
 
-                if !fds_to_close.is_null() {
-                    close_fd_bitmap(fds_to_close);
-                }
+            if !fds_to_close.is_null() {
+                close_fd_bitmap(fds_to_close);
+            }
 
-                do_piping(pipe_in, pipe_out);
+            do_piping(pipe_in, pipe_out);
 
-                old_interactive = interactive;
+            old_interactive = unsafe { interactive };
 
-                if async_0 != 0 {
+            if async_0 != 0 {
+                unsafe {
                     interactive = 0;
                 }
+            }
 
+            unsafe {
                 subshell_environment |= SUBSHELL_FORK as libc::c_int;
+            }
 
-                if !redirects.is_null() && do_redirections(redirects, RX_ACTIVE as libc::c_int) != 0
-                {
-                    unlink_fifo_list();
+            if !redirects.is_null() && do_redirections(redirects, RX_ACTIVE as libc::c_int) != 0 {
+                unlink_fifo_list();
+                unsafe {
                     exit(EXECUTION_FAILURE as libc::c_int);
                 }
+            }
 
-                if async_0 != 0 {
+            if async_0 != 0 {
+                unsafe {
                     interactive = old_interactive;
                 }
+            }
 
-                if command.is_null() {
-                    hookf = find_function(NOTFOUND_HOOK!());
-                    if hookf.is_null() {
-                        pathname = printable_filename(pathname, 0);
+            if command.is_null() {
+                hookf = find_function(NOTFOUND_HOOK!());
+                if hookf.is_null() {
+                    pathname = printable_filename(pathname, 0);
+                    unsafe {
                         internal_error(
                             b"%s: command not found\0" as *const u8 as *mut libc::c_char,
                             pathname as *mut libc::c_char,
                         );
                         exit(127 as libc::c_int);
                     }
+                }
 
-                    without_job_control();
+                without_job_control();
 
-                    set_sigchld_handler();
+                set_sigchld_handler();
 
-                    wl = make_word_list(make_word(NOTFOUND_HOOK!()), words);
+                wl = make_word_list(make_word(NOTFOUND_HOOK!()), words);
+                unsafe {
                     exit(execute_shell_function(hookf, wl));
                 }
-                args = strvec_from_word_list(words, 0, 0, 0 as *mut libc::c_int);
+            }
+            args = c_strvec_from_word_list(words, 0, 0, 0 as *mut libc::c_int);
+            unsafe {
                 exit(shell_execve(command, args, export_env));
             }
         }
+    }
+    unsafe {
         QUIT!();
+    }
 
-        close_pipes(pipe_in, pipe_out);
+    close_pipes(pipe_in, pipe_out);
+    unsafe {
         FREE!(command);
     }
+
     return result;
 }
 
@@ -5241,49 +5341,52 @@ fn getinterp(
     sample_len: libc::c_int,
     endp: *mut libc::c_int,
 ) -> *mut libc::c_char {
-    let mut i: libc::c_int = 0;
-    let mut execname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut start: libc::c_int = 0;
-    unsafe {
-        #[macro_export]
-        macro_rules! STRINGCHAR {
-            ($ind:expr) => {
-                $ind < sample_len
-                    && !whitespace!(sample.offset($ind as isize))
-                    && $ind as libc::c_int != '\n' as i32
-            };
-        }
+    let mut i: libc::c_int;
+    let execname: *mut libc::c_char;
+    let start: libc::c_int;
 
-        i = 2;
-        while i < sample_len && whitespace!(*sample.offset(i as isize)) {
-            i += 1;
-        }
-        start = i;
-        while STRINGCHAR!(i) {
-            i += 1;
-        }
-        execname = substring(sample, start, i);
-        if !endp.is_null() {
+    #[macro_export]
+    macro_rules! STRINGCHAR {
+        ($ind:expr) => {
+            $ind < sample_len
+                && !whitespace!(sample.offset($ind as isize))
+                && $ind as libc::c_int != '\n' as i32
+        };
+    }
+
+    i = 2;
+    while i < sample_len && unsafe { whitespace!(*sample.offset(i as isize)) } {
+        i += 1;
+    }
+    start = i;
+    while unsafe { STRINGCHAR!(i) } {
+        i += 1;
+    }
+    execname = substring(sample, start, i);
+    if !endp.is_null() {
+        unsafe {
             *endp = i;
         }
     }
+
     return execname;
 }
 
 fn initialize_subshell() {
+    delete_all_aliases();
     unsafe {
-        delete_all_aliases();
         history_lines_this_session = 0;
+    }
 
-        without_job_control();
+    without_job_control();
 
-        set_sigchld_handler();
-        init_job_stats();
+    set_sigchld_handler();
+    init_job_stats();
 
-        reset_shell_flags();
-        reset_shell_options();
-        reset_shopt_options();
-
+    reset_shell_flags();
+    reset_shell_options();
+    reset_shopt_options();
+    unsafe {
         if vc_isbltnenv!(shell_variables) {
             shell_variables = (*shell_variables).down;
         }
@@ -5309,19 +5412,18 @@ pub fn shell_execve(
     mut args: *mut *mut libc::c_char,
     env: *mut *mut libc::c_char,
 ) -> libc::c_int {
-    let mut larray: libc::c_int = 0;
-    let mut i: libc::c_int = 0;
-    let fd: libc::c_int = 0;
+    let larray: libc::c_int;
+    let mut i: libc::c_int;
+    // let fd: libc::c_int = 0;
     let mut sample: [libc::c_char; 128] = [0; 128];
-    let mut sample_len: libc::c_int = 0;
+    let sample_len: libc::c_int;
     unsafe {
-        //缺少SETOSTYPE(0); 语句，因为找到宏定义的地方发现是没有展开的
         execve(
             command,
             args as *const *const libc::c_char,
             env as *const *const libc::c_char,
         );
-        i = errno!();
+        i = *c___errno_location();
         CHECK_TERMSIG!();
 
         if i != ENOEXEC!() {
@@ -5337,25 +5439,25 @@ pub fn shell_execve(
                     strerror(EISDIR!()),
                 );
             } else if executable_file(command) == 0 {
-                errno!() = i;
+                *c___errno_location() = i;
                 file_error(command);
             } else if i == E2BIG!() || i == ENOMEM!() {
-                errno!() = i;
+                *c___errno_location() = i;
                 file_error(command);
             } else {
                 let fd_0: libc::c_int = open(command, O_RDONLY as libc::c_int);
 
                 if fd_0 >= 0 {
-                    sample_len = read(
+                    read(
                         fd_0,
                         sample.as_mut_ptr() as *mut libc::c_void,
                         ::std::mem::size_of::<[libc::c_char; 128]>() as usize,
                     ) as libc::c_int;
                 } else {
-                    sample_len = -1;
+                    // sample_len = -1;
                 }
 
-                READ_SAMPLE_BUF!(command, sample, sample_len); //有可能存在问题，如果存在问题就不用宏了
+                READ_SAMPLE_BUF!(command, sample, sample_len);
                 if sample_len > 0 {
                     sample[(sample_len - 1) as usize] = '\u{0}' as i32 as libc::c_char;
                 }
@@ -5363,13 +5465,13 @@ pub fn shell_execve(
                     && sample[0] as libc::c_int == '#' as i32
                     && sample[1] as libc::c_int == '!' as i32
                 {
-                    let mut interp: *mut libc::c_char = 0 as *mut libc::c_char;
-                    let mut ilen: libc::c_int = 0;
+                    let mut interp: *mut libc::c_char;
+                    let ilen: libc::c_int;
 
                     close(fd_0);
                     interp = getinterp(sample.as_mut_ptr(), sample_len, 0 as *mut libc::c_int);
                     ilen = strlen(interp) as libc::c_int;
-                    errno!() = i;
+                    *c___errno_location() = i;
                     if *interp.offset((ilen - 1) as isize) as libc::c_int == '\r' as i32 {
                         interp = realloc(interp as *mut c_void, (ilen + 2) as usize)
                             as *mut libc::c_char;
@@ -5395,7 +5497,7 @@ pub fn shell_execve(
                 if fd_0 >= 0 {
                     close(fd_0);
                 }
-                errno!() = i;
+                *c___errno_location() = i;
                 file_error(command);
             }
             return last_command_exit_value;
@@ -5414,7 +5516,7 @@ pub fn shell_execve(
                     command,
                     strerror(i),
                 );
-                errno!() = i;
+                *c___errno_location() = i;
                 return EX_BINARY_FILE as libc::c_int;
             }
         }
@@ -5424,8 +5526,8 @@ pub fn shell_execve(
 
         set_sigint_handler();
 
-        larray = strvec_len(args) + 1;
-        args = strvec_resize(args, larray + 1);
+        larray = c_strvec_len(args) + 1;
+        args = c_strvec_resize(args, larray + 1);
 
         i = larray - 1;
         while i != 0 {
@@ -5463,14 +5565,13 @@ pub fn shell_execve(
 
         clear_fifo_list();
 
-        siglongjmp(subshell_top_level.as_mut_ptr(), 1);
+        c_siglongjmp(subshell_top_level.as_mut_ptr(), 1);
     }
-    return 0; //这个地方c是没有返回值的，如果不加会报错，不清楚加0 是否正确
 }
 
 fn execute_intern_function(name: *mut WordDesc, funcdef: *mut FUNCTION_DEF) -> libc::c_int {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let var: *mut SHELL_VAR;
+    let t: *mut libc::c_char;
     unsafe {
         if check_identifier(name, posixly_correct) == 0 {
             if posixly_correct != 0 && interactive_shell == 0 {
@@ -5537,26 +5638,28 @@ fn dup_error(oldd: libc::c_int, newd: libc::c_int) {
 }
 
 fn do_piping(pipe_in: libc::c_int, pipe_out: libc::c_int) {
-    unsafe {
-        if pipe_in != NO_PIPE {
-            if dup2(pipe_in, 0) < 0 {
-                dup_error(pipe_in, 0);
-            }
-            if pipe_in > 0 {
+    if pipe_in != NO_PIPE {
+        if unsafe { dup2(pipe_in, 0) < 0 } {
+            dup_error(pipe_in, 0);
+        }
+        if pipe_in > 0 {
+            unsafe {
                 close(pipe_in);
             }
         }
-        if pipe_out != NO_PIPE {
-            if pipe_out != REDIRECT_BOTH as libc::c_int {
-                if dup2(pipe_out, 1) < 0 {
-                    dup_error(pipe_out, 1);
-                }
-                if pipe_out == 0 || pipe_out > 1 {
+    }
+    if pipe_out != NO_PIPE {
+        if pipe_out != REDIRECT_BOTH as libc::c_int {
+            if unsafe { dup2(pipe_out, 1) < 0 } {
+                dup_error(pipe_out, 1);
+            }
+            if pipe_out == 0 || pipe_out > 1 {
+                unsafe {
                     close(pipe_out);
                 }
-            } else if dup2(1, 2) < 0 {
-                dup_error(1, 2);
             }
+        } else if unsafe { dup2(1, 2) < 0 } {
+            dup_error(1, 2);
         }
     }
 }
