@@ -1,15 +1,12 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use super::help::builtin_help;
 use crate::array::array_flush;
 use crate::arrayfunc::{bind_array_element, find_or_make_array_variable};
 use crate::builtins::bashgetopt::{internal_getopt, reset_internal_getopt};
 use crate::builtins::common::{builtin_usage, sh_invalidid};
 use crate::builtins::evalstring::evalstring;
+use crate::error::err_readonly;
 use crate::general::{legal_identifier, legal_number, sh_validfd};
 use crate::src_common::*;
-
 pub const DEFAULT_QUANTUM: libc::c_long = 5000;
 pub const MAPF_CLEARARRAY: libc::c_int = 0x01;
 pub const MAPF_CHOP: libc::c_int = 0x02;
@@ -167,7 +164,7 @@ fn run_callback(
     curline: *mut libc::c_char,
 ) -> libc::c_int {
     unsafe {
-        let qline = sh_single_quote(curline);
+        let qline = c_sh_single_quote(curline);
         let execlen = libc::strlen(callback) + libc::strlen(qline) + 10 + 3;
         let execstr = libc::malloc(execlen);
 
@@ -214,98 +211,108 @@ fn mapfile(
     let mut line: *mut libc::c_char = PT_NULL as *mut libc::c_char;
     let mut line_length: size_t = 0;
     let mut unbuffered_read: libc::c_int;
-    unsafe {
-        let entry = find_or_make_array_variable(array_name, 1);
-        // let entry_test = *entry;
-        // println!("entry:{:#?}",entry_test);
 
-        if entry.is_null()
+    let entry = find_or_make_array_variable(array_name, 1);
+
+    if unsafe {
+        entry.is_null()
             || ((*entry).attributes & att_readonly) != 0
             || ((*entry).attributes & att_noassign) != 0
-        {
-            if !entry.is_null() && ((*entry).attributes & att_readonly) != 0 {
-                err_readonly(array_name);
-            }
+    } {
+        if unsafe { !entry.is_null() && ((*entry).attributes & att_readonly) != 0 } {
+            err_readonly(array_name);
+        }
 
-            return EXECUTION_FAILURE;
-        } else if ((*entry).attributes & att_array) == 0 {
+        return EXECUTION_FAILURE;
+    } else if unsafe { ((*entry).attributes & att_array) == 0 } {
+        unsafe {
             builtin_error(
                 "%s: not an indexed array\0".as_ptr() as *const libc::c_char,
                 array_name,
             );
-            return EXECUTION_FAILURE;
-        } else if ((*entry).attributes & att_array) != 0 {
+        }
+        return EXECUTION_FAILURE;
+    } else if unsafe { ((*entry).attributes & att_array) != 0 } {
+        unsafe {
             (*entry).attributes &= (att_invisible as libc::c_uint ^ 0xffffffff) as libc::c_int;
         }
+    }
 
-        if (flags & MAPF_CLEARARRAY) != 0 {
+    if (flags & MAPF_CLEARARRAY) != 0 {
+        unsafe {
             array_flush(std::mem::transmute((*entry).value));
         }
-        unbuffered_read = ((libc::lseek(fd, 0, SEEK_CUR) < 0)
-            && (*libc::__errno_location() == ESPIPE)) as libc::c_int;
+    }
+    unbuffered_read = unsafe {
+        ((libc::lseek(fd, 0, SEEK_CUR) < 0) && (*libc::__errno_location() == ESPIPE)) as libc::c_int
+    };
 
-        if dlm != b'\n' as libc::c_int {
-            unbuffered_read = 1;
-        }
-        zreset();
+    if dlm != b'\n' as libc::c_int {
+        unbuffered_read = 1;
+    }
+    c_zreset();
 
-        let mut line_count: libc::c_uint = 0;
-        while (line_count as libc::c_long) < nskip {
-            if zgetline(
+    let mut line_count: libc::c_uint = 0;
+    while (line_count as libc::c_long) < nskip {
+        if unsafe {
+            c_zgetline(
                 fd,
                 std::mem::transmute(&line),
                 std::mem::transmute(&line_length),
                 dlm,
                 unbuffered_read,
             ) < 0
-            {
-                break;
-            }
-            line_count += 1;
+        } {
+            break;
         }
+        line_count += 1;
+    }
 
-        line = PT_NULL as *mut libc::c_char;
-        line_length = 0;
-        let mut array_index: libc::c_uint = origin as libc::c_uint;
-        line_count = 1;
-        while zgetline(
+    line = PT_NULL as *mut libc::c_char;
+    line_length = 0;
+    let mut array_index: libc::c_uint = origin as libc::c_uint;
+    line_count = 1;
+    while unsafe {
+        c_zgetline(
             fd,
             std::mem::transmute(&line),
             std::mem::transmute(&line_length),
             dlm,
             unbuffered_read,
         ) != -1
+    } {
+        if (flags & MAPF_CHOP) != 0 {
+            do_chop(line, dlm as libc::c_uchar);
+        }
+
+        if !callback.is_null()
+            && line_count != 0
+            && (line_count as libc::c_long % callback_quantum) == 0
         {
-            if (flags & MAPF_CHOP) != 0 {
-                do_chop(line, dlm as libc::c_uchar);
+            run_callback(callback, array_index, line);
+
+            if unbuffered_read == 0 {
+                c_zsyncfd(fd);
             }
-
-            if !callback.is_null()
-                && line_count != 0
-                && (line_count as libc::c_long % callback_quantum) == 0
-            {
-                run_callback(callback, array_index, line);
-
-                if unbuffered_read == 0 {
-                    zsyncfd(fd);
-                }
-            }
-
-            bind_array_element(entry, array_index as libc::c_long, line, 0);
-
-            line_count += 1;
-            if line_count_goal != 0 && (line_count as libc::c_long) > line_count_goal {
-                break;
-            }
-
-            array_index += 1;
         }
 
-        libc::free(line as *mut c_void);
+        bind_array_element(entry, array_index as libc::c_long, line, 0);
 
-        if unbuffered_read == 0 {
-            zsyncfd(fd);
+        line_count += 1;
+        if line_count_goal != 0 && (line_count as libc::c_long) > line_count_goal {
+            break;
         }
+
+        array_index += 1;
     }
+
+    unsafe {
+        libc::free(line as *mut c_void);
+    }
+
+    if unbuffered_read == 0 {
+        c_zsyncfd(fd);
+    }
+
     return EXECUTION_SUCCESS;
 }
