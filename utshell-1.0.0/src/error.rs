@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::array::array_reference;
 use crate::general::base_pathname;
 use crate::src_common::*;
@@ -12,8 +9,8 @@ pub static mut gnu_error_format: libc::c_int = 0 as libc::c_int;
 //该文件中有多个可变餐函数，在variables/error.c中实现
 #[no_mangle]
 pub fn get_name_for_error() -> *mut libc::c_char {
-    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut bash_source_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut name: *mut libc::c_char;
+    let bash_source_v: *mut SHELL_VAR;
     let mut bash_source_a: *mut ARRAY = 0 as *mut ARRAY;
     name = 0 as *mut libc::c_void as *mut libc::c_char;
     unsafe {
@@ -48,7 +45,7 @@ pub fn file_error(filename: *const libc::c_char) {
         report_error(
             b"%s: %s\0" as *const u8 as *const libc::c_char,
             filename,
-            strerror(*__errno_location()),
+            strerror(*c___errno_location()),
         );
     }
 }
@@ -66,7 +63,7 @@ pub fn command_error(
     func: *const libc::c_char,
     mut code: libc::c_int,
     e: libc::c_int,
-    flags: libc::c_int,
+    _flags: libc::c_int,
 ) {
     if code > CMDERR_LAST.try_into().unwrap() {
         code = CMDERR_DEFAULT as i32;
@@ -75,7 +72,7 @@ pub fn command_error(
         programming_error(
             b"%s: %s: %d\0" as *const u8 as *const libc::c_char,
             func,
-            dcgettext(
+            c_dcgettext(
                 0 as *const libc::c_char,
                 cmd_error_table[code as usize],
                 5 as libc::c_int,
@@ -91,7 +88,7 @@ pub fn command_errstr(mut code: libc::c_int) -> *mut libc::c_char {
         code = CMDERR_DEFAULT as i32;
     }
     unsafe {
-        return dcgettext(
+        return c_dcgettext(
             0 as *const libc::c_char,
             cmd_error_table[code as usize],
             5 as libc::c_int,
@@ -105,7 +102,7 @@ pub fn err_badarraysub(s: *const libc::c_char) {
         report_error(
             b"%s: %s\0" as *const u8 as *const libc::c_char,
             s,
-            dcgettext(
+            c_dcgettext(
                 0 as *const libc::c_char,
                 bash_badsub_errmsg,
                 5 as libc::c_int,
@@ -118,7 +115,7 @@ pub fn err_badarraysub(s: *const libc::c_char) {
 pub fn err_unboundvar(s: *const libc::c_char) {
     unsafe {
         report_error(
-            dcgettext(
+            c_dcgettext(
                 0 as *const libc::c_char,
                 b"%s: unbound variable\0" as *const u8 as *const libc::c_char,
                 5 as libc::c_int,
@@ -132,7 +129,7 @@ pub fn err_unboundvar(s: *const libc::c_char) {
 pub fn err_readonly(s: *const libc::c_char) {
     unsafe {
         report_error(
-            dcgettext(
+            c_dcgettext(
                 0 as *const libc::c_char,
                 b"%s: readonly variable\0" as *const u8 as *const libc::c_char,
                 5 as libc::c_int,
