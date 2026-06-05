@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 #![allow(
     dead_code,
     mutable_transmutes,
@@ -15,7 +12,6 @@
     unused_variables,
     clashing_extern_declarations
 )]
-
 use crate::alias::*;
 use crate::arrayfunc::*;
 use crate::bashhist::*;
@@ -31,7 +27,8 @@ use crate::jobs::*;
 use crate::local::*;
 use crate::mailcheck::*;
 use crate::make_cmd::*;
-use crate::readline::clearerr;
+use crate::parse_and_execute;
+use crate::readline::c_clearerr;
 use crate::sig::*;
 use crate::src_common;
 use crate::src_common::alias;
@@ -42,6 +39,9 @@ use crate::subst::*;
 pub use crate::syntax::sh_syntaxtab;
 use crate::test::*;
 use crate::trap::*;
+use crate::utshell::exit_shell;
+use crate::utshell::get_current_user_info;
+use crate::utshell::set_exit_status;
 use crate::variables::bind_variable;
 use crate::variables::get_string_value;
 use crate::variables::restore_pipestatus_array;
@@ -50,12 +50,8 @@ use crate::variables::set_pipestatus_from_exit;
 use crate::variables::sv_tz;
 use crate::version::dist_version;
 use crate::version::*;
-
 extern "C" {
     static mut stdin: *mut FILE;
-    fn get_new_window_size(_: libc::c_int, _: *mut libc::c_int, _: *mut libc::c_int);
-    fn set_signal_handler(_: libc::c_int, _: Option<SigHandler>) -> Option<SigHandler>;
-
 }
 
 pub type yy_state_t = yytype_int16;
@@ -255,13 +251,11 @@ pub type BUFFERED_STREAM = BSTREAM;
 
 #[inline]
 fn mbrlen(mut __s: *const libc::c_char, mut __n: size_t, mut __ps: *mut mbstate_t) -> size_t {
-    unsafe {
-        return if !__ps.is_null() {
-            mbrtowc(0 as *mut wchar_t, __s, __n, __ps)
-        } else {
-            __mbrlen(__s, __n, 0 as *mut mbstate_t)
-        };
-    }
+    return if !__ps.is_null() {
+        c_mbrtowc(0 as *mut wchar_t, __s, __n, __ps)
+    } else {
+        c___mbrlen(__s, __n, 0 as *mut mbstate_t)
+    };
 }
 static mut shell_input_line_property: *mut libc::c_char =
     0 as *const libc::c_char as *mut libc::c_char;
@@ -3130,7 +3124,8 @@ pub fn init_yy_io(
         bash_input.name = if !name.is_null() {
             strcpy(
                 malloc(
-                    (1 as libc::c_int as libc::c_ulong).wrapping_add(strlen(name) as u64) as usize,
+                    (1 as libc::c_int as libc::c_ulong).wrapping_add(libc::strlen(name) as u64)
+                        as usize,
                 ) as *mut libc::c_char,
                 name,
             )
@@ -3541,13 +3536,10 @@ fn yy_readline_get() -> libc::c_int {
                 initialize_traps as fn() -> (),
             ));
             if signal_is_ignored(2 as libc::c_int) == 0 as libc::c_int {
-                old_sigint = set_signal_handler(
-                    2 as libc::c_int,
-                    Some(sigint_sighandler as fn(libc::c_int) -> ()),
-                );
+                old_sigint = set_signal_handler(2 as libc::c_int, Some(sigint_sighandler));
             }
-            sh_unset_nodelay_mode(fileno(rl_instream));
-            current_readline_line = readline(if !current_readline_prompt.is_null() {
+            c_sh_unset_nodelay_mode(fileno(rl_instream));
+            current_readline_line = c_readline(if !current_readline_prompt.is_null() {
                 // 读取终端字符
                 current_readline_prompt as *const libc::c_char
             } else {
@@ -3569,7 +3561,7 @@ fn yy_readline_get() -> libc::c_int {
                 return -(1 as libc::c_int);
             }
             current_readline_line_index = 0 as libc::c_int;
-            line_len = strlen(current_readline_line) as libc::c_int;
+            line_len = libc::strlen(current_readline_line) as libc::c_int;
             current_readline_line = realloc(
                 current_readline_line as *mut libc::c_void,
                 (2 as libc::c_int + line_len) as usize,
@@ -3690,7 +3682,6 @@ fn rewind_input_string() {
             == '\n' as i32
         {
             xchars += 1;
-            xchars;
         }
         bash_input.location.string = (bash_input.location.string).offset(-(xchars as isize));
     }
@@ -3881,7 +3872,6 @@ pub fn yyparse() -> libc::c_int {
                             } else {
                                 if yyerrstatus != 0 {
                                     yyerrstatus -= 1;
-                                    yyerrstatus;
                                 }
                                 yystate = yyn;
                                 yyvsp = yyvsp.offset(1);
@@ -3906,7 +3896,6 @@ pub fn yyparse() -> libc::c_int {
                         }) as yysymbol_kind_t;
                         if yyerrstatus == 0 {
                             yynerrs += 1;
-                            yynerrs;
                             yyerror(b"syntax error\0" as *const u8 as *const libc::c_char);
                         }
                         if yyerrstatus == 3 as libc::c_int {
@@ -4442,7 +4431,6 @@ pub fn yyparse() -> libc::c_int {
                         }
                         58 => {
                             yyval.command = make_simple_command(
-                                // 感觉有点问题 1008
                                 (*yyvsp.offset(0 as libc::c_int as isize)).element,
                                 0 as *mut libc::c_void as *mut COMMAND,
                             );
@@ -4552,7 +4540,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4568,7 +4555,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4584,7 +4570,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4600,7 +4585,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4625,7 +4609,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4650,7 +4633,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4663,7 +4645,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4676,7 +4657,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4691,7 +4671,6 @@ pub fn yyparse() -> libc::c_int {
                             } else {
                                 if word_top > 0 as libc::c_int {
                                     word_top -= 1;
-                                    word_top;
                                 }
                                 current_block = 12964251834421583797;
                             }
@@ -4707,7 +4686,6 @@ pub fn yyparse() -> libc::c_int {
                             } else {
                                 if word_top > 0 as libc::c_int {
                                     word_top -= 1;
-                                    word_top;
                                 }
                                 current_block = 12964251834421583797;
                             }
@@ -4723,7 +4701,6 @@ pub fn yyparse() -> libc::c_int {
                             } else {
                                 if word_top > 0 as libc::c_int {
                                     word_top -= 1;
-                                    word_top;
                                 }
                                 current_block = 12964251834421583797;
                             }
@@ -4739,7 +4716,6 @@ pub fn yyparse() -> libc::c_int {
                             } else {
                                 if word_top > 0 as libc::c_int {
                                     word_top -= 1;
-                                    word_top;
                                 }
                                 current_block = 12964251834421583797;
                             }
@@ -4756,7 +4732,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4772,7 +4747,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4788,7 +4762,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4804,7 +4777,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4829,7 +4801,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4854,7 +4825,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4867,7 +4837,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4880,7 +4849,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4892,7 +4860,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4904,7 +4871,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -4916,7 +4882,6 @@ pub fn yyparse() -> libc::c_int {
                             );
                             if word_top > 0 as libc::c_int {
                                 word_top -= 1;
-                                word_top;
                             }
                             current_block = 12964251834421583797;
                         }
@@ -5568,7 +5533,6 @@ pub fn yyparse() -> libc::c_int {
                         }
                         _ => {
                             yynerrs += 1;
-                            yynerrs;
                             yyvsp = yyvsp.offset(-(yylen as isize));
                             yyssp = yyssp.offset(-(yylen as isize));
                             yylen = 0 as libc::c_int;
@@ -5617,7 +5581,6 @@ pub fn yyparse() -> libc::c_int {
                 _ => {}
             }
             yyssp = yyssp.offset(1);
-            yyssp;
         }
         match current_block {
             5105078013716444332 => {
@@ -5841,7 +5804,7 @@ fn push_string(mut s: *mut libc::c_char, mut expand: libc::c_int, mut ap: *mut a
             if !s.is_null() && *s.offset(0 as libc::c_int as isize) as libc::c_int != 0 {
                 if *s.offset(1 as libc::c_int as isize) as libc::c_int != 0 {
                     if *s.offset(2 as libc::c_int as isize) as libc::c_int != 0 {
-                        strlen(s) as u64
+                        libc::strlen(s) as u64
                     } else {
                         2 as libc::c_int as libc::c_ulong
                     }
@@ -5994,7 +5957,7 @@ fn read_a_line(mut remove_quoted_newline: libc::c_int) -> *mut libc::c_char {
                 if interactive != 0
                     && bash_input.type_0 as libc::c_uint == st_stream as libc::c_int as libc::c_uint
                 {
-                    clearerr(stdin);
+                    c_clearerr(stdin);
                 }
 
                 if indx == 0 as libc::c_int {
@@ -6026,7 +5989,6 @@ fn read_a_line(mut remove_quoted_newline: libc::c_int) -> *mut libc::c_char {
                 peekc = yy_getc();
                 if peekc == '\n' as i32 {
                     line_number += 1;
-                    line_number;
 
                     continue;
                 } else {
@@ -6075,7 +6037,6 @@ pub fn read_secondary_line(mut remove_quoted_newline: libc::c_int) -> *mut libc:
         if !ret.is_null() && remember_on_history != 0 && parser_state & 0x20000 as libc::c_int != 0
         {
             current_command_line_count += 1;
-            current_command_line_count;
             maybe_add_history(ret);
         }
 
@@ -6507,7 +6468,7 @@ fn shell_getc(mut remove_quoted_newline: libc::c_int) -> libc::c_int {
                 &mut sigwinch_received as *mut sig_atomic_t,
                 0 as libc::c_int,
             );
-            get_new_window_size(
+            c_get_new_window_size(
                 0 as libc::c_int,
                 0 as *mut libc::c_int,
                 0 as *mut libc::c_int,
@@ -6524,7 +6485,6 @@ fn shell_getc(mut remove_quoted_newline: libc::c_int) -> libc::c_int {
                 && pushed_string_list.is_null()
         {
             line_number += 1;
-            line_number;
             if !shell_input_line.is_null()
                 && shell_input_line_size >= 32768 as libc::c_int as size_t
             {
@@ -6569,7 +6529,7 @@ fn shell_getc(mut remove_quoted_newline: libc::c_int) -> libc::c_int {
                     }
                     if bash_input.type_0 as libc::c_uint == st_stream as libc::c_int as libc::c_uint
                     {
-                        clearerr(stdin);
+                        c_clearerr(stdin);
                     }
                     loop {
                         c = yy_getc();
@@ -6602,7 +6562,7 @@ fn shell_getc(mut remove_quoted_newline: libc::c_int) -> libc::c_int {
                                 if n <= 2 as libc::c_int as size_t {
                                     if truncating == 0 as libc::c_int {
                                         internal_warning(
-                                        dcgettext(
+                                        c_dcgettext(
                                             0 as *const libc::c_char,
                                             b"shell_getc: shell_input_line_size (%zu) exceeds SIZE_MAX (%lu): line truncated\0"
                                                 as *const u8 as *const libc::c_char,
@@ -6639,7 +6599,7 @@ fn shell_getc(mut remove_quoted_newline: libc::c_int) -> libc::c_int {
                                 if bash_input.type_0 as libc::c_uint
                                     == st_stream as libc::c_int as libc::c_uint
                                 {
-                                    clearerr(stdin);
+                                    c_clearerr(stdin);
                                 }
                                 if i == 0 as libc::c_int {
                                     shell_input_line_terminator = -(1 as libc::c_int);
@@ -6657,7 +6617,6 @@ fn shell_getc(mut remove_quoted_newline: libc::c_int) -> libc::c_int {
                                     *shell_input_line.offset(i as isize) =
                                         '\0' as i32 as libc::c_char;
                                     current_command_line_count += 1;
-                                    current_command_line_count;
                                     break;
                                 } else {
                                     last_was_backslash = (last_was_backslash == 0 as libc::c_int
@@ -6703,13 +6662,12 @@ fn shell_getc(mut remove_quoted_newline: libc::c_int) -> libc::c_int {
                             free(shell_input_line as *mut libc::c_void);
                             shell_input_line = expansions;
                             shell_input_line_len = if !shell_input_line.is_null() {
-                                strlen(shell_input_line) as u64
+                                libc::strlen(shell_input_line) as u64
                             } else {
                                 0 as libc::c_int as libc::c_ulong
                             };
                             if shell_input_line_len == 0 as libc::c_int as size_t {
                                 current_command_line_count -= 1;
-                                current_command_line_count;
                             }
                             shell_input_line_size = shell_input_line_len;
                             set_line_mbstate();
@@ -6828,7 +6786,6 @@ fn shell_getc(mut remove_quoted_newline: libc::c_int) -> libc::c_int {
                             && uc as libc::c_int == '\\' as i32)
                             as libc::c_int;
                         shell_input_line_index = shell_input_line_index.wrapping_add(1);
-                        shell_input_line_index;
                     }
                     if uc as libc::c_int == 0 as libc::c_int
                         && !pushed_string_list.is_null()
@@ -6888,7 +6845,6 @@ fn shell_getc(mut remove_quoted_newline: libc::c_int) -> libc::c_int {
                                 as libc::c_uchar;
                             if uc != 0 {
                                 shell_input_line_index = shell_input_line_index.wrapping_add(1);
-                                shell_input_line_index;
                             }
                         }
                         if uc as libc::c_int == '\\' as i32
@@ -6914,7 +6870,6 @@ fn shell_getc(mut remove_quoted_newline: libc::c_int) -> libc::c_int {
                                 prompt_again();
                             }
                             line_number += 1;
-                            line_number;
                             if !pushed_string_list.is_null()
                                 && !((*pushed_string_list).expander).is_null()
                                 && *shell_input_line.offset(
@@ -6938,7 +6893,6 @@ fn shell_getc(mut remove_quoted_newline: libc::c_int) -> libc::c_int {
                                     break;
                                 }
                                 shell_input_line_index = shell_input_line_index.wrapping_add(1);
-                                shell_input_line_index;
                                 current_block = 9354102534551541821;
                                 break;
                             }
@@ -7040,7 +6994,8 @@ pub fn execute_variable_command(mut command: *mut libc::c_char, mut vname: *mut 
         if !last_lastarg.is_null() {
             last_lastarg = strcpy(
                 malloc(
-                    (1 as libc::c_int as libc::c_ulong).wrapping_add(strlen(last_lastarg) as u64)
+                    (1 as libc::c_int as libc::c_ulong)
+                        .wrapping_add(libc::strlen(last_lastarg) as u64)
                         as usize,
                 ) as *mut libc::c_char,
                 last_lastarg,
@@ -7050,7 +7005,7 @@ pub fn execute_variable_command(mut command: *mut libc::c_char, mut vname: *mut 
         parse_and_execute(
             strcpy(
                 malloc(
-                    (1 as libc::c_int as libc::c_ulong).wrapping_add(strlen(command) as u64)
+                    (1 as libc::c_int as libc::c_ulong).wrapping_add(libc::strlen(command) as u64)
                         as usize,
                 ) as *mut libc::c_char,
                 command,
@@ -7132,7 +7087,7 @@ fn push_heredoc(mut r: *mut REDIRECT) {
                 2 as libc::c_int,
             );
             need_here_doc = 0 as libc::c_int;
-            report_syntax_error(dcgettext(
+            report_syntax_error(c_dcgettext(
                 0 as *const libc::c_char,
                 b"maximum here-document count exceeded\0" as *const u8 as *const libc::c_char,
                 5 as libc::c_int,
@@ -7160,7 +7115,6 @@ pub fn gather_here_documents() {
             make_here_document(redir_stack[fresh13 as usize], line_number);
             parser_state &= !(0x20000 as libc::c_int);
             need_here_doc -= 1;
-            need_here_doc;
             redir_stack[(r - 1 as libc::c_int) as usize] = 0 as *mut REDIRECT;
         }
         here_doc_first_line = 0 as libc::c_int;
@@ -7172,7 +7126,7 @@ fn mk_alexpansion(mut s: *mut libc::c_char) -> *mut libc::c_char {
         let mut l: libc::c_int = 0;
         let mut r: *mut libc::c_char = 0 as *mut libc::c_char;
 
-        l = strlen(s) as libc::c_int;
+        l = libc::strlen(s) as libc::c_int;
         r = malloc((l + 2 as libc::c_int) as usize) as *mut libc::c_char;
         strcpy(r, s);
 
@@ -7241,7 +7195,6 @@ fn time_command_acceptable() -> libc::c_int {
                     || *shell_input_line.offset(i as isize) as libc::c_int == '\t' as i32)
             {
                 i += 1;
-                i;
             }
             if *shell_input_line.offset(i as isize) as libc::c_int == '-' as i32 {
                 return 0 as libc::c_int;
@@ -7274,11 +7227,9 @@ fn special_case_tokens(mut tokstr: *mut libc::c_char) -> libc::c_int {
             if token_before_that == 263 as libc::c_int {
                 parser_state |= 0x1 as libc::c_int;
                 esacs_needed_count += 1;
-                esacs_needed_count;
             }
             if expecting_in_token != 0 {
                 expecting_in_token -= 1;
-                expecting_in_token;
             }
             return 276 as libc::c_int;
         }
@@ -7292,10 +7243,8 @@ fn special_case_tokens(mut tokstr: *mut libc::c_char) -> libc::c_int {
             if parser_state & 0x80 as libc::c_int != 0 {
                 parser_state |= 0x1 as libc::c_int;
                 esacs_needed_count += 1;
-                esacs_needed_count;
             }
             expecting_in_token -= 1;
-            expecting_in_token;
             return 276 as libc::c_int;
         } else if expecting_in_token != 0
             && (last_read_token == '\n' as i32 || last_read_token == ';' as i32)
@@ -7304,7 +7253,6 @@ fn special_case_tokens(mut tokstr: *mut libc::c_char) -> libc::c_int {
                 && *tokstr.offset(2 as libc::c_int as isize) as libc::c_int == '\0' as i32)
         {
             expecting_in_token -= 1;
-            expecting_in_token;
             return 269 as libc::c_int;
         }
         if last_read_token == 281 as libc::c_int
@@ -7315,7 +7263,6 @@ fn special_case_tokens(mut tokstr: *mut libc::c_char) -> libc::c_int {
         {
             if expecting_in_token != 0 {
                 expecting_in_token -= 1;
-                expecting_in_token;
             }
             return 269 as libc::c_int;
         }
@@ -7328,7 +7275,6 @@ fn special_case_tokens(mut tokstr: *mut libc::c_char) -> libc::c_int {
                         == 0 as libc::c_int)
             {
                 esacs_needed_count -= 1;
-                esacs_needed_count;
                 parser_state &= !(0x1 as libc::c_int);
                 return 264 as libc::c_int;
             }
@@ -7339,7 +7285,6 @@ fn special_case_tokens(mut tokstr: *mut libc::c_char) -> libc::c_int {
                 && *tokstr.offset(1 as libc::c_int as isize) as libc::c_int == '\0' as i32
             {
                 open_brace_count += 1;
-                open_brace_count;
                 function_bstart = line_number;
                 return '{' as i32;
             }
@@ -7357,7 +7302,6 @@ fn special_case_tokens(mut tokstr: *mut libc::c_char) -> libc::c_int {
             && *tokstr.offset(1 as libc::c_int as isize) as libc::c_int == '\0' as i32
         {
             open_brace_count += 1;
-            open_brace_count;
 
             return '{' as i32;
         }
@@ -7367,7 +7311,6 @@ fn special_case_tokens(mut tokstr: *mut libc::c_char) -> libc::c_int {
             && *tokstr.offset(1 as libc::c_int as isize) == 0
         {
             open_brace_count -= 1;
-            open_brace_count;
 
             return '}' as i32;
         }
@@ -7868,7 +7811,7 @@ fn parse_matched_pair(
 
                 parser_error(
                     start_lineno,
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"unexpected EOF while looking for matching `%c'\0" as *const u8
                             as *const libc::c_char,
@@ -7932,7 +7875,6 @@ fn parse_matched_pair(
                     if qc != '\'' as i32 && ch == '\n' as i32 {
                         if retind > 0 as libc::c_int {
                             retind -= 1;
-                            retind;
                         }
                     } else {
                         if retind + 2 as libc::c_int >= retsize {
@@ -8020,7 +7962,6 @@ fn parse_matched_pair(
                         }) != 0
                     {
                         count -= 1;
-                        count;
                     } else if open != close
                         && tflags & 0x1 as libc::c_int != 0
                         && open == '{' as i32
@@ -8035,7 +7976,6 @@ fn parse_matched_pair(
                         }) != 0
                     {
                         count += 1;
-                        count;
                     } else if flags & 0x1 as libc::c_int == 0 as libc::c_int
                         && ch == open
                         && (if shell_input_line_index > 1 as libc::c_int as size_t {
@@ -8048,7 +7988,6 @@ fn parse_matched_pair(
                         }) != 0
                     {
                         count += 1;
-                        count;
                     }
                     if retind + 1 as libc::c_int >= retsize {
                         while retind + 1 as libc::c_int >= retsize {
@@ -8292,7 +8231,7 @@ fn parse_matched_pair(
                                         1 as libc::c_int
                                     }) != 0
                                 {
-                                    ttrans = ansiexpand(
+                                    ttrans = c_ansiexpand(
                                         nestret,
                                         0 as libc::c_int,
                                         nestlen - 1 as libc::c_int,
@@ -8304,13 +8243,13 @@ fn parse_matched_pair(
                                         && dolbrace_state == 0x80 as libc::c_int
                                         && flags & 0x40 as libc::c_int != 0
                                     {
-                                        nestret = sh_single_quote(ttrans);
+                                        nestret = c_sh_single_quote(ttrans);
                                         free(ttrans as *mut libc::c_void);
-                                        nestlen = strlen(nestret) as libc::c_int;
+                                        nestlen = libc::strlen(nestret) as libc::c_int;
                                     } else if rflags & 0x4 as libc::c_int == 0 as libc::c_int {
-                                        nestret = sh_single_quote(ttrans);
+                                        nestret = c_sh_single_quote(ttrans);
                                         free(ttrans as *mut libc::c_void);
-                                        nestlen = strlen(nestret) as libc::c_int;
+                                        nestlen = libc::strlen(nestret) as libc::c_int;
                                     } else {
                                         nestret = ttrans;
                                         nestlen = ttranslen;
@@ -8339,7 +8278,7 @@ fn parse_matched_pair(
                                     );
                                     free(nestret as *mut libc::c_void);
                                     nestret =
-                                        sh_mkdoublequoted(ttrans, ttranslen, 0 as libc::c_int);
+                                        c_sh_mkdoublequoted(ttrans, ttranslen, 0 as libc::c_int);
                                     free(ttrans as *mut libc::c_void);
                                     nestlen = ttranslen + 2 as libc::c_int;
                                     retind -= 2 as libc::c_int;
@@ -8431,7 +8370,6 @@ fn parse_matched_pair(
                             11507125668437329568 => {
                                 if open == ch {
                                     count -= 1;
-                                    count;
                                 }
                                 if ch == '(' as i32 {
                                     nestret = parse_comsub(
@@ -8600,7 +8538,6 @@ fn parse_comsub(
                             && *ret.offset(tind as isize) as libc::c_int == '\t' as i32
                         {
                             tind += 1;
-                            tind;
                         }
                         if retind - tind == hdlen
                             && (if hdlen == 0 as libc::c_int {
@@ -8645,7 +8582,6 @@ fn parse_comsub(
                         && *ret.offset(tind_0 as isize) as libc::c_int == '\t' as i32
                     {
                         tind_0 += 1;
-                        tind_0;
                     }
                     if retind - tind_0 == hdlen
                         && (if hdlen == 0 as libc::c_int {
@@ -8690,7 +8626,6 @@ fn parse_comsub(
                     if qc != '\'' as i32 && ch == '\n' as i32 {
                         if retind > 0 as libc::c_int {
                             retind -= 1;
-                            retind;
                         }
                         continue;
                     } else {
@@ -8740,7 +8675,6 @@ fn parse_comsub(
                         tflags &= !(0x800 as libc::c_int);
                     } else if tflags & 0x800 as libc::c_int != 0 {
                         lex_wlen += 1;
-                        lex_wlen;
                     } else {
                         tflags |= 0x800 as libc::c_int;
                         lex_wlen = 0 as libc::c_int;
@@ -8811,7 +8745,7 @@ fn parse_comsub(
                                                 as libc::c_int
                                                 != 0
                                             {
-                                                strlen(heredelim) as usize
+                                                libc::strlen(heredelim) as usize
                                             } else {
                                                 2 as libc::c_int as usize
                                             }
@@ -8902,7 +8836,6 @@ fn parse_comsub(
                                 current_block = 12717184829685720462;
                             } else {
                                 retind -= 1;
-                                retind;
                                 shell_ungetc(peekc);
                                 current_block = 7923086311623215889;
                             }
@@ -8913,7 +8846,7 @@ fn parse_comsub(
                             12717184829685720462 => {}
                             _ => {
                                 if tflags & 0x10 as libc::c_int != 0 {
-                                    if *(*__ctype_b_loc())
+                                    if *(*c___ctype_b_loc())
                                         .offset(ch as libc::c_uchar as libc::c_int as isize)
                                         as libc::c_int
                                         & _ISlower as libc::c_int as libc::c_ushort as libc::c_int
@@ -8943,7 +8876,6 @@ fn parse_comsub(
                                         *ret.offset(fresh27 as isize) = ch as libc::c_char;
 
                                         lex_rwlen += 1;
-                                        lex_rwlen;
                                         continue;
                                     } else if lex_rwlen == 4 as libc::c_int
                                         && *sh_syntaxtab
@@ -9171,7 +9103,7 @@ fn parse_comsub(
                                         }) != 0)
                                     {
                                         if tflags & 0x40 as libc::c_int == 0 as libc::c_int
-                                            && (*(*__ctype_b_loc())
+                                            && (*(*c___ctype_b_loc())
                                                 .offset(ch as libc::c_uchar as libc::c_int as isize)
                                                 as libc::c_int
                                                 & _ISblank as libc::c_int as libc::c_ushort
@@ -9399,7 +9331,6 @@ fn parse_comsub(
                                             }) != 0
                                         {
                                             count -= 1;
-                                            count;
                                         } else if flags & 0x1 as libc::c_int == 0 as libc::c_int
                                             && tflags & 0x40 as libc::c_int == 0 as libc::c_int
                                             && ch == open
@@ -9417,7 +9348,6 @@ fn parse_comsub(
                                             }) != 0
                                         {
                                             count += 1;
-                                            count;
                                         }
                                         if retind + 1 as libc::c_int >= retsize {
                                             while retind + 1 as libc::c_int >= retsize {
@@ -9552,7 +9482,7 @@ fn parse_comsub(
                                                     1 as libc::c_int
                                                 }) != 0
                                             {
-                                                ttrans = ansiexpand(
+                                                ttrans = c_ansiexpand(
                                                     nestret,
                                                     0 as libc::c_int,
                                                     nestlen - 1 as libc::c_int,
@@ -9560,9 +9490,9 @@ fn parse_comsub(
                                                 );
                                                 free(nestret as *mut libc::c_void);
                                                 if rflags & 0x4 as libc::c_int == 0 as libc::c_int {
-                                                    nestret = sh_single_quote(ttrans);
+                                                    nestret = c_sh_single_quote(ttrans);
                                                     free(ttrans as *mut libc::c_void);
-                                                    nestlen = strlen(nestret) as libc::c_int;
+                                                    nestlen = libc::strlen(nestret) as libc::c_int;
                                                 } else {
                                                     nestret = ttrans;
                                                     nestlen = ttranslen;
@@ -9595,7 +9525,7 @@ fn parse_comsub(
                                                     &mut ttranslen,
                                                 );
                                                 free(nestret as *mut libc::c_void);
-                                                nestret = sh_mkdoublequoted(
+                                                nestret = c_sh_mkdoublequoted(
                                                     ttrans,
                                                     ttranslen,
                                                     0 as libc::c_int,
@@ -9643,7 +9573,6 @@ fn parse_comsub(
                                                 && open == ch
                                             {
                                                 count -= 1;
-                                                count;
                                             }
                                             if ch == '(' as i32 {
                                                 nestret = parse_comsub(
@@ -9734,7 +9663,7 @@ fn parse_comsub(
             heredelim = 0 as *mut libc::c_char;
             parser_error(
                 start_lineno,
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"unexpected EOF while looking for matching `%c'\0" as *const u8
                         as *const libc::c_char,
@@ -9865,8 +9794,6 @@ pub fn xparse_dolparen(
                 && *ep.offset(-(1 as libc::c_int) as isize) as libc::c_int == '\n' as i32
             {
                 ep = ep.offset(-1);
-
-                ep;
             }
         }
 
@@ -9877,7 +9804,7 @@ pub fn xparse_dolparen(
         if *base.offset(*indp as isize) as libc::c_int != ')' as i32 {
             parser_error(
                 start_lineno,
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"unexpected EOF while looking for matching `%c'\0" as *const u8
                         as *const libc::c_char,
@@ -10024,7 +9951,7 @@ fn cond_error() {
         if EOF_Reached != 0 && cond_token != 275 as libc::c_int {
             parser_error(
                 cond_lineno,
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"unexpected EOF while looking for `]]'\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
@@ -10035,7 +9962,7 @@ fn cond_error() {
             if !etext.is_null() {
                 parser_error(
                     cond_lineno,
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"syntax error in conditional expression: unexpected token `%s'\0"
                             as *const u8 as *const libc::c_char,
@@ -10047,7 +9974,7 @@ fn cond_error() {
             } else {
                 parser_error(
                     cond_lineno,
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"syntax error in conditional expression\0" as *const u8
                             as *const libc::c_char,
@@ -10137,7 +10064,7 @@ fn cond_term() -> *mut COND_COM {
                 if !etext.is_null() {
                     parser_error(
                         lineno,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"unexpected token `%s', expected `)'\0" as *const u8
                                 as *const libc::c_char,
@@ -10149,7 +10076,7 @@ fn cond_term() -> *mut COND_COM {
                 } else {
                     parser_error(
                         lineno,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"expected `)'\0" as *const u8 as *const libc::c_char,
                             5 as libc::c_int,
@@ -10208,7 +10135,7 @@ fn cond_term() -> *mut COND_COM {
                 if !etext.is_null() {
                     parser_error(
                         line_number,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"unexpected argument `%s' to conditional unary operator\0" as *const u8
                                 as *const libc::c_char,
@@ -10220,7 +10147,7 @@ fn cond_term() -> *mut COND_COM {
                 } else {
                     parser_error(
                         line_number,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"unexpected argument to conditional unary operator\0" as *const u8
                                 as *const libc::c_char,
@@ -10290,7 +10217,7 @@ fn cond_term() -> *mut COND_COM {
                 if !etext.is_null() {
                     parser_error(
                         line_number,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"unexpected token `%s', conditional binary operator expected\0"
                                 as *const u8 as *const libc::c_char,
@@ -10302,7 +10229,7 @@ fn cond_term() -> *mut COND_COM {
                 } else {
                     parser_error(
                         line_number,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"conditional binary operator expected\0" as *const u8
                                 as *const libc::c_char,
@@ -10337,7 +10264,7 @@ fn cond_term() -> *mut COND_COM {
                 if !etext.is_null() {
                     parser_error(
                         line_number,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"unexpected argument `%s' to conditional binary operator\0"
                                 as *const u8 as *const libc::c_char,
@@ -10349,7 +10276,7 @@ fn cond_term() -> *mut COND_COM {
                 } else {
                     parser_error(
                         line_number,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"unexpected argument to conditional binary operator\0" as *const u8
                                 as *const libc::c_char,
@@ -10367,7 +10294,7 @@ fn cond_term() -> *mut COND_COM {
             if tok < 256 as libc::c_int {
                 parser_error(
                     line_number,
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"unexpected token `%c' in conditional command\0" as *const u8
                             as *const libc::c_char,
@@ -10380,7 +10307,7 @@ fn cond_term() -> *mut COND_COM {
                 if !etext.is_null() {
                     parser_error(
                         line_number,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"unexpected token `%s' in conditional command\0" as *const u8
                                 as *const libc::c_char,
@@ -10392,7 +10319,7 @@ fn cond_term() -> *mut COND_COM {
                 } else {
                     parser_error(
                         line_number,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"unexpected token %d in conditional command\0" as *const u8
                                 as *const libc::c_char,
@@ -10523,7 +10450,6 @@ fn read_token_word(mut character: libc::c_int) -> libc::c_int {
                                     != 0
                         {
                             pass_next_character += 1;
-                            pass_next_character;
                         }
                         quoted = 1 as libc::c_int;
                         current_block = 11877077252304325915;
@@ -10910,16 +10836,16 @@ fn read_token_word(mut character: libc::c_int) -> libc::c_int {
                                         return -(1 as libc::c_int);
                                     }
                                     if peek_char == '\'' as i32 {
-                                        ttrans = ansiexpand(
+                                        ttrans = c_ansiexpand(
                                             ttok,
                                             0 as libc::c_int,
                                             ttoklen - 1 as libc::c_int,
                                             &mut ttranslen,
                                         );
                                         free(ttok as *mut libc::c_void);
-                                        ttok = sh_single_quote(ttrans);
+                                        ttok = c_sh_single_quote(ttrans);
                                         free(ttrans as *mut libc::c_void);
-                                        ttranslen = strlen(ttok) as libc::c_int;
+                                        ttranslen = libc::strlen(ttok) as libc::c_int;
                                         ttrans = ttok;
                                     } else {
                                         ttrans = localeexpand(
@@ -10931,8 +10857,11 @@ fn read_token_word(mut character: libc::c_int) -> libc::c_int {
                                         );
 
                                         free(ttok as *mut libc::c_void);
-                                        ttok =
-                                            sh_mkdoublequoted(ttrans, ttranslen, 0 as libc::c_int);
+                                        ttok = c_sh_mkdoublequoted(
+                                            ttrans,
+                                            ttranslen,
+                                            0 as libc::c_int,
+                                        );
                                         free(ttrans as *mut libc::c_void);
 
                                         ttranslen += 2 as libc::c_int;
@@ -11350,17 +11279,14 @@ fn read_token_word(mut character: libc::c_int) -> libc::c_int {
                             parser_state |= 0x100 as libc::c_int;
                         } else if word_token_alist[i as usize].token == '{' as i32 {
                             open_brace_count += 1;
-                            open_brace_count;
                         } else if word_token_alist[i as usize].token == '}' as i32
                             && open_brace_count != 0
                         {
                             open_brace_count -= 1;
-                            open_brace_count;
                         }
                         return word_token_alist[i as usize].token;
                     } else {
                         i += 1;
-                        i;
                     }
                 }
             }
@@ -11418,17 +11344,14 @@ fn read_token_word(mut character: libc::c_int) -> libc::c_int {
                             parser_state |= 0x100 as libc::c_int;
                         } else if word_token_alist[i_0 as usize].token == '{' as i32 {
                             open_brace_count += 1;
-                            open_brace_count;
                         } else if word_token_alist[i_0 as usize].token == '}' as i32
                             && open_brace_count != 0
                         {
                             open_brace_count -= 1;
-                            open_brace_count;
                         }
                         return word_token_alist[i_0 as usize].token;
                     } else {
                         i_0 += 1;
-                        i_0;
                     }
                 }
             }
@@ -11554,11 +11477,9 @@ fn read_token_word(mut character: libc::c_int) -> libc::c_int {
             263 | 266 | 265 => {
                 if word_top < 128 as libc::c_int {
                     word_top += 1;
-                    word_top;
                 }
                 word_lineno[word_top as usize] = line_number;
                 expecting_in_token += 1;
-                expecting_in_token;
             }
             _ => {}
         }
@@ -11600,7 +11521,6 @@ pub fn find_reserved_word(mut tokstr: *mut libc::c_char) -> libc::c_int {
                 return i;
             }
             i += 1;
-            i;
         }
         return -(1 as libc::c_int);
     }
@@ -11705,7 +11625,6 @@ pub fn history_delimiting_chars(mut line: *const libc::c_char) -> *mut libc::c_c
                 || *shell_input_line.offset(i as isize) as libc::c_int == '\t' as i32
             {
                 i += 1;
-                i;
             }
             if *shell_input_line.offset(i as isize) as libc::c_int != 0
                 && *shell_input_line.offset(i as isize) as libc::c_int == 'i' as i32
@@ -11728,7 +11647,6 @@ pub fn history_delimiting_chars(mut line: *const libc::c_char) -> *mut libc::c_c
                 return b" \0" as *const u8 as *const libc::c_char as *mut libc::c_char;
             }
             i += 1;
-            i;
         }
         if line_isblank(line) != 0 {
             return b"\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
@@ -11877,18 +11795,16 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                     temp = strcpy(
                         malloc(
                             (1 as libc::c_int as libc::c_ulong)
-                                .wrapping_add(
-                                    strlen(b"!\0" as *const u8 as *const libc::c_char) as u64
-                                ) as usize,
+                                .wrapping_add(libc::strlen(
+                                    b"!\0" as *const u8 as *const libc::c_char,
+                                ) as u64) as usize,
                         ) as *mut libc::c_char,
                         b"!\0" as *const u8 as *const libc::c_char,
                     );
                 } else {
-                    temp = itos(prompt_history_number(orig_string) as intmax_t);
+                    temp = c_itos(prompt_history_number(orig_string) as intmax_t);
 
                     string = string.offset(-1);
-
-                    string;
                 }
             } else if c == '\\' as i32 {
                 c = *string as libc::c_int;
@@ -11920,9 +11836,7 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                         {
                             string = string.offset(1);
 
-                            string;
                             c += 1;
-                            c;
                         }
                         c = 0 as libc::c_int;
                         current_block = 6294327190052088242;
@@ -11977,7 +11891,7 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                         temp = strcpy(
                             malloc(
                                 (1 as libc::c_int as libc::c_ulong)
-                                    .wrapping_add(strlen(timebuf.as_mut_ptr()) as u64)
+                                    .wrapping_add(libc::strlen(timebuf.as_mut_ptr()) as u64)
                                     as usize,
                             ) as *mut libc::c_char,
                             timebuf.as_mut_ptr(),
@@ -11993,9 +11907,8 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
 
                             string = string.offset(2 as libc::c_int as isize);
 
-                            timefmt = malloc(
-                                (strlen(string)).wrapping_add(3 as libc::c_int as u64) as usize
-                            ) as *mut libc::c_char;
+                            timefmt = malloc((libc::strlen(string)).wrapping_add(3) as usize)
+                                as *mut libc::c_char;
                             t = timefmt;
                             while *string as libc::c_int != 0
                                 && *string as libc::c_int != '}' as i32
@@ -12038,12 +11951,12 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                                     as usize] = '\0' as i32 as libc::c_char;
                             }
                             if promptvars != 0 || posixly_correct != 0 {
-                                temp = sh_backslash_quote_for_double_quotes(timebuf.as_mut_ptr());
+                                temp = c_sh_backslash_quote_for_double_quotes(timebuf.as_mut_ptr());
                             } else {
                                 temp = strcpy(
                                     malloc(
                                         (1 as libc::c_int as libc::c_ulong)
-                                            .wrapping_add(strlen(timebuf.as_mut_ptr()) as u64)
+                                            .wrapping_add(libc::strlen(timebuf.as_mut_ptr()) as u64)
                                             as usize,
                                     ) as *mut libc::c_char,
                                     timebuf.as_mut_ptr(),
@@ -12072,12 +11985,12 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                     115 => {
                         temp = base_pathname(shell_name);
                         if promptvars != 0 || posixly_correct != 0 {
-                            temp = sh_backslash_quote_for_double_quotes(temp);
+                            temp = c_sh_backslash_quote_for_double_quotes(temp);
                         } else {
                             temp = strcpy(
                                 malloc(
                                     (1 as libc::c_int as libc::c_ulong)
-                                        .wrapping_add(strlen(temp) as u64)
+                                        .wrapping_add(libc::strlen(temp) as u64)
                                         as usize,
                                 ) as *mut libc::c_char,
                                 temp,
@@ -12113,7 +12026,7 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                                 t_string[0 as libc::c_int as usize] = '.' as i32 as libc::c_char;
                                 tlen = 1 as libc::c_int;
                             } else {
-                                tlen = strlen(t_string.as_mut_ptr()) as libc::c_int;
+                                tlen = libc::strlen(t_string.as_mut_ptr()) as libc::c_int;
                             }
                         } else {
                             tlen = (::core::mem::size_of::<[libc::c_char; 4096]>() as libc::c_ulong)
@@ -12150,7 +12063,7 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                                     memmove(
                                         t_string.as_mut_ptr() as *mut libc::c_void,
                                         t.offset(1 as libc::c_int as isize) as *const libc::c_void,
-                                        strlen(t) as usize,
+                                        libc::strlen(t) as usize,
                                     );
                                 }
                             }
@@ -12165,12 +12078,12 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                             4096 as libc::c_int - 1 as libc::c_int,
                         );
                         if promptvars != 0 || posixly_correct != 0 {
-                            temp = sh_backslash_quote_for_double_quotes(t_string.as_mut_ptr());
+                            temp = c_sh_backslash_quote_for_double_quotes(t_string.as_mut_ptr());
                         } else {
                             temp = strcpy(
                                 malloc(
                                     (1 as libc::c_int as libc::c_ulong)
-                                        .wrapping_add(strlen(t_string.as_mut_ptr()) as u64)
+                                        .wrapping_add(libc::strlen(t_string.as_mut_ptr()) as u64)
                                         as usize,
                                 ) as *mut libc::c_char,
                                 t_string.as_mut_ptr(),
@@ -12185,7 +12098,7 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                         temp = strcpy(
                             malloc(
                                 (1 as libc::c_int as libc::c_ulong)
-                                    .wrapping_add(strlen(current_user.user_name) as u64)
+                                    .wrapping_add(libc::strlen(current_user.user_name) as u64)
                                     as usize,
                             ) as *mut libc::c_char,
                             current_user.user_name,
@@ -12196,7 +12109,7 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                         t_host = strcpy(
                             malloc(
                                 (1 as libc::c_int as libc::c_ulong)
-                                    .wrapping_add(strlen(current_host_name) as u64)
+                                    .wrapping_add(libc::strlen(current_host_name) as u64)
                                     as usize,
                             ) as *mut libc::c_char,
                             current_host_name,
@@ -12208,12 +12121,12 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                             *t = '\0' as i32 as libc::c_char;
                         }
                         if promptvars != 0 || posixly_correct != 0 {
-                            temp = sh_backslash_quote_for_double_quotes(t_host);
+                            temp = c_sh_backslash_quote_for_double_quotes(t_host);
                         } else {
                             temp = strcpy(
                                 malloc(
                                     (1 as libc::c_int as libc::c_ulong)
-                                        .wrapping_add(strlen(t_host) as u64)
+                                        .wrapping_add(libc::strlen(t_host) as u64)
                                         as usize,
                                 ) as *mut libc::c_char,
                                 t_host,
@@ -12229,13 +12142,12 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                             && orig_string != ps2_prompt
                         {
                             n -= 1;
-                            n;
                         }
-                        temp = itos(n as intmax_t);
+                        temp = c_itos(n as intmax_t);
                         current_block = 6294327190052088242;
                     }
                     33 => {
-                        temp = itos(prompt_history_number(orig_string) as intmax_t);
+                        temp = c_itos(prompt_history_number(orig_string) as intmax_t);
                         current_block = 6294327190052088242;
                     }
                     36 => {
@@ -12263,7 +12175,7 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                         current_block = 6294327190052088242;
                     }
                     106 => {
-                        temp = itos(count_all_jobs() as intmax_t);
+                        temp = c_itos(count_all_jobs() as intmax_t);
                         current_block = 6294327190052088242;
                     }
                     108 => {
@@ -12275,7 +12187,8 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                         }) as *mut libc::c_char;
                         temp = strcpy(
                             malloc(
-                                (1 as libc::c_int as libc::c_ulong).wrapping_add(strlen(t) as u64)
+                                (1 as libc::c_int as libc::c_ulong)
+                                    .wrapping_add(libc::strlen(t) as u64)
                                     as usize,
                             ) as *mut libc::c_char,
                             t,
@@ -12286,7 +12199,6 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
                         if no_line_editing != 0 {
                             string = string.offset(1);
 
-                            string;
                             continue;
                         } else {
                             temp = malloc(3 as libc::c_int as usize) as *mut libc::c_char;
@@ -12363,8 +12275,6 @@ pub fn decode_prompt_string(mut string: *mut libc::c_char) -> *mut libc::c_char 
             }
             if c != 0 {
                 string = string.offset(1);
-
-                string;
             }
             result = sub_append_string(temp, result, &mut result_index, &mut result_size);
             temp = 0 as *mut libc::c_void as *mut libc::c_char;
@@ -12421,7 +12331,7 @@ fn error_token_from_token(mut tok: libc::c_int) -> *mut libc::c_char {
                     t = strcpy(
                         malloc(
                             (1 as libc::c_int as libc::c_ulong)
-                                .wrapping_add(strlen((*yylval.word).word) as u64)
+                                .wrapping_add(libc::strlen((*yylval.word).word) as u64)
                                 as usize,
                         ) as *mut libc::c_char,
                         (*yylval.word).word,
@@ -12429,7 +12339,7 @@ fn error_token_from_token(mut tok: libc::c_int) -> *mut libc::c_char {
                 }
             }
             284 => {
-                t = itos(yylval.number as intmax_t);
+                t = c_itos(yylval.number as intmax_t);
             }
             285 => {
                 if !(yylval.WordList).is_null() {
@@ -12464,7 +12374,6 @@ fn error_token_from_text() -> *mut libc::c_char {
         msg = 0 as *mut libc::c_void as *mut libc::c_char;
         if i != 0 && *t.offset(i as isize) as libc::c_int == '\0' as i32 {
             i -= 1;
-            i;
         }
         while i != 0
             && (*t.offset(i as isize) as libc::c_int == ' ' as i32
@@ -12472,14 +12381,13 @@ fn error_token_from_text() -> *mut libc::c_char {
                 || *t.offset(i as isize) as libc::c_int == '\n' as i32)
         {
             i -= 1;
-            i;
         }
         if i != 0 {
             token_end = i + 1 as libc::c_int;
         }
         while i != 0
             && (if *t.offset(i as isize) as libc::c_int != 0 {
-                (mbschr(
+                (c_mbschr(
                     b" \n\t;|&\0" as *const u8 as *const libc::c_char,
                     *t.offset(i as isize) as libc::c_int,
                 ) != 0 as *mut libc::c_void as *mut libc::c_char) as libc::c_int
@@ -12488,7 +12396,6 @@ fn error_token_from_text() -> *mut libc::c_char {
             }) == 0 as libc::c_int
         {
             i -= 1;
-            i;
         }
         while i != token_end
             && (*t.offset(i as isize) as libc::c_int == ' ' as i32
@@ -12496,7 +12403,6 @@ fn error_token_from_text() -> *mut libc::c_char {
                 || *t.offset(i as isize) as libc::c_int == '\n' as i32)
         {
             i += 1;
-            i;
         }
         if token_end != 0 || i == 0 as libc::c_int && token_end == 0 as libc::c_int {
             if token_end != 0 {
@@ -12517,12 +12423,12 @@ fn print_offending_line() {
         let mut token_end: libc::c_int = 0;
         msg = strcpy(
             malloc(
-                (1 as libc::c_int as libc::c_ulong).wrapping_add(strlen(shell_input_line) as u64)
-                    as usize,
+                (1 as libc::c_int as libc::c_ulong)
+                    .wrapping_add(libc::strlen(shell_input_line) as u64) as usize,
             ) as *mut libc::c_char,
             shell_input_line,
         );
-        token_end = strlen(msg) as libc::c_int;
+        token_end = libc::strlen(msg) as libc::c_int;
         while token_end != 0
             && *msg.offset((token_end - 1 as libc::c_int) as isize) as libc::c_int == '\n' as i32
         {
@@ -12568,15 +12474,15 @@ fn report_syntax_error(mut message: *mut libc::c_char) {
             msg = error_token_from_token(current_token);
             !msg.is_null()
         } {
-            if ansic_shouldquote(msg) != 0 {
-                p = ansic_quote(msg, 0 as libc::c_int, 0 as *mut libc::c_int);
+            if c_ansic_shouldquote(msg) != 0 {
+                p = c_ansic_quote(msg, 0 as libc::c_int, 0 as *mut libc::c_int);
                 free(msg as *mut libc::c_void);
                 msg = p;
             }
 
             parser_error(
                 line_number,
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"syntax error near unexpected token `%s'\0" as *const u8
                         as *const libc::c_char,
@@ -12607,7 +12513,7 @@ fn report_syntax_error(mut message: *mut libc::c_char) {
             if !msg.is_null() {
                 parser_error(
                     line_number,
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"syntax error near `%s'\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
@@ -12621,13 +12527,13 @@ fn report_syntax_error(mut message: *mut libc::c_char) {
             }
         } else {
             msg = if EOF_Reached != 0 {
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"syntax error: unexpected end of file\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
                 )
             } else {
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"syntax error\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
@@ -12670,7 +12576,7 @@ fn handle_eof_input_unit() {
                 if eof_encountered < eof_encountered_limit {
                     fprintf(
                         stderr,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"Use \"%s\" to leave the shell.\n\0" as *const u8
                                 as *const libc::c_char,
@@ -12683,7 +12589,6 @@ fn handle_eof_input_unit() {
                         },
                     );
                     eof_encountered += 1;
-                    eof_encountered;
                     current_token = '\n' as i32;
                     last_read_token = current_token;
                     prompt_string_pointer = 0 as *mut libc::c_void as *mut *mut libc::c_char;
@@ -12840,7 +12745,7 @@ fn parse_compound_assignment(mut retlenp: *mut libc::c_int) -> *mut libc::c_char
                 if tok == 304 as libc::c_int {
                     parser_error(
                         orig_line_number,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"unexpected EOF while looking for matching `)'\0" as *const u8
                                 as *const libc::c_char,
@@ -12891,7 +12796,7 @@ fn parse_compound_assignment(mut retlenp: *mut libc::c_int) -> *mut libc::c_char
         }
         if !retlenp.is_null() {
             *retlenp = (if !ret.is_null() && *ret as libc::c_int != 0 {
-                strlen(ret) as usize
+                libc::strlen(ret) as usize
             } else {
                 0 as libc::c_int as usize
             }) as libc::c_int;
@@ -13065,7 +12970,7 @@ fn set_line_mbstate() {
         {
             if *shell_input_line.offset(1 as libc::c_int as isize) as libc::c_int != 0 {
                 if *shell_input_line.offset(2 as libc::c_int as isize) as libc::c_int != 0 {
-                    strlen(shell_input_line) as u64
+                    libc::strlen(shell_input_line) as u64
                 } else {
                     2 as libc::c_int as libc::c_ulong
                 }
@@ -13124,7 +13029,6 @@ fn set_line_mbstate() {
                         1 as libc::c_int as libc::c_char;
 
                     j = j.wrapping_add(1);
-                    j;
                 }
                 break;
             } else {
@@ -13134,7 +13038,7 @@ fn set_line_mbstate() {
                     {
                         mbclen = 1 as libc::c_int as size_t;
                     } else {
-                        ilen = utf8_mblen(
+                        ilen = c_utf8_mblen(
                             shell_input_line.offset(previ as isize),
                             i.wrapping_sub(previ)
                                 .wrapping_add(1 as libc::c_int as size_t),
@@ -13174,7 +13078,6 @@ fn set_line_mbstate() {
                             1 as libc::c_int as libc::c_char;
 
                         j_0 = j_0.wrapping_add(1);
-                        j_0;
                     }
                     break;
                 }
@@ -13182,7 +13085,6 @@ fn set_line_mbstate() {
                 *shell_input_line_property.offset(i as isize) = mbclen as libc::c_char;
 
                 i = i.wrapping_add(1);
-                i;
             }
         }
     }
