@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::bashhist::maybe_save_shell_history;
 use crate::bashline::{bashline_reset, bashline_set_event_hook};
 use crate::builtins::evalstring::parse_and_execute_cleanup;
@@ -15,12 +12,13 @@ use crate::trap::{
     set_signal_hard_ignored, set_trap_state, signal_is_pending, signal_is_special,
 };
 use crate::unwind_prot::run_unwind_protects;
+use crate::utshell::set_exit_status;
 use crate::variables::set_pipestatus_from_exit;
 use crate::y_tab::reset_parser;
 
 static mut old_winch: Option<SigHandler> = None;
 #[no_mangle]
-pub fn initialize_signals(reinit: libc::c_int) {
+pub fn initialize_signals(_reinit: libc::c_int) {
     initialize_shell_signals();
     initialize_job_signals();
 }
@@ -195,40 +193,41 @@ static mut terminating_signals: [termsig; 17] = {
 static mut termsigs_initialized: libc::c_int = 0 as libc::c_int;
 #[no_mangle]
 pub fn initialize_terminating_signals() {
+    let mut i: libc::c_int;
+    let mut act: crate::src_common::sigaction = crate::src_common::sigaction {
+        __sigaction_handler: sigaction__bindgen_ty_1 { sa_handler: None },
+        sa_mask: __sigset_t { __val: [0; 16] },
+        sa_flags: 0,
+        sa_restorer: None,
+    };
+    let mut oact: crate::src_common::sigaction = crate::src_common::sigaction {
+        __sigaction_handler: sigaction__bindgen_ty_1 { sa_handler: None },
+        sa_mask: __sigset_t { __val: [0; 16] },
+        sa_flags: 0,
+        sa_restorer: None,
+    };
+
+    if unsafe { termsigs_initialized != 0 } {
+        return;
+    }
+    act.__sigaction_handler.sa_handler = Some(termsig_sighandler);
+    act.sa_flags = 0 as libc::c_int;
+
+    c_sigemptyset(&mut act.sa_mask);
+    c_sigemptyset(&mut oact.sa_mask);
+
+    i = 0;
+    while (i as libc::c_ulong) < TERMSIGS_LENGTH!() {
+        unsafe {
+            c_sigaddset(&mut act.sa_mask, XSIG!(i));
+        }
+        i += 1;
+    }
+    i = 0;
     unsafe {
-        let mut i: libc::c_int = 0;
-        let mut act: crate::src_common::sigaction = crate::src_common::sigaction {
-            __sigaction_handler: sigaction__bindgen_ty_1 { sa_handler: None },
-            sa_mask: __sigset_t { __val: [0; 16] },
-            sa_flags: 0,
-            sa_restorer: None,
-        };
-        let mut oact: crate::src_common::sigaction = crate::src_common::sigaction {
-            __sigaction_handler: sigaction__bindgen_ty_1 { sa_handler: None },
-            sa_mask: __sigset_t { __val: [0; 16] },
-            sa_flags: 0,
-            sa_restorer: None,
-        };
-
-        if termsigs_initialized != 0 {
-            return;
-        }
-        act.__sigaction_handler.sa_handler = Some(termsig_sighandler);
-        act.sa_flags = 0 as libc::c_int;
-
-        sigemptyset(&mut act.sa_mask);
-        sigemptyset(&mut oact.sa_mask);
-
-        i = 0;
-        while (i as libc::c_ulong) < TERMSIGS_LENGTH!() {
-            sigaddset(&mut act.sa_mask, XSIG!(i));
-            i += 1;
-        }
-        i = 0;
         while (i as libc::c_ulong) < TERMSIGS_LENGTH!() {
             if !(signal_is_trapped(XSIG!(i)) != 0) {
-                sigaction(XSIG!(i), &mut act, &mut oact);
-                // XHANDLER!(i) = Some(oact.__sigaction_handler.sa_handler);
+                c_sigaction(XSIG!(i), &mut act, &mut oact);
                 terminating_signals[i as usize].orig_handler = oact.__sigaction_handler.sa_handler;
                 XSAFLAGS!(i) = oact.sa_flags;
 
@@ -238,7 +237,7 @@ pub fn initialize_terminating_signals() {
                             1 as libc::c_int as libc::intptr_t,
                         )
                 {
-                    sigaction(XSIG!(i), &mut oact, &mut act);
+                    c_sigaction(XSIG!(i), &mut oact, &mut act);
                     set_signal_hard_ignored(XSIG!(i));
                 }
                 if XSIG!(i) == SIGPROF as libc::c_int
@@ -248,7 +247,7 @@ pub fn initialize_terminating_signals() {
                             1 as libc::c_int as libc::intptr_t,
                         )
                 {
-                    sigaction(
+                    c_sigaction(
                         XSIG!(i),
                         &mut oact,
                         0 as *mut c_void as *mut crate::src_common::sigaction,
@@ -266,15 +265,15 @@ fn initialize_shell_signals() {
         if interactive != 0 {
             initialize_terminating_signals();
         }
-        sigemptyset(&mut top_level_mask);
-        sigprocmask(
+        c_sigemptyset(&mut top_level_mask);
+        c_sigprocmask(
             SIG_BLOCK as libc::c_int,
             0 as *mut c_void as *mut sigset_t,
             &mut top_level_mask,
         );
-        if sigismember(&mut top_level_mask, SIGCHLD as libc::c_int) != 0 {
-            sigdelset(&mut top_level_mask, SIGCHLD as libc::c_int);
-            sigprocmask(
+        if c_sigismember(&mut top_level_mask, SIGCHLD as libc::c_int) != 0 {
+            c_sigdelset(&mut top_level_mask, SIGCHLD as libc::c_int);
+            c_sigprocmask(
                 SIG_SETMASK as libc::c_int,
                 &mut top_level_mask,
                 0 as *mut c_void as *mut sigset_t,
@@ -302,7 +301,7 @@ fn initialize_shell_signals() {
 
 #[no_mangle]
 pub fn reset_terminating_signals() {
-    let mut i: libc::c_int = 0;
+    let mut i: libc::c_int;
     let mut act: crate::src_common::sigaction = crate::src_common::sigaction {
         __sigaction_handler: sigaction__bindgen_ty_1 { sa_handler: None },
         sa_mask: __sigset_t { __val: [0; 16] },
@@ -314,7 +313,7 @@ pub fn reset_terminating_signals() {
             return;
         }
         act.sa_flags = 0;
-        sigemptyset(&mut act.sa_mask);
+        c_sigemptyset(&mut act.sa_mask);
 
         i = 0;
         while (i as libc::c_ulong) < TERMSIGS_LENGTH!() {
@@ -322,7 +321,7 @@ pub fn reset_terminating_signals() {
                 act.__sigaction_handler.sa_handler = terminating_signals[i as usize].orig_handler;
 
                 act.sa_flags = XSAFLAGS!(i);
-                sigaction(
+                c_sigaction(
                     XSIG!(i),
                     &mut act,
                     0 as *mut c_void as *mut crate::src_common::sigaction,
@@ -435,14 +434,14 @@ pub fn throw_to_top_level() {
 #[no_mangle]
 pub fn jump_to_top_level(value: libc::c_int) {
     unsafe {
-        siglongjmp(top_level.as_mut_ptr(), value);
+        c_siglongjmp(top_level.as_mut_ptr(), value);
     }
 }
 
 #[no_mangle]
 pub fn restore_sigmask() {
     unsafe {
-        sigprocmask(
+        c_sigprocmask(
             SIG_SETMASK as libc::c_int,
             &mut top_level_mask,
             0 as *mut c_void as *mut sigset_t,
@@ -491,8 +490,8 @@ pub fn termsig_sighandler(sig: libc::c_int) {
 #[no_mangle]
 pub fn termsig_handler(sig: libc::c_int) {
     static mut handling_termsig: libc::c_int = 0 as libc::c_int;
-    let mut i: libc::c_int = 0;
-    let mut core: libc::c_int = 0;
+    let mut i: libc::c_int;
+    let mut core: libc::c_int;
     let mut mask: sigset_t = __sigset_t { __val: [0; 16] };
     unsafe {
         if handling_termsig != 0 {
@@ -551,7 +550,7 @@ pub fn termsig_handler(sig: libc::c_int) {
         if dollar_dollar_pid != 1 as libc::c_int {
             exit(128 as libc::c_int + sig);
         }
-        sigprocmask(
+        c_sigprocmask(
             SIG_SETMASK as libc::c_int,
             0 as *mut c_void as *mut sigset_t,
             &mut mask,
@@ -560,13 +559,13 @@ pub fn termsig_handler(sig: libc::c_int) {
         i = core;
         while (i as libc::c_ulong) < TERMSIGS_LENGTH!() {
             set_signal_handler(XSIG!(i), None);
-            sigdelset(&mut mask, XSIG!(i));
+            c_sigdelset(&mut mask, XSIG!(i));
             if sig == XSIG!(i) {
                 core = XCOREDUMP!(i);
             }
             i += 1;
         }
-        sigprocmask(
+        c_sigprocmask(
             SIG_SETMASK as libc::c_int,
             &mut mask,
             0 as *mut c_void as *mut sigset_t,
@@ -613,7 +612,7 @@ pub fn sigint_sighandler(sig: libc::c_int) {
 }
 
 #[no_mangle]
-pub fn sigwinch_sighandler(sig: libc::c_int) {
+pub fn sigwinch_sighandler(_sig: libc::c_int) {
     unsafe {
         sigwinch_received = 1;
     }
@@ -634,7 +633,7 @@ pub fn unset_sigwinch_handler() {
 }
 
 #[no_mangle]
-pub fn sigterm_sighandler(sig: libc::c_int) {
+pub fn sigterm_sighandler(_sig: libc::c_int) {
     unsafe {
         sigterm_received = 1;
     }
@@ -642,39 +641,37 @@ pub fn sigterm_sighandler(sig: libc::c_int) {
 
 #[no_mangle]
 pub fn set_signal_handler(sig: libc::c_int, handler: Option<SigHandler>) -> Option<SigHandler> {
-    unsafe {
-        let mut act: crate::src_common::sigaction = crate::src_common::sigaction {
-            __sigaction_handler: sigaction__bindgen_ty_1 { sa_handler: None },
-            sa_mask: __sigset_t { __val: [0; 16] },
-            sa_flags: 0,
-            sa_restorer: None,
-        };
-        let mut oact: crate::src_common::sigaction = crate::src_common::sigaction {
-            __sigaction_handler: sigaction__bindgen_ty_1 { sa_handler: None },
-            sa_mask: __sigset_t { __val: [0; 16] },
-            sa_flags: 0,
-            sa_restorer: None,
-        };
+    let mut act: crate::src_common::sigaction = crate::src_common::sigaction {
+        __sigaction_handler: sigaction__bindgen_ty_1 { sa_handler: None },
+        sa_mask: __sigset_t { __val: [0; 16] },
+        sa_flags: 0,
+        sa_restorer: None,
+    };
+    let mut oact: crate::src_common::sigaction = crate::src_common::sigaction {
+        __sigaction_handler: sigaction__bindgen_ty_1 { sa_handler: None },
+        sa_mask: __sigset_t { __val: [0; 16] },
+        sa_flags: 0,
+        sa_restorer: None,
+    };
 
-        act.__sigaction_handler.sa_handler = handler;
+    act.__sigaction_handler.sa_handler = handler;
 
-        act.sa_flags = 0;
+    act.sa_flags = 0;
 
-        if sig == SIGCHLD as libc::c_int {
-            act.sa_flags |= SA_RESTART as libc::c_int;
-        }
-        if sig == SIGWINCH as libc::c_int {
-            act.sa_flags |= SA_RESTART as libc::c_int;
-        }
-        if sig == SIGTERM as libc::c_int && handler == Some(sigterm_sighandler) {
-            act.sa_flags |= SA_RESTART as libc::c_int;
-        }
-        sigemptyset(&mut act.sa_mask);
-        sigemptyset(&mut oact.sa_mask);
-        if sigaction(sig, &mut act, &mut oact) == 0 as libc::c_int {
-            return oact.__sigaction_handler.sa_handler;
-        } else {
-            return None;
-        };
+    if sig == SIGCHLD as libc::c_int {
+        act.sa_flags |= SA_RESTART as libc::c_int;
     }
+    if sig == SIGWINCH as libc::c_int {
+        act.sa_flags |= SA_RESTART as libc::c_int;
+    }
+    if sig == SIGTERM as libc::c_int && handler == Some(sigterm_sighandler) {
+        act.sa_flags |= SA_RESTART as libc::c_int;
+    }
+    c_sigemptyset(&mut act.sa_mask);
+    c_sigemptyset(&mut oact.sa_mask);
+    if c_sigaction(sig, &mut act, &mut oact) == 0 as libc::c_int {
+        return unsafe { oact.__sigaction_handler.sa_handler };
+    } else {
+        return None;
+    };
 }
