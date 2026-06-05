@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::general::legal_number;
 use crate::src_common::*;
 
@@ -11,16 +8,16 @@ static mut lhead: *mut WordList = 0 as *const libc::c_void as *mut libc::c_void 
 
 #[no_mangle]
 pub fn internal_getopt(list: *mut WordList, mut opts: *mut libc::c_char) -> libc::c_int {
-    let mut c: libc::c_int = 0;
+    // let c: libc::c_int ;
     let mut cp: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut plus: libc::c_int = 0;
+    // let  plus: libc::c_int ;
     static mut errstr: [libc::c_char; 3] = [
         '-' as i32 as libc::c_char,
         '\u{0}' as i32 as libc::c_char,
         '\u{0}' as i32 as libc::c_char,
     ];
     unsafe {
-        plus = (*opts as libc::c_int == '+' as i32) as libc::c_int;
+        let plus = (*opts as libc::c_int == '+' as i32) as libc::c_int;
         if plus != 0 {
             opts = opts.offset(1);
         }
@@ -77,7 +74,7 @@ pub fn internal_getopt(list: *mut WordList, mut opts: *mut libc::c_char) -> libc
                 *((*(*lcurrent).word).word).offset(0 as libc::c_int as isize) as libc::c_int;
             errstr[0 as libc::c_int as usize] = list_opttype as libc::c_char;
         }
-        c = *((*(*lcurrent).word).word).offset(sp as isize) as libc::c_int;
+        let c = *((*(*lcurrent).word).word).offset(sp as isize) as libc::c_int;
         list_optopt = c;
         if c == ':' as i32 || {
             cp = strchr(opts, c);
