@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use super::help::builtin_help;
 use crate::arrayfunc::valid_array_reference;
 use crate::builtins::bashgetopt::{internal_getopt, reset_internal_getopt};
@@ -13,8 +10,16 @@ use crate::src_common::*;
 use crate::variables::{bind_var_to_int, stupidly_hack_special_variables, sv_tz};
 
 extern "C" {
-    pub fn mbtowc(pwc: *mut libc::wchar_t, s: *const libc::c_char, n: size_t) -> size_t;
-    pub fn u32cconv(c: libc::c_ulong, s: *mut libc::c_char) -> libc::c_int;
+    fn mbtowc(pwc: *mut libc::wchar_t, s: *const libc::c_char, n: size_t) -> size_t;
+    fn u32cconv(c: libc::c_ulong, s: *mut libc::c_char) -> libc::c_int;
+}
+
+pub fn c_mbtowc(pwc: *mut libc::wchar_t, s: *const libc::c_char, n: size_t) -> size_t {
+    unsafe { mbtowc(pwc, s, n) }
+}
+
+pub fn c_u32cconv(c: libc::c_ulong, s: *mut libc::c_char) -> libc::c_int {
+    unsafe { u32cconv(c, s) }
 }
 
 unsafe fn QUIT() {
@@ -667,11 +672,10 @@ pub fn printf_builtin(mut list: *mut WordList) -> i32 {
                         let p = getstr();
                         if !p.is_null() && *p == 0 {
                             xp = savestring!(b"''\0".as_ptr() as *mut libc::c_char);
-                            //xp = savestring(b"''\0".as_ptr() as *const libc::c_char);
-                        } else if ansic_shouldquote(p) != 0 {
-                            xp = ansic_quote(p, 0, PT_NULL as *mut libc::c_int);
+                        } else if c_ansic_shouldquote(p) != 0 {
+                            xp = c_ansic_quote(p, 0, PT_NULL as *mut libc::c_int);
                         } else {
-                            xp = sh_backslash_quote(p, PT_NULL as *mut libc::c_char, 3);
+                            xp = c_sh_backslash_quote(p, PT_NULL as *mut libc::c_char, 3);
                         }
                         if !xp.is_null() {
                             r = printstr(
@@ -1098,96 +1102,99 @@ fn printstr(
     fieldwidth: libc::c_int,
     precision: libc::c_int,
 ) -> libc::c_int {
-    unsafe {
-        if string.is_null() {
-            string = "\0".as_ptr() as *mut libc::c_char;
-        }
+    if string.is_null() {
+        string = "\0".as_ptr() as *mut libc::c_char;
+    }
 
-        if *fmt == b'%' as libc::c_char {
-            fmt = (fmt as usize + 1) as *mut libc::c_char;
-        }
+    if unsafe { *fmt == b'%' as libc::c_char } {
+        fmt = (fmt as usize + 1) as *mut libc::c_char;
+    }
 
-        let mut ljust: libc::c_int = 0;
-        let mut fw: libc::c_int = 0;
-        let mut mfw: libc::c_long = 0;
-        let mut pr: libc::c_int = -1;
-        let mut mpr: libc::c_long = -1;
+    let mut ljust: libc::c_int = 0;
+    let mut fw: libc::c_int = 0;
+    let mut mfw: libc::c_long;
+    let mut pr: libc::c_int = -1;
+    let mut mpr: libc::c_long;
 
-        while !(strchr(
+    while unsafe {
+        !(strchr(
             "#'-+ 0\0".as_ptr() as *const libc::c_char,
             *fmt as libc::c_int,
         )
         .is_null())
-        {
-            if *fmt == b'-' as libc::c_char {
-                ljust = 1;
-            }
+    } {
+        if unsafe { *fmt == b'-' as libc::c_char } {
+            ljust = 1;
+        }
+        fmt = (fmt as usize + 1) as *mut libc::c_char;
+    }
+
+    if unsafe { *fmt == b'*' as libc::c_char } {
+        fmt = (fmt as usize + 1) as *mut libc::c_char;
+        fw = fieldwidth;
+        if fw < 0 {
+            fw = -fw;
+            ljust = 1;
+        }
+    } else if unsafe { IS_DIGITAL!(*fmt) } {
+        mfw = unsafe { (*fmt - b'0' as libc::c_char) as libc::c_long };
+        fmt = (fmt as usize + 1) as *mut libc::c_char;
+        while unsafe { IS_DIGITAL!(*fmt) } {
+            mfw = unsafe { mfw * 10 + (*fmt - b'0' as libc::c_char) as libc::c_long };
             fmt = (fmt as usize + 1) as *mut libc::c_char;
         }
+        fw = if mfw < 0 || mfw > (libc::INT_MAX as libc::c_long) {
+            libc::INT_MAX
+        } else {
+            mfw as libc::c_int
+        };
+    }
 
-        if *fmt == b'*' as libc::c_char {
+    if unsafe { *fmt == b'.' as libc::c_char } {
+        fmt = (fmt as usize + 1) as *mut libc::c_char;
+        if unsafe { *fmt == b'*' as libc::c_char } {
+            // fmt = (fmt as usize + 1) as *mut libc::c_char;
+            pr = precision;
+        } else if unsafe { IS_DIGITAL!(*fmt) } {
+            mpr = unsafe { (*fmt - b'0' as libc::c_char) as libc::c_long };
             fmt = (fmt as usize + 1) as *mut libc::c_char;
-            fw = fieldwidth;
-            if fw < 0 {
-                fw = -fw;
-                ljust = 1;
-            }
-        } else if IS_DIGITAL!(*fmt) {
-            mfw = (*fmt - b'0' as libc::c_char) as libc::c_long;
-            fmt = (fmt as usize + 1) as *mut libc::c_char;
-            while IS_DIGITAL!(*fmt) {
-                mfw = mfw * 10 + (*fmt - b'0' as libc::c_char) as libc::c_long;
+            while unsafe { IS_DIGITAL!(*fmt) } {
+                mpr = unsafe { mpr * 10 + (*fmt - b'0' as libc::c_char) as libc::c_long };
                 fmt = (fmt as usize + 1) as *mut libc::c_char;
             }
-            fw = if mfw < 0 || mfw > (libc::INT_MAX as libc::c_long) {
+            pr = if mpr < 0 || mpr > (libc::INT_MAX as libc::c_long) {
                 libc::INT_MAX
             } else {
-                mfw as libc::c_int
+                mpr as libc::c_int
             };
+        } else {
+            pr = 0;
         }
+    }
 
-        if *fmt == b'.' as libc::c_char {
-            fmt = (fmt as usize + 1) as *mut libc::c_char;
-            if *fmt == b'*' as libc::c_char {
-                fmt = (fmt as usize + 1) as *mut libc::c_char;
-                pr = precision;
-            } else if IS_DIGITAL!(*fmt) {
-                mpr = (*fmt - b'0' as libc::c_char) as libc::c_long;
-                fmt = (fmt as usize + 1) as *mut libc::c_char;
-                while IS_DIGITAL!(*fmt) {
-                    mpr = mpr * 10 + (*fmt - b'0' as libc::c_char) as libc::c_long;
-                    fmt = (fmt as usize + 1) as *mut libc::c_char;
-                }
-                pr = if mpr < 0 || mpr > (libc::INT_MAX as libc::c_long) {
-                    libc::INT_MAX
-                } else {
-                    mpr as libc::c_int
-                };
-            } else {
-                pr = 0;
-            }
-        }
+    let nc = if pr >= 0 && pr <= len { pr } else { len };
+    let mut padlen = fw - nc;
+    if padlen < 0 {
+        padlen = 0;
+    }
+    if ljust != 0 {
+        padlen = -padlen;
+    }
 
-        let nc = if pr >= 0 && pr <= len { pr } else { len };
-        let mut padlen = fw - nc;
-        if padlen < 0 {
-            padlen = 0;
-        }
-        if ljust != 0 {
-            padlen = -padlen;
-        }
-
-        while padlen > 0 {
+    while padlen > 0 {
+        unsafe {
             PC(b' ');
-            padlen -= 1;
         }
+        padlen -= 1;
+    }
 
-        for i in 0..nc {
+    for i in 0..nc {
+        unsafe {
             PC(*((string as usize + i as usize) as *mut libc::c_char) as u8);
         }
-
-        return 0;
     }
+
+    return 0;
 }
 
 fn tescape(
@@ -1263,7 +1270,7 @@ fn tescape(
                 if uvalue <= 0x7f {
                     *cp = uvalue as libc::c_char;
                 } else {
-                    temp = u32cconv(uvalue, cp);
+                    temp = c_u32cconv(uvalue, cp);
                     *((cp as usize + temp as usize) as *mut libc::c_char) = b'\0' as libc::c_char;
                     if !lenp.is_null() {
                         *lenp = temp;
@@ -1550,10 +1557,9 @@ fn getfloatmax() -> f64 {
 fn asciicode() -> libc::c_long {
     unsafe {
         let ch: libc::c_long;
-        //let state: mbstate_t = std::mem::zeroed();
         let slen = libc::strlen((*(*garglist).word).word);
         let wc: libc::wchar_t = 0;
-        let mblength = mbtowc(
+        let mblength = c_mbtowc(
             std::mem::transmute(&wc),
             ((*(*garglist).word).word as usize + 1) as *mut libc::c_char,
             slen as size_t,
