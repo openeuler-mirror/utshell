@@ -1,9 +1,12 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::alias::add_alias;
 use crate::array::array_copy;
 use crate::array::array_create;
+use crate::array::array_dispose;
+use crate::array::array_dispose_element;
+use crate::array::array_flush;
+use crate::array::array_from_word_list;
+use crate::array::array_insert;
+use crate::array::array_reference;
 use crate::arrayfunc::array_variable_name;
 use crate::arrayfunc::array_variable_part;
 use crate::arrayfunc::assign_array_element;
@@ -49,11 +52,14 @@ use crate::findcmd::executable_file;
 use crate::findcmd::file_status;
 use crate::findcmd::find_user_command;
 use crate::findcmd::setup_exec_ignore;
+use crate::general::absolute_program;
+use crate::general::all_digits;
 use crate::general::assignment;
 use crate::general::file_isdir;
 use crate::general::get_group_list;
 use crate::general::same_file;
 use crate::general::sh_validfd;
+use crate::general::valid_nameref_value;
 use crate::hashcmd::phash_flush;
 use crate::hashcmd::phash_insert;
 use crate::hashlib::hash_copy;
@@ -77,35 +83,30 @@ use crate::print_cmd::named_function_string;
 use crate::print_cmd::xtrace_print_assignment;
 use crate::print_cmd::xtrace_reset;
 use crate::print_cmd::xtrace_set;
-use crate::readline::absolute_program;
-use crate::readline::all_digits;
-use crate::readline::array_dispose;
-use crate::readline::array_dispose_element;
-use crate::readline::array_flush;
-use crate::readline::array_from_word_list;
-use crate::readline::array_insert;
-use crate::readline::array_reference;
-use crate::readline::array_rshift;
-use crate::readline::array_shift;
-use crate::readline::bash_tilde_expand;
-use crate::readline::check_selfref;
-use crate::readline::copy_command;
+use crate::utshell::set_exit_status;
+// use crate::array::array_rshift;
+use crate::array::array_shift;
+use crate::copycmd::copy_command;
+use crate::error::err_readonly;
+use crate::general::bash_tilde_expand;
+use crate::general::check_selfref;
+use crate::general::extract_colon_unit;
+use crate::general::full_pathname;
+use crate::general::legal_alias_name;
+use crate::general::legal_identifier;
+use crate::general::posix_initialize;
+use crate::general::save_posix_options;
+use crate::parse_and_execute;
+use crate::readline::c_history_truncate_file;
+use crate::readline::c_rl_reset_terminal;
+use crate::readline::c_stifle_history;
+use crate::readline::c_tzset;
+use crate::readline::c_unstifle_history;
 use crate::readline::environ;
-use crate::readline::extract_colon_unit;
-use crate::readline::full_pathname;
 use crate::readline::history_comment_char;
-use crate::readline::history_truncate_file;
 use crate::readline::history_write_timestamps;
-use crate::readline::legal_alias_name;
-use crate::readline::legal_identifier;
-use crate::readline::posix_initialize;
 use crate::readline::rl_basic_word_break_characters;
 use crate::readline::rl_completer_word_break_characters;
-use crate::readline::rl_reset_terminal;
-use crate::readline::save_posix_options;
-use crate::readline::stifle_history;
-use crate::readline::tzset;
-use crate::readline::unstifle_history;
 use crate::sig::jump_to_top_level;
 use crate::sig::top_level_cleanup;
 use crate::src_common::*;
@@ -114,6 +115,7 @@ use crate::subst::expand_assignment_string_to_string;
 use crate::subst::invalidate_cached_quoted_dollar_at;
 use crate::subst::list_rest_of_args;
 use crate::subst::setifs;
+use crate::utshell::get_current_user_info;
 use crate::version::build_version;
 use crate::version::dist_version;
 use crate::version::patch_level;
@@ -126,12 +128,15 @@ use crate::y_tab::ignoreeof;
 use crate::y_tab::line_number;
 use crate::y_tab::line_number_base;
 use std::convert::TryInto;
-
 //add by bgz
 #[link(name = "history")]
 #[link(name = "readline")]
 extern "C" {
-    pub fn sh_get_home_dir() -> *mut libc::c_char;
+    fn sh_get_home_dir() -> *mut libc::c_char;
+}
+
+pub fn c_sh_get_home_dir() -> *mut libc::c_char {
+    unsafe { sh_get_home_dir() }
 }
 //end of bgz
 
@@ -140,18 +145,16 @@ pub fn bind_spcial_variable(
     name: *const libc::c_char,
     mut value: *mut libc::c_char,
 ) -> *mut libc::c_char {
-    unsafe {
-        if libc::strcmp(name, b"PS1\0" as *const u8 as *mut libc::c_char) == 0 {
-            if value.is_null() {
-                if current_user.euid == 0 {
-                    value = Root_PS1_Value!();
-                } else {
-                    value = PS1_Value!();
-                }
+    if unsafe { libc::strcmp(name, b"PS1\0" as *const u8 as *mut libc::c_char) == 0 } {
+        if value.is_null() {
+            if unsafe { current_user.euid == 0 } {
+                value = Root_PS1_Value!();
+            } else {
+                value = PS1_Value!();
             }
         }
-        return value;
     }
+    return value;
 }
 
 #[no_mangle]
@@ -160,10 +163,10 @@ pub fn bind_variable(
     mut value: *mut libc::c_char,
     flags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut nv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut vc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
-    let mut nvc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
+    let mut v: *mut SHELL_VAR;
+    let mut nv: *mut SHELL_VAR;
+    let mut vc: *mut VAR_CONTEXT;
+    let mut nvc: *mut VAR_CONTEXT;
     unsafe {
         value = bind_spcial_variable(name, value);
         if shell_variables.is_null() {
@@ -250,12 +253,10 @@ pub fn bind_variable(
 }
 
 fn STREQN(a: *const libc::c_char, b: *const libc::c_char, n: i32) -> bool {
-    unsafe {
-        if n == 0 {
-            return true;
-        } else {
-            return *a == *b && libc::strncmp(a, b, n as libc::size_t) == 0;
-        }
+    if n == 0 {
+        return true;
+    } else {
+        return unsafe { *a == *b && libc::strncmp(a, b, n as libc::size_t) == 0 };
     }
 }
 
@@ -309,15 +310,15 @@ fn create_variable_tables() {
 
 #[no_mangle]
 pub fn initialize_shell_variables(env: *mut *mut libc::c_char, privmode: libc::c_int) {
-    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut name: *mut libc::c_char;
     let mut string: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut temp_string: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut temp_string: *mut libc::c_char;
 
-    let mut c: libc::c_int = 0;
-    let mut char_index: libc::c_int = 0;
-    let mut string_index: libc::c_int = 0;
-    let mut string_length: libc::c_int = 0;
-    let mut ro: libc::c_int = 0;
+    let mut c: libc::c_int;
+    let mut char_index: libc::c_int;
+    let mut string_index: libc::c_int;
+    let mut string_length: libc::c_int;
+    let mut ro: libc::c_int;
 
     let mut temp_var: *mut SHELL_VAR;
 
@@ -336,7 +337,6 @@ pub fn initialize_shell_variables(env: *mut *mut libc::c_char, privmode: libc::c
             loop {
                 c = *string as libc::c_int;
                 string = string.offset(1);
-                // c != 0 && c != '=' as i32 进入循环
                 if !(c != 0 && c != '=' as i32) {
                     break;
                 }
@@ -352,7 +352,7 @@ pub fn initialize_shell_variables(env: *mut *mut libc::c_char, privmode: libc::c
             }
 
             *name.offset(char_index as isize) = '\0' as i32 as libc::c_char;
-            temp_var = 0 as *mut libc::c_void as *mut SHELL_VAR;
+            // temp_var = 0 as *mut libc::c_void as *mut SHELL_VAR;
 
             if privmode == 0 as libc::c_int
                 && read_but_dont_execute == 0 as libc::c_int
@@ -368,8 +368,8 @@ pub fn initialize_shell_variables(env: *mut *mut libc::c_char, privmode: libc::c
                     4 as libc::c_int,
                 )
             {
-                let mut namelen: size_t = 0;
-                let mut tname: *mut libc::c_char = 0 as *mut libc::c_char;
+                let namelen: size_t;
+                let tname: *mut libc::c_char;
                 namelen = (char_index - BASHFUNC_PREFLEN!() - BASHFUNC_SUFFLEN!()) as size_t;
                 tname = name.offset(BASHFUNC_PREFLEN!() as libc::c_int as isize);
                 *tname.offset(namelen as isize) = '\0' as i32 as libc::c_char;
@@ -483,17 +483,17 @@ pub fn initialize_shell_variables(env: *mut *mut libc::c_char, privmode: libc::c
 
         set_pwd();
 
-        temp_var = set_if_not(
+        set_if_not(
             b"_\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             dollar_vars[0 as libc::c_int as usize],
         );
 
         dollar_dollar_pid = getpid();
-        temp_var = set_if_not(
+        set_if_not(
             b"PATH\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             DEFAULT_PATH_VALUE!(),
         );
-        temp_var = set_if_not(
+        set_if_not(
             b"TERM\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             b"dumb\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
         );
@@ -503,7 +503,6 @@ pub fn initialize_shell_variables(env: *mut *mut libc::c_char, privmode: libc::c
             primary_prompt,
         );
 
-        //set_if_not ("PS1", current_user.euid == 0 ? "# " : primary_prompt);
         set_if_not(
             b"PS2\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             secondary_prompt,
@@ -567,7 +566,7 @@ pub fn initialize_shell_variables(env: *mut *mut libc::c_char, privmode: libc::c
         }
 
         name = get_bash_name();
-        temp_var = bind_variable(
+        bind_variable(
             b"BASH\0" as *const u8 as *const libc::c_char,
             name,
             0 as libc::c_int,
@@ -605,7 +604,6 @@ pub fn initialize_shell_variables(env: *mut *mut libc::c_char, privmode: libc::c
                 if posixly_correct != 0 {
                     b"~/.sh_history\0" as *const u8 as *const libc::c_char
                 } else {
-                    // b"~/.bash_history\0" as *const u8 as *const libc::c_char
                     b"~/.utshell_history\0" as *const u8 as *const libc::c_char
                 },
                 0 as libc::c_int,
@@ -617,9 +615,8 @@ pub fn initialize_shell_variables(env: *mut *mut libc::c_char, privmode: libc::c
             free(name as *mut libc::c_void);
         }
 
-        // extern c file
-        seedrand();
-        seedrand32();
+        c_seedrand();
+        c_seedrand32();
 
         if interactive_shell != 0 {
             temp_var = find_variable(b"IGNOREEOF\0" as *const u8 as *const libc::c_char);
@@ -656,70 +653,69 @@ pub fn initialize_shell_variables(env: *mut *mut libc::c_char, privmode: libc::c
 }
 
 fn set_machine_vars() {
-    let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    // let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+
+    set_if_not(
+        b"HOSTTYPE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        c_get_host_type() as *mut libc::c_char,
+    );
+
+    set_if_not(
+        b"OSTYPE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        c_get_os_type() as *mut libc::c_char,
+    );
+
+    set_if_not(
+        b"MACHTYPE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        c_get_mach_type() as *mut libc::c_char,
+    );
+
     unsafe {
-        temp_var = set_if_not(
-            b"HOSTTYPE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-            get_host_type() as *mut libc::c_char,
-        );
-
-        temp_var = set_if_not(
-            b"OSTYPE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-            get_os_type() as *mut libc::c_char,
-        );
-
-        temp_var = set_if_not(
-            b"MACHTYPE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-            get_mach_type() as *mut libc::c_char,
-        );
-
-        temp_var = set_if_not(
+        set_if_not(
             b"HOSTNAME\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             current_host_name,
-        );
-    }
+        )
+    };
 }
 
 #[no_mangle]
 fn set_home_var() {
-    let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let temp_var: *mut SHELL_VAR;
     temp_var = find_variable(b"HOME\0" as *const u8 as *const libc::c_char);
-    unsafe {
-        if temp_var.is_null() {
-            temp_var = bind_variable(
-                b"HOME\0" as *const u8 as *const libc::c_char,
-                sh_get_home_dir(),
-                0 as libc::c_int,
-            );
-        }
+
+    if temp_var.is_null() {
+        bind_variable(
+            b"HOME\0" as *const u8 as *const libc::c_char,
+            c_sh_get_home_dir(),
+            0 as libc::c_int,
+        );
     }
 }
 
 fn set_shell_var() {
-    let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let temp_var: *mut SHELL_VAR;
 
     temp_var = find_variable(b"SHELL\0" as *const u8 as *const libc::c_char);
-    unsafe {
-        if temp_var.is_null() {
-            if (current_user.shell).is_null() {
-                // get_current_user_info  in file of shell.c
-                get_current_user_info();
-            }
-            temp_var = bind_variable(
+
+    if temp_var.is_null() {
+        if unsafe { (current_user.shell).is_null() } {
+            get_current_user_info();
+        }
+        unsafe {
+            bind_variable(
                 b"SHELL\0" as *const u8 as *const libc::c_char,
                 current_user.shell,
                 0 as libc::c_int,
-            );
-        }
+            )
+        };
     }
 }
 
 fn get_bash_name() -> *mut libc::c_char {
-    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut name: *mut libc::c_char;
     unsafe {
         if login_shell == 1 as libc::c_int && RELPATH!(shell_name) {
             if (current_user.shell).is_null() {
-                // get_current_user_info  in file of shell.c
                 get_current_user_info();
             }
             name = savestring!(current_user.shell);
@@ -728,8 +724,8 @@ fn get_bash_name() -> *mut libc::c_char {
         } else if *shell_name.offset(0 as libc::c_int as isize) as libc::c_int == '.' as i32
             && *shell_name.offset(1 as libc::c_int as isize) as libc::c_int == '/' as i32
         {
-            let mut cdir: *mut libc::c_char = 0 as *mut libc::c_char;
-            let mut len: libc::c_int = 0;
+            let cdir: *mut libc::c_char;
+            let len: libc::c_int;
 
             cdir = get_string_value(b"PWD\0" as *const u8 as *const libc::c_char);
             if !cdir.is_null() {
@@ -748,8 +744,8 @@ fn get_bash_name() -> *mut libc::c_char {
                 name = savestring!(shell_name);
             }
         } else {
-            let mut tname: *mut libc::c_char = 0 as *mut libc::c_char;
-            let mut s: libc::c_int = 0;
+            let mut tname: *mut libc::c_char;
+            let s: libc::c_int;
             tname = find_user_command(shell_name);
             if tname.is_null() {
                 s = file_status(shell_name);
@@ -759,8 +755,7 @@ fn get_bash_name() -> *mut libc::c_char {
                         get_string_value(b"PWD\0" as *const u8 as *const libc::c_char),
                     );
                     if *shell_name as libc::c_int == '.' as i32 {
-                        //sh_canonpath in extern file
-                        name = sh_canonpath(
+                        name = c_sh_canonpath(
                             tname,
                             (PATH_CHECKDOTDOT | PATH_CHECKEXISTS) as libc::c_int,
                         );
@@ -774,7 +769,6 @@ fn get_bash_name() -> *mut libc::c_char {
                     }
                 } else {
                     if (current_user.shell).is_null() {
-                        // get_current_user_info  in file of shell.c
                         get_current_user_info();
                     }
                     name = savestring!(current_user.shell);
@@ -791,9 +785,9 @@ fn get_bash_name() -> *mut libc::c_char {
 #[no_mangle]
 pub fn adjust_shell_level(change: libc::c_int) {
     let mut new_level: [libc::c_char; 5] = [0; 5];
-    let mut old_SHLVL: *mut libc::c_char = 0 as *mut libc::c_char;
+    let old_SHLVL: *mut libc::c_char;
     let mut old_level: intmax_t = 0;
-    let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let temp_var: *mut SHELL_VAR;
 
     old_SHLVL = get_string_value(b"SHLVL\0" as *const u8 as *const libc::c_char);
     unsafe {
@@ -852,22 +846,23 @@ fn initialize_shell_level() {
 
 #[no_mangle]
 pub fn set_pwd() {
-    let mut temp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut home_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut temp_var: *mut SHELL_VAR;
+    let home_var: *mut SHELL_VAR;
     let mut temp_string: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut home_string: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut current_dir: *mut libc::c_char = 0 as *mut libc::c_char;
+    let home_string: *mut libc::c_char;
+    let mut current_dir: *mut libc::c_char;
     home_var = find_variable(b"HOME\0" as *const u8 as *const libc::c_char);
-    unsafe {
-        home_string = if !home_var.is_null() {
-            value_cell!(home_var)
-        } else {
-            0 as *mut libc::c_void as *mut libc::c_char
-        };
 
-        temp_var = find_variable(b"PWD\0" as *const u8 as *const libc::c_char);
+    home_string = if !home_var.is_null() {
+        unsafe { value_cell!(home_var) }
+    } else {
+        0 as *mut libc::c_void as *mut libc::c_char
+    };
 
-        if !temp_var.is_null()
+    temp_var = find_variable(b"PWD\0" as *const u8 as *const libc::c_char);
+
+    if unsafe {
+        !temp_var.is_null()
             && imported_p!(temp_var) != 0 as libc::c_int
             && {
                 temp_string = value_cell!(temp_var);
@@ -880,33 +875,34 @@ pub fn set_pwd() {
                 0 as *mut libc::c_void as *mut crate::src_common::stat,
                 0 as *mut libc::c_void as *mut crate::src_common::stat,
             ) != 0
-        {
-            // sh_canonpath are extern func
-            current_dir = sh_canonpath(
-                temp_string,
-                PATH_CHECKDOTDOT as libc::c_int | PATH_CHECKEXISTS as libc::c_int,
-            );
+    } {
+        current_dir = c_sh_canonpath(
+            temp_string,
+            PATH_CHECKDOTDOT as libc::c_int | PATH_CHECKEXISTS as libc::c_int,
+        );
 
-            if current_dir.is_null() {
-                // get_working_directory are extern func
-                current_dir = get_working_directory(
-                    b"shell_init\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-                );
-            } else {
-                // set_working_directory are extern func
-                set_working_directory(current_dir);
-            }
-            if posixly_correct != 0 && !current_dir.is_null() {
-                //bind_variable are extern func
-                temp_var = bind_variable(
-                    b"PWD\0" as *const u8 as *const libc::c_char,
-                    current_dir,
-                    0 as libc::c_int,
-                );
+        if current_dir.is_null() {
+            current_dir = get_working_directory(
+                b"shell_init\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+            );
+        } else {
+            set_working_directory(current_dir);
+        }
+        if unsafe { posixly_correct != 0 && !current_dir.is_null() } {
+            temp_var = bind_variable(
+                b"PWD\0" as *const u8 as *const libc::c_char,
+                current_dir,
+                0 as libc::c_int,
+            );
+            unsafe {
                 set_auto_export!(temp_var);
             }
+        }
+        unsafe {
             free(current_dir as *mut libc::c_void);
-        } else if !home_string.is_null()
+        }
+    } else if unsafe {
+        !home_string.is_null()
             && interactive_shell != 0
             && login_shell != 0
             && same_file(
@@ -915,45 +911,47 @@ pub fn set_pwd() {
                 0 as *mut libc::c_void as *mut crate::src_common::stat,
                 0 as *mut libc::c_void as *mut crate::src_common::stat,
             ) != 0
-        {
-            // set_working_directory are extern func
-            set_working_directory(home_string);
+    } {
+        set_working_directory(home_string);
+        temp_var = bind_variable(
+            b"PWD\0" as *const u8 as *const libc::c_char,
+            home_string,
+            0 as libc::c_int,
+        );
+        unsafe {
+            set_auto_export!(temp_var);
+        }
+    } else {
+        temp_string = get_working_directory(
+            b"shell-init\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        );
 
-            //bind_variable are extern func
+        if !temp_string.is_null() {
             temp_var = bind_variable(
                 b"PWD\0" as *const u8 as *const libc::c_char,
-                home_string,
+                temp_string,
                 0 as libc::c_int,
             );
-            set_auto_export!(temp_var);
-        } else {
-            // get_working_directory are extern func
-            temp_string = get_working_directory(
-                b"shell-init\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-            );
-
-            if !temp_string.is_null() {
-                temp_var = bind_variable(
-                    b"PWD\0" as *const u8 as *const libc::c_char,
-                    temp_string,
-                    0 as libc::c_int,
-                );
+            unsafe {
                 set_auto_export!(temp_var);
                 free(temp_string as *mut libc::c_void);
             }
         }
+    }
 
-        temp_var = find_variable(b"OLDPWD\0" as *const u8 as *const libc::c_char);
-        if temp_var.is_null()
+    temp_var = find_variable(b"OLDPWD\0" as *const u8 as *const libc::c_char);
+    if unsafe {
+        temp_var.is_null()
             || value_cell!(temp_var).is_null()
             || file_isdir(value_cell!(temp_var)) == 0 as libc::c_int
-        {
-            temp_var = bind_variable(
-                b"OLDPWD\0" as *const u8 as *const libc::c_char,
-                0 as *mut libc::c_void as *mut libc::c_char,
-                0 as libc::c_int,
-            );
+    } {
+        temp_var = bind_variable(
+            b"OLDPWD\0" as *const u8 as *const libc::c_char,
+            0 as *mut libc::c_void as *mut libc::c_char,
+            0 as libc::c_int,
+        );
 
+        unsafe {
             VSETATTR!(temp_var, (att_exported | att_invisible));
         }
     }
@@ -964,77 +962,88 @@ pub fn set_ppid() {
     // 暂时定义的宏 有问题 还得修改
     let mut namebuf: [libc::c_char; (INT_STRLEN_BOUND!(uid_t) + 1) as usize] =
         [0; (INT_STRLEN_BOUND!(uid_t) + 1) as usize];
-    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
+    let name: *mut libc::c_char;
     let mut temp_var: *mut SHELL_VAR;
-    unsafe {
-        name = inttostr(
+
+    name = unsafe {
+        c_inttostr(
             getppid() as intmax_t,
             namebuf.as_mut_ptr(),
             std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(uid_t) + 1) as usize]>()
                 as libc::c_ulong as size_t,
-        );
-        temp_var = find_variable(b"PPID\0" as *const u8 as *const libc::c_char);
-        if !temp_var.is_null() {
+        )
+    };
+    temp_var = find_variable(b"PPID\0" as *const u8 as *const libc::c_char);
+    if !temp_var.is_null() {
+        unsafe {
             VUNSETATTR!(temp_var, (att_readonly | att_exported));
         }
+    }
 
-        temp_var = bind_variable(
-            b"PPID\0" as *const u8 as *const libc::c_char,
-            name,
-            0 as libc::c_int,
-        );
+    temp_var = bind_variable(
+        b"PPID\0" as *const u8 as *const libc::c_char,
+        name,
+        0 as libc::c_int,
+    );
 
+    unsafe {
         VSETATTR!(temp_var, (att_readonly | att_integer));
     }
 }
 
 fn uidset() {
-    // INT_STRLEN_BOUND(uid_t) + 1
     let mut buff: [libc::c_char; (INT_STRLEN_BOUND!(uid_t) + 1) as usize] =
         [0; (INT_STRLEN_BOUND!(uid_t) + 1) as usize];
-    let mut b: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    unsafe {
-        b = inttostr(
+    let mut b: *mut libc::c_char;
+    let mut v: *mut SHELL_VAR;
+
+    b = unsafe {
+        c_inttostr(
             current_user.uid as intmax_t,
             buff.as_mut_ptr(),
             std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(uid_t) + 1) as usize]>()
                 as libc::c_ulong as size_t,
+        )
+    };
+    v = find_variable(b"UID\0" as *const u8 as *const libc::c_char);
+    if v.is_null() {
+        v = bind_variable(
+            b"UID\0" as *const u8 as *const libc::c_char,
+            b,
+            0 as libc::c_int,
         );
-        v = find_variable(b"UID\0" as *const u8 as *const libc::c_char);
-        if v.is_null() {
-            v = bind_variable(
-                b"UID\0" as *const u8 as *const libc::c_char,
-                b,
-                0 as libc::c_int,
-            );
+        unsafe {
             VSETATTR!(v, (att_readonly | att_integer) as libc::c_int);
         }
-        if current_user.euid != current_user.uid {
-            b = inttostr(
+    }
+    if unsafe { current_user.euid != current_user.uid } {
+        b = unsafe {
+            c_inttostr(
                 current_user.euid as intmax_t,
                 buff.as_mut_ptr(),
                 std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(uid_t) + 1) as usize]>()
                     as libc::c_ulong as size_t,
-            );
-        }
-        v = find_variable(b"EUID\0" as *const u8 as *const libc::c_char);
-        if v.is_null() {
-            v = bind_variable(
-                b"EUID\0" as *const u8 as *const libc::c_char,
-                b,
-                0 as libc::c_int,
-            );
+            )
+        };
+    }
+    v = find_variable(b"EUID\0" as *const u8 as *const libc::c_char);
+    if v.is_null() {
+        v = bind_variable(
+            b"EUID\0" as *const u8 as *const libc::c_char,
+            b,
+            0 as libc::c_int,
+        );
+        unsafe {
             VSETATTR!(v, (att_readonly | att_integer));
         }
     }
 }
 
 fn make_vers_array() {
-    let mut vv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut av: *mut ARRAY = 0 as *mut ARRAY;
+    let vv: *mut SHELL_VAR;
+    let av: *mut ARRAY;
 
-    let mut s: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut s: *mut libc::c_char;
     let mut d: [libc::c_char; 32] = [0; 32];
 
     const b: [libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize] =
@@ -1055,14 +1064,14 @@ fn make_vers_array() {
         array_insert(av, 0 as libc::c_int as arrayind_t, d.as_mut_ptr());
         array_insert(av, 1 as libc::c_int as arrayind_t, s);
 
-        s = inttostr(
+        s = c_inttostr(
             patch_level as intmax_t,
             b.as_mut_ptr(),
             std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize]>()
                 as libc::c_ulong as u64,
         );
         array_insert(av, 2 as libc::c_int as arrayind_t, s);
-        s = inttostr(
+        s = c_inttostr(
             build_version as intmax_t,
             b.as_mut_ptr(),
             std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize]>()
@@ -1074,7 +1083,7 @@ fn make_vers_array() {
             4 as libc::c_int as arrayind_t,
             release_status as *mut libc::c_char,
         );
-        array_insert(av, 5 as libc::c_int as arrayind_t, get_mach_type());
+        array_insert(av, 5 as libc::c_int as arrayind_t, c_get_mach_type());
         VSETATTR!(vv, att_readonly);
     }
 }
@@ -1084,58 +1093,58 @@ pub fn sh_set_lines_and_columns_out(lines: libc::c_int, cols: libc::c_int) {
     let mut val: [libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize] =
         [0 as libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize];
 
-    let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
-    unsafe {
-        if winsize_assignment != 0 {
-            return;
-        }
+    let mut v: *mut libc::c_char;
 
-        v = inttostr(
-            lines as intmax_t,
-            val.as_mut_ptr(),
-            std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize]>()
-                as libc::c_ulong as u64,
-        );
-
-        bind_variable(
-            b"LINES\0" as *const u8 as *const libc::c_char,
-            v,
-            0 as libc::c_int,
-        );
-        v = inttostr(
-            cols as intmax_t,
-            val.as_mut_ptr(),
-            std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize]>()
-                as libc::c_ulong as u64,
-        );
-        bind_variable(
-            b"COLUMNS\0" as *const u8 as *const libc::c_char,
-            v,
-            0 as libc::c_int,
-        );
+    if unsafe { winsize_assignment != 0 } {
+        return;
     }
+
+    v = c_inttostr(
+        lines as intmax_t,
+        val.as_mut_ptr(),
+        std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize]>()
+            as libc::c_ulong as u64,
+    );
+
+    bind_variable(
+        b"LINES\0" as *const u8 as *const libc::c_char,
+        v,
+        0 as libc::c_int,
+    );
+    v = c_inttostr(
+        cols as intmax_t,
+        val.as_mut_ptr(),
+        std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize]>()
+            as libc::c_ulong as u64,
+    );
+    bind_variable(
+        b"COLUMNS\0" as *const u8 as *const libc::c_char,
+        v,
+        0 as libc::c_int,
+    );
 }
 
 #[no_mangle]
 pub fn print_var_list(list: *mut *mut SHELL_VAR) {
     let mut i: libc::c_int = 0 as libc::c_int;
     let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    unsafe {
-        while !list.is_null() && {
+
+    while !list.is_null() && {
+        unsafe {
             var = *list.offset(i as isize);
-            !var.is_null()
-        } {
-            if invisible_p!(var) == 0 {
-                print_assignment(var);
-            }
-            i += 1;
         }
+        !var.is_null()
+    } {
+        if unsafe { invisible_p!(var) == 0 } {
+            print_assignment(var);
+        }
+        i += 1;
     }
 }
 
 #[no_mangle]
 pub fn print_func_list(list: *mut *mut SHELL_VAR) {
-    let mut i: libc::c_int = 0;
+    let mut i: libc::c_int;
     let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
     i = 0 as libc::c_int;
     unsafe {
@@ -1174,22 +1183,22 @@ pub fn print_assignment(var: *mut SHELL_VAR) {
 }
 
 pub fn print_var_value(var: *mut SHELL_VAR, quote: libc::c_int) {
+    let t: *mut libc::c_char;
     unsafe {
-        let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
         if !var_isset!(var) {
             return;
         }
         if quote != 0
             && posixly_correct == 0 as libc::c_int
-            && ansic_shouldquote(value_cell!(var)) != 0
+            && c_ansic_shouldquote(value_cell!(var)) != 0
         {
-            t = ansic_quote(value_cell!(var), 0 as libc::c_int, 0 as *mut libc::c_int);
+            t = c_ansic_quote(value_cell!(var), 0 as libc::c_int, 0 as *mut libc::c_int);
             libc::printf(b"%s\0" as *const u8 as *const libc::c_char, t);
             if !t.is_null() {
                 libc::free(t as *mut libc::c_void);
             }
-        } else if quote != 0 && sh_contains_shell_metas(value_cell!(var)) != 0 {
-            t = sh_single_quote(value_cell!(var));
+        } else if quote != 0 && c_sh_contains_shell_metas(value_cell!(var)) != 0 {
+            t = c_sh_single_quote(value_cell!(var));
             libc::printf(b"%s\0" as *const u8 as *const libc::c_char, t);
             if !t.is_null() {
                 libc::free(t as *mut libc::c_void);
@@ -1205,8 +1214,8 @@ pub fn print_var_value(var: *mut SHELL_VAR, quote: libc::c_int) {
 
 #[no_mangle]
 pub fn print_var_function(var: *mut SHELL_VAR) {
+    let x: *mut libc::c_char;
     unsafe {
-        let mut x: *mut libc::c_char = 0 as *mut libc::c_char;
         if function_p!(var) != 0 as libc::c_int && var_isset!(var) {
             x = named_function_string(
                 0 as *mut libc::c_void as *mut libc::c_char,
@@ -1220,18 +1229,18 @@ pub fn print_var_function(var: *mut SHELL_VAR) {
 
 fn null_assign(
     self_0: *mut SHELL_VAR,
-    value: *mut libc::c_char,
-    unused: arrayind_t,
-    key: *mut libc::c_char,
+    _value: *mut libc::c_char,
+    _unused: arrayind_t,
+    _key: *mut libc::c_char,
 ) -> *mut SHELL_VAR {
     return self_0;
 }
 
 fn null_array_assign(
     self_0: *mut SHELL_VAR,
-    value: *mut libc::c_char,
-    ind: arrayind_t,
-    key: *mut libc::c_char,
+    _value: *mut libc::c_char,
+    _ind: arrayind_t,
+    _key: *mut libc::c_char,
 ) -> *mut SHELL_VAR {
     return self_0;
 }
@@ -1246,7 +1255,7 @@ fn init_dynamic_array_var(
     setfunc: Option<sh_var_assign_func_t>,
     attrs: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut v: *mut SHELL_VAR;
     v = find_variable(name);
     if !v.is_null() {
         return v;
@@ -1266,7 +1275,7 @@ fn init_dynamic_assoc_var(
     setfunc: Option<sh_var_assign_func_t>,
     attrs: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut v: *mut SHELL_VAR;
     v = find_variable(name);
     if !v.is_null() {
         return v;
@@ -1286,8 +1295,8 @@ static mut seconds_value_assigned: intmax_t = 0;
 fn assign_seconds(
     self_0: *mut SHELL_VAR,
     value: *mut libc::c_char,
-    unused: arrayind_t,
-    key: *mut libc::c_char,
+    _unused: arrayind_t,
+    _key: *mut libc::c_char,
 ) -> *mut SHELL_VAR {
     let mut nval: intmax_t = 0;
     let mut expok: libc::c_int = 0;
@@ -1302,24 +1311,24 @@ fn assign_seconds(
         } else {
             0 as libc::c_int as libc::c_long
         };
-        gettimeofday(&mut shellstart, 0 as *mut crate::src_common::timezone);
+        c_gettimeofday(&mut shellstart, 0 as *mut crate::src_common::timezone);
         shell_start_time = shellstart.tv_sec;
     }
     return self_0;
 }
 
 fn get_seconds(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut time_since_start: time_t = 0;
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let time_since_start: time_t;
+    let p: *mut libc::c_char;
     let mut tv: crate::src_common::timeval = crate::src_common::timeval {
         tv_sec: 0,
         tv_usec: 0,
     };
     unsafe {
-        gettimeofday(&mut tv, 0 as *mut crate::src_common::timezone);
+        c_gettimeofday(&mut tv, 0 as *mut crate::src_common::timezone);
         time_since_start = tv.tv_sec - shell_start_time;
 
-        p = itos(seconds_value_assigned + time_since_start);
+        p = c_itos(seconds_value_assigned + time_since_start);
         if !(value_cell!(var).is_null()) {
             libc::free(value_cell!(var) as *mut libc::c_void);
         }
@@ -1330,7 +1339,7 @@ fn get_seconds(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 }
 
 fn init_seconds_var() -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut v: *mut SHELL_VAR;
 
     v = find_variable(b"SECONDS\0" as *const u8 as *const libc::c_char);
     unsafe {
@@ -1367,8 +1376,8 @@ static mut seeded_subshell: libc::c_int = 0 as libc::c_int;
 fn assign_random(
     self_0: *mut SHELL_VAR,
     value: *mut libc::c_char,
-    unused: arrayind_t,
-    key: *mut libc::c_char,
+    _unused: arrayind_t,
+    _key: *mut libc::c_char,
 ) -> *mut SHELL_VAR {
     let mut seedval: intmax_t = 0;
     let mut expok: libc::c_int = 0;
@@ -1381,7 +1390,7 @@ fn assign_random(
         if expok == 0 as libc::c_int {
             return self_0;
         }
-        sbrand(seedval as libc::c_ulong);
+        c_sbrand(seedval as libc::c_ulong);
         if subshell_environment != 0 {
             seeded_subshell = getpid();
         }
@@ -1391,16 +1400,16 @@ fn assign_random(
 
 #[no_mangle]
 pub fn get_random_number() -> libc::c_int {
-    let mut rv: libc::c_int = 0;
-    let mut pid: libc::c_int = 0;
+    let mut rv: libc::c_int;
+    let pid: libc::c_int;
     unsafe {
         pid = getpid();
         if subshell_environment != 0 && seeded_subshell != pid {
-            seedrand();
+            c_seedrand();
             seeded_subshell = pid;
         }
         loop {
-            rv = brand();
+            rv = c_brand();
             if rv == last_random_value {
                 break;
             }
@@ -1411,11 +1420,11 @@ pub fn get_random_number() -> libc::c_int {
 }
 
 fn get_random(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut rv: libc::c_int = 0;
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let rv: libc::c_int;
+    let p: *mut libc::c_char;
     rv = get_random_number();
     unsafe {
-        p = itos(rv as intmax_t);
+        p = c_itos(rv as intmax_t);
         if !(value_cell!(var).is_null()) {
             free(value_cell!(var) as *mut libc::c_void);
         }
@@ -1428,11 +1437,11 @@ fn get_random(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 
 #[no_mangle]
 pub fn get_urandom(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut rv: libc::c_uint = 0;
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let rv: libc::c_uint;
+    let p: *mut libc::c_char;
     unsafe {
-        rv = get_urandom32();
-        p = itos(rv as intmax_t);
+        rv = c_get_urandom32();
+        p = c_itos(rv as intmax_t);
         if !(value_cell!(var)).is_null() {
             libc::free(value_cell!(var) as *mut libc::c_void);
         }
@@ -1445,8 +1454,8 @@ pub fn get_urandom(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 fn assign_lineno(
     var: *mut SHELL_VAR,
     value: *mut libc::c_char,
-    unused: arrayind_t,
-    key: *mut libc::c_char,
+    _unused: arrayind_t,
+    _key: *mut libc::c_char,
 ) -> *mut SHELL_VAR {
     let mut new_value: intmax_t = 0;
     unsafe {
@@ -1463,11 +1472,11 @@ fn assign_lineno(
 }
 
 fn get_lineno(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ln: libc::c_int = 0;
+    let p: *mut libc::c_char;
+    let ln: libc::c_int;
     ln = executing_line_number();
     unsafe {
-        p = itos(ln as intmax_t);
+        p = c_itos(ln as intmax_t);
         if !(value_cell!(var).is_null()) {
             free(value_cell!(var) as *mut libc::c_void);
         }
@@ -1479,8 +1488,8 @@ fn get_lineno(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 fn assign_subshell(
     var: *mut SHELL_VAR,
     value: *mut libc::c_char,
-    unused: arrayind_t,
-    key: *mut libc::c_char,
+    _unused: arrayind_t,
+    _key: *mut libc::c_char,
 ) -> *mut SHELL_VAR {
     let mut new_value: intmax_t = 0;
     unsafe {
@@ -1496,9 +1505,9 @@ fn assign_subshell(
 }
 
 fn get_subshell(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let p: *mut libc::c_char;
     unsafe {
-        p = itos(subshell_level as intmax_t);
+        p = c_itos(subshell_level as intmax_t);
         if !(value_cell!(var).is_null()) {
             libc::free(value_cell!(var) as *mut libc::c_void);
         }
@@ -1508,11 +1517,11 @@ fn get_subshell(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 }
 
 fn get_epochseconds(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut now: intmax_t = 0;
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let now: intmax_t;
+    let p: *mut libc::c_char;
     unsafe {
         now = NOW!();
-        p = itos(now);
+        p = c_itos(now);
         if !(value_cell!(var).is_null()) {
             libc::free(value_cell!(var) as *mut libc::c_void);
         }
@@ -1523,13 +1532,13 @@ fn get_epochseconds(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 
 fn get_epochrealtime(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
     let mut buf: [libc::c_char; 32] = [0; 32];
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let p: *mut libc::c_char;
     let mut tv: crate::src_common::timeval = crate::src_common::timeval {
         tv_sec: 0,
         tv_usec: 0,
     };
     unsafe {
-        gettimeofday(&mut tv, 0 as *mut crate::src_common::timezone);
+        c_gettimeofday(&mut tv, 0 as *mut crate::src_common::timezone);
         libc::snprintf(
             buf.as_mut_ptr(),
             std::mem::size_of::<[libc::c_char; 32]>() as usize,
@@ -1548,11 +1557,11 @@ fn get_epochrealtime(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 }
 
 fn get_bashpid(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut pid: libc::c_int = 0;
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let pid: libc::c_int;
+    let p: *mut libc::c_char;
     unsafe {
         pid = getpid();
-        p = itos(pid as intmax_t);
+        p = c_itos(pid as intmax_t);
         if !(value_cell!(var).is_null()) {
             free(value_cell!(var) as *mut libc::c_void);
         }
@@ -1562,7 +1571,7 @@ fn get_bashpid(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 }
 
 fn get_bash_argv0(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let p: *mut libc::c_char;
     unsafe {
         p = savestring!(dollar_vars[0]);
         if !(value_cell!(var).is_null()) {
@@ -1578,10 +1587,10 @@ static mut static_shell_name: *mut libc::c_char = 0 as *const libc::c_char as *m
 fn assign_bash_argv0(
     var: *mut SHELL_VAR,
     value: *mut libc::c_char,
-    unused: arrayind_t,
-    key: *mut libc::c_char,
+    _unused: arrayind_t,
+    _key: *mut libc::c_char,
 ) -> *mut SHELL_VAR {
-    let mut vlen: size_t = 0;
+    let vlen: size_t;
     if value.is_null() {
         return var;
     }
@@ -1604,7 +1613,7 @@ fn assign_bash_argv0(
 }
 
 fn set_argv0() {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let v: *mut SHELL_VAR;
     v = find_variable(b"BASH_ARGV0\0" as *const u8 as *const libc::c_char);
     unsafe {
         if !v.is_null() && imported_p!(v) != 0 {
@@ -1619,7 +1628,7 @@ fn set_argv0() {
 }
 
 fn get_bash_command(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
+    let p: *mut libc::c_char;
     unsafe {
         if !the_printed_command_except_trap.is_null() {
             p = savestring!(the_printed_command_except_trap);
@@ -1637,11 +1646,11 @@ fn get_bash_command(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 }
 
 fn get_histcmd(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut n: libc::c_int = 0;
+    let p: *mut libc::c_char;
+    let n: libc::c_int;
     unsafe {
         n = history_number() - executing;
-        p = itos(n as intmax_t);
+        p = c_itos(n as intmax_t);
         if !(value_cell!(var).is_null()) {
             free(value_cell!(var) as *mut libc::c_void);
         }
@@ -1668,8 +1677,8 @@ fn get_comp_wordbreaks(var: *mut SHELL_VAR) -> *mut SHELL_VAR {
 fn assign_comp_wordbreaks(
     self_0: *mut SHELL_VAR,
     value: *mut libc::c_char,
-    unused: arrayind_t,
-    key: *mut libc::c_char,
+    _unused: arrayind_t,
+    _key: *mut libc::c_char,
 ) -> *mut SHELL_VAR {
     unsafe {
         if !rl_completer_word_break_characters.is_null()
@@ -1687,15 +1696,15 @@ fn assign_dirstack(
     self_0: *mut SHELL_VAR,
     value: *mut libc::c_char,
     ind: arrayind_t,
-    key: *mut libc::c_char,
+    _key: *mut libc::c_char,
 ) -> *mut SHELL_VAR {
     set_dirstack_element(ind, 1 as libc::c_int, value);
     return self_0;
 }
 
 fn get_dirstack(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut a: *mut ARRAY = 0 as *mut ARRAY;
-    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let a: *mut ARRAY;
+    let l: *mut WORD_LIST;
     l = get_directory_stack(0 as libc::c_int);
     unsafe {
         a = array_from_word_list(l);
@@ -1708,9 +1717,9 @@ fn get_dirstack(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
 }
 
 fn get_groupset(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut i: libc::c_int = 0;
+    let mut i: libc::c_int;
     let mut ng: libc::c_int = 0;
-    let mut a: *mut ARRAY = 0 as *mut ARRAY;
+    let a: *mut ARRAY;
     static mut group_set: *mut *mut libc::c_char =
         0 as *const libc::c_void as *mut libc::c_void as *mut *mut libc::c_char;
     unsafe {
@@ -1721,7 +1730,6 @@ fn get_groupset(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
             while i < ng {
                 array_insert(a, i as arrayind_t, *group_set.offset(i as isize));
                 i += 1;
-                i;
             }
         }
     }
@@ -1744,11 +1752,11 @@ fn get_bashargcv(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
 }
 
 fn build_hashcmd(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut h: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
-    let mut i: libc::c_int = 0;
-    let mut k: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut item: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let mut h: *mut HASH_TABLE;
+    let mut i: libc::c_int;
+    let mut k: *mut libc::c_char;
+    let mut v: *mut libc::c_char;
+    let mut item: *mut BUCKET_CONTENTS;
     unsafe {
         h = assoc_cell!(self_0);
 
@@ -1774,7 +1782,6 @@ fn build_hashcmd(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
                 item = (*item).next;
             }
             i += 1;
-            i;
         }
         var_setvalue!(self_0, h as *mut libc::c_char);
     }
@@ -1789,10 +1796,10 @@ fn get_hashcmd(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
 fn assign_hashcmd(
     self_0: *mut SHELL_VAR,
     value: *mut libc::c_char,
-    ind: arrayind_t,
+    _ind: arrayind_t,
     key: *mut libc::c_char,
 ) -> *mut SHELL_VAR {
-    let mut full_path: *mut libc::c_char = 0 as *mut libc::c_char;
+    let full_path: *mut libc::c_char;
     unsafe {
         if restricted != 0 {
             if !(libc::strchr(value, '/' as i32).is_null()) {
@@ -1816,11 +1823,11 @@ fn assign_hashcmd(
 }
 
 fn build_aliasvar(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut h: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
-    let mut i: libc::c_int = 0;
-    let mut k: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut item: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let mut h: *mut HASH_TABLE;
+    let mut i: libc::c_int;
+    let mut k: *mut libc::c_char;
+    let mut v: *mut libc::c_char;
+    let mut item: *mut BUCKET_CONTENTS;
     unsafe {
         h = assoc_cell!(self_0);
 
@@ -1847,7 +1854,6 @@ fn build_aliasvar(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
                 item = (*item).next;
             }
             i += 1;
-            i;
         }
         var_setvalue!(self_0, h as *mut libc::c_char);
     }
@@ -1862,7 +1868,7 @@ fn get_aliasvar(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
 fn assign_aliasvar(
     self_0: *mut SHELL_VAR,
     value: *mut libc::c_char,
-    ind: arrayind_t,
+    _ind: arrayind_t,
     key: *mut libc::c_char,
 ) -> *mut SHELL_VAR {
     unsafe {
@@ -1873,10 +1879,9 @@ fn assign_aliasvar(
             );
             return self_0;
         }
-
-        add_alias(key, value);
-        return build_aliasvar(self_0);
     }
+    add_alias(key, value);
+    return build_aliasvar(self_0);
 }
 
 fn get_funcname(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
@@ -1885,7 +1890,7 @@ fn get_funcname(self_0: *mut SHELL_VAR) -> *mut SHELL_VAR {
 
 #[no_mangle]
 pub fn make_funcname_visible(on_or_off: libc::c_int) {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let v: *mut SHELL_VAR;
     v = find_variable(b"FUNCNAME\0" as *const u8 as *const libc::c_char);
     unsafe {
         if v.is_null() || !((*v).dynamic_value).is_some() {
@@ -1900,7 +1905,7 @@ pub fn make_funcname_visible(on_or_off: libc::c_int) {
 }
 
 fn init_funcname_var() -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut v: *mut SHELL_VAR;
     v = find_variable(b"FUNCNAME\0" as *const u8 as *const libc::c_char);
     if !v.is_null() {
         return v;
@@ -1919,9 +1924,9 @@ fn init_funcname_var() -> *mut SHELL_VAR {
 }
 
 fn initialize_dynamic_variables() {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut v: *mut SHELL_VAR;
 
-    v = init_seconds_var();
+    init_seconds_var();
     unsafe {
         INIT_DYNAMIC_VAR!(
             v,
@@ -2031,67 +2036,67 @@ fn initialize_dynamic_variables() {
             Some(assign_comp_wordbreaks)
         );
 
-        v = init_dynamic_array_var(
+        init_dynamic_array_var(
             b"DIRSTACK\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             Some(get_dirstack),
             Some(assign_dirstack),
             0 as libc::c_int,
         );
 
-        v = init_dynamic_array_var(
+        init_dynamic_array_var(
             b"GROUPS\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             Some(get_groupset),
             Some(null_array_assign),
             att_noassign as libc::c_int,
         );
 
-        v = init_dynamic_array_var(
+        init_dynamic_array_var(
             b"BASH_ARGC\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             Some(get_bashargcv),
             Some(null_array_assign),
             (att_noassign | att_nounset as i32) as libc::c_int,
         );
 
-        v = init_dynamic_array_var(
+        init_dynamic_array_var(
             b"BASH_ARGV\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             Some(get_bashargcv),
             Some(null_array_assign),
             (att_noassign | att_nounset as i32) as libc::c_int,
         );
 
-        v = init_dynamic_array_var(
+        init_dynamic_array_var(
             b"BASH_SOURCE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             Some(get_self),
             Some(null_array_assign),
             (att_noassign | att_nounset as i32) as libc::c_int,
         );
 
-        v = init_dynamic_array_var(
+        init_dynamic_array_var(
             b"BASH_LINENO\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             Some(get_self),
             Some(null_array_assign),
             (att_noassign | att_nounset as i32) as libc::c_int,
         );
 
-        v = init_dynamic_assoc_var(
+        init_dynamic_assoc_var(
             b"BASH_CMDS\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             Some(get_hashcmd),
             Some(assign_hashcmd),
             att_nofree as libc::c_int,
         );
 
-        v = init_dynamic_assoc_var(
+        init_dynamic_assoc_var(
             b"BASH_ALIASES\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             Some(get_aliasvar),
             Some(assign_aliasvar),
             att_nofree as libc::c_int,
         );
-        v = init_funcname_var();
+        init_funcname_var();
     }
 }
 
 fn hash_lookup(name: *const libc::c_char, hashed_vars: *mut HASH_TABLE) -> *mut SHELL_VAR {
-    let mut bucket: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let bucket: *mut BUCKET_CONTENTS;
     bucket = hash_search(name, hashed_vars, 0 as libc::c_int);
     unsafe {
         if !bucket.is_null() {
@@ -2107,8 +2112,8 @@ fn hash_lookup(name: *const libc::c_char, hashed_vars: *mut HASH_TABLE) -> *mut 
 
 #[no_mangle]
 pub fn var_lookup(name: *const libc::c_char, vcontext: *mut VAR_CONTEXT) -> *mut SHELL_VAR {
-    let mut vc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut vc: *mut VAR_CONTEXT;
+    let mut v: *mut SHELL_VAR;
     v = 0 as *mut libc::c_void as *mut SHELL_VAR;
     vc = vcontext;
     unsafe {
@@ -2124,10 +2129,10 @@ pub fn var_lookup(name: *const libc::c_char, vcontext: *mut VAR_CONTEXT) -> *mut
 }
 
 fn find_variable_internal(name: *const libc::c_char, flags: libc::c_int) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut search_tempenv: libc::c_int = 0;
-    let mut force_tempenv: libc::c_int = 0;
-    let mut vc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
+    let mut var: *mut SHELL_VAR;
+    let search_tempenv: libc::c_int;
+    let force_tempenv: libc::c_int;
+    let mut vc: *mut VAR_CONTEXT;
 
     var = 0 as *mut libc::c_void as *mut SHELL_VAR;
     unsafe {
@@ -2170,18 +2175,17 @@ fn find_variable_internal(name: *const libc::c_char, flags: libc::c_int) -> *mut
 
 #[no_mangle]
 pub fn find_variable_nameref(mut v: *mut SHELL_VAR) -> *mut SHELL_VAR {
-    let mut level: libc::c_int = 0;
-    let mut flags: libc::c_int = 0;
-    let mut newname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut orig: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut oldv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut level: libc::c_int;
+    let mut flags: libc::c_int;
+    let mut newname: *mut libc::c_char;
+    let orig: *mut SHELL_VAR;
+    let mut oldv: *mut SHELL_VAR;
     level = 0 as libc::c_int;
 
     orig = v;
     unsafe {
         while !v.is_null() && nameref_p!(v) != 0 {
             level += 1;
-            level;
             if level > NAMEREF_MAX as libc::c_int {
                 return 0 as *mut SHELL_VAR;
             }
@@ -2218,18 +2222,17 @@ pub fn find_variable_last_nameref(
     name: *const libc::c_char,
     vflags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut nv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut newname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut level: libc::c_int = 0;
-    let mut flags: libc::c_int = 0;
+    let mut v: *mut SHELL_VAR;
+    let mut nv: *mut SHELL_VAR;
+    let mut newname: *mut libc::c_char;
+    let mut level: libc::c_int;
+    let mut flags: libc::c_int;
     v = find_variable_noref(name);
     nv = v;
     level = 0 as libc::c_int;
     unsafe {
         while !v.is_null() && nameref_p!(v) != 0 as libc::c_int {
             level += 1;
-            level;
             if level > NAMEREF_MAX as libc::c_int {
                 return 0 as *mut SHELL_VAR;
             }
@@ -2259,60 +2262,60 @@ pub fn find_global_variable_last_nameref(
     name: *const libc::c_char,
     vflags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut nv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut newname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut level: libc::c_int = 0;
+    let mut v: *mut SHELL_VAR;
+    let mut nv: *mut SHELL_VAR;
+    let mut newname: *mut libc::c_char;
+    let mut level: libc::c_int;
     v = find_global_variable_noref(name);
     nv = v;
     level = 0 as libc::c_int;
-    unsafe {
-        while !v.is_null() && nameref_p!(v) != 0 {
-            level += 1;
-            level;
-            if level > NAMEREF_MAX as libc::c_int {
-                return 0 as *mut SHELL_VAR;
-            }
-            newname = nameref_cell!(v);
-            if newname.is_null() || *newname as libc::c_int == '\0' as i32 {
-                return if vflags != 0 && invisible_p!(v) != 0 {
-                    v
-                } else {
-                    0 as *mut SHELL_VAR
-                };
-            }
-            nv = v;
-            v = find_global_variable_noref(newname);
+
+    while unsafe { !v.is_null() && nameref_p!(v) != 0 } {
+        level += 1;
+        if level > NAMEREF_MAX as libc::c_int {
+            return 0 as *mut SHELL_VAR;
         }
+        unsafe {
+            newname = nameref_cell!(v);
+        }
+        if unsafe { newname.is_null() || *newname as libc::c_int == '\0' as i32 } {
+            return if unsafe { vflags != 0 && invisible_p!(v) != 0 } {
+                v
+            } else {
+                0 as *mut SHELL_VAR
+            };
+        }
+        nv = v;
+        v = find_global_variable_noref(newname);
     }
+
     return nv;
 }
 
 fn find_nameref_at_context(v: *mut SHELL_VAR, vc: *mut VAR_CONTEXT) -> *mut SHELL_VAR {
-    let mut nv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut nv2: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut newname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut level: libc::c_int = 0;
+    let mut nv: *mut SHELL_VAR;
+    let mut nv2: *mut SHELL_VAR;
+    let mut newname: *mut libc::c_char;
+    let mut level: libc::c_int;
     nv = v;
     level = 1 as libc::c_int;
-    unsafe {
-        while !nv.is_null() && nameref_p!(nv) != 0 {
-            level += 1;
-            level;
-            if level > NAMEREF_MAX as libc::c_int {
-                return &mut nameref_maxloop_value;
-            }
-            newname = nameref_cell!(nv);
-            if newname.is_null() || *newname as libc::c_int == '\0' as i32 {
-                return 0 as *mut libc::c_void as *mut SHELL_VAR;
-            }
-            nv2 = hash_lookup(newname, (*vc).table);
-            if nv2.is_null() {
-                break;
-            }
-            nv = nv2;
+
+    while unsafe { !nv.is_null() && nameref_p!(nv) != 0 } {
+        level += 1;
+        if level > NAMEREF_MAX as libc::c_int {
+            return unsafe { &mut nameref_maxloop_value };
         }
+        newname = unsafe { nameref_cell!(nv) };
+        if unsafe { newname.is_null() || *newname as libc::c_int == '\0' as i32 } {
+            return 0 as *mut libc::c_void as *mut SHELL_VAR;
+        }
+        nv2 = unsafe { hash_lookup(newname, (*vc).table) };
+        if nv2.is_null() {
+            break;
+        }
+        nv = nv2;
     }
+
     return nv;
 }
 
@@ -2321,9 +2324,9 @@ fn find_variable_nameref_context(
     vc: *mut VAR_CONTEXT,
     nvcp: *mut *mut VAR_CONTEXT,
 ) -> *mut SHELL_VAR {
-    let mut nv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut nv2: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut nvc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
+    let mut nv: *mut SHELL_VAR;
+    let mut nv2: *mut SHELL_VAR;
+    let mut nvc: *mut VAR_CONTEXT;
 
     nv = v;
     nvc = vc;
@@ -2357,9 +2360,9 @@ fn find_variable_last_nameref_context(
     vc: *mut VAR_CONTEXT,
     nvcp: *mut *mut VAR_CONTEXT,
 ) -> *mut SHELL_VAR {
-    let mut nv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut nv2: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut nvc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
+    let mut nv: *mut SHELL_VAR;
+    let mut nv2: *mut SHELL_VAR;
+    let mut nvc: *mut VAR_CONTEXT;
     nv = v;
     nvc = vc;
     unsafe {
@@ -2389,7 +2392,7 @@ pub fn find_variable_nameref_for_create(
     name: *const libc::c_char,
     flags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
     var = find_variable_last_nameref(name, 1 as libc::c_int);
     unsafe {
         if flags & 1 as libc::c_int != 0
@@ -2419,9 +2422,9 @@ pub fn find_variable_nameref_for_create(
 
 pub fn find_variable_nameref_for_assignment(
     name: *const libc::c_char,
-    flags: libc::c_int,
+    _flags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
     var = find_variable_last_nameref(name, 1 as libc::c_int);
     unsafe {
         if !var.is_null() && nameref_p!(var) != 0 && invisible_p!(var) != 0 {
@@ -2448,22 +2451,23 @@ pub fn find_variable_nameref_for_assignment(
 
 #[no_mangle]
 pub fn nameref_transform_name(name: *mut libc::c_char, flags: libc::c_int) -> *mut libc::c_char {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let newname: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut v: *mut SHELL_VAR;
+    // let newname: *mut libc::c_char = 0 as *mut libc::c_char;
     v = 0 as *mut SHELL_VAR;
-    unsafe {
-        if flags & ASS_MKLOCAL!() != 0 {
-            v = find_variable_last_nameref(name, 1 as libc::c_int);
-            if !v.is_null() && (*v).context != variable_context {
-                v = 0 as *mut SHELL_VAR;
-            }
-        } else if flags & ASS_MKGLOBAL!() != 0 {
-            v = if flags & ASS_CHKLOCAL!() != 0 {
-                find_variable_last_nameref(name, 1 as libc::c_int)
-            } else {
-                find_global_variable_last_nameref(name, 1 as libc::c_int)
-            };
+
+    if flags & ASS_MKLOCAL!() != 0 {
+        v = find_variable_last_nameref(name, 1 as libc::c_int);
+        if unsafe { !v.is_null() && (*v).context != variable_context } {
+            v = 0 as *mut SHELL_VAR;
         }
+    } else if flags & ASS_MKGLOBAL!() != 0 {
+        v = if flags & ASS_CHKLOCAL!() != 0 {
+            find_variable_last_nameref(name, 1 as libc::c_int)
+        } else {
+            find_global_variable_last_nameref(name, 1 as libc::c_int)
+        };
+    }
+    unsafe {
         if !v.is_null()
             && nameref_p!(v) != 0
             && valid_nameref_value(nameref_cell!(v), 1 as libc::c_int) != 0
@@ -2471,12 +2475,13 @@ pub fn nameref_transform_name(name: *mut libc::c_char, flags: libc::c_int) -> *m
             return nameref_cell!(v);
         }
     }
+
     return name;
 }
 
 #[no_mangle]
 pub fn find_variable_tempenv(name: *const libc::c_char) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut var: *mut SHELL_VAR;
     var = find_variable_internal(name, FV_FORCETEMPENV!() as libc::c_int);
     if unsafe { !var.is_null() && nameref_p!(var) != 0 } {
         var = find_variable_nameref(var);
@@ -2486,7 +2491,7 @@ pub fn find_variable_tempenv(name: *const libc::c_char) -> *mut SHELL_VAR {
 
 #[no_mangle]
 pub fn find_variable_notempenv(name: *const libc::c_char) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut var: *mut SHELL_VAR;
     var = find_variable_internal(name, 0 as libc::c_int);
     if unsafe { !var.is_null() && nameref_p!(var) != 0 } {
         var = find_variable_nameref(var);
@@ -2496,7 +2501,7 @@ pub fn find_variable_notempenv(name: *const libc::c_char) -> *mut SHELL_VAR {
 
 #[no_mangle]
 pub fn find_global_variable(name: *const libc::c_char) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut var: *mut SHELL_VAR;
     unsafe {
         var = var_lookup(name, global_variables);
         if !var.is_null() && nameref_p!(var) != 0 {
@@ -2515,7 +2520,7 @@ pub fn find_global_variable(name: *const libc::c_char) -> *mut SHELL_VAR {
 }
 #[no_mangle]
 pub fn find_global_variable_noref(name: *const libc::c_char) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
     unsafe {
         var = var_lookup(name, global_variables);
         if var.is_null() {
@@ -2532,7 +2537,7 @@ pub fn find_global_variable_noref(name: *const libc::c_char) -> *mut SHELL_VAR {
 
 #[no_mangle]
 pub fn find_shell_variable(name: *const libc::c_char) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut var: *mut SHELL_VAR;
     unsafe {
         var = var_lookup(name, shell_variables);
         if !var.is_null() && nameref_p!(var) != 0 {
@@ -2551,8 +2556,8 @@ pub fn find_shell_variable(name: *const libc::c_char) -> *mut SHELL_VAR {
 }
 #[no_mangle]
 pub fn find_variable(name: *const libc::c_char) -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut flags: libc::c_int = 0;
+    let mut v: *mut SHELL_VAR;
+    let mut flags: libc::c_int;
     unsafe {
         last_table_searched = 0 as *mut HASH_TABLE;
 
@@ -2575,8 +2580,8 @@ pub fn find_variable(name: *const libc::c_char) -> *mut SHELL_VAR {
 
 #[no_mangle]
 pub fn find_variable_no_invisible(name: *const libc::c_char) -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut flags: libc::c_int = 0;
+    let mut v: *mut SHELL_VAR;
+    let mut flags: libc::c_int;
     unsafe {
         last_table_searched = 0 as *mut HASH_TABLE;
         flags = FV_SKIPINVISIBLE!();
@@ -2595,8 +2600,8 @@ pub fn find_variable_no_invisible(name: *const libc::c_char) -> *mut SHELL_VAR {
 
 #[no_mangle]
 pub fn find_variable_for_assignment(name: *const libc::c_char) -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut flags: libc::c_int = 0;
+    let mut v: *mut SHELL_VAR;
+    let mut flags: libc::c_int;
     unsafe {
         last_table_searched = 0 as *mut HASH_TABLE;
         flags = 0 as libc::c_int;
@@ -2615,8 +2620,8 @@ pub fn find_variable_for_assignment(name: *const libc::c_char) -> *mut SHELL_VAR
 
 #[no_mangle]
 pub fn find_variable_noref(name: *const libc::c_char) -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut flags: libc::c_int = 0;
+    let v: *mut SHELL_VAR;
+    let mut flags: libc::c_int;
     unsafe {
         flags = 0 as libc::c_int;
         if expanding_redir == 0 as libc::c_int
@@ -2663,7 +2668,7 @@ pub fn get_variable_value(var: *mut SHELL_VAR) -> *mut libc::c_char {
 
 #[no_mangle]
 pub fn get_string_value(var_name: *const libc::c_char) -> *mut libc::c_char {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
     var = find_variable(var_name);
     return if !var.is_null() {
         get_variable_value(var)
@@ -2679,15 +2684,13 @@ pub fn sh_get_env_value_rename(v: *const libc::c_char) -> *mut libc::c_char {
 
 #[no_mangle]
 pub fn validate_inherited_value(var: *mut SHELL_VAR, type_0: libc::c_int) -> libc::c_int {
-    unsafe {
-        if type_0 == att_array as libc::c_int && assoc_p!(var) != 0 {
-            return 0 as libc::c_int;
-        } else if type_0 == att_assoc as libc::c_int && array_p!(var) != 0 {
-            return 0 as libc::c_int;
-        } else {
-            return 1 as libc::c_int;
-        };
-    }
+    if unsafe { type_0 == att_array as libc::c_int && assoc_p!(var) != 0 } {
+        return 0 as libc::c_int;
+    } else if unsafe { type_0 == att_assoc as libc::c_int && array_p!(var) != 0 } {
+        return 0 as libc::c_int;
+    } else {
+        return 1 as libc::c_int;
+    };
 }
 #[no_mangle]
 pub fn var_sametype(v1: *mut SHELL_VAR, v2: *mut SHELL_VAR) -> libc::c_int {
@@ -2710,35 +2713,37 @@ pub fn var_sametype(v1: *mut SHELL_VAR, v2: *mut SHELL_VAR) -> libc::c_int {
 
 #[no_mangle]
 pub fn set_if_not(name: *mut libc::c_char, value: *mut libc::c_char) -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    unsafe {
-        if shell_variables.is_null() {
-            create_variable_tables();
-        }
+    let mut v: *mut SHELL_VAR;
 
-        v = find_variable(name);
+    if unsafe { shell_variables.is_null() } {
+        create_variable_tables();
+    }
 
-        if v.is_null() {
-            v = bind_variable_internal(
+    v = find_variable(name);
+
+    if v.is_null() {
+        v = unsafe {
+            bind_variable_internal(
                 name,
                 value,
                 (*global_variables).table,
                 HASH_NOSRCH as libc::c_int,
                 0 as libc::c_int,
-            );
-        }
+            )
+        };
     }
+
     return v;
 }
 
 #[no_mangle]
 pub fn make_local_variable(name: *const libc::c_char, flags: libc::c_int) -> *mut SHELL_VAR {
-    let mut new_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut old_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut old_ref: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut vc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
-    let mut was_tmpvar: bool = false;
-    let mut old_value: *mut libc::c_char = 0 as *mut libc::c_char;
+    let new_var: *mut SHELL_VAR;
+    let mut old_var: *mut SHELL_VAR;
+    let mut old_ref: *mut SHELL_VAR;
+    let mut vc: *mut VAR_CONTEXT;
+    let was_tmpvar: bool;
+    let old_value: *mut libc::c_char;
 
     old_ref = find_variable_noref(name);
     unsafe {
@@ -2781,7 +2786,6 @@ pub fn make_local_variable(name: *const libc::c_char, flags: libc::c_int) -> *mu
                     vc = (*vc).down;
                 }
                 break;
-                return old_var;
             }
 
             if was_tmpvar {
@@ -2870,7 +2874,7 @@ pub fn make_local_variable(name: *const libc::c_char, flags: libc::c_int) -> *mu
 }
 
 fn new_shell_variable(name: *const libc::c_char) -> *mut SHELL_VAR {
-    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let entry: *mut SHELL_VAR;
     unsafe {
         entry = libc::malloc(std::mem::size_of::<SHELL_VAR>() as usize) as *mut SHELL_VAR;
         (*entry).name = savestring!(name);
@@ -2891,8 +2895,8 @@ fn new_shell_variable(name: *const libc::c_char) -> *mut SHELL_VAR {
 }
 
 fn make_new_variable(name: *const libc::c_char, table: *mut HASH_TABLE) -> *mut SHELL_VAR {
-    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut elt: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let entry: *mut SHELL_VAR;
+    let elt: *mut BUCKET_CONTENTS;
     unsafe {
         entry = new_shell_variable(name);
         if shell_variables.is_null() {
@@ -2906,8 +2910,8 @@ fn make_new_variable(name: *const libc::c_char, table: *mut HASH_TABLE) -> *mut 
 
 #[no_mangle]
 pub fn make_new_array_variable(name: *mut libc::c_char) -> *mut SHELL_VAR {
-    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut array: *mut ARRAY = 0 as *mut ARRAY;
+    let entry: *mut SHELL_VAR;
+    let array: *mut ARRAY;
     unsafe {
         entry = make_new_variable(name, (*global_variables).table);
         array = array_create();
@@ -2920,9 +2924,9 @@ pub fn make_new_array_variable(name: *mut libc::c_char) -> *mut SHELL_VAR {
 
 #[no_mangle]
 pub fn make_local_array_variable(name: *mut libc::c_char, flags: libc::c_int) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut array: *mut ARRAY = 0 as *mut ARRAY;
-    let mut assoc_ok: libc::c_int = 0;
+    let mut var: *mut SHELL_VAR;
+    let array: *mut ARRAY;
+    let assoc_ok: libc::c_int;
 
     assoc_ok = flags & MKLOC_ASSOCOK!() as libc::c_int;
 
@@ -2955,8 +2959,8 @@ pub fn make_local_array_variable(name: *mut libc::c_char, flags: libc::c_int) ->
 
 #[no_mangle]
 pub fn make_new_assoc_variable(name: *mut libc::c_char) -> *mut SHELL_VAR {
-    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut hash: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
+    let entry: *mut SHELL_VAR;
+    let hash: *mut HASH_TABLE;
     unsafe {
         entry = make_new_variable(name, (*global_variables).table);
         hash = assoc_create!(ASSOC_HASH_BUCKETS!());
@@ -2969,9 +2973,9 @@ pub fn make_new_assoc_variable(name: *mut libc::c_char) -> *mut SHELL_VAR {
 
 #[no_mangle]
 pub fn make_local_assoc_variable(name: *mut libc::c_char, flags: libc::c_int) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut hash: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
-    let mut array_ok: libc::c_int = 0;
+    let mut var: *mut SHELL_VAR;
+    let hash: *mut HASH_TABLE;
+    let array_ok: libc::c_int;
     array_ok = flags & MKLOC_ARRAYOK!() as libc::c_int;
 
     var = make_local_variable(name, flags & MKLOC_INHERIT!() as libc::c_int);
@@ -3008,14 +3012,14 @@ pub fn make_variable_value(
     value: *mut libc::c_char,
     flags: libc::c_int,
 ) -> *mut libc::c_char {
-    let mut current_block: u64;
+    // let mut current_block: u64;
     let mut retval: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut oval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut oval: *mut libc::c_char;
     let mut lval: intmax_t = 0;
-    let mut rval: intmax_t = 0;
+    let mut rval: intmax_t;
     let mut expok: libc::c_int = 0;
-    let mut olen: libc::c_int = 0;
-    let mut op: libc::c_int = 0;
+    let mut olen: libc::c_int;
+    let op: libc::c_int;
 
     let mut T_flags: bool = false;
     unsafe {
@@ -3049,7 +3053,7 @@ pub fn make_variable_value(
                 if flags & (ASS_APPEND as libc::c_int) != 0 {
                     rval += lval;
                 }
-                retval = itos(rval);
+                retval = c_itos(rval);
             } else if flags & ASS_NOEVAL!() == 0 as libc::c_int
                 && (capcase_p!(var) != 0 || uppercase_p!(var) != 0 || lowercase_p!(var) != 0)
             {
@@ -3085,7 +3089,7 @@ pub fn make_variable_value(
                     CASE_LOWER as libc::c_int
                 };
 
-                oval = sh_modcase(retval, 0 as *mut libc::c_char, op);
+                oval = c_sh_modcase(retval, 0 as *mut libc::c_char, op);
                 free(retval as *mut libc::c_void);
                 retval = oval;
             } else if !value.is_null() {
@@ -3150,7 +3154,7 @@ pub fn make_variable_value(
 
 fn can_optimize_assignment(
     entry: *mut SHELL_VAR,
-    value: *mut libc::c_char,
+    _value: *mut libc::c_char,
     aflags: libc::c_int,
 ) -> libc::c_int {
     if aflags & ASS_APPEND as libc::c_int == 0 as libc::c_int {
@@ -3177,12 +3181,12 @@ fn can_optimize_assignment(
 fn optimized_assignment(
     entry: *mut SHELL_VAR,
     value: *mut libc::c_char,
-    aflags: libc::c_int,
+    _aflags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut len: size_t = 0;
-    let mut vlen: size_t = 0;
-    let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut new: *mut libc::c_char = 0 as *mut libc::c_char;
+    let len: size_t;
+    let vlen: size_t;
+    let v: *mut libc::c_char;
+    let new: *mut libc::c_char;
     unsafe {
         v = value_cell!(entry);
 
@@ -3212,9 +3216,9 @@ fn bind_variable_internal(
     hflags: libc::c_int,
     aflags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut newval: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut tname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut newval: *mut libc::c_char;
+    let tname: *mut libc::c_char;
+    let mut entry: *mut SHELL_VAR;
     let mut tentry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
 
     entry = if hflags & HASH_NOSRCH as libc::c_int != 0 {
@@ -3223,7 +3227,7 @@ fn bind_variable_internal(
         hash_lookup(name, table)
     };
 
-    let mut T_flags: bool = false;
+    let mut T_flags: bool;
     unsafe {
         if !entry.is_null()
             && nameref_p!(entry) != 0
@@ -3500,8 +3504,8 @@ pub fn bind_variable_value(
     value: *mut libc::c_char,
     aflags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut invis: libc::c_int = 0;
+    let t: *mut libc::c_char;
+    let invis: libc::c_int;
     unsafe {
         invis = invisible_p!(var);
         VUNSETATTR!(var, att_invisible);
@@ -3578,32 +3582,33 @@ pub fn bind_int_variable(
     rhs: *mut libc::c_char,
     flags: libc::c_int,
 ) -> *mut SHELL_VAR {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut isint: libc::c_int = 0;
-    let mut isarr: libc::c_int = 0;
-    let mut implicitarray: libc::c_int = 0;
+    let mut v: *mut SHELL_VAR;
+    let mut isint: libc::c_int;
+    let mut isarr: libc::c_int;
+    let mut implicitarray: libc::c_int;
     implicitarray = 0 as libc::c_int;
     isarr = implicitarray;
     isint = isarr;
-    unsafe {
-        if valid_array_reference(
+
+    if valid_array_reference(
+        lhs,
+        (flags & ASS_NOEXPAND as libc::c_int != 0 as libc::c_int) as libc::c_int,
+    ) != 0
+    {
+        isarr = 1 as libc::c_int;
+        v = array_variable_part(
             lhs,
             (flags & ASS_NOEXPAND as libc::c_int != 0 as libc::c_int) as libc::c_int,
-        ) != 0
-        {
-            isarr = 1 as libc::c_int;
-            v = array_variable_part(
-                lhs,
-                (flags & ASS_NOEXPAND as libc::c_int != 0 as libc::c_int) as libc::c_int,
-                0 as *mut *mut libc::c_char,
-                0 as *mut libc::c_int,
-            );
-        } else if legal_identifier(lhs) == 0 as libc::c_int {
-            sh_invalidid(lhs);
-            return 0 as *mut libc::c_void as *mut SHELL_VAR;
-        } else {
-            v = find_variable(lhs);
-        }
+            0 as *mut *mut libc::c_char,
+            0 as *mut libc::c_int,
+        );
+    } else if legal_identifier(lhs) == 0 as libc::c_int {
+        sh_invalidid(lhs);
+        return 0 as *mut libc::c_void as *mut SHELL_VAR;
+    } else {
+        v = find_variable(lhs);
+    }
+    unsafe {
         if !v.is_null() {
             isint = integer_p!(v);
             VUNSETATTR!(v, att_integer);
@@ -3612,13 +3617,15 @@ pub fn bind_int_variable(
                 implicitarray = 1 as libc::c_int;
             }
         }
-        if isarr != 0 {
-            v = assign_array_element(lhs, rhs, flags);
-        } else if implicitarray != 0 {
-            v = bind_array_variable(lhs, 0 as libc::c_int as arrayind_t, rhs, 0 as libc::c_int);
-        } else {
-            v = bind_variable(lhs, rhs, 0 as libc::c_int);
-        }
+    }
+    if isarr != 0 {
+        v = assign_array_element(lhs, rhs, flags);
+    } else if implicitarray != 0 {
+        v = bind_array_variable(lhs, 0 as libc::c_int as arrayind_t, rhs, 0 as libc::c_int);
+    } else {
+        v = bind_variable(lhs, rhs, 0 as libc::c_int);
+    }
+    unsafe {
         if !v.is_null() {
             if isint != 0 {
                 VSETATTR!(v, att_integer);
@@ -3632,6 +3639,7 @@ pub fn bind_int_variable(
             );
         }
     }
+
     return v;
 }
 
@@ -3639,27 +3647,26 @@ pub fn bind_int_variable(
 pub fn bind_var_to_int(var: *mut libc::c_char, val: intmax_t) -> *mut SHELL_VAR {
     let mut ibuf: [libc::c_char; (INT_STRLEN_BOUND!(intmax_t) + 1) as usize] =
         [0; (INT_STRLEN_BOUND!(intmax_t) + 1) as usize];
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
-    unsafe {
-        p = fmtulong(
-            val as libc::c_ulong,
-            10 as libc::c_int,
-            ibuf.as_mut_ptr(),
-            std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(intmax_t) + 1) as usize]>()
-                as size_t,
-            0 as libc::c_int,
-        );
-    }
+    let p: *mut libc::c_char;
+
+    p = c_fmtulong(
+        val as libc::c_ulong,
+        10 as libc::c_int,
+        ibuf.as_mut_ptr(),
+        std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(intmax_t) + 1) as usize]>() as size_t,
+        0 as libc::c_int,
+    );
+
     return bind_int_variable(var, p, 0 as libc::c_int);
 }
 
 #[no_mangle]
 pub fn bind_function(name: *const libc::c_char, value: *mut COMMAND) -> *mut SHELL_VAR {
-    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut entry: *mut SHELL_VAR;
     entry = find_function(name);
     unsafe {
         if entry.is_null() {
-            let mut elt: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+            let elt: *mut BUCKET_CONTENTS;
             elt = hash_insert(savestring!(name), shell_functions, 0x1 as libc::c_int);
             entry = new_shell_variable(name);
             (*elt).data = entry as *mut libc::c_void;
@@ -3693,15 +3700,15 @@ pub fn bind_function(name: *const libc::c_char, value: *mut COMMAND) -> *mut SHE
 
 #[no_mangle]
 pub fn bind_function_def(name: *const libc::c_char, value: *mut FUNCTION_DEF, flags: libc::c_int) {
-    let mut entry: *mut FUNCTION_DEF = 0 as *mut FUNCTION_DEF;
-    let mut elt: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut cmd: *mut COMMAND = 0 as *mut COMMAND;
+    let mut entry: *mut FUNCTION_DEF;
+    let elt: *mut BUCKET_CONTENTS;
+    let cmd: *mut COMMAND;
 
     entry = find_function_def(name);
     unsafe {
         if !entry.is_null() && flags & 1 as libc::c_int != 0 {
             dispose_function_def_contents(entry);
-            entry = copy_function_def_contents(value, entry);
+            copy_function_def_contents(value, entry);
         } else if !entry.is_null() {
             return;
         } else {
@@ -3721,14 +3728,14 @@ pub fn bind_function_def(name: *const libc::c_char, value: *mut FUNCTION_DEF, fl
 
 #[no_mangle]
 pub fn assign_in_env(word: *mut WORD_DESC, flags: libc::c_int) -> libc::c_int {
-    let mut offset: libc::c_int = 0;
-    let mut aflags: libc::c_int = 0;
-    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut newname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut string: *const libc::c_char = 0 as *const libc::c_char;
+    let offset: libc::c_int;
+    let mut aflags: libc::c_int;
+    let name: *mut libc::c_char;
+    let mut temp: *mut libc::c_char;
+    let mut value: *mut libc::c_char;
+    let mut newname: *mut libc::c_char;
+    let mut var: *mut SHELL_VAR;
+    let string: *const libc::c_char;
 
     unsafe {
         string = (*word).word;
@@ -3785,7 +3792,7 @@ pub fn assign_in_env(word: *mut WORD_DESC, flags: libc::c_int) -> libc::c_int {
                 if !value.is_null() {
                     free(value as *mut libc::c_void);
                 }
-                value = 0 as *mut libc::c_char;
+                // value = 0 as *mut libc::c_char;
                 value = temp;
             }
         }
@@ -3876,9 +3883,9 @@ pub fn dispose_variable(var: *mut SHELL_VAR) {
 
 #[no_mangle]
 pub fn unbind_variable(name: *const libc::c_char) -> libc::c_int {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut nv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut r: libc::c_int = 0;
+    let v: *mut SHELL_VAR;
+    let nv: *mut SHELL_VAR;
+    let r: libc::c_int;
     unsafe {
         v = var_lookup(name, shell_variables);
         nv = if !v.is_null() && nameref_p!(v) != 0 {
@@ -3898,7 +3905,7 @@ pub fn unbind_variable(name: *const libc::c_char) -> libc::c_int {
 #[no_mangle]
 pub fn unbind_nameref(name: *const libc::c_char) -> libc::c_int {
     unsafe {
-        let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+        let v: *mut SHELL_VAR;
         v = var_lookup(name, shell_variables);
         if !v.is_null() && nameref_p!(v) != 0 {
             return makunbound(name, shell_variables);
@@ -3909,7 +3916,7 @@ pub fn unbind_nameref(name: *const libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn unbind_variable_noref(name: *const libc::c_char) -> libc::c_int {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let v: *mut SHELL_VAR;
     unsafe {
         v = var_lookup(name, shell_variables);
         if !v.is_null() {
@@ -3921,7 +3928,7 @@ pub fn unbind_variable_noref(name: *const libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn check_unbind_variable(name: *const libc::c_char) -> libc::c_int {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let v: *mut SHELL_VAR;
     v = find_variable(name);
     unsafe {
         if !v.is_null() && readonly_p!(v) != 0 {
@@ -3944,8 +3951,8 @@ pub fn check_unbind_variable(name: *const libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn unbind_func(name: *const libc::c_char) -> libc::c_int {
-    let mut elt: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut func: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let elt: *mut BUCKET_CONTENTS;
+    let func: *mut SHELL_VAR;
     unsafe {
         elt = hash_remove(name, shell_functions, 0 as libc::c_int);
         if elt.is_null() {
@@ -3957,7 +3964,6 @@ pub fn unbind_func(name: *const libc::c_char) -> libc::c_int {
         if !func.is_null() {
             if exported_p!(func) != 0 {
                 array_needs_making += 1;
-                array_needs_making;
             }
             dispose_variable(func);
         }
@@ -3969,8 +3975,8 @@ pub fn unbind_func(name: *const libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn unbind_function_def(name: *const libc::c_char) -> libc::c_int {
-    let mut elt: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut funcdef: *mut FUNCTION_DEF = 0 as *mut FUNCTION_DEF;
+    let elt: *mut BUCKET_CONTENTS;
+    let funcdef: *mut FUNCTION_DEF;
     unsafe {
         elt = hash_remove(name, shell_function_defs, 0 as libc::c_int);
         if elt.is_null() {
@@ -3989,9 +3995,9 @@ pub fn unbind_function_def(name: *const libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn delete_var(name: *const libc::c_char, vc: *mut VAR_CONTEXT) -> libc::c_int {
-    let mut elt: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut old_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut v: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
+    let mut elt: *mut BUCKET_CONTENTS;
+    let old_var: *mut SHELL_VAR;
+    let mut v: *mut VAR_CONTEXT;
     elt = 0 as *mut libc::c_void as *mut BUCKET_CONTENTS;
     v = vc;
     unsafe {
@@ -4015,11 +4021,11 @@ pub fn delete_var(name: *const libc::c_char, vc: *mut VAR_CONTEXT) -> libc::c_in
 
 #[no_mangle]
 pub fn makunbound(name: *const libc::c_char, vc: *mut VAR_CONTEXT) -> libc::c_int {
-    let mut elt: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut new_elt: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut old_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut v: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut elt: *mut BUCKET_CONTENTS;
+    let new_elt: *mut BUCKET_CONTENTS;
+    let old_var: *mut SHELL_VAR;
+    let mut v: *mut VAR_CONTEXT;
+    let t: *mut libc::c_char;
     elt = 0 as *mut libc::c_void as *mut BUCKET_CONTENTS;
     v = vc;
     unsafe {
@@ -4037,7 +4043,6 @@ pub fn makunbound(name: *const libc::c_char, vc: *mut VAR_CONTEXT) -> libc::c_in
 
         if !old_var.is_null() && exported_p!(old_var) != 0 {
             array_needs_making += 1;
-            array_needs_making;
         }
         if !old_var.is_null()
             && local_p!(old_var) != 0
@@ -4092,7 +4097,7 @@ pub fn makunbound(name: *const libc::c_char, vc: *mut VAR_CONTEXT) -> libc::c_in
 
 #[no_mangle]
 pub fn kill_all_local_variables() {
-    let mut vc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
+    let mut vc: *mut VAR_CONTEXT;
     unsafe {
         vc = shell_variables;
         while !vc.is_null() {
@@ -4113,7 +4118,7 @@ pub fn kill_all_local_variables() {
 }
 
 fn free_variable_hash_data(data: *mut libc::c_void) {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
     var = data as *mut SHELL_VAR;
     dispose_variable(var);
 }
@@ -4134,8 +4139,8 @@ pub fn delete_all_variables(hashed_vars: *mut HASH_TABLE) {
 
 #[no_mangle]
 pub fn set_var_read_only(name: *mut libc::c_char) {
-    let mut entry: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    entry = find_variable(name);
+    let mut entry: *mut SHELL_VAR;
+    find_variable(name);
     unsafe {
         FIND_OR_MAKE_VARIABLE!(name, entry);
         VSETATTR!(entry, att_readonly);
@@ -4143,7 +4148,7 @@ pub fn set_var_read_only(name: *mut libc::c_char) {
 }
 
 fn vlist_alloc(nentries: libc::c_int) -> *mut VARLIST {
-    let mut vlist: *mut VARLIST = 0 as *mut VARLIST;
+    let vlist: *mut VARLIST;
     unsafe {
         vlist = libc::malloc(std::mem::size_of::<VARLIST>() as usize) as *mut VARLIST;
         (*vlist).list = libc::malloc(
@@ -4178,8 +4183,8 @@ fn vlist_realloc(mut vlist: *mut VARLIST, n: libc::c_int) -> *mut VARLIST {
     return vlist;
 }
 
-fn vlist_add(mut vlist: *mut VARLIST, var: *mut SHELL_VAR, flags: libc::c_int) {
-    let mut i: libc::c_int = 0;
+fn vlist_add(mut vlist: *mut VARLIST, var: *mut SHELL_VAR, _flags: libc::c_int) {
+    let mut i: libc::c_int;
     i = 0 as libc::c_int;
     unsafe {
         while (i as size_t) < (*vlist).list_len as u64 {
@@ -4187,7 +4192,6 @@ fn vlist_add(mut vlist: *mut VARLIST, var: *mut SHELL_VAR, flags: libc::c_int) {
                 break;
             }
             i += 1;
-            i;
         }
         if (i as size_t) < (*vlist).list_len as u64 {
             return;
@@ -4208,10 +4212,10 @@ fn vlist_add(mut vlist: *mut VARLIST, var: *mut SHELL_VAR, flags: libc::c_int) {
 
 #[no_mangle]
 pub fn map_over(function: Option<sh_var_map_func_t>, vc: *mut VAR_CONTEXT) -> *mut *mut SHELL_VAR {
-    let mut v: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
-    let mut vlist: *mut VARLIST = 0 as *mut VARLIST;
-    let mut ret: *mut *mut SHELL_VAR = 0 as *mut *mut SHELL_VAR;
-    let mut nentries: libc::c_int = 0;
+    let mut v: *mut VAR_CONTEXT;
+    let vlist: *mut VARLIST;
+    let ret: *mut *mut SHELL_VAR;
+    let mut nentries: libc::c_int;
     nentries = 0 as libc::c_int;
     v = vc;
     unsafe {
@@ -4236,8 +4240,8 @@ pub fn map_over(function: Option<sh_var_map_func_t>, vc: *mut VAR_CONTEXT) -> *m
 
 #[no_mangle]
 pub fn map_over_funcs(function: Option<sh_var_map_func_t>) -> *mut *mut SHELL_VAR {
-    let mut vlist: *mut VARLIST = 0 as *mut VARLIST;
-    let mut ret: *mut *mut SHELL_VAR = 0 as *mut *mut SHELL_VAR;
+    let vlist: *mut VARLIST;
+    let ret: *mut *mut SHELL_VAR;
     unsafe {
         if shell_functions.is_null() || HASH_ENTRIES!(shell_functions) == 0 as libc::c_int {
             return 0 as *mut libc::c_void as *mut *mut SHELL_VAR;
@@ -4256,10 +4260,10 @@ fn flatten(
     vlist: *mut VARLIST,
     flags: libc::c_int,
 ) {
-    let mut i: libc::c_int = 0;
-    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut r: libc::c_int = 0;
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut i: libc::c_int;
+    let mut tlist: *mut BUCKET_CONTENTS;
+    let mut r: libc::c_int;
+    let mut var: *mut SHELL_VAR;
     unsafe {
         if var_hash_table.is_null()
             || HASH_ENTRIES!(var_hash_table) == 0 as libc::c_int
@@ -4285,7 +4289,6 @@ fn flatten(
                 tlist = (*tlist).next;
             }
             i += 1;
-            i;
         }
     }
 }
@@ -4293,9 +4296,9 @@ fn flatten(
 #[no_mangle]
 pub fn sort_variables(array: *mut *mut SHELL_VAR) {
     unsafe {
-        qsort(
+        c_qsort(
             array as *mut libc::c_void,
-            strvec_len(array as *mut *mut libc::c_char) as usize,
+            c_strvec_len(array as *mut *mut libc::c_char) as usize,
             std::mem::size_of::<*mut SHELL_VAR>() as usize,
             std::mem::transmute::<
                 Option<fn(*mut *mut SHELL_VAR, *mut *mut SHELL_VAR) -> libc::c_int>,
@@ -4308,7 +4311,7 @@ pub fn sort_variables(array: *mut *mut SHELL_VAR) {
 }
 
 fn qsort_var_comp(var1: *mut *mut SHELL_VAR, var2: *mut *mut SHELL_VAR) -> libc::c_int {
-    let mut result: libc::c_int = 0;
+    let mut result: libc::c_int;
     unsafe {
         result = *((**var1).name).offset(0 as libc::c_int as isize) as libc::c_int
             - *((**var2).name).offset(0 as libc::c_int as isize) as libc::c_int;
@@ -4320,7 +4323,7 @@ fn qsort_var_comp(var1: *mut *mut SHELL_VAR, var2: *mut *mut SHELL_VAR) -> libc:
 }
 
 fn vapply(func: Option<sh_var_map_func_t>) -> *mut *mut SHELL_VAR {
-    let mut list: *mut *mut SHELL_VAR = 0 as *mut *mut SHELL_VAR;
+    let list: *mut *mut SHELL_VAR;
     unsafe {
         list = map_over(func, shell_variables);
     }
@@ -4331,7 +4334,7 @@ fn vapply(func: Option<sh_var_map_func_t>) -> *mut *mut SHELL_VAR {
 }
 
 fn fapply(func: Option<sh_var_map_func_t>) -> *mut *mut SHELL_VAR {
-    let mut list: *mut *mut SHELL_VAR = 0 as *mut *mut SHELL_VAR;
+    let list: *mut *mut SHELL_VAR;
     list = map_over_funcs(func);
     if !list.is_null() {
         sort_variables(list);
@@ -4393,36 +4396,33 @@ pub fn all_visible_variables() -> *mut *mut SHELL_VAR {
     }
 }
 fn visible_and_exported(var: *mut SHELL_VAR) -> libc::c_int {
-    unsafe {
-        if invisible_p!(var) == 0 && exported_p!(var) != 0 {
-            1 as libc::c_int
-        } else {
-            0 as libc::c_int
-        }
+    if unsafe { invisible_p!(var) == 0 && exported_p!(var) != 0 } {
+        1 as libc::c_int
+    } else {
+        0 as libc::c_int
     }
 }
 
 fn export_environment_candidate(var: *mut SHELL_VAR) -> libc::c_int {
-    unsafe {
-        if exported_p!(var) != 0 && invisible_p!(var) == 0 as libc::c_int || imported_p!(var) != 0 {
-            1 as libc::c_int
-        } else {
-            0 as libc::c_int
-        }
+    if unsafe {
+        exported_p!(var) != 0 && invisible_p!(var) == 0 as libc::c_int || imported_p!(var) != 0
+    } {
+        1 as libc::c_int
+    } else {
+        0 as libc::c_int
     }
 }
 
 fn local_and_exported(var: *mut SHELL_VAR) -> libc::c_int {
-    unsafe {
-        if invisible_p!(var) == 0 as libc::c_int
+    if unsafe {
+        invisible_p!(var) == 0 as libc::c_int
             && local_p!(var) != 0
             && (*var).context == variable_context
             && exported_p!(var) != 0
-        {
-            1 as libc::c_int
-        } else {
-            0 as libc::c_int
-        }
+    } {
+        1 as libc::c_int
+    } else {
+        0 as libc::c_int
     }
 }
 
@@ -4452,34 +4452,31 @@ pub fn local_exported_variables() -> *mut *mut SHELL_VAR {
     }
 }
 fn variable_in_context(var: *mut SHELL_VAR) -> libc::c_int {
-    unsafe {
-        if local_p!(var) != 0 && (*var).context == variable_context {
-            1 as libc::c_int
-        } else {
-            0 as libc::c_int
-        }
+    if unsafe { local_p!(var) != 0 && (*var).context == variable_context } {
+        1 as libc::c_int
+    } else {
+        0 as libc::c_int
     }
 }
 fn visible_variable_in_context(var: *mut SHELL_VAR) -> libc::c_int {
-    unsafe {
-        if invisible_p!(var) == 0 as libc::c_int
+    if unsafe {
+        invisible_p!(var) == 0 as libc::c_int
             && local_p!(var) != 0
             && (*var).context == variable_context
-        {
-            1 as libc::c_int
-        } else {
-            0 as libc::c_int
-        }
+    } {
+        1 as libc::c_int
+    } else {
+        0 as libc::c_int
     }
 }
 
 #[no_mangle]
 pub fn all_local_variables(visible_only: libc::c_int) -> *mut *mut SHELL_VAR {
-    let mut vlist: *mut VARLIST = 0 as *mut VARLIST;
-    let mut ret: *mut *mut SHELL_VAR = 0 as *mut *mut SHELL_VAR;
-    let mut vc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
+    let vlist: *mut VARLIST;
+    let ret: *mut *mut SHELL_VAR;
+    let mut vc: *mut VAR_CONTEXT;
     unsafe {
-        vc = shell_variables;
+        // vc = shell_variables;
         vc = shell_variables;
         while !vc.is_null() {
             if vc_isfuncenv!(vc) && (*vc).scope == variable_context {
@@ -4560,11 +4557,11 @@ pub fn all_array_variables() -> *mut *mut SHELL_VAR {
 
 #[no_mangle]
 pub fn all_variables_matching_prefix(prefix: *const libc::c_char) -> *mut *mut libc::c_char {
-    let mut varlist: *mut *mut SHELL_VAR = 0 as *mut *mut SHELL_VAR;
-    let mut rlist: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-    let mut vind: libc::c_int = 0;
-    let mut rind: libc::c_int = 0;
-    let mut plen: libc::c_int = 0;
+    let varlist: *mut *mut SHELL_VAR;
+    let rlist: *mut *mut libc::c_char;
+    let mut vind: libc::c_int;
+    let mut rind: libc::c_int;
+    let plen: libc::c_int;
     unsafe {
         plen = STRLEN!(prefix);
 
@@ -4573,12 +4570,11 @@ pub fn all_variables_matching_prefix(prefix: *const libc::c_char) -> *mut *mut l
 
         while !varlist.is_null() && !(*varlist.offset(vind as isize)).is_null() {
             vind += 1;
-            vind;
         }
         if varlist.is_null() || vind == 0 as libc::c_int {
             return 0 as *mut libc::c_void as *mut *mut libc::c_char;
         }
-        rlist = strvec_create(vind + 1 as libc::c_int);
+        rlist = c_strvec_create(vind + 1 as libc::c_int);
         rind = 0 as libc::c_int;
         vind = rind;
         while !(*varlist.offset(vind as isize)).is_null() {
@@ -4597,7 +4593,7 @@ pub fn all_variables_matching_prefix(prefix: *const libc::c_char) -> *mut *mut l
 }
 
 fn bind_tempenv_variable(name: *const libc::c_char, value: *mut libc::c_char) -> *mut SHELL_VAR {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
     unsafe {
         var = if !temporary_env.is_null() {
             hash_lookup(name, temporary_env)
@@ -4633,9 +4629,9 @@ pub static mut tempvar_list: *mut *mut libc::c_char =
 #[no_mangle]
 pub static mut tvlist_ind: libc::c_int = 0;
 fn push_posix_temp_var(data: *mut libc::c_void) {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut binding_table: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
+    let var: *mut SHELL_VAR;
+    let v: *mut SHELL_VAR;
+    // let mut binding_table: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
 
     var = data as *mut SHELL_VAR;
     unsafe {
@@ -4645,11 +4641,11 @@ fn push_posix_temp_var(data: *mut libc::c_void) {
             ASS_FORCE as libc::c_int | ASS_NOLONGJMP as libc::c_int,
         );
 
-        binding_table = if (*v).context != 0 {
-            (*shell_variables).table
-        } else {
-            (*global_variables).table
-        };
+        // binding_table = if (*v).context != 0 {
+        //     (*shell_variables).table
+        // } else {
+        //     (*global_variables).table
+        // };
         if (*v).context == 0 as libc::c_int {
             (*var).attributes &= !(att_tempvar as libc::c_int | att_propagate as libc::c_int);
         }
@@ -4670,9 +4666,9 @@ fn push_posix_temp_var(data: *mut libc::c_void) {
 }
 
 fn push_temp_var(data: *mut libc::c_void) {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut binding_table: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
+    let var: *mut SHELL_VAR;
+    let v: *mut SHELL_VAR;
+    let mut binding_table: *mut HASH_TABLE;
     var = data as *mut SHELL_VAR;
     unsafe {
         binding_table = (*shell_variables).table;
@@ -4717,7 +4713,7 @@ fn push_temp_var(data: *mut libc::c_void) {
 }
 
 fn propagate_temp_var(data: *mut libc::c_void) {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
     var = data as *mut SHELL_VAR;
     unsafe {
         if tempvar_p!(var) != 0 && (*var).attributes & att_propagate as libc::c_int != 0 {
@@ -4733,10 +4729,10 @@ fn propagate_temp_var(data: *mut libc::c_void) {
 }
 
 fn dispose_temporary_env(pushf: sh_free_func_t) {
-    let mut i: libc::c_int = 0;
-    let mut disposer: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
+    let mut i: libc::c_int;
+    let disposer: *mut HASH_TABLE;
     unsafe {
-        tempvar_list = strvec_create(HASH_ENTRIES!(temporary_env) + 1 as libc::c_int);
+        tempvar_list = c_strvec_create(HASH_ENTRIES!(temporary_env) + 1 as libc::c_int);
         tvlist_ind = 0 as libc::c_int;
         *tempvar_list.offset(tvlist_ind as isize) = 0 as *mut libc::c_void as *mut libc::c_char;
 
@@ -4753,9 +4749,8 @@ fn dispose_temporary_env(pushf: sh_free_func_t) {
         while i < tvlist_ind {
             stupidly_hack_special_variables(*tempvar_list.offset(i as isize));
             i += 1;
-            i;
         }
-        strvec_dispose(tempvar_list);
+        c_strvec_dispose(tempvar_list);
         tempvar_list = 0 as *mut *mut libc::c_char;
         tvlist_ind = 0 as libc::c_int;
     }
@@ -4838,11 +4833,11 @@ fn mk_env_string(
     value: *const libc::c_char,
     isfunc: libc::c_int,
 ) -> *mut libc::c_char {
-    let mut name_len: size_t = 0;
-    let mut value_len: size_t = 0;
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut q: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let name_len: size_t;
+    let mut value_len: size_t;
+    let p: *mut libc::c_char;
+    let mut q: *mut libc::c_char;
+    let t: *mut libc::c_char;
     unsafe {
         name_len = strlen(name) as size_t;
         value_len = STRLEN!(value) as size_t;
@@ -4912,18 +4907,17 @@ fn mk_env_string(
 }
 
 fn make_env_array_from_var_list(vars: *mut *mut SHELL_VAR) -> *mut *mut libc::c_char {
+    let mut i: libc::c_int;
+    let mut list_index: libc::c_int;
+    let mut var: *mut SHELL_VAR;
+    let list: *mut *mut libc::c_char;
+    let mut value: *mut libc::c_char;
+
+    list = c_strvec_create(1 as libc::c_int + c_strvec_len(vars as *mut *mut libc::c_char));
+    // let mut current_block_19: u64;
+    i = 0 as libc::c_int;
+    list_index = 0 as libc::c_int;
     unsafe {
-        let mut i: libc::c_int = 0;
-        let mut list_index: libc::c_int = 0;
-        let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-        let mut list: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-        let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
-
-        list = strvec_create(1 as libc::c_int + strvec_len(vars as *mut *mut libc::c_char));
-        let mut current_block_19: u64;
-        i = 0 as libc::c_int;
-        list_index = 0 as libc::c_int;
-
         loop {
             var = *vars.offset(i as isize);
             if var.is_null() {
@@ -4962,10 +4956,8 @@ fn make_env_array_from_var_list(vars: *mut *mut SHELL_VAR) -> *mut *mut libc::c_
                     SAVE_EXPORTSTR!(var, (*list).offset(list_index as isize))
                 }
                 list_index += 1;
-                list_index;
             }
             i += 1;
-            i;
         }
 
         *(list.offset((list_index as size_t).try_into().unwrap())) =
@@ -4976,8 +4968,8 @@ fn make_env_array_from_var_list(vars: *mut *mut SHELL_VAR) -> *mut *mut libc::c_
 }
 
 fn make_var_export_array(vcxt: *mut VAR_CONTEXT) -> *mut *mut libc::c_char {
-    let mut list: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-    let mut vars: *mut *mut SHELL_VAR = 0 as *mut *mut SHELL_VAR;
+    let list: *mut *mut libc::c_char;
+    let vars: *mut *mut SHELL_VAR;
     unsafe {
         vars = map_over(
             std::mem::transmute::<Option<fn() -> libc::c_int>, Option<sh_var_map_func_t>>(Some(
@@ -4997,8 +4989,8 @@ fn make_var_export_array(vcxt: *mut VAR_CONTEXT) -> *mut *mut libc::c_char {
 }
 
 fn make_func_export_array() -> *mut *mut libc::c_char {
-    let mut list: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-    let mut vars: *mut *mut SHELL_VAR = 0 as *mut *mut SHELL_VAR;
+    let list: *mut *mut libc::c_char;
+    let vars: *mut *mut SHELL_VAR;
     unsafe {
         vars = map_over_funcs(std::mem::transmute::<
             Option<fn() -> libc::c_int>,
@@ -5021,10 +5013,11 @@ pub fn add_or_supercede_exported_var(
     assign: *mut libc::c_char,
     do_alloc: libc::c_int,
 ) -> *mut *mut libc::c_char {
-    let mut i: libc::c_int = 0;
-    let mut equal_offset: libc::c_int = 0;
+    let mut i: libc::c_int;
+    let mut equal_offset: libc::c_int;
+
+    equal_offset = assignment(assign, 0 as libc::c_int);
     unsafe {
-        equal_offset = assignment(assign, 0 as libc::c_int);
         if equal_offset == 0 as libc::c_int {
             return export_env;
         }
@@ -5055,7 +5048,6 @@ pub fn add_or_supercede_exported_var(
                 return export_env;
             }
             i += 1;
-            i;
         }
 
         add_to_export_env!(assign, do_alloc);
@@ -5068,7 +5060,7 @@ fn add_temp_array_to_env(
     do_alloc: libc::c_int,
     do_supercede: libc::c_int,
 ) {
-    let mut i: libc::c_int = 0;
+    let mut i: libc::c_int;
     if temp_array.is_null() {
         return;
     }
@@ -5088,8 +5080,8 @@ fn add_temp_array_to_env(
 }
 
 fn n_shell_variables() -> libc::c_int {
-    let mut vc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
-    let mut n: libc::c_int = 0;
+    let mut vc: *mut VAR_CONTEXT;
+    let mut n: libc::c_int;
     unsafe {
         n = 0 as libc::c_int;
         vc = shell_variables;
@@ -5104,7 +5096,7 @@ fn n_shell_variables() -> libc::c_int {
 
 #[no_mangle]
 pub fn chkexport(name: *mut libc::c_char) -> libc::c_int {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let v: *mut SHELL_VAR;
     v = find_variable(name);
     unsafe {
         if !v.is_null() && exported_p!(v) != 0 {
@@ -5118,14 +5110,14 @@ pub fn chkexport(name: *mut libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn maybe_make_export_env() {
-    let mut temp_array: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-    let mut new_size: libc::c_int = 0;
-    let mut tcxt: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
-    let mut icxt: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
+    let mut temp_array: *mut *mut libc::c_char;
+    let new_size: libc::c_int;
+    let tcxt: *mut VAR_CONTEXT;
+    let icxt: *mut VAR_CONTEXT;
     unsafe {
         if array_needs_making != 0 {
             if !export_env.is_null() {
-                strvec_flush(export_env);
+                c_strvec_flush(export_env);
             }
             new_size = n_shell_variables()
                 + HASH_ENTRIES!(shell_functions)
@@ -5134,7 +5126,7 @@ pub fn maybe_make_export_env() {
                 + HASH_ENTRIES!(invalid_env);
             if new_size > export_env_size {
                 export_env_size = new_size;
-                export_env = strvec_resize(export_env, export_env_size);
+                export_env = c_strvec_resize(export_env, export_env_size);
                 environ = export_env;
             }
             export_env_index = 0 as libc::c_int;
@@ -5190,7 +5182,7 @@ pub fn update_export_env_inplace(
     preflen: libc::c_int,
     value: *mut libc::c_char,
 ) {
-    let mut evar: *mut libc::c_char = 0 as *mut libc::c_char;
+    let evar: *mut libc::c_char;
     unsafe {
         evar = libc::malloc((STRLEN!(value) + preflen + 1) as usize) as *mut libc::c_char;
         libc::strcpy(evar, env_prefix);
@@ -5212,7 +5204,7 @@ pub fn put_command_name_into_env(command_name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn new_var_context(name: *mut libc::c_char, flags: libc::c_int) -> *mut VAR_CONTEXT {
-    let mut vc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
+    let vc: *mut VAR_CONTEXT;
     unsafe {
         vc = libc::malloc(std::mem::size_of::<VAR_CONTEXT>() as usize) as *mut VAR_CONTEXT;
 
@@ -5259,8 +5251,8 @@ pub fn push_var_context(
     flags: libc::c_int,
     tempvars: *mut HASH_TABLE,
 ) -> *mut VAR_CONTEXT {
-    let mut vc: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
-    let mut posix_func_behavior: libc::c_int = 0;
+    let vc: *mut VAR_CONTEXT;
+    let posix_func_behavior: libc::c_int;
     posix_func_behavior = 0 as libc::c_int;
 
     vc = new_var_context(name, flags);
@@ -5294,8 +5286,8 @@ pub fn push_var_context(
 
 #[inline]
 fn push_posix_tempvar_internal(var: *mut SHELL_VAR, isbltin: libc::c_int) {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut posix_var_behavior: libc::c_int = 0;
+    let mut v: *mut SHELL_VAR;
+    let posix_var_behavior: libc::c_int;
     unsafe {
         posix_var_behavior = (posixly_correct != 0 && isbltin != 0) as libc::c_int;
         v = 0 as *mut SHELL_VAR;
@@ -5359,21 +5351,21 @@ fn push_posix_tempvar_internal(var: *mut SHELL_VAR, isbltin: libc::c_int) {
 }
 
 fn push_func_var(data: *mut libc::c_void) {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
     var = data as *mut SHELL_VAR;
     push_posix_tempvar_internal(var, 0 as libc::c_int);
 }
 
 fn push_builtin_var(data: *mut libc::c_void) {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
     var = data as *mut SHELL_VAR;
     push_posix_tempvar_internal(var, 1 as libc::c_int);
 }
 
 #[no_mangle]
 pub fn pop_var_context() {
-    let mut ret: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
-    let mut vcxt: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
+    let ret: *mut VAR_CONTEXT;
+    let vcxt: *mut VAR_CONTEXT;
     unsafe {
         vcxt = shell_variables;
 
@@ -5411,8 +5403,8 @@ pub fn pop_var_context() {
 
 #[no_mangle]
 pub fn delete_all_contexts(vcxt: *mut VAR_CONTEXT) {
-    let mut v: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
-    let mut t: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
+    let mut v: *mut VAR_CONTEXT;
+    let mut t: *mut VAR_CONTEXT;
     v = vcxt;
     unsafe {
         while v != global_variables {
@@ -5431,8 +5423,8 @@ pub fn push_scope(flags: libc::c_int, tmpvars: *mut HASH_TABLE) -> *mut VAR_CONT
 }
 
 fn push_exported_var(data: *mut libc::c_void) {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
+    let v: *mut SHELL_VAR;
     var = data as *mut SHELL_VAR;
     unsafe {
         if tempvar_p!(var) != 0
@@ -5463,9 +5455,9 @@ fn push_exported_var(data: *mut libc::c_void) {
 
 #[no_mangle]
 pub fn pop_scope(is_special: libc::c_int) {
-    let mut vcxt: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
-    let mut ret: *mut VAR_CONTEXT = 0 as *mut VAR_CONTEXT;
-    let mut is_bltinenv: libc::c_int = 0;
+    let vcxt: *mut VAR_CONTEXT;
+    let ret: *mut VAR_CONTEXT;
+    // let mut is_bltinenv: libc::c_int = 0;
     unsafe {
         vcxt = shell_variables;
         if !vc_istempscope!(vcxt) {
@@ -5476,11 +5468,11 @@ pub fn pop_scope(is_special: libc::c_int) {
             return;
         }
 
-        is_bltinenv = if vc_isbltnenv!(vcxt) {
-            1 as libc::c_int
-        } else {
-            0 as libc::c_int
-        };
+        // is_bltinenv = if vc_isbltnenv!(vcxt) {
+        //     1 as libc::c_int
+        // } else {
+        //     0 as libc::c_int
+        // };
 
         ret = (*vcxt).down;
         if !ret.is_null() {
@@ -5525,35 +5517,34 @@ static mut dollar_arg_stack_slots: libc::c_int = 0;
 static mut dollar_arg_stack_index: libc::c_int = 0;
 
 fn save_dollar_vars() -> *mut *mut libc::c_char {
-    let mut ret: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-    let mut i: libc::c_int = 0;
+    let ret: *mut *mut libc::c_char;
+    let mut i: libc::c_int;
+
+    ret = c_strvec_create(10 as libc::c_int);
+    i = 1 as libc::c_int;
     unsafe {
-        ret = strvec_create(10 as libc::c_int);
-        i = 1 as libc::c_int;
         while i < 10 as libc::c_int {
             *ret.offset(i as isize) = dollar_vars[i as usize];
             dollar_vars[i as usize] = 0 as *mut libc::c_void as *mut libc::c_char;
             i += 1;
-            i;
         }
     }
     return ret;
 }
 
 fn restore_dollar_vars(args: *mut *mut libc::c_char) {
-    let mut i: libc::c_int = 0;
+    let mut i: libc::c_int;
     i = 1 as libc::c_int;
     unsafe {
         while i < 10 as libc::c_int {
             dollar_vars[i as usize] = *args.offset(i as isize);
             i += 1;
-            i;
         }
     }
 }
 
 fn free_dollar_vars() {
-    let mut i: libc::c_int = 0;
+    let mut i: libc::c_int;
     i = 1 as libc::c_int;
     unsafe {
         while i < 10 as libc::c_int {
@@ -5563,21 +5554,18 @@ fn free_dollar_vars() {
 
             dollar_vars[i as usize] = 0 as *mut libc::c_void as *mut libc::c_char;
             i += 1;
-            i;
         }
     }
 }
 fn free_saved_dollar_vars(args: *mut *mut libc::c_char) {
-    let mut i: libc::c_int = 0;
+    let mut i: libc::c_int;
     i = 1 as libc::c_int;
     unsafe {
         while i < 10 as libc::c_int {
             if !(*args.offset(i as isize)).is_null() {
                 free(*args.offset(i as isize) as *mut libc::c_void);
             }
-            // *args.offset(i as isize) = 0 as *mut libc::c_char;
             i += 1;
-            i;
         }
     }
 }
@@ -5599,7 +5587,6 @@ pub fn push_context(name: *mut libc::c_char, is_subshell: libc::c_int, tempvars:
     }
     unsafe {
         variable_context += 1;
-        variable_context;
     }
     push_var_context(name, 0x4 as libc::c_int, tempvars);
 }
@@ -5609,7 +5596,6 @@ pub fn pop_context() {
     pop_dollar_vars();
     unsafe {
         variable_context -= 1;
-        variable_context;
     }
     pop_var_context();
     sv_ifs(b"IFS\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
@@ -5705,7 +5691,7 @@ pub fn init_bash_argv() {
 }
 #[no_mangle]
 pub fn save_bash_argv() {
-    let mut list: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let list: *mut WORD_LIST;
     list = list_rest_of_args();
     push_args(list);
     dispose_words(list);
@@ -5713,76 +5699,73 @@ pub fn save_bash_argv() {
 
 #[no_mangle]
 pub fn push_args(list: *mut WORD_LIST) {
-    let mut bash_argv_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let bash_argc_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut bash_argv_a: *mut ARRAY = 0 as *mut ARRAY;
-    let bash_argc_a: *mut ARRAY = 0 as *mut ARRAY;
+    let mut bash_argv_v: *mut SHELL_VAR;
+    // let bash_argc_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut _bash_argv_a: *mut ARRAY;
+    // let bash_argc_a: *mut ARRAY = 0 as *mut ARRAY;
 
-    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut i: arrayind_t = 0;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut l: *mut WORD_LIST;
+    let mut i: arrayind_t;
+    let t: *mut libc::c_char;
     unsafe {
         GET_ARRAY_FROM_VAR!(
             b"BASH_ARGV\0" as *const u8 as *const libc::c_char,
             bash_argv_v,
-            bash_argv_a
+            _bash_argv_a
         );
 
         GET_ARRAY_FROM_VAR!(
             b"BASH_ARGC\0" as *const u8 as *const libc::c_char,
             bash_argv_v,
-            bash_argv_a
+            _bash_argv_a
         );
 
         l = list;
         i = 0 as libc::c_int as arrayind_t;
         while !l.is_null() {
-            array_push!(bash_argv_a, (*(*l).word).word);
+            array_push!(_bash_argv_a, (*(*l).word).word);
             l = (*l).next;
             i += 1;
-            i;
         }
-        t = itos(i);
-        array_push!(bash_argv_a, t);
+        t = c_itos(i);
+        array_push!(_bash_argv_a, t);
         free(t as *mut libc::c_void);
     }
 }
 
 #[no_mangle]
 pub fn pop_args() {
-    let mut bash_argv_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let bash_argc_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut bash_argv_a: *mut ARRAY = 0 as *mut ARRAY;
+    let mut bash_argv_v: *mut SHELL_VAR;
+    // let bash_argc_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut _bash_argv_a: *mut ARRAY = 0 as *mut ARRAY;
     let bash_argc_a: *mut ARRAY = 0 as *mut ARRAY;
-    let mut ce: *mut ARRAY_ELEMENT = 0 as *mut ARRAY_ELEMENT;
+    let ce: *mut ARRAY_ELEMENT;
 
     let mut i: intmax_t = 0;
     unsafe {
         GET_ARRAY_FROM_VAR!(
             b"BASH_ARGV\0" as *const u8 as *const libc::c_char,
             bash_argv_v,
-            bash_argv_a
+            _bash_argv_a
         );
 
         GET_ARRAY_FROM_VAR!(
             b"BASH_ARGC\0" as *const u8 as *const libc::c_char,
             bash_argv_v,
-            bash_argv_a
+            _bash_argv_a
         );
-
-        ce = array_shift(bash_argc_a, 1 as libc::c_int, 0 as libc::c_int);
-
-        if ce.is_null() || legal_number((*ce).value, &mut i) == 0 as libc::c_int {
-            i = 0 as libc::c_int as intmax_t;
-        }
-
-        while i > 0 as libc::c_int as libc::c_long {
-            array_pop!(bash_argc_a);
-            i -= 1;
-            i;
-        }
-        array_dispose_element(ce);
     }
+    ce = array_shift(bash_argc_a, 1 as libc::c_int, 0 as libc::c_int);
+
+    if unsafe { ce.is_null() || legal_number((*ce).value, &mut i) == 0 as libc::c_int } {
+        i = 0 as libc::c_int as intmax_t;
+    }
+
+    while i > 0 as libc::c_int as libc::c_long {
+        array_pop!(bash_argc_a);
+        i -= 1;
+    }
+    array_dispose_element(ce);
 }
 
 static mut special_vars: [name_and_function; 38] = {
@@ -6057,7 +6040,7 @@ static mut special_vars: [name_and_function; 38] = {
 };
 
 fn sv_compare(sv1: *mut name_and_function, sv2: *mut name_and_function) -> libc::c_int {
-    let mut r: libc::c_int = 0;
+    let mut r: libc::c_int;
     unsafe {
         r = *((*sv1).name).offset(0 as libc::c_int as isize) as libc::c_int
             - *((*sv2).name).offset(0 as libc::c_int as isize) as libc::c_int;
@@ -6070,8 +6053,8 @@ fn sv_compare(sv1: *mut name_and_function, sv2: *mut name_and_function) -> libc:
 
 #[inline]
 fn find_special_var(name: *const libc::c_char) -> libc::c_int {
-    let mut i: libc::c_int = 0;
-    let mut r: libc::c_int = 0;
+    let mut i: libc::c_int;
+    let mut r: libc::c_int;
     i = 0 as libc::c_int;
     unsafe {
         while !(special_vars[i as usize].name).is_null() {
@@ -6087,7 +6070,6 @@ fn find_special_var(name: *const libc::c_char) -> libc::c_int {
                     break;
                 }
                 i += 1;
-                i;
             }
         }
         return -(1 as libc::c_int);
@@ -6097,10 +6079,10 @@ fn find_special_var(name: *const libc::c_char) -> libc::c_int {
 #[no_mangle]
 pub fn stupidly_hack_special_variables(name: *mut libc::c_char) {
     static mut sv_sorted: libc::c_int = 0 as libc::c_int;
-    let mut i: libc::c_int = 0;
+    let i: libc::c_int;
     unsafe {
         if sv_sorted == 0 as libc::c_int {
-            qsort(
+            c_qsort(
                 special_vars.as_mut_ptr() as *mut libc::c_void,
                 (std::mem::size_of::<[name_and_function; 38]>() as usize)
                     .wrapping_div(std::mem::size_of::<name_and_function>() as usize)
@@ -6136,17 +6118,15 @@ pub fn reinit_special_variables() {
 }
 
 #[no_mangle]
-pub fn sv_ifs(name: *mut libc::c_char) {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+pub fn sv_ifs(_name: *mut libc::c_char) {
+    let v: *mut SHELL_VAR;
     v = find_variable(b"IFS\0" as *const u8 as *const libc::c_char);
     setifs(v);
 }
 
 #[no_mangle]
-pub fn sv_path(name: *mut libc::c_char) {
-    unsafe {
-        phash_flush();
-    }
+pub fn sv_path(_name: *mut libc::c_char) {
+    phash_flush();
 }
 
 #[no_mangle]
@@ -6163,7 +6143,7 @@ pub fn sv_mail(name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sv_funcnest(name: *mut libc::c_char) {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let v: *mut SHELL_VAR;
     let mut num: intmax_t = 0;
     v = find_variable(name);
     unsafe {
@@ -6178,9 +6158,7 @@ pub fn sv_funcnest(name: *mut libc::c_char) {
 }
 #[no_mangle]
 pub fn sv_execignore(name: *mut libc::c_char) {
-    unsafe {
-        setup_exec_ignore(name);
-    }
+    setup_exec_ignore(name);
 }
 
 #[no_mangle]
@@ -6194,17 +6172,17 @@ pub fn sv_globignore(name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sv_comp_wordbreaks(name: *mut libc::c_char) {
-    let mut sv: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let sv: *mut SHELL_VAR;
     sv = find_variable(name);
     if sv.is_null() {
         reset_completer_word_break_chars();
     }
 }
 #[no_mangle]
-pub fn sv_terminal(name: *mut libc::c_char) {
+pub fn sv_terminal(_name: *mut libc::c_char) {
     unsafe {
         if interactive_shell != 0 && no_line_editing == 0 as libc::c_int {
-            rl_reset_terminal(get_string_value(
+            c_rl_reset_terminal(get_string_value(
                 b"TERM\0" as *const u8 as *const libc::c_char,
             ));
         }
@@ -6212,7 +6190,7 @@ pub fn sv_terminal(name: *mut libc::c_char) {
 }
 #[no_mangle]
 pub fn sv_hostfile(name: *mut libc::c_char) {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let v: *mut SHELL_VAR;
     v = find_variable(name);
     if v.is_null() {
         clear_hostname_list();
@@ -6225,9 +6203,9 @@ pub fn sv_hostfile(name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sv_histsize(name: *mut libc::c_char) {
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let temp: *mut libc::c_char;
     let mut num: intmax_t = 0;
-    let mut hmax: libc::c_int = 0;
+    let mut hmax: libc::c_int;
     temp = get_string_value(name);
     unsafe {
         if !temp.is_null() && *temp as libc::c_int != 0 {
@@ -6236,16 +6214,16 @@ pub fn sv_histsize(name: *mut libc::c_char) {
                 if hmax < 0 as libc::c_int
                     && *name.offset(4 as libc::c_int as isize) as libc::c_int == 'S' as i32
                 {
-                    unstifle_history();
+                    c_unstifle_history();
                 } else if *name.offset(4 as libc::c_int as isize) as libc::c_int == 'S' as i32 {
-                    stifle_history(hmax);
-                    hmax = where_history();
+                    c_stifle_history(hmax);
+                    hmax = c_where_history();
 
                     if history_lines_this_session > hmax {
                         history_lines_this_session = hmax;
                     }
                 } else if hmax >= 0 as libc::c_int {
-                    history_truncate_file(
+                    c_history_truncate_file(
                         get_string_value(b"HISTFILE\0" as *const u8 as *const libc::c_char),
                         hmax,
                     );
@@ -6255,7 +6233,7 @@ pub fn sv_histsize(name: *mut libc::c_char) {
                 }
             }
         } else if *name.offset(4 as libc::c_int as isize) as libc::c_int == 'S' as i32 {
-            unstifle_history();
+            c_unstifle_history();
         }
     }
 }
@@ -6267,9 +6245,9 @@ pub fn sv_histignore(name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sv_history_control(name: *mut libc::c_char) {
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut val: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut tptr: libc::c_int = 0;
+    let temp: *mut libc::c_char;
+    let mut val: *mut libc::c_char;
+    let mut tptr: libc::c_int;
     unsafe {
         history_control = 0 as libc::c_int;
         temp = get_string_value(name);
@@ -6299,7 +6277,7 @@ pub fn sv_history_control(name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sv_histchars(name: *mut libc::c_char) {
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let temp: *mut libc::c_char;
     temp = get_string_value(name);
     unsafe {
         if !temp.is_null() {
@@ -6322,7 +6300,7 @@ pub fn sv_histchars(name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sv_histtimefmt(name: *mut libc::c_char) {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let v: *mut SHELL_VAR;
     v = find_variable(name);
     unsafe {
         if !v.is_null() {
@@ -6336,7 +6314,7 @@ pub fn sv_histtimefmt(name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sv_tz(name: *mut libc::c_char) {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let v: *mut SHELL_VAR;
 
     v = find_variable(name);
     unsafe {
@@ -6347,31 +6325,36 @@ pub fn sv_tz(name: *mut libc::c_char) {
         }
         if array_needs_making != 0 {
             maybe_make_export_env();
-            tzset();
+            c_tzset();
         }
     }
 }
 
 #[no_mangle]
 pub fn sv_ignoreeof(name: *mut libc::c_char) {
-    let mut tmp_var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let tmp_var: *mut SHELL_VAR;
+    let temp: *mut libc::c_char;
+
     unsafe {
         eof_encountered = 0 as libc::c_int;
+    }
 
-        tmp_var = find_variable(name);
+    tmp_var = find_variable(name);
+    unsafe {
         ignoreeof = if (!tmp_var.is_null()) && var_isset!(tmp_var) {
             1 as libc::c_int
         } else {
             0 as libc::c_int
         };
+    }
 
-        temp = if !tmp_var.is_null() {
-            value_cell!(tmp_var)
-        } else {
-            0 as *mut libc::c_void as *mut libc::c_char
-        };
-        if !temp.is_null() {
+    temp = if !tmp_var.is_null() {
+        unsafe { value_cell!(tmp_var) }
+    } else {
+        0 as *mut libc::c_void as *mut libc::c_char
+    };
+    if !temp.is_null() {
+        unsafe {
             eof_encountered_limit = if *temp as libc::c_int != 0 && all_digits(temp) != 0 {
                 atoi(temp)
             } else {
@@ -6379,14 +6362,15 @@ pub fn sv_ignoreeof(name: *mut libc::c_char) {
             };
         }
     }
+
     set_shellopts();
 }
 
 #[no_mangle]
-pub fn sv_optind(name: *mut libc::c_char) {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut tt: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut s: libc::c_int = 0;
+pub fn sv_optind(_name: *mut libc::c_char) {
+    let var: *mut SHELL_VAR;
+    let tt: *mut libc::c_char;
+    let mut s: libc::c_int;
 
     var = find_variable(b"OPTIND\0" as *const u8 as *const libc::c_char);
     unsafe {
@@ -6408,8 +6392,8 @@ pub fn sv_optind(name: *mut libc::c_char) {
 }
 
 #[no_mangle]
-pub fn sv_opterr(name: *mut libc::c_char) {
-    let mut tt: *mut libc::c_char = 0 as *mut libc::c_char;
+pub fn sv_opterr(_name: *mut libc::c_char) {
+    let tt: *mut libc::c_char;
     unsafe {
         tt = get_string_value(b"OPTERR\0" as *const u8 as *const libc::c_char);
         sh_opterr = if !tt.is_null() && *tt as libc::c_int != 0 {
@@ -6422,7 +6406,7 @@ pub fn sv_opterr(name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sv_strict_posix(name: *mut libc::c_char) {
-    let mut var: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let var: *mut SHELL_VAR;
     var = find_variable(name);
     unsafe {
         posixly_correct = if (!var.is_null()) && var_isset!(var) {
@@ -6441,8 +6425,8 @@ pub fn sv_strict_posix(name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sv_locale(name: *mut libc::c_char) {
-    let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut r: libc::c_int = 0;
+    let v: *mut libc::c_char;
+    let r: libc::c_int;
     v = get_string_value(name);
     unsafe {
         if *name.offset(0 as libc::c_int as isize) as libc::c_int == 'L' as i32
@@ -6460,11 +6444,11 @@ pub fn sv_locale(name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn set_pipestatus_array(ps: *mut libc::c_int, nproc: libc::c_int) {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut a: *mut ARRAY = 0 as *mut ARRAY;
-    let mut ae: *mut ARRAY_ELEMENT = 0 as *mut ARRAY_ELEMENT;
-    let mut i: libc::c_int = 0;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut v: *mut SHELL_VAR;
+    let a: *mut ARRAY;
+    let mut ae: *mut ARRAY_ELEMENT;
+    let mut i: libc::c_int;
+    let mut t: *mut libc::c_char;
     let mut tbuf: [libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize] =
         [0; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize];
 
@@ -6474,33 +6458,39 @@ pub fn set_pipestatus_array(ps: *mut libc::c_int, nproc: libc::c_int) {
             b"PIPESTATUS\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
         );
     }
+
+    if unsafe { array_p!(v) == 0 as libc::c_int } {
+        return;
+    }
+
     unsafe {
-        if array_p!(v) == 0 as libc::c_int {
-            return;
-        }
-
         a = array_cell!(v);
+    }
 
-        if a.is_null() || array_num_elements!(a) == 0 as libc::c_int {
-            i = 0 as libc::c_int;
-            while i < nproc {
-                t = inttostr(
+    if unsafe { a.is_null() || array_num_elements!(a) == 0 as libc::c_int } {
+        i = 0 as libc::c_int;
+        while i < nproc {
+            t = unsafe {
+                c_inttostr(
                     *ps.offset(i as isize) as intmax_t,
                     tbuf.as_mut_ptr(),
                     std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize]>(
                     ) as size_t,
-                );
-                array_insert(a, i as arrayind_t, t);
-                i += 1;
-                i;
-            }
-            return;
+                )
+            };
+            array_insert(a, i as arrayind_t, t);
+            i += 1;
         }
-
+        return;
+    }
+    unsafe {
         if array_num_elements!(a) == nproc && nproc == 1 as libc::c_int {
             ae = element_forw!((*a).head);
             free(element_value!(ae) as *mut libc::c_void);
-            set_element_value!(ae, itos(*ps.offset(0 as libc::c_int as isize) as intmax_t));
+            set_element_value!(
+                ae,
+                c_itos(*ps.offset(0 as libc::c_int as isize) as intmax_t)
+            );
         } else if array_num_elements!(a) <= nproc {
             ae = (*a).head;
 
@@ -6509,12 +6499,14 @@ pub fn set_pipestatus_array(ps: *mut libc::c_int, nproc: libc::c_int) {
             while i < (*a).num_elements {
                 ae = (*ae).next;
                 free(element_value!(ae) as *mut libc::c_void);
-                set_element_value!(ae, itos(*ps.offset(i as libc::c_int as isize) as intmax_t));
+                set_element_value!(
+                    ae,
+                    c_itos(*ps.offset(i as libc::c_int as isize) as intmax_t)
+                );
                 i += 1;
-                i;
             }
             while i < nproc {
-                t = inttostr(
+                t = c_inttostr(
                     *ps.offset(i as isize) as intmax_t,
                     tbuf.as_mut_ptr(),
                     std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize]>(
@@ -6522,13 +6514,12 @@ pub fn set_pipestatus_array(ps: *mut libc::c_int, nproc: libc::c_int) {
                 );
                 array_insert(a, i as arrayind_t, t);
                 i += 1;
-                i;
             }
         } else {
             array_flush(a);
             i = 0 as libc::c_int;
             while *ps.offset(i as isize) != -(1 as libc::c_int) {
-                t = inttostr(
+                t = c_inttostr(
                     *ps.offset(i as isize) as intmax_t,
                     tbuf.as_mut_ptr(),
                     std::mem::size_of::<[libc::c_char; (INT_STRLEN_BOUND!(libc::c_int) + 1) as usize]>(
@@ -6536,7 +6527,6 @@ pub fn set_pipestatus_array(ps: *mut libc::c_int, nproc: libc::c_int) {
                 );
                 array_insert(a, i as arrayind_t, t);
                 i += 1;
-                i;
             }
         };
     }
@@ -6544,8 +6534,8 @@ pub fn set_pipestatus_array(ps: *mut libc::c_int, nproc: libc::c_int) {
 
 #[no_mangle]
 pub fn save_pipestatus_array() -> *mut ARRAY {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut a: *mut ARRAY = 0 as *mut ARRAY;
+    let v: *mut SHELL_VAR;
+    let a: *mut ARRAY;
     v = find_variable(b"PIPESTATUS\0" as *const u8 as *const libc::c_char);
     unsafe {
         if v.is_null() || array_p!(v) == 0 as libc::c_int || (array_cell!(v)).is_null() {
@@ -6558,8 +6548,8 @@ pub fn save_pipestatus_array() -> *mut ARRAY {
 
 #[no_mangle]
 pub fn restore_pipestatus_array(a: *mut ARRAY) {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut a2: *mut ARRAY = 0 as *mut ARRAY;
+    let v: *mut SHELL_VAR;
+    let a2: *mut ARRAY;
     v = find_variable(b"PIPESTATUS\0" as *const u8 as *const libc::c_char);
     unsafe {
         if v.is_null() || array_p!(v) == 0 as libc::c_int || (array_cell!(v)).is_null() {
@@ -6583,17 +6573,18 @@ pub fn set_pipestatus_from_exit(s: libc::c_int) {
 
 #[no_mangle]
 pub fn sv_xtracefd(name: *mut libc::c_char) {
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let v: *mut SHELL_VAR;
+    let t: *mut libc::c_char;
     let mut e: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut fd: libc::c_int = 0;
-    let mut fp: *mut FILE = 0 as *mut FILE;
+    let fd: libc::c_int;
+    let fp: *mut FILE;
     v = find_variable(name);
+
+    if v.is_null() {
+        xtrace_reset();
+        return;
+    }
     unsafe {
-        if v.is_null() {
-            xtrace_reset();
-            return;
-        }
         t = (*v).value;
         if t.is_null() || *t as libc::c_int == 0 as libc::c_int {
             xtrace_reset();
@@ -6624,12 +6615,12 @@ pub fn sv_xtracefd(name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sv_shcompat(name: *mut libc::c_char) {
-    let mut current_block: u64;
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    let mut val: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut tens: libc::c_int = 0;
-    let mut ones: libc::c_int = 0;
-    let mut compatval: libc::c_int = 0;
+    // let mut current_block: u64;
+    let v: *mut SHELL_VAR;
+    let val: *mut libc::c_char;
+    let tens: libc::c_int;
+    let ones: libc::c_int;
+    let compatval: libc::c_int;
 
     v = find_variable(name);
     unsafe {
@@ -6704,8 +6695,8 @@ pub fn sv_shcompat(name: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn sv_childmax(name: *mut libc::c_char) {
-    let mut tt: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut s: libc::c_int = 0;
+    let tt: *mut libc::c_char;
+    let s: libc::c_int;
 
     tt = get_string_value(name);
     unsafe {
