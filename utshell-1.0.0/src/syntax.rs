@@ -1,9 +1,4 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::src_common::*;
-// use libc::c_int;
-// use r_bash::*;
 #[no_mangle]
 pub static mut sh_syntabsiz: libc::c_int = 256;
 
