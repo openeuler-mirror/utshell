@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 #![allow(
     dead_code,
     mutable_transmutes,
@@ -18,86 +15,73 @@
 use crate::arrayfunc::assign_array_element;
 use crate::arrayfunc::convert_var_to_array;
 use crate::assoc::assoc_to_word_list;
+use crate::error::err_readonly;
+use crate::general::bash_tilde_expand;
 use crate::jobs::cleanup_the_pipeline;
 use crate::jobs::procsub_add;
 use crate::make_cmd::make_bare_word;
-use crate::readline::bash_tilde_expand;
-use crate::readline::wcslen;
+use crate::parse_and_execute;
+use crate::readline::c_wcslen;
 use crate::sig::reset_terminating_signals;
 use crate::trap::reset_signal_handlers;
 use crate::trap::restore_original_signals;
-//use std::io::stdin;
+use crate::utshell::set_exit_status;
 extern "C" {
     static mut stdin: *mut FILE;
 }
+use crate::array::array_modcase;
+use crate::array::array_patsub;
+use crate::array::array_reference;
+use crate::array::array_subrange;
+use crate::array::array_to_assign;
+use crate::array::array_to_kvpair;
 use crate::array::array_to_string;
+use crate::array::array_to_word_list;
 use crate::arrayfunc::array_expand_index;
-use crate::arrayfunc::array_value;
-use crate::arrayfunc::array_variable_part;
-use crate::assoc::assoc_reference;
-use crate::assoc::assoc_to_assign;
-use crate::assoc::assoc_to_string;
-use crate::builtins::set::set_shellopts;
-use crate::dispose_cmd::dispose_word_desc;
-use crate::error::err_badarraysub;
-use crate::error::err_unboundvar;
-use crate::jobs::wait_for;
-use crate::readline::all_digits;
-use crate::readline::array_modcase;
-use crate::readline::array_patsub;
-use crate::readline::array_reference;
-use crate::readline::array_subrange;
-use crate::sig::throw_to_top_level;
-use crate::unwind_prot::add_unwind_protect;
-use crate::unwind_prot::begin_unwind_frame;
-use crate::unwind_prot::discard_unwind_frame;
-use crate::variables::all_variables_matching_prefix;
-use crate::variables::find_variable_last_nameref;
-//use crate::builtins::common::number_of_args;
-//use crate::flags::which_set_flags;
-use crate::builtins::common::number_of_args;
-use crate::expr::evalexp;
-//use crate::builtins::common::number_of_args;
 use crate::arrayfunc::array_keys;
+use crate::arrayfunc::array_value;
 use crate::arrayfunc::array_variable_name;
-use crate::assoc::assoc_modcase;
-use crate::assoc::assoc_patsub;
-use crate::assoc::assoc_subrange;
-use crate::assoc::assoc_to_kvpair;
-use crate::builtins::setattr::var_attribute_string;
-use crate::dispose_cmd::dispose_word;
-use crate::flags::which_set_flags;
-use crate::readline::array_to_assign;
-use crate::readline::array_to_kvpair;
-use crate::stringlib::strcreplace;
-use crate::y_tab::decode_prompt_string;
-//use crate::copycmd::copy_word_list;
-use crate::execute_cmd::undo_partial_redirects;
-use crate::pathexp::shell_glob_filename;
-use crate::pathexp::unquoted_glob_pattern_p;
-use crate::readline::bash_tilde_find_word;
-use crate::sig::top_level_cleanup;
-use crate::variables::set_pipestatus_from_exit;
-//use crate::list::list_append;
+use crate::arrayfunc::array_variable_part;
+use crate::arrayfunc::assign_array_from_string;
+use crate::arrayfunc::assign_compound_array_list;
+use crate::arrayfunc::convert_var_to_assoc;
 use crate::arrayfunc::expand_and_quote_assoc_word;
 use crate::arrayfunc::expand_and_quote_kvpair_word;
+use crate::arrayfunc::expand_compound_array_assignment;
 use crate::arrayfunc::kvpair_assignment_p;
 use crate::arrayfunc::quote_compound_array_list;
+use crate::arrayfunc::valid_array_reference;
+use crate::assoc::assoc_modcase;
+use crate::assoc::assoc_patsub;
+use crate::assoc::assoc_reference;
+use crate::assoc::assoc_subrange;
+use crate::assoc::assoc_to_assign;
+use crate::assoc::assoc_to_kvpair;
+use crate::assoc::assoc_to_string;
 use crate::brace::brace_expand;
 use crate::builtins::common::find_shell_builtin;
 use crate::builtins::common::find_special_builtin;
+use crate::builtins::common::number_of_args;
 use crate::builtins::declare::declare_builtin;
-use crate::copycmd::copy_word_list;
-use crate::make_cmd::make_word_flags;
-use crate::variables::assign_in_env;
-use crate::variables::find_function;
-use crate::y_tab::parse_string_to_word_list;
-//use crate::pathexp::quote_string_for_globbing;
-use crate::arrayfunc::valid_array_reference;
 use crate::builtins::evalfile::sourcelevel;
+use crate::builtins::set::set_shellopts;
+use crate::builtins::setattr::var_attribute_string;
+use crate::copycmd::copy_word_list;
+use crate::dispose_cmd::dispose_word;
+use crate::dispose_cmd::dispose_word_desc;
+use crate::dispose_cmd::dispose_words;
+use crate::error::err_badarraysub;
+use crate::error::err_unboundvar;
 use crate::execute_cmd::close_fd_bitmap;
 use crate::execute_cmd::setup_async_signals;
+use crate::execute_cmd::undo_partial_redirects;
+use crate::expr::evalexp;
 use crate::flags::change_flag;
+use crate::flags::which_set_flags;
+use crate::general::all_digits;
+use crate::general::assignment;
+use crate::general::bash_tilde_find_word;
+use crate::general::move_to_high_fd;
 use crate::general::{legal_identifier, legal_number};
 use crate::jobs::close_pgrp_pipe;
 use crate::jobs::make_child;
@@ -107,53 +91,64 @@ use crate::jobs::save_pipeline;
 use crate::jobs::set_job_control;
 use crate::jobs::set_sigchld_handler;
 use crate::jobs::stop_making_children;
+use crate::jobs::wait_for;
+use crate::list::list_reverse;
+use crate::make_cmd::alloc_word_desc;
+use crate::make_cmd::make_word;
+use crate::make_cmd::make_word_flags;
+use crate::make_cmd::make_word_list;
 use crate::pathexp::quote_string_for_globbing;
-use crate::readline::array_to_word_list;
-use crate::readline::iswupper;
-use crate::readline::move_to_high_fd;
-use crate::readline::towlower;
-use crate::readline::wcsdup;
-use crate::readline::wcsrtombs;
+use crate::pathexp::shell_glob_filename;
+use crate::pathexp::unquoted_glob_pattern_p;
+use crate::print_cmd::xtrace_print_assignment;
+use crate::printf::c_mbtowc;
+use crate::readline::c_iswupper;
+use crate::readline::c_mbstowcs;
+use crate::readline::c_towlower;
+use crate::readline::c_wcschr;
+use crate::readline::c_wcsdup;
+use crate::readline::c_wcsrtombs;
 use crate::sig::jump_to_top_level;
 use crate::sig::termsig_handler;
+use crate::sig::throw_to_top_level;
+use crate::sig::top_level_cleanup;
 use crate::src_common::*;
+use crate::stringlib::strcreplace;
 use crate::stringlib::strip_trailing;
 use crate::stringlib::substring;
 use crate::syntax::sh_syntaxtab;
 use crate::trap::run_exit_trap;
 use crate::trap::set_sigint_handler;
-use crate::variables::flush_temporary_env;
-use crate::variables::maybe_make_export_env;
-use crate::y_tab::free_pushed_string_input;
-//use crate::readline::__ctype_get_mb_cur_max;
-use crate::arrayfunc::assign_array_from_string;
-use crate::arrayfunc::assign_compound_array_list;
-use crate::arrayfunc::convert_var_to_assoc;
-use crate::arrayfunc::expand_compound_array_assignment;
-use crate::dispose_cmd::dispose_words;
-use crate::list::list_reverse;
-use crate::make_cmd::alloc_word_desc;
-use crate::make_cmd::make_word;
-use crate::make_cmd::make_word_list;
-use crate::print_cmd::xtrace_print_assignment;
-use crate::readline::assignment;
-use crate::readline::mbstowcs;
-use crate::readline::mbtowc;
-use crate::readline::wcschr;
+use crate::unwind_prot::add_unwind_protect;
+use crate::unwind_prot::begin_unwind_frame;
+use crate::unwind_prot::discard_unwind_frame;
+use crate::variables::all_variables_matching_prefix;
+use crate::variables::assign_in_env;
 use crate::variables::bind_variable;
+use crate::variables::find_function;
 use crate::variables::find_global_variable;
 use crate::variables::find_variable;
+use crate::variables::find_variable_last_nameref;
+use crate::variables::flush_temporary_env;
 use crate::variables::make_local_array_variable;
 use crate::variables::make_local_assoc_variable;
 use crate::variables::make_new_array_variable;
 use crate::variables::make_new_assoc_variable;
+use crate::variables::maybe_make_export_env;
 use crate::variables::nameref_transform_name;
+use crate::variables::set_pipestatus_from_exit;
 use crate::variables::stupidly_hack_special_variables;
 use crate::version::shell_compatibility_level;
+use crate::y_tab::decode_prompt_string;
+use crate::y_tab::free_pushed_string_input;
+use crate::y_tab::parse_string_to_word_list;
 use crate::y_tab::xparse_dolparen;
-#[feature(extern_types, linkage, register_tool)]
+
 extern "C" {
     fn list_append(_: *mut WordList, _: *mut WordList) -> *mut GENERIC_LIST;
+}
+fn c_list_append(a: *mut WordList, b: *mut WordList) -> *mut GENERIC_LIST {
+    unsafe { list_append(a, b) }
 }
 #[inline]
 fn is_basic(mut c: libc::c_char) -> libc::c_int {
@@ -166,8 +161,6 @@ fn is_basic(mut c: libc::c_char) -> libc::c_int {
     }
 }
 #[no_mangle]
-//#[inline]
-//#[linkage = "external"]
 pub fn sub_append_string(
     mut source: *mut libc::c_char,
     mut target: *mut libc::c_char,
@@ -243,8 +236,8 @@ fn string_extract(
             '\u{0}' as i32,
             ::std::mem::size_of::<mbstate_t>() as libc::c_ulong as usize,
         );
-        slen = if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
-            (strlen(string.offset(*sindex as isize))).wrapping_add(*sindex as u64) as u64
+        slen = if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+            (strlen(string.offset(*sindex as isize))).wrapping_add(*sindex as usize) as u64
         } else {
             0 as libc::c_int as libc::c_ulong
         };
@@ -270,7 +263,7 @@ fn string_extract(
                 && c == *charlist.offset(0 as libc::c_int as isize) as libc::c_int
                 && *charlist.offset(1 as libc::c_int as isize) == 0
                 || (if c != 0 {
-                    (mbschr(charlist, c) != 0 as *mut libc::c_void as *mut libc::c_char)
+                    (c_mbschr(charlist, c) != 0 as *mut libc::c_void as *mut libc::c_char)
                         as libc::c_int
                 } else {
                     0 as libc::c_int
@@ -359,7 +352,7 @@ fn string_extract_double_quoted(
             '\u{0}' as i32,
             ::std::mem::size_of::<mbstate_t>() as usize,
         );
-        slen = (strlen(string.offset(*sindex as isize))).wrapping_add(*sindex as u64) as u64;
+        slen = (strlen(string.offset(*sindex as isize))).wrapping_add(*sindex as usize) as u64;
         send = string.offset(slen as isize);
         stripdq = flags & 0x800 as libc::c_int;
         dquote = 0 as libc::c_int;
@@ -738,9 +731,8 @@ fn string_extract_single_quoted(
             '\u{0}' as i32,
             ::std::mem::size_of::<mbstate_t>() as usize,
         );
-        slen = if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
-            (strlen(string.offset(*sindex as isize))).wrapping_add(*sindex as libc::c_ulong as u64)
-                as u64
+        slen = if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+            (strlen(string.offset(*sindex as isize))).wrapping_add(*sindex as usize) as u64
         } else {
             0 as libc::c_int as libc::c_ulong
         };
@@ -1003,8 +995,8 @@ fn string_extract_verbatim(
                         0 as libc::c_int
                     }) as size_t;
                 } else {
-                    mblength = (if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
-                        mblen(
+                    mblength = (if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+                        c_mblen(
                             string.offset(i as isize),
                             slen.wrapping_sub(i as libc::c_ulong),
                         )
@@ -1014,10 +1006,10 @@ fn string_extract_verbatim(
                 }
                 if mblength > 1 as libc::c_int as libc::c_ulong {
                     let mut wc: wchar_t = 0;
-                    mblength = mbtowc(
-                        &mut wc,
+                    mblength = c_mbtowc(
+                        std::mem::transmute(&wc),
                         string.offset(i as isize),
-                        slen.wrapping_sub(i as libc::c_ulong) as usize,
+                        slen.wrapping_sub(i as libc::c_ulong),
                     ) as size_t;
                     if mblength == -(1 as libc::c_int) as size_t
                         || mblength == -(2 as libc::c_int) as size_t
@@ -1026,7 +1018,8 @@ fn string_extract_verbatim(
                             && c == *charlist.offset(0 as libc::c_int as isize) as libc::c_int
                             && *charlist.offset(1 as libc::c_int as isize) == 0
                             || (if c != 0 {
-                                (mbschr(charlist, c) != 0 as *mut libc::c_void as *mut libc::c_char)
+                                (c_mbschr(charlist, c)
+                                    != 0 as *mut libc::c_void as *mut libc::c_char)
                                     as libc::c_int
                             } else {
                                 0 as libc::c_int
@@ -1037,7 +1030,7 @@ fn string_extract_verbatim(
                     } else {
                         if wcharlist.is_null() {
                             let mut len: size_t = 0;
-                            len = mbstowcs(wcharlist, charlist, 0 as libc::c_int as usize) as u64;
+                            len = c_mbstowcs(wcharlist, charlist, 0 as libc::c_int as usize) as u64;
                             if len == -(1 as libc::c_int) as libc::c_ulong {
                                 len = 0 as libc::c_int as size_t;
                             }
@@ -1048,13 +1041,13 @@ fn string_extract_verbatim(
                                 b"../subst.c\0" as *const u8 as *const libc::c_char,
                                 1225 as libc::c_int,
                             ) as *mut wchar_t;
-                            mbstowcs(
+                            c_mbstowcs(
                                 wcharlist,
                                 charlist,
                                 len.wrapping_add(1 as libc::c_int as libc::c_ulong) as usize,
                             );
                         }
-                        if !(wcschr(wcharlist, wc)).is_null() {
+                        if !(c_wcschr(wcharlist, wc)).is_null() {
                             break;
                         }
                     }
@@ -1062,7 +1055,7 @@ fn string_extract_verbatim(
                     && c == *charlist.offset(0 as libc::c_int as isize) as libc::c_int
                     && *charlist.offset(1 as libc::c_int as isize) == 0
                     || (if c != 0 {
-                        (mbschr(charlist, c) != 0 as *mut libc::c_void as *mut libc::c_char)
+                        (c_mbschr(charlist, c) != 0 as *mut libc::c_void as *mut libc::c_char)
                             as libc::c_int
                     } else {
                         0 as libc::c_int
@@ -1230,7 +1223,7 @@ fn extract_delimited_string(
             '\u{0}' as i32,
             ::std::mem::size_of::<mbstate_t>() as usize,
         );
-        slen = (strlen(string.offset(*sindex as isize))).wrapping_add(*sindex as u64) as u64;
+        slen = (strlen(string.offset(*sindex as isize))).wrapping_add(*sindex as usize) as u64;
         len_opener = (if !opener.is_null()
             && *opener.offset(0 as libc::c_int as isize) as libc::c_int != 0
         {
@@ -1585,7 +1578,7 @@ fn extract_delimited_string(
                     1 as libc::c_int,
                 );
                 report_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"bad substitution: no closing `%s' in %s\0" as *const u8
                             as *const libc::c_char,
@@ -1644,7 +1637,7 @@ fn extract_dollar_brace_string(
         );
         pass_character = 0 as libc::c_int;
         nesting_level = 1 as libc::c_int;
-        slen = (strlen(string.offset(*sindex as isize))).wrapping_add(*sindex as u64) as u64;
+        slen = (strlen(string.offset(*sindex as isize))).wrapping_add(*sindex as usize) as u64;
         dolbrace_state = if flags & 0x200 as libc::c_int != 0 {
             0x4 as libc::c_int
         } else {
@@ -1909,7 +1902,7 @@ fn extract_dollar_brace_string(
                     1 as libc::c_int,
                 );
                 report_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"bad substitution: no closing `%s' in %s\0" as *const u8
                             as *const libc::c_char,
@@ -2046,7 +2039,7 @@ fn skip_matched_pair(
             '\u{0}' as i32,
             ::std::mem::size_of::<mbstate_t>() as usize,
         );
-        slen = (strlen(string.offset(start as isize))).wrapping_add(start as u64) as u64;
+        slen = (strlen(string.offset(start as isize))).wrapping_add(start as usize) as u64;
         oldjmp = no_longjmp_on_fatal_error;
         no_longjmp_on_fatal_error = 1 as libc::c_int;
         i = start + 1 as libc::c_int;
@@ -2293,7 +2286,7 @@ pub fn skip_to_delim(
             '\u{0}' as i32,
             ::std::mem::size_of::<mbstate_t>() as usize,
         );
-        slen = (strlen(string.offset(start as isize))).wrapping_add(start as u64) as u64;
+        slen = (strlen(string.offset(start as isize))).wrapping_add(start as usize) as u64;
         oldjmp = no_longjmp_on_fatal_error;
         if flags & 0x1 as libc::c_int != 0 {
             no_longjmp_on_fatal_error = 1 as libc::c_int;
@@ -2421,7 +2414,7 @@ pub fn skip_to_delim(
                 if skipquote == 0 as libc::c_int
                     && invert == 0 as libc::c_int
                     && (if c != 0 {
-                        (mbschr(delims, c) != 0 as *mut libc::c_void as *mut libc::c_char)
+                        (c_mbschr(delims, c) != 0 as *mut libc::c_void as *mut libc::c_char)
                             as libc::c_int
                     } else {
                         0 as libc::c_int
@@ -2541,7 +2534,7 @@ pub fn skip_to_delim(
                     && extended_glob != 0
                     && *string.offset((i + 1 as libc::c_int) as isize) as libc::c_int == '(' as i32
                     && (if c != 0 {
-                        (mbschr(b"?*+!@\0" as *const u8 as *const libc::c_char, c)
+                        (c_mbschr(b"?*+!@\0" as *const u8 as *const libc::c_char, c)
                             != 0 as *mut libc::c_void as *mut libc::c_char)
                             as libc::c_int
                     } else {
@@ -2598,7 +2591,7 @@ pub fn skip_to_delim(
                 } else {
                     if (skipquote != 0 || invert != 0)
                         && (if c != 0 {
-                            (mbschr(delims, c) != 0 as *mut libc::c_void as *mut libc::c_char)
+                            (c_mbschr(delims, c) != 0 as *mut libc::c_void as *mut libc::c_char)
                                 as libc::c_int
                         } else {
                             0 as libc::c_int
@@ -2680,7 +2673,7 @@ pub fn skip_to_histexp(
             '\u{0}' as i32,
             ::std::mem::size_of::<mbstate_t>() as usize,
         );
-        slen = (strlen(string.offset(start as isize))).wrapping_add(start as u64) as u64;
+        slen = (strlen(string.offset(start as isize))).wrapping_add(start as usize) as u64;
         oldjmp = no_longjmp_on_fatal_error;
         if flags & 0x1 as libc::c_int != 0 {
             no_longjmp_on_fatal_error = 1 as libc::c_int;
@@ -3211,7 +3204,7 @@ pub fn split_at_delims(
                     __value: mbstate_t_value { __wch: 0 },
                 };
                 state_bak = state;
-                mblength = if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+                mblength = if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
                     mbrlen(delims.offset(i as isize), slength, &mut state)
                 } else {
                     1 as libc::c_int as libc::c_ulong
@@ -3248,7 +3241,7 @@ pub fn split_at_delims(
         ret = 0 as *mut libc::c_void as *mut WORD_LIST;
         i = 0 as libc::c_int;
         while (if *string.offset(i as isize) as libc::c_int != 0 {
-            (mbschr(d, *string.offset(i as isize) as libc::c_int)
+            (c_mbschr(d, *string.offset(i as isize) as libc::c_int)
                 != 0 as *mut libc::c_void as *mut libc::c_char) as libc::c_int
         } else {
             0 as libc::c_int
@@ -3278,7 +3271,7 @@ pub fn split_at_delims(
             if ts == te
                 && !d2.is_null()
                 && (if *string.offset(ts as isize) as libc::c_int != 0 {
-                    (mbschr(d2, *string.offset(ts as isize) as libc::c_int)
+                    (c_mbschr(d2, *string.offset(ts as isize) as libc::c_int)
                         != 0 as *mut libc::c_void as *mut libc::c_char)
                         as libc::c_int
                 } else {
@@ -3288,7 +3281,7 @@ pub fn split_at_delims(
                 te = ts + 1 as libc::c_int;
                 if ifs_split != 0 {
                     while (if *string.offset(te as isize) as libc::c_int != 0 {
-                        (mbschr(d, *string.offset(te as isize) as libc::c_int)
+                        (c_mbschr(d, *string.offset(te as isize) as libc::c_int)
                             != 0 as *mut libc::c_void as *mut libc::c_char)
                             as libc::c_int
                     } else {
@@ -3305,7 +3298,7 @@ pub fn split_at_delims(
                     }
                 } else {
                     while (if *string.offset(te as isize) as libc::c_int != 0 {
-                        (mbschr(d2, *string.offset(te as isize) as libc::c_int)
+                        (c_mbschr(d2, *string.offset(te as isize) as libc::c_int)
                             != 0 as *mut libc::c_void as *mut libc::c_char)
                             as libc::c_int
                     } else {
@@ -3348,7 +3341,7 @@ pub fn split_at_delims(
             }
             i = te;
             while (if *string.offset(i as isize) as libc::c_int != 0 {
-                (mbschr(d, *string.offset(i as isize) as libc::c_int)
+                (c_mbschr(d, *string.offset(i as isize) as libc::c_int)
                     != 0 as *mut libc::c_void as *mut libc::c_char) as libc::c_int
             } else {
                 0 as libc::c_int
@@ -3536,7 +3529,7 @@ pub fn string_list_dollar_star(
 ) -> *mut libc::c_char {
     unsafe {
         let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
-        let vla = (__ctype_get_mb_cur_max()).wrapping_add(1 as libc::c_int as usize) as usize;
+        let vla = (c___ctype_get_mb_cur_max()).wrapping_add(1 as libc::c_int as usize) as usize;
         let mut sep: Vec<libc::c_char> = ::std::vec::from_elem(0, vla);
         if ifs_firstc_len == 1 as libc::c_int as libc::c_ulong {
             *sep.as_mut_ptr().offset(0 as libc::c_int as isize) =
@@ -3564,7 +3557,7 @@ pub fn string_list_dollar_at(
     unsafe {
         let mut ifs: *mut libc::c_char = 0 as *mut libc::c_char;
         let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
-        let vla = (__ctype_get_mb_cur_max()).wrapping_add(1 as libc::c_int as usize) as usize;
+        let vla = (c___ctype_get_mb_cur_max()).wrapping_add(1 as libc::c_int as usize) as usize;
         let mut sep: Vec<libc::c_char> = ::std::vec::from_elem(0, vla);
         let mut tlist: *mut WORD_LIST = 0 as *mut WORD_LIST;
         ifs = if !ifs_var.is_null() {
@@ -3713,7 +3706,7 @@ pub fn list_string(
                     0 as libc::c_int
                 }) != 0
                 && (1 as libc::c_int != 0
-                    && *(*__ctype_b_loc()).offset(*s as libc::c_uchar as libc::c_int as isize)
+                    && *(*c___ctype_b_loc()).offset(*s as libc::c_uchar as libc::c_int as isize)
                         as libc::c_int
                         & _ISspace as libc::c_int as libc::c_ushort as libc::c_int
                         != 0)
@@ -3777,8 +3770,8 @@ pub fn list_string(
                 }
             } else if sh_style_split == 0
                 && !(1 as libc::c_int != 0
-                    && *(*__ctype_b_loc()).offset(
-                        *string.offset(sindex as isize) as libc::c_uchar as libc::c_int as isize
+                    && *(*c___ctype_b_loc()).offset(
+                        *string.offset(sindex as isize) as libc::c_uchar as libc::c_int as isize,
                     ) as libc::c_int
                         & _ISspace as libc::c_int as libc::c_ushort as libc::c_int
                         != 0)
@@ -3805,7 +3798,7 @@ pub fn list_string(
                         as libc::c_int
                 } else {
                     (1 as libc::c_int != 0
-                        && *(*__ctype_b_loc()).offset(*string.offset(sindex as isize)
+                        && *(*c___ctype_b_loc()).offset(*string.offset(sindex as isize)
                             as libc::c_uchar
                             as libc::c_int
                             as isize) as libc::c_int
@@ -3870,7 +3863,7 @@ pub fn list_string(
                         as libc::c_int
                 } else {
                     (1 as libc::c_int != 0
-                        && *(*__ctype_b_loc()).offset(*string.offset(sindex as isize)
+                        && *(*c___ctype_b_loc()).offset(*string.offset(sindex as isize)
                             as libc::c_uchar
                             as libc::c_int
                             as isize) as libc::c_int
@@ -3915,7 +3908,7 @@ pub fn list_string(
                         as libc::c_int
                 } else {
                     (1 as libc::c_int != 0
-                        && *(*__ctype_b_loc()).offset(*string.offset(sindex as isize)
+                        && *(*c___ctype_b_loc()).offset(*string.offset(sindex as isize)
                             as libc::c_uchar
                             as libc::c_int
                             as isize) as libc::c_int
@@ -3932,7 +3925,7 @@ pub fn list_string(
                             as libc::c_int
                     } else {
                         (1 as libc::c_int != 0
-                            && *(*__ctype_b_loc())
+                            && *(*c___ctype_b_loc())
                                 .offset(*string.offset(sindex as isize) as libc::c_uchar
                                     as libc::c_int as isize)
                                 as libc::c_int
@@ -4009,7 +4002,7 @@ pub fn get_word_from_string(
         } else {
             while *s as libc::c_int != 0
                 && (1 as libc::c_int != 0
-                    && *(*__ctype_b_loc()).offset(*s as libc::c_uchar as libc::c_int as isize)
+                    && *(*c___ctype_b_loc()).offset(*s as libc::c_uchar as libc::c_int as isize)
                         as libc::c_int
                         & _ISspace as libc::c_int as libc::c_ushort as libc::c_int
                         != 0)
@@ -4051,7 +4044,7 @@ pub fn get_word_from_string(
                     as libc::c_int
             } else {
                 (1 as libc::c_int != 0
-                    && *(*__ctype_b_loc())
+                    && *(*c___ctype_b_loc())
                         .offset(*s.offset(sindex as isize) as libc::c_uchar as libc::c_int as isize)
                         as libc::c_int
                         & _ISspace as libc::c_int as libc::c_ushort as libc::c_int
@@ -4126,7 +4119,7 @@ pub fn get_word_from_string(
                     as libc::c_int
             } else {
                 (1 as libc::c_int != 0
-                    && *(*__ctype_b_loc())
+                    && *(*c___ctype_b_loc())
                         .offset(*s.offset(sindex as isize) as libc::c_uchar as libc::c_int as isize)
                         as libc::c_int
                         & _ISspace as libc::c_int as libc::c_ushort as libc::c_int
@@ -4142,7 +4135,7 @@ pub fn get_word_from_string(
                         as libc::c_int
                 } else {
                     (1 as libc::c_int != 0
-                        && *(*__ctype_b_loc()).offset(*s.offset(sindex as isize) as libc::c_uchar
+                        && *(*c___ctype_b_loc()).offset(*s.offset(sindex as isize) as libc::c_uchar
                             as libc::c_int
                             as isize) as libc::c_int
                             & _ISspace as libc::c_int as libc::c_ushort as libc::c_int
@@ -4407,11 +4400,11 @@ fn do_assignment_internal(mut word: *const WORD_DESC, mut expand: libc::c_int) -
         if appendop != 0 {
             aflags |= 0x1 as libc::c_int;
         }
-        t = mbschr(name, '[' as i32);
+        t = c_mbschr(name, '[' as i32);
         if !t.is_null() {
             if assign_list != 0 {
                 report_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: cannot assign list to array member\0" as *const u8
                             as *const libc::c_char,
@@ -4708,7 +4701,7 @@ fn expand_string_if_necessary(
             '\u{0}' as i32,
             ::std::mem::size_of::<mbstate_t>() as usize,
         );
-        slen = if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+        slen = if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
             strlen(string) as u64
         } else {
             0 as libc::c_int as libc::c_ulong
@@ -4878,7 +4871,7 @@ pub fn expand_arith_string(
             '\u{0}' as i32,
             ::std::mem::size_of::<mbstate_t>() as usize,
         );
-        slen = if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+        slen = if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
             strlen(string) as u64
         } else {
             0 as libc::c_int as u64
@@ -5005,7 +4998,7 @@ pub fn remove_backslashes(mut string: *mut libc::c_char) -> *mut libc::c_char {
         let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
         let mut s: *mut libc::c_char = 0 as *mut libc::c_char;
         ret = sh_xmalloc(
-            (strlen(string)).wrapping_add(1 as libc::c_int as u64) as u64,
+            (strlen(string)).wrapping_add(1) as u64,
             b"../subst.c\0" as *const u8 as *const libc::c_char,
             3652 as libc::c_int,
         ) as *mut libc::c_char;
@@ -6212,7 +6205,7 @@ fn remove_upattern(
                 while p >= param {
                     c = *p;
                     *p = '\u{0}' as i32 as libc::c_char;
-                    if strmatch(
+                    if c_strmatch(
                         pattern,
                         param,
                         if extended_glob != 0 {
@@ -6241,7 +6234,7 @@ fn remove_upattern(
                 while p <= end {
                     c = *p;
                     *p = '\u{0}' as i32 as libc::c_char;
-                    if strmatch(
+                    if c_strmatch(
                         pattern,
                         param,
                         if extended_glob != 0 {
@@ -6268,7 +6261,7 @@ fn remove_upattern(
             3 => {
                 p = param;
                 while p <= end {
-                    if strmatch(
+                    if c_strmatch(
                         pattern,
                         p,
                         if extended_glob != 0 {
@@ -6298,7 +6291,7 @@ fn remove_upattern(
             4 => {
                 p = end;
                 while p >= param {
-                    if strmatch(
+                    if c_strmatch(
                         pattern,
                         p,
                         if extended_glob != 0 {
@@ -6346,7 +6339,7 @@ fn remove_wpattern(
                 while n >= 0 as libc::c_int {
                     wc = *wparam.offset(n as isize);
                     *wparam.offset(n as isize) = '\u{0}' as i32;
-                    if wcsmatch(
+                    if c_wcsmatch(
                         wpattern,
                         wparam,
                         if extended_glob != 0 {
@@ -6357,7 +6350,7 @@ fn remove_wpattern(
                     ) != 1 as libc::c_int
                     {
                         *wparam.offset(n as isize) = wc;
-                        return wcsdup(wparam.offset(n as isize));
+                        return c_wcsdup(wparam.offset(n as isize));
                     }
                     *wparam.offset(n as isize) = wc;
                     n -= 1;
@@ -6368,7 +6361,7 @@ fn remove_wpattern(
                 while n as libc::c_ulong <= wstrlen {
                     wc = *wparam.offset(n as isize);
                     *wparam.offset(n as isize) = '\u{0}' as i32;
-                    if wcsmatch(
+                    if c_wcsmatch(
                         wpattern,
                         wparam,
                         if extended_glob != 0 {
@@ -6379,7 +6372,7 @@ fn remove_wpattern(
                     ) != 1 as libc::c_int
                     {
                         *wparam.offset(n as isize) = wc;
-                        return wcsdup(wparam.offset(n as isize));
+                        return c_wcsdup(wparam.offset(n as isize));
                     }
                     *wparam.offset(n as isize) = wc;
                     n += 1;
@@ -6388,7 +6381,7 @@ fn remove_wpattern(
             3 => {
                 n = 0 as libc::c_int;
                 while n as libc::c_ulong <= wstrlen {
-                    if wcsmatch(
+                    if c_wcsmatch(
                         wpattern,
                         wparam.offset(n as isize),
                         if extended_glob != 0 {
@@ -6400,7 +6393,7 @@ fn remove_wpattern(
                     {
                         wc = *wparam.offset(n as isize);
                         *wparam.offset(n as isize) = '\u{0}' as i32;
-                        ret = wcsdup(wparam);
+                        ret = c_wcsdup(wparam);
                         *wparam.offset(n as isize) = wc;
                         return ret;
                     }
@@ -6410,7 +6403,7 @@ fn remove_wpattern(
             4 => {
                 n = wstrlen as libc::c_int;
                 while n >= 0 as libc::c_int {
-                    if wcsmatch(
+                    if c_wcsmatch(
                         wpattern,
                         wparam.offset(n as isize),
                         if extended_glob != 0 {
@@ -6422,7 +6415,7 @@ fn remove_wpattern(
                     {
                         wc = *wparam.offset(n as isize);
                         *wparam.offset(n as isize) = '\u{0}' as i32;
-                        ret = wcsdup(wparam);
+                        ret = c_wcsdup(wparam);
                         *wparam.offset(n as isize) = wc;
                         return ret;
                     }
@@ -6457,7 +6450,7 @@ fn remove_pattern(
                 param,
             );
         }
-        if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+        if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
             let mut ret: *mut wchar_t = 0 as *mut wchar_t;
             let mut oret: *mut wchar_t = 0 as *mut wchar_t;
             let mut n: size_t = 0;
@@ -6467,7 +6460,7 @@ fn remove_pattern(
                 __count: 0,
                 __value: mbstate_t_value { __wch: 0 },
             };
-            n = xdupmbstowcs(&mut wpattern, 0 as *mut *mut *mut libc::c_char, pattern);
+            n = c_xdupmbstowcs(&mut wpattern, 0 as *mut *mut *mut libc::c_char, pattern);
             if n == -(1 as libc::c_int) as size_t {
                 xret = remove_upattern(param, pattern, op);
                 return if xret == param {
@@ -6483,7 +6476,7 @@ fn remove_pattern(
                     xret
                 };
             }
-            n = xdupmbstowcs(&mut wparam, 0 as *mut *mut *mut libc::c_char, param);
+            n = c_xdupmbstowcs(&mut wparam, 0 as *mut *mut *mut libc::c_char, param);
             if n == -(1 as libc::c_int) as size_t {
                 sh_xfree(
                     wpattern as *mut libc::c_void,
@@ -6547,7 +6540,7 @@ fn remove_pattern(
                 '\u{0}' as i32,
                 ::std::mem::size_of::<mbstate_t>() as usize,
             );
-            n = wcsrtombs(
+            n = c_wcsrtombs(
                 xret,
                 &mut ret as *mut *mut wchar_t as *mut *const wchar_t,
                 n as usize,
@@ -6670,7 +6663,7 @@ fn match_upattern(
         } else {
             npat = pat;
         }
-        c = strmatch(
+        c = c_strmatch(
             npat,
             string,
             (if extended_glob != 0 {
@@ -6708,7 +6701,7 @@ fn match_upattern(
             0 as libc::c_int as libc::c_ulong
         };
         end = string.offset(len as isize);
-        mlen = umatchlen(pat, len);
+        mlen = c_umatchlen(pat, len);
         if mlen > len as libc::c_int {
             return 0 as libc::c_int;
         }
@@ -6716,7 +6709,7 @@ fn match_upattern(
             0 => {
                 p = string;
                 while p <= end {
-                    if match_pattern_char(
+                    if c_match_pattern_char(
                         pat,
                         p,
                         if match_ignore_case != 0 {
@@ -6737,7 +6730,7 @@ fn match_upattern(
                         while p1 >= p {
                             c = *p1 as libc::c_int;
                             *p1 = '\u{0}' as i32 as libc::c_char;
-                            if strmatch(
+                            if c_strmatch(
                                 pat,
                                 p,
                                 (if extended_glob != 0 {
@@ -6768,7 +6761,7 @@ fn match_upattern(
                 return 0 as libc::c_int;
             }
             1 => {
-                if match_pattern_char(
+                if c_match_pattern_char(
                     pat,
                     string,
                     if match_ignore_case != 0 {
@@ -6788,7 +6781,7 @@ fn match_upattern(
                 while p >= string {
                     c = *p as libc::c_int;
                     *p = '\u{0}' as i32 as libc::c_char;
-                    if strmatch(
+                    if c_strmatch(
                         pat,
                         string,
                         (if extended_glob != 0 {
@@ -6824,7 +6817,7 @@ fn match_upattern(
                     }) as isize),
                 );
                 while p <= end {
-                    if strmatch(
+                    if c_strmatch(
                         pat,
                         p,
                         (if extended_glob != 0 {
@@ -6888,7 +6881,7 @@ fn match_wpattern(
                     && *wpat.offset(0 as libc::c_int as isize) != '@' as i32)
                 as libc::c_int;
         }
-        len = wcslen(wpat as *const wchar_t) as u64;
+        len = c_wcslen(wpat as *const wchar_t) as u64;
         if *wpat.offset(0 as libc::c_int as isize) != '*' as i32
             || *wpat.offset(0 as libc::c_int as isize) == '*' as i32
                 && *wpat.offset(1 as libc::c_int as isize) == '(' as i32
@@ -6949,7 +6942,7 @@ fn match_wpattern(
         } else {
             nwpat = wpat;
         }
-        len = wcsmatch(
+        len = c_wcsmatch(
             nwpat,
             wstring,
             (if extended_glob != 0 {
@@ -6972,7 +6965,7 @@ fn match_wpattern(
         if len == 1 as libc::c_int as libc::c_ulong {
             return 0 as libc::c_int;
         }
-        mlen = wmatchlen(wpat, wstrlen);
+        mlen = c_wmatchlen(wpat, wstrlen);
         if mlen > wstrlen as libc::c_int {
             return 0 as libc::c_int;
         }
@@ -6981,19 +6974,19 @@ fn match_wpattern(
                 n = 0 as libc::c_int;
                 while n as libc::c_ulong <= wstrlen {
                     n2 = if simple != 0 {
-                        ((if match_ignore_case != 0 && iswupper(*wpat as wint_t) != 0 {
-                            towlower(*wpat as wint_t)
+                        ((if match_ignore_case != 0 && c_iswupper(*wpat as wint_t) != 0 {
+                            c_towlower(*wpat as wint_t)
                         } else {
                             *wpat as libc::c_uint
                         }) == (if match_ignore_case != 0
-                            && iswupper(*wstring.offset(n as isize) as wint_t) != 0
+                            && c_iswupper(*wstring.offset(n as isize) as wint_t) != 0
                         {
-                            towlower(*wstring.offset(n as isize) as wint_t)
+                            c_towlower(*wstring.offset(n as isize) as wint_t)
                         } else {
                             *wstring.offset(n as isize) as libc::c_uint
                         })) as libc::c_int
                     } else {
-                        match_pattern_wchar(
+                        c_match_pattern_wchar(
                             wpat,
                             wstring.offset(n as isize),
                             if match_ignore_case != 0 {
@@ -7015,7 +7008,7 @@ fn match_wpattern(
                         while n1 >= n {
                             wc = *wstring.offset(n1 as isize);
                             *wstring.offset(n1 as isize) = '\u{0}' as i32;
-                            if wcsmatch(
+                            if c_wcsmatch(
                                 wpat,
                                 wstring.offset(n as isize),
                                 (if extended_glob != 0 {
@@ -7046,7 +7039,7 @@ fn match_wpattern(
                 return 0 as libc::c_int;
             }
             1 => {
-                if match_pattern_wchar(
+                if c_match_pattern_wchar(
                     wpat,
                     wstring,
                     if match_ignore_case != 0 {
@@ -7066,7 +7059,7 @@ fn match_wpattern(
                 while n >= 0 as libc::c_int {
                     wc = *wstring.offset(n as isize);
                     *wstring.offset(n as isize) = '\u{0}' as i32;
-                    if wcsmatch(
+                    if c_wcsmatch(
                         wpat,
                         wstring,
                         (if extended_glob != 0 {
@@ -7100,7 +7093,7 @@ fn match_wpattern(
                     mlen as libc::c_ulong
                 }) as libc::c_int;
                 while n as libc::c_ulong <= wstrlen {
-                    if wcsmatch(
+                    if c_wcsmatch(
                         wpat,
                         wstring.offset(n as isize),
                         (if extended_glob != 0 {
@@ -7146,15 +7139,15 @@ fn match_pattern(
         if string.is_null() || pat.is_null() || *pat as libc::c_int == 0 as libc::c_int {
             return 0 as libc::c_int;
         }
-        if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
-            if (mbsmbchar(string)).is_null() && (mbsmbchar(pat)).is_null() {
+        if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+            if (c_mbsmbchar(string)).is_null() && (c_mbsmbchar(pat)).is_null() {
                 return match_upattern(string, pat, mtype, sp, ep);
             }
-            n = xdupmbstowcs(&mut wpat, 0 as *mut *mut *mut libc::c_char, pat);
+            n = c_xdupmbstowcs(&mut wpat, 0 as *mut *mut *mut libc::c_char, pat);
             if n == -(1 as libc::c_int) as size_t {
                 return match_upattern(string, pat, mtype, sp, ep);
             }
-            n = xdupmbstowcs(&mut wstring, &mut indices, string);
+            n = c_xdupmbstowcs(&mut wstring, &mut indices, string);
             if n == -(1 as libc::c_int) as size_t {
                 sh_xfree(
                     wpat as *mut libc::c_void,
@@ -7679,7 +7672,7 @@ fn make_dev_fd_filename(mut fd: libc::c_int) -> *mut libc::c_char {
     ) as *mut libc::c_char;
     unsafe {
         strcpy(ret, b"/dev/fd/\0" as *const u8 as *const libc::c_char);
-        p = inttostr(
+        p = c_inttostr(
             fd as intmax_t,
             intbuf.as_mut_ptr(),
             ::std::mem::size_of::<[libc::c_char; 12]>() as libc::c_ulong,
@@ -7715,7 +7708,7 @@ fn process_substitute(
         if pipe(fildes.as_mut_ptr()) < 0 as libc::c_int {
             sys_error(
                 b"%s\0" as *const u8 as *const libc::c_char,
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"cannot make pipe for process substitution\0" as *const u8
                         as *const libc::c_char,
@@ -7731,7 +7724,7 @@ fn process_substitute(
         if pathname.is_null() {
             sys_error(
                 b"%s\0" as *const u8 as *const libc::c_char,
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"cannot make pipe for process substitution\0" as *const u8
                         as *const libc::c_char,
@@ -7778,7 +7771,7 @@ fn process_substitute(
         if pid < 0 as libc::c_int {
             sys_error(
                 b"%s\0" as *const u8 as *const libc::c_char,
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"cannot make child for process substitution\0" as *const u8
                         as *const libc::c_char,
@@ -7814,7 +7807,7 @@ fn process_substitute(
         }
         fd = child_pipe_fd;
         if open_for_read_in_child == 0 as libc::c_int {
-            fpurge(stdout);
+            c_fpurge(stdout);
         }
         if dup2(
             fd,
@@ -7826,7 +7819,7 @@ fn process_substitute(
         ) < 0 as libc::c_int
         {
             sys_error(
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"cannot duplicate named pipe %s as fd %d\0" as *const u8
                         as *const libc::c_char,
@@ -7918,12 +7911,12 @@ fn read_comsub(
         istring_index = istring_size as libc::c_int;
         skip_ctlesc = ifs_cmap['\u{1}' as i32 as usize] as libc::c_int;
         skip_ctlnul = ifs_cmap['\u{7f}' as i32 as usize] as libc::c_int;
-        mb_cur_max = __ctype_get_mb_cur_max() as libc::c_int;
+        mb_cur_max = c___ctype_get_mb_cur_max() as libc::c_int;
         nullbyte = 0 as libc::c_int;
         while !(fd < 0 as libc::c_int) {
             bufn -= 1;
             if bufn <= 0 as libc::c_int as libc::c_long {
-                bufn = zread(
+                bufn = c_zread(
                     fd,
                     buf.as_mut_ptr(),
                     ::std::mem::size_of::<[libc::c_char; 512]>() as libc::c_ulong,
@@ -7940,7 +7933,7 @@ fn read_comsub(
                 if nullbyte == 0 as libc::c_int {
                     internal_warning(
                         b"%s\0" as *const u8 as *const libc::c_char,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"command substitution: ignored null byte in input\0" as *const u8
                                 as *const libc::c_char,
@@ -7998,7 +7991,7 @@ fn read_comsub(
                         '\u{0}' as i32,
                         ::std::mem::size_of::<mbstate_t>() as usize,
                     );
-                    mblen_0 = mbrtowc(
+                    mblen_0 = c_mbrtowc(
                         &mut wc,
                         bufp.offset(-(1 as libc::c_int as isize)),
                         (bufn + 1 as libc::c_int as libc::c_long) as size_t,
@@ -8136,7 +8129,7 @@ pub fn command_substitute(
         if pipe(fildes.as_mut_ptr()) < 0 as libc::c_int {
             sys_error(
                 b"%s\0" as *const u8 as *const libc::c_char,
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"cannot make pipe for command substitution\0" as *const u8
                         as *const libc::c_char,
@@ -8184,7 +8177,7 @@ pub fn command_substitute(
                 pipeline_pgrp = old_pipeline_pgrp;
             }
             if pid < 0 as libc::c_int {
-                sys_error(dcgettext(
+                sys_error(c_dcgettext(
                     0 as *const libc::c_char,
                     b"cannot make child for command substitution\0" as *const u8
                         as *const libc::c_char,
@@ -8194,11 +8187,11 @@ pub fn command_substitute(
                 interactive = 0 as libc::c_int;
                 set_sigint_handler();
                 free_pushed_string_input();
-                fpurge(stdout);
+                c_fpurge(stdout);
                 if dup2(fildes[1 as libc::c_int as usize], 1 as libc::c_int) < 0 as libc::c_int {
                     sys_error(
                         b"%s\0" as *const u8 as *const libc::c_char,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"command_substitute: cannot duplicate pipe as fd 1\0" as *const u8
                                 as *const libc::c_char,
@@ -8274,21 +8267,17 @@ pub fn command_substitute(
                     >(close),
                     dummyfd as *mut libc::c_char,
                 );
-                // add_unwind_protect(
-                //                 Some(close as fn() -> libc::c_int),
-                //                 dummyfd as &mut i8,
-                //             );
-                sigemptyset(&mut set);
-                sigaddset(&mut set, 2 as libc::c_int);
-                sigemptyset(&mut oset);
-                sigprocmask(0 as libc::c_int, &mut set, &mut oset);
+                c_sigemptyset(&mut set);
+                c_sigaddset(&mut set, 2 as libc::c_int);
+                c_sigemptyset(&mut oset);
+                c_sigprocmask(0 as libc::c_int, &mut set, &mut oset);
                 tflag = 0 as libc::c_int;
                 istring = read_comsub(fildes[0 as libc::c_int as usize], quoted, flags, &mut tflag);
                 close(fildes[0 as libc::c_int as usize]);
                 discard_unwind_frame(
                     b"read-comsub\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 );
-                sigprocmask(
+                c_sigprocmask(
                     2 as libc::c_int,
                     &mut oset,
                     0 as *mut libc::c_void as *mut crate::src_common::__sigset_t,
@@ -8433,10 +8422,10 @@ fn array_length_reference(mut s: *mut libc::c_char) -> arrayind_t {
                 };
             }
         }
-        len = (if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+        len = (if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
             if !t.is_null() && *t.offset(0 as libc::c_int as isize) as libc::c_int != 0 {
                 if *t.offset(1 as libc::c_int as isize) as libc::c_int != 0 {
-                    mbstrlen(t) as usize
+                    c_mbstrlen(t) as usize
                 } else {
                     1 as libc::c_int as usize
                 }
@@ -8522,7 +8511,7 @@ fn chk_atstar(
                 return 1 as libc::c_int;
             } else {
                 if valid_array_reference(name, 0 as libc::c_int) != 0 {
-                    temp1 = mbschr(name, '[' as i32);
+                    temp1 = c_mbschr(name, '[' as i32);
                     if !temp1.is_null()
                         && *temp1.offset(1 as libc::c_int as isize) as libc::c_int == '@' as i32
                         && *temp1.offset(2 as libc::c_int as isize) as libc::c_int == ']' as i32
@@ -8713,7 +8702,7 @@ fn parameter_brace_expand_word(
                             {
                                 set_exit_status(1 as libc::c_int);
                                 report_error(
-                                    dcgettext(
+                                    c_dcgettext(
                                         0 as *const libc::c_char,
                                         b"%s: invalid variable name for name reference\0"
                                             as *const u8
@@ -8962,7 +8951,7 @@ fn parameter_brace_expand_indir(
         }
         if legal_identifier(name) != 0 && v.is_null() {
             report_error(
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"%s: invalid indirect expansion\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
@@ -8986,7 +8975,7 @@ fn parameter_brace_expand_indir(
             );
             if v.is_null() {
                 report_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: invalid indirect expansion\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
@@ -9030,7 +9019,7 @@ fn parameter_brace_expand_indir(
         ) == 0 as libc::c_int
         {
             report_error(
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"%s: invalid variable name\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
@@ -9230,7 +9219,7 @@ fn parameter_brace_expand_rhs(
         vname = name;
         if *name as libc::c_int == '!' as i32
             && (1 as libc::c_int != 0
-                && *(*__ctype_b_loc()).offset(*name.offset(1 as libc::c_int as isize)
+                && *(*c___ctype_b_loc()).offset(*name.offset(1 as libc::c_int as isize)
                     as libc::c_uchar as libc::c_int
                     as isize) as libc::c_int
                     & _ISalpha as libc::c_int as libc::c_ushort as libc::c_int
@@ -9277,7 +9266,7 @@ fn parameter_brace_expand_rhs(
             );
             if vname.is_null() || *vname as libc::c_int == 0 as libc::c_int {
                 report_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: invalid indirect expansion\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
@@ -9299,7 +9288,7 @@ fn parameter_brace_expand_rhs(
             }
             if legal_identifier(vname) == 0 as libc::c_int {
                 report_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: invalid variable name\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
@@ -9421,7 +9410,7 @@ fn parameter_brace_expand_error(
             dispose_words(l);
         } else if check_null == 0 as libc::c_int {
             report_error(
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"%s: parameter not set\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
@@ -9430,7 +9419,7 @@ fn parameter_brace_expand_error(
             );
         } else {
             report_error(
-                dcgettext(
+                c_dcgettext(
                     0 as *const libc::c_char,
                     b"%s: parameter null or not set\0" as *const u8 as *const libc::c_char,
                     5 as libc::c_int,
@@ -9497,20 +9486,20 @@ fn parameter_brace_expand_length(mut name: *mut libc::c_char) -> intmax_t {
                     t = which_set_flags();
                 }
                 63 => {
-                    t = itos(last_command_exit_value as intmax_t);
+                    t = c_itos(last_command_exit_value as intmax_t);
                 }
                 36 => {
-                    t = itos(dollar_dollar_pid as intmax_t);
+                    t = c_itos(dollar_dollar_pid as intmax_t);
                 }
                 33 => {
                     if last_asynchronous_pid == -(1 as libc::c_int) {
                         t = 0 as *mut libc::c_void as *mut libc::c_char;
                     } else {
-                        t = itos(last_asynchronous_pid as intmax_t);
+                        t = c_itos(last_asynchronous_pid as intmax_t);
                     }
                 }
                 35 => {
-                    t = itos(number_of_args() as intmax_t);
+                    t = c_itos(number_of_args() as intmax_t);
                 }
                 _ => {}
             }
@@ -9546,10 +9535,10 @@ fn parameter_brace_expand_length(mut name: *mut libc::c_char) -> intmax_t {
                     return -(9223372036854775807 as libc::c_long)
                         - 1 as libc::c_int as libc::c_long;
                 }
-                number = (if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+                number = (if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
                     if !t.is_null() && *t.offset(0 as libc::c_int as isize) as libc::c_int != 0 {
                         if *t.offset(1 as libc::c_int as isize) as libc::c_int != 0 {
-                            mbstrlen(t) as usize
+                            c_mbstrlen(t) as usize
                         } else {
                             1 as libc::c_int as usize
                         }
@@ -9598,11 +9587,11 @@ fn parameter_brace_expand_length(mut name: *mut libc::c_char) -> intmax_t {
                         return -(9223372036854775807 as libc::c_long)
                             - 1 as libc::c_int as libc::c_long;
                     }
-                    number = (if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+                    number = (if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
                         if !t.is_null() && *t.offset(0 as libc::c_int as isize) as libc::c_int != 0
                         {
                             if *t.offset(1 as libc::c_int as isize) as libc::c_int != 0 {
-                                mbstrlen(t) as usize
+                                c_mbstrlen(t) as usize
                             } else {
                                 1 as libc::c_int as usize
                             }
@@ -9633,7 +9622,7 @@ fn parameter_brace_expand_length(mut name: *mut libc::c_char) -> intmax_t {
                     && ((*var).dynamic_value).is_none()
                 {
                     number = (if !((*var).value).is_null() {
-                        if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+                        if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
                             if !((*var).value).is_null()
                                 && *((*var).value).offset(0 as libc::c_int as isize) as libc::c_int
                                     != 0
@@ -9641,7 +9630,7 @@ fn parameter_brace_expand_length(mut name: *mut libc::c_char) -> intmax_t {
                                 if *((*var).value).offset(1 as libc::c_int as isize) as libc::c_int
                                     != 0
                                 {
-                                    mbstrlen((*var).value) as usize
+                                    c_mbstrlen((*var).value) as usize
                                 } else {
                                     1 as libc::c_int as usize
                                 }
@@ -9696,12 +9685,12 @@ fn parameter_brace_expand_length(mut name: *mut libc::c_char) -> intmax_t {
                         dispose_words(list);
                     }
                     number = (if !t.is_null() {
-                        if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+                        if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
                             if !t.is_null()
                                 && *t.offset(0 as libc::c_int as isize) as libc::c_int != 0
                             {
                                 if *t.offset(1 as libc::c_int as isize) as libc::c_int != 0 {
-                                    mbstrlen(t) as usize
+                                    c_mbstrlen(t) as usize
                                 } else {
                                     1 as libc::c_int as usize
                                 }
@@ -9789,12 +9778,12 @@ fn verify_substring_values(
         len = -(1 as libc::c_int) as arrayind_t;
         match vtype {
             0 | 3 => {
-                len = (if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+                len = (if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
                     if !value.is_null()
                         && *value.offset(0 as libc::c_int as isize) as libc::c_int != 0
                     {
                         if *value.offset(1 as libc::c_int as isize) as libc::c_int != 0 {
-                            mbstrlen(value) as usize
+                            c_mbstrlen(value) as usize
                         } else {
                             1 as libc::c_int as usize
                         }
@@ -9882,7 +9871,7 @@ fn verify_substring_values(
                 && *e2p < 0 as libc::c_int as libc::c_long
             {
                 internal_error(
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: substring expression < 0\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
@@ -9896,7 +9885,7 @@ fn verify_substring_values(
                     *e2p += len;
                     if *e2p < 0 as libc::c_int as libc::c_long || *e2p < *e1p {
                         internal_error(
-                            dcgettext(
+                            c_dcgettext(
                                 0 as *const libc::c_char,
                                 b"%s: substring expression < 0\0" as *const u8
                                     as *const libc::c_char,
@@ -9937,7 +9926,7 @@ fn get_var_and_type(
     unsafe {
         want_indir = (*varname as libc::c_int == '!' as i32
             && (1 as libc::c_int != 0
-                && *(*__ctype_b_loc())
+                && *(*c___ctype_b_loc())
                     .offset(*varname.offset(1 as libc::c_int as isize) as libc::c_uchar
                         as libc::c_int as isize) as libc::c_int
                     & _ISalpha as libc::c_int as libc::c_ushort as libc::c_int
@@ -10127,7 +10116,7 @@ fn string_var_assignment(mut v: *mut SHELL_VAR, mut s: *mut libc::c_char) -> *mu
         {
             0 as *mut libc::c_void as *mut libc::c_char
         } else {
-            sh_quote_reusable(s, 0 as libc::c_int)
+            c_sh_quote_reusable(s, 0 as libc::c_int)
         };
         i = var_attribute_string(v, 0 as libc::c_int, flags.as_mut_ptr());
         if i == 0 as libc::c_int && val.is_null() {
@@ -10303,7 +10292,7 @@ fn pos_params_assignment(
     temp = list_transform('Q' as i32, 0 as *mut SHELL_VAR, list, itype, quoted);
     unsafe {
         ret = sh_xmalloc(
-            (strlen(temp)).wrapping_add(8 as libc::c_int as u64) as u64,
+            (strlen(temp)).wrapping_add(8) as u64,
             b"../subst.c\0" as *const u8 as *const libc::c_char,
             7743 as libc::c_int,
         ) as *mut libc::c_char;
@@ -10355,10 +10344,10 @@ fn string_transform(
                 ret = string_var_assignment(v, s);
             }
             75 => {
-                ret = sh_quote_reusable(s, 0 as libc::c_int);
+                ret = c_sh_quote_reusable(s, 0 as libc::c_int);
             }
             69 => {
-                t = ansiexpand(
+                t = c_ansiexpand(
                     s,
                     0 as libc::c_int,
                     strlen(s) as libc::c_int,
@@ -10375,16 +10364,16 @@ fn string_transform(
                 ret = decode_prompt_string(s);
             }
             81 => {
-                ret = sh_quote_reusable(s, 0 as libc::c_int);
+                ret = c_sh_quote_reusable(s, 0 as libc::c_int);
             }
             85 => {
-                ret = sh_modcase(s, 0 as *mut libc::c_char, 0x2 as libc::c_int);
+                ret = c_sh_modcase(s, 0 as *mut libc::c_char, 0x2 as libc::c_int);
             }
             117 => {
-                ret = sh_modcase(s, 0 as *mut libc::c_char, 0x40 as libc::c_int);
+                ret = c_sh_modcase(s, 0 as *mut libc::c_char, 0x40 as libc::c_int);
             }
             76 => {
-                ret = sh_modcase(s, 0 as *mut libc::c_char, 0x1 as libc::c_int);
+                ret = c_sh_modcase(s, 0 as *mut libc::c_char, 0x1 as libc::c_int);
             }
             _ => {
                 ret = 0 as *mut libc::c_void as *mut libc::c_char;
@@ -10739,7 +10728,7 @@ fn mb_substring(
             ::std::mem::size_of::<mbstate_t>() as usize,
         );
         start = 0 as libc::c_int;
-        slen = if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+        slen = if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
             if !string.is_null() && *string.offset(0 as libc::c_int as isize) as libc::c_int != 0 {
                 if *string.offset(1 as libc::c_int as isize) as libc::c_int != 0 {
                     if *string.offset(2 as libc::c_int as isize) as libc::c_int != 0 {
@@ -10916,7 +10905,7 @@ fn parameter_brace_substring(
         }
         match vtype {
             0 | 3 => {
-                if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+                if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
                     tt = mb_substring(val, e1 as libc::c_int, e2 as libc::c_int);
                 } else {
                     tt = substring(val, e1 as libc::c_int, e2 as libc::c_int);
@@ -11664,7 +11653,7 @@ fn pos_params_modcase(
     }
     unsafe {
         while !params.is_null() {
-            ret = sh_modcase((*(*params).word).word, pat, modop);
+            ret = c_sh_modcase((*(*params).word).word, pat, modop);
             w = alloc_word_desc();
             let ref mut fresh95 = (*w).word;
             *fresh95 = if !ret.is_null() {
@@ -11811,7 +11800,7 @@ fn parameter_brace_casemod(
         };
         match vtype {
             0 | 3 => {
-                temp = sh_modcase(val, pat, modop);
+                temp = c_sh_modcase(val, pat, modop);
                 if vtype == 0 as libc::c_int {
                     if !val.is_null() {
                         sh_xfree(
@@ -12066,9 +12055,10 @@ fn parameter_brace_expand(
         t_index = sindex;
         if *string.offset(t_index as isize) as libc::c_int == '#' as i32
             && (1 as libc::c_int != 0
-                && *(*__ctype_b_loc()).offset(*string.offset((t_index + 1 as libc::c_int) as isize)
-                    as libc::c_uchar as libc::c_int
-                    as isize) as libc::c_int
+                && *(*c___ctype_b_loc()).offset(
+                    *string.offset((t_index + 1 as libc::c_int) as isize) as libc::c_uchar
+                        as libc::c_int as isize,
+                ) as libc::c_int
                     & _ISalpha as libc::c_int as libc::c_ushort as libc::c_int
                     != 0
                 || *string.offset((t_index + 1 as libc::c_int) as isize) as libc::c_int
@@ -12225,7 +12215,7 @@ fn parameter_brace_expand(
             && *name.offset(1 as libc::c_int as isize) as libc::c_int == '\u{0}' as i32
             && check_nullness == 0 as libc::c_int
             && (if c != 0 {
-                (mbschr(b"%:=+/\0" as *const u8 as *const libc::c_char, c)
+                (c_mbschr(b"%:=+/\0" as *const u8 as *const libc::c_char, c)
                     != 0 as *mut libc::c_void as *mut libc::c_char) as libc::c_int
             } else {
                 0 as libc::c_int
@@ -12236,7 +12226,7 @@ fn parameter_brace_expand(
         } else {
             want_indir = (*name as libc::c_int == '!' as i32
                 && (1 as libc::c_int != 0
-                    && *(*__ctype_b_loc())
+                    && *(*c___ctype_b_loc())
                         .offset(*name.offset(1 as libc::c_int as isize) as libc::c_uchar
                             as libc::c_int as isize) as libc::c_int
                         & _ISalpha as libc::c_int as libc::c_ushort as libc::c_int
@@ -12315,7 +12305,7 @@ fn parameter_brace_expand(
                     } else {
                         ret = alloc_word_desc();
                         let ref mut fresh98 = (*ret).word;
-                        *fresh98 = itos(number);
+                        *fresh98 = c_itos(number);
                         return ret;
                     }
                 }
@@ -12341,7 +12331,7 @@ fn parameter_brace_expand(
                         || *string.offset((sindex - 2 as libc::c_int) as isize) as libc::c_int
                             == '@' as i32)
                     && (1 as libc::c_int != 0
-                        && *(*__ctype_b_loc())
+                        && *(*c___ctype_b_loc())
                             .offset(*name.offset(1 as libc::c_int as isize) as libc::c_uchar
                                 as libc::c_int as isize) as libc::c_int
                             & _ISalpha as libc::c_int as libc::c_ushort as libc::c_int
@@ -12367,7 +12357,7 @@ fn parameter_brace_expand(
                     *temp1.offset((number - 1 as libc::c_int as libc::c_long) as isize) =
                         '\u{0}' as i32 as libc::c_char;
                     x = all_variables_matching_prefix(temp1);
-                    xlist = strvec_to_word_list(x, 0 as libc::c_int, 0 as libc::c_int);
+                    xlist = c_strvec_to_word_list(x, 0 as libc::c_int, 0 as libc::c_int);
                     if *string.offset((sindex - 2 as libc::c_int) as isize) as libc::c_int
                         == '*' as i32
                     {
@@ -12572,7 +12562,7 @@ fn parameter_brace_expand(
                                 if pflags & 0x8 as libc::c_int != 0 {
                                     qflags |= 0x1 as libc::c_int;
                                 }
-                                t = mbschr(name, '[' as i32);
+                                t = c_mbschr(name, '[' as i32);
                                 if !t.is_null()
                                     && (*t.offset(1 as libc::c_int as isize) as libc::c_int
                                         == '@' as i32
@@ -13053,7 +13043,7 @@ fn parameter_brace_expand(
                                                         );
                                                         set_exit_status(1 as libc::c_int);
                                                         report_error(
-                                                            dcgettext(
+                                                            c_dcgettext(
                                                                 0 as *const libc::c_char,
                                                                 b"%s: bad substitution\0"
                                                                     as *const u8
@@ -13196,7 +13186,7 @@ fn parameter_brace_expand(
                                                         if c == '=' as i32 && var_is_special != 0 {
                                                             set_exit_status(1 as libc::c_int);
                                                             report_error(
-                                                            dcgettext(
+                                                            c_dcgettext(
                                                                 0 as *const libc::c_char,
                                                                 b"$%s: cannot assign in this way\0"
                                                                     as *const u8
@@ -13435,7 +13425,7 @@ fn parameter_brace_expand(
                                                         );
                                                         set_exit_status(1 as libc::c_int);
                                                         report_error(
-                                                            dcgettext(
+                                                            c_dcgettext(
                                                                 0 as *const libc::c_char,
                                                                 b"%s: bad substitution\0"
                                                                     as *const u8
@@ -13578,7 +13568,7 @@ fn parameter_brace_expand(
                                                         if c == '=' as i32 && var_is_special != 0 {
                                                             set_exit_status(1 as libc::c_int);
                                                             report_error(
-                                                            dcgettext(
+                                                            c_dcgettext(
                                                                 0 as *const libc::c_char,
                                                                 b"$%s: cannot assign in this way\0"
                                                                     as *const u8
@@ -13817,7 +13807,7 @@ fn parameter_brace_expand(
                                                         );
                                                         set_exit_status(1 as libc::c_int);
                                                         report_error(
-                                                            dcgettext(
+                                                            c_dcgettext(
                                                                 0 as *const libc::c_char,
                                                                 b"%s: bad substitution\0"
                                                                     as *const u8
@@ -13960,7 +13950,7 @@ fn parameter_brace_expand(
                                                         if c == '=' as i32 && var_is_special != 0 {
                                                             set_exit_status(1 as libc::c_int);
                                                             report_error(
-                                                            dcgettext(
+                                                            c_dcgettext(
                                                                 0 as *const libc::c_char,
                                                                 b"$%s: cannot assign in this way\0"
                                                                     as *const u8
@@ -14199,7 +14189,7 @@ fn parameter_brace_expand(
                                                         );
                                                         set_exit_status(1 as libc::c_int);
                                                         report_error(
-                                                            dcgettext(
+                                                            c_dcgettext(
                                                                 0 as *const libc::c_char,
                                                                 b"%s: bad substitution\0"
                                                                     as *const u8
@@ -14342,7 +14332,7 @@ fn parameter_brace_expand(
                                                         if c == '=' as i32 && var_is_special != 0 {
                                                             set_exit_status(1 as libc::c_int);
                                                             report_error(
-                                                            dcgettext(
+                                                            c_dcgettext(
                                                                 0 as *const libc::c_char,
                                                                 b"$%s: cannot assign in this way\0"
                                                                     as *const u8
@@ -14581,7 +14571,7 @@ fn parameter_brace_expand(
                                                         );
                                                         set_exit_status(1 as libc::c_int);
                                                         report_error(
-                                                            dcgettext(
+                                                            c_dcgettext(
                                                                 0 as *const libc::c_char,
                                                                 b"%s: bad substitution\0"
                                                                     as *const u8
@@ -14724,7 +14714,7 @@ fn parameter_brace_expand(
                                                         if c == '=' as i32 && var_is_special != 0 {
                                                             set_exit_status(1 as libc::c_int);
                                                             report_error(
-                                                            dcgettext(
+                                                            c_dcgettext(
                                                                 0 as *const libc::c_char,
                                                                 b"$%s: cannot assign in this way\0"
                                                                     as *const u8
@@ -14925,7 +14915,7 @@ fn parameter_brace_expand(
         }
         set_exit_status(1 as libc::c_int);
         report_error(
-            dcgettext(
+            c_dcgettext(
                 0 as *const libc::c_char,
                 b"%s: bad substitution\0" as *const u8 as *const libc::c_char,
                 5 as libc::c_int,
@@ -15034,15 +15024,15 @@ fn param_expand(
                 current_block = 14877673131977174631;
             }
             36 => {
-                temp = itos(dollar_dollar_pid as intmax_t);
+                temp = c_itos(dollar_dollar_pid as intmax_t);
                 current_block = 14877673131977174631;
             }
             35 => {
-                temp = itos(number_of_args() as intmax_t);
+                temp = c_itos(number_of_args() as intmax_t);
                 current_block = 14877673131977174631;
             }
             63 => {
-                temp = itos(last_command_exit_value as intmax_t);
+                temp = c_itos(last_command_exit_value as intmax_t);
                 current_block = 14877673131977174631;
             }
             45 => {
@@ -15069,7 +15059,7 @@ fn param_expand(
                         };
                     }
                 } else {
-                    temp = itos(last_asynchronous_pid as intmax_t);
+                    temp = c_itos(last_asynchronous_pid as intmax_t);
                 }
                 current_block = 14877673131977174631;
             }
@@ -15318,7 +15308,7 @@ fn param_expand(
                         ) as *mut libc::c_char,
                         temp1,
                     );
-                    t_index = (strlen(temp2)).wrapping_sub(1 as libc::c_int as u64) as libc::c_int;
+                    t_index = (strlen(temp2)).wrapping_sub(1) as libc::c_int;
                     if *temp2.offset(t_index as isize) as libc::c_int != ')' as i32 {
                         sh_xfree(
                             temp2 as *mut libc::c_void,
@@ -15411,7 +15401,7 @@ fn param_expand(
                     c = *string.offset(zindex as isize) as libc::c_uchar;
                     if !(c as libc::c_int != 0
                         && (1 as libc::c_int != 0
-                            && *(*__ctype_b_loc()).offset(c as libc::c_int as isize)
+                            && *(*c___ctype_b_loc()).offset(c as libc::c_int as isize)
                                 as libc::c_int
                                 & _ISalnum as libc::c_int as libc::c_ushort as libc::c_int
                                 != 0
@@ -15573,7 +15563,7 @@ fn param_expand(
                                     {
                                         set_exit_status(1 as libc::c_int);
                                         report_error(
-                                            dcgettext(
+                                            c_dcgettext(
                                                 0 as *const libc::c_char,
                                                 b"%s: invalid variable name for name reference\0"
                                                     as *const u8
@@ -15656,7 +15646,7 @@ fn param_expand(
                         return &mut expand_wdesc_error;
                     }
                 }
-                temp = itos(number);
+                temp = c_itos(number);
                 current_block = 14877673131977174631;
             }
             _ => {}
@@ -15771,7 +15761,7 @@ fn expand_word_internal(
         quoted_state = 0 as libc::c_int;
         string = (*word).word;
         if !string.is_null() {
-            mb_cur_max = __ctype_get_mb_cur_max() as libc::c_int;
+            mb_cur_max = c___ctype_get_mb_cur_max() as libc::c_int;
             string_size = if mb_cur_max > 1 as libc::c_int {
                 strlen(string) as u64
             } else {
@@ -16193,7 +16183,7 @@ fn expand_word_internal(
                             } else {
                                 set_exit_status(1 as libc::c_int);
                                 report_error(
-                                    dcgettext(
+                                    c_dcgettext(
                                         0 as *const libc::c_char,
                                         b"bad substitution: no closing \"`\" in %s\0" as *const u8
                                             as *const libc::c_char,
@@ -17490,9 +17480,9 @@ pub fn setifs(mut v: *mut SHELL_VAR) {
                 }) as size_t;
             } else {
                 let mut ifs_len: size_t = 0;
-                ifs_len = strnlen(ifs_value, __ctype_get_mb_cur_max()) as u64;
-                ifs_firstc_len = (if __ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
-                    mblen(ifs_value, ifs_len)
+                ifs_len = strnlen(ifs_value, c___ctype_get_mb_cur_max()) as u64;
+                ifs_firstc_len = (if c___ctype_get_mb_cur_max() > 1 as libc::c_int as usize {
+                    c_mblen(ifs_value, ifs_len)
                 } else {
                     1 as libc::c_int
                 }) as size_t;
@@ -17729,7 +17719,7 @@ fn glob_expand_word_list(mut tlist: *mut WORD_LIST, mut eflags: libc::c_int) -> 
                     glob_index += 1;
                 }
                 if !glob_list.is_null() {
-                    output_list = list_append(glob_list, output_list) as *mut WORD_LIST;
+                    output_list = c_list_append(glob_list, output_list) as *mut WORD_LIST;
                     let ref mut fresh144 = (*tlist).next;
                     *fresh144 = disposables;
                     disposables = tlist;
@@ -17739,7 +17729,7 @@ fn glob_expand_word_list(mut tlist: *mut WORD_LIST, mut eflags: libc::c_int) -> 
                         1 as libc::c_int,
                     );
                     report_error(
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"no match: %s\0" as *const u8 as *const libc::c_char,
                             5 as libc::c_int,
@@ -17769,7 +17759,7 @@ fn glob_expand_word_list(mut tlist: *mut WORD_LIST, mut eflags: libc::c_int) -> 
                 *fresh148 = output_list;
                 output_list = tlist;
             }
-            strvec_dispose(glob_array);
+            c_strvec_dispose(glob_array);
             glob_array = 0 as *mut libc::c_void as *mut *mut libc::c_char;
             tlist = next;
         }
@@ -17811,7 +17801,7 @@ fn brace_expand_word_list(mut tlist: *mut WORD_LIST, mut eflags: libc::c_int) ->
                 let ref mut fresh150 = (*tlist).next;
                 *fresh150 = output_list;
                 output_list = tlist;
-            } else if !(mbschr((*(*tlist).word).word, '{' as i32)).is_null() {
+            } else if !(c_mbschr((*(*tlist).word).word, '{' as i32)).is_null() {
                 expansions = brace_expand((*(*tlist).word).word);
                 eindex = 0 as libc::c_int;
                 loop {
@@ -17916,7 +17906,7 @@ fn expand_oneword(mut value: *mut libc::c_char, mut flags: libc::c_int) -> *mut 
                 } else if (*(*nl).word).flags & (1 as libc::c_int) << 2 as libc::c_int
                     == 0 as libc::c_int
                 {
-                    t = sh_single_quote(if !((*(*nl).word).word).is_null() {
+                    t = c_sh_single_quote(if !((*(*nl).word).word).is_null() {
                         (*(*nl).word).word
                     } else {
                         b"\0" as *const u8 as *const libc::c_char
@@ -18274,7 +18264,7 @@ fn shell_expand_word_list(mut tlist: *mut WORD_LIST, mut eflags: libc::c_int) ->
             } else {
                 temp_list
             };
-            new_list = list_append(expanded, new_list) as *mut WORD_LIST;
+            new_list = c_list_append(expanded, new_list) as *mut WORD_LIST;
             tlist = next;
         }
         if !orig_list.is_null() {
