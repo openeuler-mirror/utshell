@@ -1,9 +1,8 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::general::{extract_colon_unit, full_pathname, legal_number};
 use crate::src_common::*;
 use crate::subst::expand_string_to_string;
+use crate::utshell::get_current_user_info;
+use crate::variables::get_string_value;
 use crate::variables::{bind_variable, unbind_variable};
 
 #[no_mangle]
@@ -11,18 +10,21 @@ pub fn time_to_check_mail() -> libc::c_int {
     let mut seconds: intmax_t = 0;
     let temp: *mut libc::c_char;
     let now: time_t;
-    unsafe {
-        temp = get_string_value(b"MAILCHECK\0" as *const u8 as *const libc::c_char);
-        if temp.is_null()
-            || legal_number(temp, &mut seconds) == 0 as libc::c_int
-            || seconds < 0 as libc::c_int as intmax_t
-        {
-            return 0 as libc::c_int;
-        }
-        now = time(0 as *mut time_t);
-        return (seconds == 0 as libc::c_int as intmax_t || now - last_time_mail_checked >= seconds)
-            as libc::c_int;
+
+    temp = get_string_value(b"MAILCHECK\0" as *const u8 as *const libc::c_char);
+    if temp.is_null()
+        || legal_number(temp, &mut seconds) == 0 as libc::c_int
+        || seconds < 0 as libc::c_int as intmax_t
+    {
+        return 0 as libc::c_int;
     }
+    unsafe {
+        now = time(0 as *mut time_t);
+    }
+    return unsafe {
+        (seconds == 0 as libc::c_int as intmax_t || now - last_time_mail_checked >= seconds)
+            as libc::c_int
+    };
 }
 
 #[no_mangle]
@@ -35,18 +37,19 @@ pub fn reset_mail_timer() {
 fn find_mail_file(file: *mut libc::c_char) -> libc::c_int {
     let mut i: libc::c_int;
     i = 0 as libc::c_int;
-    unsafe {
-        while i < mailfiles_count {
-            if *((**mailfiles.offset(i as isize)).name).offset(0 as libc::c_int as isize)
+
+    while unsafe { i < mailfiles_count } {
+        if unsafe {
+            *((**mailfiles.offset(i as isize)).name).offset(0 as libc::c_int as isize)
                 as libc::c_int
                 == *file.offset(0 as libc::c_int as isize) as libc::c_int
                 && strcmp((**mailfiles.offset(i as isize)).name, file) == 0 as libc::c_int
-            {
-                return i;
-            }
-            i += 1;
+        } {
+            return i;
         }
+        i += 1;
     }
+
     return -(1 as libc::c_int);
 }
 
@@ -69,7 +72,7 @@ fn update_mail_file(i: libc::c_int) {
     let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
     unsafe {
         file = (**mailfiles.offset(i as isize)).name;
-        if mailstat(file, &mut finfo) == 0 as libc::c_int {
+        if c_mailstat(file, &mut finfo) == 0 as libc::c_int {
             UPDATE_MAIL_FILE!(i, finfo);
         } else {
             RESET_MAIL_FILE!(i);
@@ -85,7 +88,7 @@ fn add_mail_file(file: *mut libc::c_char, msg: *mut libc::c_char) -> libc::c_int
     i = find_mail_file(filename);
     unsafe {
         if i >= 0 as libc::c_int {
-            if mailstat(filename, &mut finfo) == 0 as libc::c_int {
+            if c_mailstat(filename, &mut finfo) == 0 as libc::c_int {
                 UPDATE_MAIL_FILE!(i, finfo);
             }
             free(filename as *mut libc::c_void);
@@ -108,13 +111,13 @@ fn add_mail_file(file: *mut libc::c_char, msg: *mut libc::c_char) -> libc::c_int
 
 #[no_mangle]
 pub fn reset_mail_files() {
-    unsafe {
-        let mut i: libc::c_int;
-        i = 0 as libc::c_int;
-        while i < mailfiles_count {
+    let mut i: libc::c_int;
+    i = 0 as libc::c_int;
+    while unsafe { i < mailfiles_count } {
+        unsafe {
             RESET_MAIL_FILE!(i);
-            i += 1;
         }
+        i += 1;
     }
 }
 
@@ -168,32 +171,34 @@ pub fn free_mail_files() {
 
 #[no_mangle]
 pub fn init_mail_dates() {
-    unsafe {
-        if mailfiles.is_null() {
-            remember_mail_dates();
-        }
+    if unsafe { mailfiles.is_null() } {
+        remember_mail_dates();
     }
 }
 
 fn file_mod_date_changed(i: libc::c_int) -> libc::c_int {
     let mtime_0: time_t;
     let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
+
+    let file: *mut libc::c_char;
     unsafe {
-        let file: *mut libc::c_char;
         file = (**mailfiles.offset(i as isize)).name;
         mtime_0 = (**mailfiles.offset(i as isize)).mod_time;
-        if mailstat(file, &mut finfo) != 0 as libc::c_int {
-            return 0 as libc::c_int;
-        }
-        if finfo.st_size > 0 as libc::c_int as libc::c_long {
-            return (mtime_0 < finfo.st_mtim.tv_sec) as libc::c_int;
-        }
-        if finfo.st_size == 0 as libc::c_int as libc::c_long
-            && (**mailfiles.offset(i as isize)).file_size > 0 as libc::c_int as off_t
-        {
+    }
+    if c_mailstat(file, &mut finfo) != 0 as libc::c_int {
+        return 0 as libc::c_int;
+    }
+    if finfo.st_size > 0 as libc::c_int as libc::c_long {
+        return (mtime_0 < finfo.st_mtim.tv_sec) as libc::c_int;
+    }
+    if finfo.st_size == 0 as libc::c_int as libc::c_long
+        && unsafe { (**mailfiles.offset(i as isize)).file_size > 0 as libc::c_int as off_t }
+    {
+        unsafe {
             UPDATE_MAIL_FILE!(i, finfo);
         }
     }
+
     return 0 as libc::c_int;
 }
 
@@ -201,56 +206,59 @@ fn file_access_date_changed(i: libc::c_int) -> libc::c_int {
     let atime_0: time_t;
     let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
     let file: *mut libc::c_char;
+
     unsafe {
         file = (**mailfiles.offset(i as isize)).name;
         atime_0 = (**mailfiles.offset(i as isize)).access_time;
-        if mailstat(file, &mut finfo) != 0 as libc::c_int {
-            return 0 as libc::c_int;
-        }
-        if finfo.st_size > 0 as libc::c_int as libc::c_long {
-            return (atime_0 < finfo.st_atim.tv_sec) as libc::c_int;
-        }
     }
+    if c_mailstat(file, &mut finfo) != 0 as libc::c_int {
+        return 0 as libc::c_int;
+    }
+    if finfo.st_size > 0 as libc::c_int as libc::c_long {
+        return (atime_0 < finfo.st_atim.tv_sec) as libc::c_int;
+    }
+
     return 0 as libc::c_int;
 }
 
 fn file_has_grown(i: libc::c_int) -> libc::c_int {
     let size: off_t;
     let mut finfo: crate::src_common::stat = crate::src_common::stat_init;
+
+    let file: *mut libc::c_char;
     unsafe {
-        let file: *mut libc::c_char;
         file = (**mailfiles.offset(i as isize)).name;
         size = (**mailfiles.offset(i as isize)).file_size;
-        return (mailstat(file, &mut finfo) == 0 as libc::c_int && finfo.st_size > size)
-            as libc::c_int;
     }
+    return (c_mailstat(file, &mut finfo) == 0 as libc::c_int && finfo.st_size > size)
+        as libc::c_int;
 }
 
 fn parse_mailpath_spec(str: *mut libc::c_char) -> *mut libc::c_char {
     let mut s: *mut libc::c_char;
     let mut pass_next: libc::c_int;
     s = str;
-    unsafe {
-        pass_next = 0 as libc::c_int;
-        while !s.is_null() && *s as libc::c_int != 0 {
-            if pass_next != 0 {
-                pass_next = 0 as libc::c_int;
-            } else if *s as libc::c_int == '\\' as i32 {
-                pass_next += 1;
-            } else if *s as libc::c_int == '?' as i32 || *s as libc::c_int == '%' as i32 {
-                return s;
-            }
-            s = s.offset(1);
+
+    pass_next = 0 as libc::c_int;
+    while !s.is_null() && unsafe { *s as libc::c_int != 0 } {
+        if pass_next != 0 {
+            pass_next = 0 as libc::c_int;
+        } else if unsafe { *s as libc::c_int == '\\' as i32 } {
+            pass_next += 1;
+        } else if unsafe { *s as libc::c_int == '?' as i32 || *s as libc::c_int == '%' as i32 } {
+            return s;
         }
+        s = unsafe { s.offset(1) };
     }
+
     return 0 as *mut libc::c_void as *mut libc::c_char;
 }
 
 #[no_mangle]
 pub fn make_default_mailpath() -> *mut libc::c_char {
+    let mp: *mut libc::c_char;
+    get_current_user_info();
     unsafe {
-        let mp: *mut libc::c_char;
-        get_current_user_info();
         mp = libc::malloc(
             (2 as libc::c_int as usize)
                 .wrapping_add(strlen(DEFAULT_MAIL_DIRECTORY) as usize)
@@ -273,35 +281,40 @@ pub fn remember_mail_dates() {
     let mut mailfile: *mut libc::c_char;
     let mut mp: *mut libc::c_char;
     let mut i: libc::c_int = 0 as libc::c_int;
-    unsafe {
-        mailpaths = get_string_value(b"MAILPATH\0" as *const u8 as *const libc::c_char);
-        if mailpaths.is_null() && {
-            mailpaths = get_string_value(b"MAIL\0" as *const u8 as *const libc::c_char);
-            !mailpaths.is_null()
-        } {
+
+    mailpaths = get_string_value(b"MAILPATH\0" as *const u8 as *const libc::c_char);
+    if mailpaths.is_null() && {
+        mailpaths = get_string_value(b"MAIL\0" as *const u8 as *const libc::c_char);
+        !mailpaths.is_null()
+    } {
+        add_mail_file(mailpaths, 0 as *mut libc::c_void as *mut libc::c_char);
+        return;
+    }
+    if mailpaths.is_null() {
+        mailpaths = make_default_mailpath();
+        if !mailpaths.is_null() {
             add_mail_file(mailpaths, 0 as *mut libc::c_void as *mut libc::c_char);
-            return;
-        }
-        if mailpaths.is_null() {
-            mailpaths = make_default_mailpath();
-            if !mailpaths.is_null() {
-                add_mail_file(mailpaths, 0 as *mut libc::c_void as *mut libc::c_char);
+            unsafe {
                 free(mailpaths as *mut libc::c_void);
             }
-            return;
         }
-        loop {
-            mailfile = extract_colon_unit(mailpaths, &mut i);
-            if mailfile.is_null() {
-                break;
-            }
-            mp = parse_mailpath_spec(mailfile);
-            if !mp.is_null() && *mp as libc::c_int != 0 {
-                let fresh5 = mp;
+        return;
+    }
+    loop {
+        mailfile = extract_colon_unit(mailpaths, &mut i);
+        if mailfile.is_null() {
+            break;
+        }
+        mp = parse_mailpath_spec(mailfile);
+        if !mp.is_null() && unsafe { *mp as libc::c_int != 0 } {
+            let fresh5 = mp;
+            unsafe {
                 mp = mp.offset(1);
                 *fresh5 = '\0' as i32 as libc::c_char;
             }
-            add_mail_file(mailfile, mp);
+        }
+        add_mail_file(mailfile, mp);
+        unsafe {
             free(mailfile as *mut libc::c_void);
         }
     }
@@ -338,7 +351,7 @@ pub fn check_mail() {
                     message = if !((**mailfiles.offset(i as isize)).msg).is_null() {
                         (**mailfiles.offset(i as isize)).msg
                     } else {
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"You have mail in $_\0" as *const u8 as *const libc::c_char,
                             5 as libc::c_int,
@@ -363,7 +376,7 @@ pub fn check_mail() {
                                 < (**mailfiles.offset(i as isize)).mod_time
                             && file_is_bigger != 0
                         {
-                            message = dcgettext(
+                            message = c_dcgettext(
                                 0 as *const libc::c_char,
                                 b"You have new mail in $_\0" as *const u8 as *const libc::c_char,
                                 5 as libc::c_int,
@@ -374,13 +387,13 @@ pub fn check_mail() {
                             puts(temp);
                             free(temp as *mut libc::c_void);
                         } else {
-                            putc('\n' as i32, stdout);
+                            c_putc('\n' as i32, stdout);
                         }
                     }
                     if mail_warning != 0 && file_access_date_changed(i) != 0 {
                         update_mail_file(i);
                         printf(
-                            dcgettext(
+                            c_dcgettext(
                                 0 as *const libc::c_char,
                                 b"The mail in %s has been read\n\0" as *const u8
                                     as *const libc::c_char,
