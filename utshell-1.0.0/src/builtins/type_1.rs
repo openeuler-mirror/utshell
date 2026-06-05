@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use fluent_bundle::FluentArgs;
 use fluent_resmgr::resource_manager::ResourceManager;
 
@@ -24,7 +21,6 @@ fn function_cell(var: *mut SHELL_VAR) -> *mut COMMAND {
 
 #[no_mangle]
 pub fn type_builtin(mut list: *mut WordList) -> i32 {
-    //println!("rtype  is run");
     let mut dflags: i32;
     let mut any_failed: i32 = 0;
     let _opt: i32 = 0;
@@ -140,7 +136,6 @@ pub fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
     let mut x: *mut libc::c_char;
     let mut pathlist: *mut libc::c_char;
     let _func: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    // let mut alias : *mut alias_t;
 
     if (dflags & CDESC_ALL!()) != 0 {
         all = 1;
@@ -148,37 +143,8 @@ pub fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
         all = 0;
     }
 
-    full_path = std::ptr::null_mut();
+    // full_path = std::ptr::null_mut();
 
-    /*
-        // #if defined (ALIAS)
-        alias = find_alias(command);
-        if (((dflags & CDESC_FORCE_PATH!()) == 0) && expand_aliases!=0 && alias != std::ptr::null_mut())
-        {
-          if (dflags & CDESC_TYPE!()) != 0{
-              unsafe {
-                libc::puts("alias" as *const libc::c_char );
-              }
-          }
-          else if (dflags & CDESC_SHORTDESC!()) != 0 {
-              unsafe{
-                println!("{:?} is aliased to {:?}\n",CStr::from_ptr(command), CStr::from_ptr(alias.value));
-              }
-          }
-          else if dflags & CDESC_REUSABLE!(){
-              unsafe {
-                x = sh_single_quote((*alias).value);
-                println!("alias {:?} = {:?}",CStr::from_ptr(command),CStr::from_ptr(x));
-                libc::free(x);
-              }
-        }
-          found = 1;
-
-          if all == 0 {
-            return 1;
-          }
-        }
-    */
     /* Command is a shell reserved word? */
     if ((dflags & CDESC_FORCE_PATH!()) == 0) && find_reserved_word(command) >= 0 {
         if dflags & CDESC_TYPE!() != 0 {
@@ -236,20 +202,14 @@ pub fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
     }
 
     /* Command is a builtin? */
-    if ((dflags & CDESC_FORCE_PATH!()) == 0)
-//        && unsafe { find_shell_builtin(command) } != std::ptr::null_mut()
-        &&  find_shell_builtin(command).is_some()
-    {
+    if ((dflags & CDESC_FORCE_PATH!()) == 0) && find_shell_builtin(command).is_some() {
         if dflags & CDESC_TYPE!() != 0 {
             unsafe {
                 let c_str_builtin = CString::new("builtin").unwrap();
                 libc::puts(c_str_builtin.as_ptr());
             }
         } else if dflags & CDESC_SHORTDESC!() != 0 {
-            if unsafe { posixly_correct } != 0
-//                && unsafe { find_special_builtin(command) } != std::ptr::null_mut()
-                &&  find_special_builtin(command).is_some()
-            {
+            if unsafe { posixly_correct } != 0 && find_special_builtin(command).is_some() {
                 let name = String::from("special");
                 translation_fn(&name, command, std::ptr::null_mut());
             } else {
@@ -271,8 +231,8 @@ pub fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
     /* Command is a disk file? */
     /* If the command name given is already an absolute command, just
     check to see if it is executable. */
-    if unsafe { absolute_program(command) } != 0 {
-        f = unsafe { file_status(command) };
+    if absolute_program(command) != 0 {
+        f = file_status(command);
         if f & FS_EXECABLE!() != 0 {
             if dflags & CDESC_TYPE!() != 0 {
                 unsafe {
@@ -334,13 +294,10 @@ pub fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
         } else if all == 0 {
             full_path = find_user_command(command);
         } else {
-            unsafe {
-                full_path = user_command_matches(command, FS_EXEC_ONLY!(), found_file);
-                /* XXX - should that be FS_EXEC_PREFERRED? */
-            }
+            full_path = user_command_matches(command, FS_EXEC_ONLY!(), found_file);
+            /* XXX - should that be FS_EXEC_PREFERRED? */
         }
         if full_path == std::ptr::null_mut() {
-            // return 0;
             break;
         }
 
@@ -349,9 +306,8 @@ pub fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
         executable file.  If it's not, don't report a match.  This is
         the default posix mode behavior */
         if (unsafe { STREQ!(full_path, command) } || unsafe { posixly_correct } != 0) {
-            unsafe {
-                f = file_status(full_path);
-            }
+            f = file_status(full_path);
+
             if f & FS_EXECABLE!() == 0 {
                 unsafe {
                     libc::free(full_path as *mut c_void);
@@ -370,7 +326,7 @@ pub fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
                     f = 0;
                 }
                 unsafe {
-                    x = sh_makepath(std::ptr::null_mut(), full_path, f);
+                    x = c_sh_makepath(std::ptr::null_mut(), full_path, f);
                     libc::free(full_path as *mut c_void);
                 }
 
@@ -380,7 +336,7 @@ pub fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
         /* If we require a full path and don't have one, make one */
         else if ((dflags & CDESC_ABSPATH!()) != 0) && unsafe { ABSPATH!(full_path) } == false {
             unsafe {
-                x = sh_makepath(std::ptr::null_mut(), full_path, MP_DOCWD!() | MP_RMDOT!());
+                x = c_sh_makepath(std::ptr::null_mut(), full_path, MP_DOCWD!() | MP_RMDOT!());
                 libc::free(full_path as *mut c_void);
             }
             full_path = x;
@@ -404,7 +360,7 @@ pub fn describe_command(command: *mut libc::c_char, dflags: i32) -> i32 {
         unsafe {
             libc::free(full_path as *mut c_void);
         }
-        full_path = std::ptr::null_mut();
+        // full_path = std::ptr::null_mut();
         if all == 0 {
             break;
         }
