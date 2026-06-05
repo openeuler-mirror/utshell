@@ -56,47 +56,6 @@ typedef double floatmax_t;
 #  define strtofltmax	strtod
 #endif
 
-/* printf -v var support */
-static char *vbuf;
-static size_t vbsize;
-static int vblen;
 
-static int
-#if defined (PREFER_STDARG)
-vbprintf (const char *format, ...)
-#else
-vbprintf (format, va_alist)
-  const char *format;
-  va_dcl
-#endif
-{
-  va_list args;
-  size_t nlen;
-  int blen;
-
-  SH_VA_START (args, format);
-  blen = vsnprintf (vbuf + vblen, vbsize - vblen, format, args);
-  va_end (args);
-
-  nlen = vblen + blen + 1;
-  if (nlen >= vbsize)
-    {
-      vbsize = ((nlen + 63) >> 6) << 6;
-      vbuf = (char *)xrealloc (vbuf, vbsize);
-      SH_VA_START (args, format);
-      blen = vsnprintf (vbuf + vblen, vbsize - vblen, format, args);
-      va_end (args);
-    }
-
-  vblen += blen;
-  vbuf[vblen] = '\0';
-
-#ifdef DEBUG
-  if  (strlen (vbuf) != vblen)
-    internal_error  ("printf:vbprintf: vblen (%d) != strlen (vbuf) (%d)", vblen, (int)strlen (vbuf));
-#endif
-  
-  return (blen);
-}
 
 
