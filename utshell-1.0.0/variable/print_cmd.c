@@ -59,14 +59,14 @@ extern int printf PARAMS((const char *, ...));	/* Yuck.  Double yuck. */
 #if defined (PREFER_STDARG)
 
 extern void cprintf PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1, 2)));
-static void xprintf PARAMS((const char *, ...))  __attribute__((__format__ (printf, 1, 2)));
+
 #else
 #define PFUNC VFunction
 static void cprintf ();
 static void xprintf ();
 #endif
 
-static void the_printed_command_resize PARAMS((int));
+extern void the_printed_command_resize PARAMS((int));
 
 
 extern char *the_printed_command ;
