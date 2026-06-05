@@ -53,14 +53,14 @@ fn make_command_string_internal(command: *mut COMMAND) {
                 indent(indentation);
             }
 
-            if (*command).flags != 0 && CMD_TIME_PIPELINE != 0 {
+            if (*command).flags & CMD_TIME_PIPELINE != 0 {
                 cprintf(b"time \0" as *const u8 as *const libc::c_char);
-                if (*command).flags != 0 && CMD_TIME_POSIX != 0 {
+                if (*command).flags & CMD_TIME_POSIX != 0 {
                     cprintf(b"-p \0" as *const u8 as *const libc::c_char);
                 }
             }
 
-            if (*command).flags != 0 && CMD_INVERT_RETURN != 0 {
+            if (*command).flags & CMD_INVERT_RETURN != 0 {
                 cprintf(b"! \0" as *const u8 as *const libc::c_char);
             }
 
