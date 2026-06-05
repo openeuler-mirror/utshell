@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 pub use libc::*;
 
 pub use crate::array::array_dispose_element;
@@ -8,6 +5,7 @@ pub use crate::array::array_rshift;
 pub use crate::array::array_shift;
 pub use crate::builtins::help::builtin_help;
 pub use crate::builtins::read::sigalrm_seen;
+pub use crate::general::absolute_pathname;
 pub use crate::general::file_isdir;
 pub use crate::general::legal_number;
 pub use crate::general::make_absolute;
@@ -19,14 +17,15 @@ pub use crate::jobs::stop_pipeline;
 pub use crate::jobs::wait_for;
 pub use crate::list::list_reverse;
 pub use crate::pcomplete::prog_completion_enabled;
+pub use crate::readline::c_mbstowcs;
 pub use crate::readline::environ;
-pub use crate::readline::mbstowcs;
 pub use crate::readline::rl_readline_state;
 pub use crate::sig::termsig_handler;
 pub use crate::sig::throw_to_top_level;
 pub use crate::stringlib::xbcopy;
 pub use crate::trap::signal_is_ignored;
 pub use crate::trap::signal_is_trapped;
+pub use crate::utshell::set_exit_status;
 pub use crate::variables::find_variable;
 pub use fluent_bundle::FluentArgs;
 pub use fluent_resmgr::resource_manager::ResourceManager;
@@ -41,15 +40,6 @@ pub use std::path::Path;
 pub use std::ptr::{null_mut, read_volatile};
 pub use unic_langid::LanguageIdentifier;
 
-/*
-#[link(name = "glob", kind = "static")]
-#[link(name = "test", kind = "static")]
-#[link(name = "tilde", kind = "static")]
-#[link(name = "readline", kind = "static")]
-#[link(name = "sh", kind = "static")]
-#[link(name = "termcap", kind = "static")]
-#[link(name = "test", kind = "static")]
-*/
 extern "C" {
     pub static mut rl_completion_entry_function: Option<rl_compentry_func_t>;
     pub static mut rl_ignore_some_completions_function: Option<rl_compignore_func_t>;
@@ -93,280 +83,256 @@ extern "C" {
     #[link_name = "\u{1}stdin"]
     pub static mut stdin: *mut FILE;
 
-    pub fn strlen(_: *const libc::c_char) -> libc::c_ulong;
-    pub fn getrusage(__who: __rusage_who_t, __usage: *mut rusage) -> ::std::os::raw::c_int;
-    pub fn gettimeofday(__tv: *mut timeval, __tz: __timezone_ptr_t) -> libc::c_int;
-    pub fn sigemptyset(__set: *mut sigset_t) -> libc::c_int;
-    pub fn sigaddset(__set: *mut sigset_t, __signo: libc::c_int) -> libc::c_int;
-    pub fn sigprocmask(
+    fn getrusage(__who: __rusage_who_t, __usage: *mut rusage) -> ::std::os::raw::c_int;
+    fn gettimeofday(__tv: *mut timeval, __tz: __timezone_ptr_t) -> libc::c_int;
+    fn sigemptyset(__set: *mut sigset_t) -> libc::c_int;
+    fn sigaddset(__set: *mut sigset_t, __signo: libc::c_int) -> libc::c_int;
+    fn sigprocmask(
         __how: libc::c_int,
         __set: *const sigset_t,
         __oset: *mut sigset_t,
     ) -> libc::c_int;
-    pub fn sigaction(
+    fn sigaction(
         __sig: libc::c_int,
         __act: *const sigaction,
         __oact: *mut sigaction,
     ) -> libc::c_int;
-    pub fn sigismember(__set: *const sigset_t, __signo: libc::c_int) -> libc::c_int;
-    pub fn sigdelset(__set: *mut sigset_t, __signo: libc::c_int) -> libc::c_int;
-    pub fn xfree(_: *mut libc::c_void);
-    fn clearerr(__stream: *mut FILE);
-    pub fn strlist_resize(_: *mut STRINGLIST, _: libc::c_int) -> *mut STRINGLIST;
-    pub fn strlist_dispose(_: *mut STRINGLIST);
-    pub fn strlist_append(_: *mut STRINGLIST, _: *mut STRINGLIST) -> *mut STRINGLIST;
-    pub fn netopen(_: *mut libc::c_char) -> libc::c_int;
-    pub fn sh_mktmpfd(
-        _: *mut libc::c_char,
-        _: libc::c_int,
-        _: *mut *mut libc::c_char,
-    ) -> libc::c_int;
-    pub fn mbstrlen(_: *const libc::c_char) -> size_t;
-    pub fn dcgettext(
+    fn sigismember(__set: *const sigset_t, __signo: libc::c_int) -> libc::c_int;
+    fn sigdelset(__set: *mut sigset_t, __signo: libc::c_int) -> libc::c_int;
+    fn xfree(_: *mut libc::c_void);
+
+    fn strlist_resize(_: *mut STRINGLIST, _: libc::c_int) -> *mut STRINGLIST;
+    fn strlist_dispose(_: *mut STRINGLIST);
+    fn strlist_append(_: *mut STRINGLIST, _: *mut STRINGLIST) -> *mut STRINGLIST;
+    fn netopen(_: *mut libc::c_char) -> libc::c_int;
+    fn sh_mktmpfd(_: *mut libc::c_char, _: libc::c_int, _: *mut *mut libc::c_char) -> libc::c_int;
+    fn mbstrlen(_: *const libc::c_char) -> size_t;
+    fn dcgettext(
         __domainname: *const libc::c_char,
         __msgid: *const libc::c_char,
         __category: i32,
     ) -> *mut libc::c_char;
     pub fn builtin_error(format: *const libc::c_char, ...);
     pub fn builtin_warning(format: *const libc::c_char, ...);
-    pub fn sh_single_quote(_: *const libc::c_char) -> *mut libc::c_char;
-    pub fn sh_double_quote(string: *const libc::c_char) -> *mut libc::c_char;
-    pub fn sh_contains_shell_metas(_: *const libc::c_char) -> libc::c_int;
-    pub fn qsort(
+    fn sh_single_quote(_: *const libc::c_char) -> *mut libc::c_char;
+    fn sh_double_quote(string: *const libc::c_char) -> *mut libc::c_char;
+    fn sh_contains_shell_metas(_: *const libc::c_char) -> libc::c_int;
+    fn qsort(
         __base: *mut libc::c_void,
         __nmemb: libc::size_t,
         __size: libc::size_t,
         __compar: __compar_fn_t,
     );
-    pub fn strvec_len(arg1: *mut *mut ::std::os::raw::c_char) -> ::std::os::raw::c_int;
-    pub fn mbschr(_: *const libc::c_char, _: libc::c_int) -> *mut libc::c_char;
-    pub fn __ctype_b_loc() -> *mut *const libc::c_ushort;
-    pub fn fmtulong(
+
+    fn strvec_len(arg1: *mut *mut ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+    fn mbschr(_: *const libc::c_char, _: libc::c_int) -> *mut libc::c_char;
+    fn __ctype_b_loc() -> *mut *const libc::c_ushort;
+    fn fmtulong(
         _: libc::c_ulong,
         _: libc::c_int,
         _: *mut libc::c_char,
         _: size_t,
         _: libc::c_int,
     ) -> *mut libc::c_char;
-    pub fn match_pattern_wchar(_: *mut wchar_t, _: *mut wchar_t, _: libc::c_int) -> libc::c_int;
-    pub fn wmatchlen(_: *mut wchar_t, _: size_t) -> libc::c_int;
-    pub fn sh_stat(_: *const libc::c_char, _: *mut stat) -> libc::c_int;
-    pub fn sh_quote_reusable(_: *mut libc::c_char, _: libc::c_int) -> *mut libc::c_char;
-    pub fn strvec_to_word_list(
+    fn match_pattern_wchar(_: *mut wchar_t, _: *mut wchar_t, _: libc::c_int) -> libc::c_int;
+    fn wmatchlen(_: *mut wchar_t, _: size_t) -> libc::c_int;
+    fn sh_stat(_: *const libc::c_char, _: *mut stat) -> libc::c_int;
+    fn sh_quote_reusable(_: *mut libc::c_char, _: libc::c_int) -> *mut libc::c_char;
+    fn strvec_to_word_list(
         _: *mut *mut libc::c_char,
         _: libc::c_int,
         _: libc::c_int,
     ) -> *mut WORD_LIST;
-    pub fn get_host_type() -> *mut libc::c_char;
-    pub fn get_os_type() -> *mut libc::c_char;
-    pub fn get_mach_type() -> *mut libc::c_char;
-    pub fn strvec_flush(_: *mut *mut libc::c_char);
-    pub fn sbrand(_: libc::c_ulong);
-    pub fn brand() -> libc::c_int;
-    pub fn get_urandom32() -> libc::c_uint;
+    fn get_host_type() -> *mut libc::c_char;
+    fn get_os_type() -> *mut libc::c_char;
+    fn get_mach_type() -> *mut libc::c_char;
+    fn strvec_flush(_: *mut *mut libc::c_char);
+    fn sbrand(_: libc::c_ulong);
+    fn brand() -> libc::c_int;
+    fn get_urandom32() -> libc::c_uint;
     pub fn parser_error(_: libc::c_int, _: *const libc::c_char, _: ...);
-    pub fn parse_and_execute(
-        _: *mut libc::c_char,
-        _: *const libc::c_char,
-        _: libc::c_int,
-    ) -> libc::c_int;
-    pub fn readline(p: *const libc::c_char) -> *mut libc::c_char;
-    pub fn exit_shell(_: libc::c_int) -> !;
-    pub fn ansiexpand(
+    fn readline(p: *const libc::c_char) -> *mut libc::c_char;
+
+    fn ansiexpand(
         _: *mut libc::c_char,
         _: libc::c_int,
         _: libc::c_int,
         _: *mut libc::c_int,
     ) -> *mut libc::c_char;
-    pub fn sh_mkdoublequoted(
+    fn sh_mkdoublequoted(
         _: *const libc::c_char,
         _: libc::c_int,
         _: libc::c_int,
     ) -> *mut libc::c_char;
-    pub fn sh_backslash_quote_for_double_quotes(_: *mut libc::c_char) -> *mut libc::c_char;
-    pub fn get_current_user_info();
-    pub fn utf8_mblen(_: *const libc::c_char, _: size_t) -> libc::c_int;
-    pub fn seedrand();
-    pub fn seedrand32();
-    pub fn wcsmatch(_: *mut wchar_t, _: *mut wchar_t, _: libc::c_int) -> libc::c_int;
-    pub fn umatchlen(_: *mut libc::c_char, _: size_t) -> libc::c_int;
-    pub fn match_pattern_char(
+    fn sh_backslash_quote_for_double_quotes(_: *mut libc::c_char) -> *mut libc::c_char;
+
+    fn utf8_mblen(_: *const libc::c_char, _: size_t) -> libc::c_int;
+    fn seedrand();
+    fn seedrand32();
+    fn wcsmatch(_: *mut wchar_t, _: *mut wchar_t, _: libc::c_int) -> libc::c_int;
+    fn umatchlen(_: *mut libc::c_char, _: size_t) -> libc::c_int;
+    fn match_pattern_char(
         _: *mut libc::c_char,
         _: *mut libc::c_char,
         _: libc::c_int,
     ) -> libc::c_int;
-    pub fn mbsmbchar(_: *const libc::c_char) -> *mut libc::c_char;
-    pub fn xdupmbstowcs(
+    fn mbsmbchar(_: *const libc::c_char) -> *mut libc::c_char;
+    fn xdupmbstowcs(
         _: *mut *mut wchar_t,
         _: *mut *mut *mut libc::c_char,
         _: *const libc::c_char,
     ) -> size_t;
-    pub fn rl_set_keymap(map: Keymap);
-    pub fn rl_named_function(string: *const libc::c_char) -> *mut rl_command_func_t;
-    pub fn rl_invoking_keyseqs(function: *mut rl_command_func_t) -> *mut *mut libc::c_char;
-    pub fn rl_unbind_function_in_map(func: *mut rl_command_func_t, map: Keymap) -> i32;
-    pub fn rl_get_keymap() -> Keymap;
-    pub fn rl_bind_keyseq(keyseq: *const libc::c_char, function: *mut rl_command_func_t) -> i32;
-    pub fn rl_function_of_keyseq_len(
+    fn rl_set_keymap(map: Keymap);
+    fn rl_named_function(string: *const libc::c_char) -> *mut rl_command_func_t;
+    fn rl_invoking_keyseqs(function: *mut rl_command_func_t) -> *mut *mut libc::c_char;
+    fn rl_unbind_function_in_map(func: *mut rl_command_func_t, map: Keymap) -> i32;
+    fn rl_get_keymap() -> Keymap;
+    fn rl_bind_keyseq(keyseq: *const libc::c_char, function: *mut rl_command_func_t) -> i32;
+    fn rl_function_of_keyseq_len(
         keyseq: *const libc::c_char,
         len: size_t,
         map: Keymap,
         Type: *mut i32,
     ) -> Option<rl_command_func_t>;
-    pub fn rl_translate_keyseq(
+    fn rl_translate_keyseq(
         seq: *const libc::c_char,
         array: *mut libc::c_char,
         len: *mut i32,
     ) -> i32;
-    pub fn rl_get_keymap_by_name(name: *const libc::c_char) -> Keymap;
-    pub fn rl_list_funmap_names();
-    pub fn rl_function_dumper(print_readably: i32);
-    pub fn rl_macro_dumper(print_readably: i32);
-    pub fn rl_variable_dumper(print_readably: i32);
-    pub fn rl_read_init_file(filename: *const libc::c_char) -> i32;
-    pub fn rl_parse_and_bind(string: *mut libc::c_char) -> i32;
-    pub fn strvec_search(array: *mut *mut libc::c_char, name: *mut libc::c_char) -> i32;
-    pub fn strvec_dispose(array: *mut *mut libc::c_char);
-    pub fn sh_modcase(
+    fn rl_get_keymap_by_name(name: *const libc::c_char) -> Keymap;
+    fn rl_list_funmap_names();
+    fn rl_function_dumper(print_readably: i32);
+    fn rl_macro_dumper(print_readably: i32);
+    fn rl_variable_dumper(print_readably: i32);
+    fn rl_read_init_file(filename: *const libc::c_char) -> i32;
+    fn rl_parse_and_bind(string: *mut libc::c_char) -> i32;
+    fn strvec_search(array: *mut *mut libc::c_char, name: *mut libc::c_char) -> i32;
+    fn strvec_dispose(array: *mut *mut libc::c_char);
+    fn sh_modcase(
         _: *const libc::c_char,
         _: *mut libc::c_char,
         _: libc::c_int,
     ) -> *mut libc::c_char;
-    pub fn itos(_: intmax_t) -> *mut libc::c_char;
-    pub fn strvec_create(_: libc::c_int) -> *mut *mut libc::c_char;
-    pub fn inttostr(_: intmax_t, _: *mut libc::c_char, _: size_t) -> *mut libc::c_char;
-    pub fn ansic_shouldquote(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
-    pub fn ansic_quote(
+    fn itos(_: intmax_t) -> *mut libc::c_char;
+    fn strvec_create(_: libc::c_int) -> *mut *mut libc::c_char;
+    fn inttostr(_: intmax_t, _: *mut libc::c_char, _: size_t) -> *mut libc::c_char;
+    fn ansic_shouldquote(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+    fn ansic_quote(
         arg1: *mut ::std::os::raw::c_char,
         arg2: ::std::os::raw::c_int,
         arg3: *mut ::std::os::raw::c_int,
     ) -> *mut ::std::os::raw::c_char;
-    pub fn err_readonly(_: *const libc::c_char);
-    pub fn valid_nameref_value(_: *const libc::c_char, _: libc::c_int) -> libc::c_int;
+
     pub fn report_error(_: *const libc::c_char, _: ...);
     pub fn internal_warning(_: *const libc::c_char, _: ...);
-    pub fn set_exit_status(_: libc::c_int);
-    pub fn read_history(_: *const libc::c_char) -> libc::c_int;
-    pub fn using_history();
-    pub fn clear_history();
-    pub fn remove_history(_: libc::c_int) -> *mut HIST_ENTRY;
-    pub fn free_history_entry(_: *mut HIST_ENTRY) -> histdata_t;
-    pub fn remove_history_range(_: libc::c_int, _: libc::c_int) -> *mut *mut HIST_ENTRY;
-    pub fn history_list() -> *mut *mut HIST_ENTRY;
-    pub fn history_get(_: libc::c_int) -> *mut HIST_ENTRY;
-    pub fn where_history() -> libc::c_int;
-    pub fn history_set_pos(_: libc::c_int) -> libc::c_int;
-    pub fn append_history(_: libc::c_int, _: *const libc::c_char) -> libc::c_int;
-    pub fn __errno_location() -> *mut libc::c_int;
-    pub fn write_history(_: *const libc::c_char) -> libc::c_int;
-    pub fn history_expand(_: *mut libc::c_char, _: *mut *mut libc::c_char) -> libc::c_int;
-    pub fn previous_history() -> *mut HIST_ENTRY;
-    pub fn replace_history_entry(
+
+    fn read_history(_: *const libc::c_char) -> libc::c_int;
+    fn using_history();
+    fn clear_history();
+    fn remove_history(_: libc::c_int) -> *mut HIST_ENTRY;
+    fn free_history_entry(_: *mut HIST_ENTRY) -> histdata_t;
+    fn remove_history_range(_: libc::c_int, _: libc::c_int) -> *mut *mut HIST_ENTRY;
+    fn history_list() -> *mut *mut HIST_ENTRY;
+    fn history_get(_: libc::c_int) -> *mut HIST_ENTRY;
+    fn where_history() -> libc::c_int;
+    fn history_set_pos(_: libc::c_int) -> libc::c_int;
+    fn append_history(_: libc::c_int, _: *const libc::c_char) -> libc::c_int;
+    fn __errno_location() -> *mut libc::c_int;
+    fn write_history(_: *const libc::c_char) -> libc::c_int;
+    fn history_expand(_: *mut libc::c_char, _: *mut *mut libc::c_char) -> libc::c_int;
+    fn previous_history() -> *mut HIST_ENTRY;
+    fn replace_history_entry(
         _: libc::c_int,
         _: *const libc::c_char,
         _: histdata_t,
     ) -> *mut HIST_ENTRY;
-    pub fn history_is_stifled() -> libc::c_int;
-    pub fn add_history(_: *const libc::c_char);
-    pub fn strmatch(_: *mut libc::c_char, _: *mut libc::c_char, _: libc::c_int) -> libc::c_int;
+    fn history_is_stifled() -> libc::c_int;
+    fn add_history(_: *const libc::c_char);
+    fn strmatch(_: *mut libc::c_char, _: *mut libc::c_char, _: libc::c_int) -> libc::c_int;
     pub fn internal_error(arg1: *const ::std::os::raw::c_char, ...);
-    pub fn sh_physpath(path: *mut libc::c_char, flags: i32) -> *mut libc::c_char;
-    pub fn sh_makepath(
+    fn sh_physpath(path: *mut libc::c_char, flags: i32) -> *mut libc::c_char;
+    fn sh_makepath(
         path: *const libc::c_char,
         dir: *const libc::c_char,
         flags: i32,
     ) -> *mut libc::c_char;
-    pub fn dirspell(dirname: *mut libc::c_char) -> *mut libc::c_char;
-    pub fn sh_canonpath(path: *mut libc::c_char, flags: i32) -> *mut libc::c_char;
-    pub fn fpurge(stream: *mut FILE) -> i32;
-    pub fn strvec_from_word_list(
+    fn dirspell(dirname: *mut libc::c_char) -> *mut libc::c_char;
+    fn sh_canonpath(path: *mut libc::c_char, flags: i32) -> *mut libc::c_char;
+    fn fpurge(stream: *mut FILE) -> i32;
+    fn strvec_from_word_list(
         list: *mut WordList,
         alloc: i32,
         starting_index: i32,
         ip: *mut i32,
     ) -> *mut *mut libc::c_char;
-    pub fn ansicstr(
+    fn ansicstr(
         string: *mut libc::c_char,
         len: i32,
         flags: i32,
         sawc: *mut libc::c_int,
         rlen: *mut libc::c_int,
     ) -> *mut libc::c_char;
-    pub fn fstat(__fildes: libc::c_int, __stat_buf: *mut stat) -> libc::c_int;
-    pub fn lstat(
-        __path: *const libc::c_char,
-        __statbuf: *mut crate::src_common::stat,
-    ) -> libc::c_int;
+    fn fstat(__fildes: libc::c_int, __stat_buf: *mut stat) -> libc::c_int;
+    fn lstat(__path: *const libc::c_char, __statbuf: *mut crate::src_common::stat) -> libc::c_int;
 
-    pub fn zmapfd(_: libc::c_int, _: *mut *mut libc::c_char, _: *mut libc::c_char) -> libc::c_int;
-    pub fn uconvert(
+    fn zmapfd(_: libc::c_int, _: *mut *mut libc::c_char, _: *mut libc::c_char) -> libc::c_int;
+    fn uconvert(
         s: *mut libc::c_char,
         ip: *mut libc::c_long,
         up: *mut libc::c_long,
         ep: *mut *mut libc::c_char,
     ) -> libc::c_int;
-    pub fn input_avail(arg1: libc::c_int) -> libc::c_int;
-    pub fn rl_insert_text(p: *const libc::c_char) -> libc::c_int;
-    pub fn zreadintr(arg1: libc::c_int, arg2: *mut libc::c_char, arg3: size_t) -> libc::ssize_t;
-    pub fn zreadcintr(arg1: libc::c_int, arg2: *mut libc::c_char) -> libc::ssize_t;
-    pub fn zread(_: libc::c_int, _: *mut libc::c_char, _: size_t) -> ssize_t;
-    pub fn zreadn(arg1: libc::c_int, arg2: *mut libc::c_char, arg3: size_t) -> libc::ssize_t;
-    pub fn zreadc(arg1: libc::c_int, arg2: *mut libc::c_char) -> libc::ssize_t;
-    pub fn zsyncfd(fd: libc::c_int) -> libc::c_void;
-    pub fn zreset();
-    pub fn zgetline(
+    fn input_avail(arg1: libc::c_int) -> libc::c_int;
+    fn rl_insert_text(p: *const libc::c_char) -> libc::c_int;
+    fn zreadintr(arg1: libc::c_int, arg2: *mut libc::c_char, arg3: size_t) -> libc::ssize_t;
+    fn zreadcintr(arg1: libc::c_int, arg2: *mut libc::c_char) -> libc::ssize_t;
+    fn zread(_: libc::c_int, _: *mut libc::c_char, _: size_t) -> ssize_t;
+    fn zreadn(arg1: libc::c_int, arg2: *mut libc::c_char, arg3: size_t) -> libc::ssize_t;
+    fn zreadc(arg1: libc::c_int, arg2: *mut libc::c_char) -> libc::ssize_t;
+    fn zsyncfd(fd: libc::c_int) -> libc::c_void;
+    fn zreset();
+    fn zgetline(
         arg1: ::std::os::raw::c_int,
         arg2: *mut *mut ::std::os::raw::c_char,
         arg3: *mut usize,
         arg4: ::std::os::raw::c_int,
         arg5: ::std::os::raw::c_int,
     ) -> isize;
-    pub fn falarm(arg1: libc::c_uint, arg2: libc::c_uint) -> libc::c_uint;
-    pub fn ttgetattr(arg1: libc::c_int, arg2: *mut libc::termios) -> libc::c_int;
-    pub fn ttsetattr(arg1: libc::c_int, arg2: *mut libc::termios) -> libc::c_int;
-    pub fn ttfd_noecho(arg1: libc::c_int, arg2: *mut libc::termios) -> libc::c_int;
-    pub fn ttfd_cbreak(fd: libc::c_int, ttp: *mut libc::termios) -> libc::c_int;
-    pub fn ttfd_onechar(fd: libc::c_int, ttp: *mut libc::termios) -> libc::c_int;
-    pub fn programmable_completions(
-        arg1: *const ::std::os::raw::c_char,
-        arg2: *const ::std::os::raw::c_char,
-        arg3: ::std::os::raw::c_int,
-        arg4: ::std::os::raw::c_int,
-        arg5: *mut ::std::os::raw::c_int,
-    ) -> *mut *mut ::std::os::raw::c_char;
-    pub fn pcomp_set_readline_variables(arg1: ::std::os::raw::c_int, arg2: ::std::os::raw::c_int);
-    pub fn fnx_fromfs(
-        arg1: *mut ::std::os::raw::c_char,
-        arg2: size_t,
-    ) -> *mut ::std::os::raw::c_char;
-    pub fn strvec_strcmp(
+    fn falarm(arg1: libc::c_uint, arg2: libc::c_uint) -> libc::c_uint;
+    fn ttgetattr(arg1: libc::c_int, arg2: *mut libc::termios) -> libc::c_int;
+    fn ttsetattr(arg1: libc::c_int, arg2: *mut libc::termios) -> libc::c_int;
+    fn ttfd_noecho(arg1: libc::c_int, arg2: *mut libc::termios) -> libc::c_int;
+    fn ttfd_cbreak(fd: libc::c_int, ttp: *mut libc::termios) -> libc::c_int;
+    fn ttfd_onechar(fd: libc::c_int, ttp: *mut libc::termios) -> libc::c_int;
+
+    fn fnx_fromfs(arg1: *mut ::std::os::raw::c_char, arg2: size_t) -> *mut ::std::os::raw::c_char;
+    fn strvec_strcmp(
         arg1: *mut *mut ::std::os::raw::c_char,
         arg2: *mut *mut ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
-    pub fn glob_pattern_p(_: *const libc::c_char) -> libc::c_int;
-    pub fn strvec_resize(
+    fn glob_pattern_p(_: *const libc::c_char) -> libc::c_int;
+    fn strvec_resize(
         arg1: *mut *mut ::std::os::raw::c_char,
         arg2: ::std::os::raw::c_int,
     ) -> *mut *mut ::std::os::raw::c_char;
-    // pub fn read_builtin(_: *mut WordList) -> libc::c_int;
-    pub fn sh_backslash_quote(
+    fn sh_backslash_quote(
         arg1: *mut ::std::os::raw::c_char,
         arg2: *const ::std::os::raw::c_char,
         arg3: ::std::os::raw::c_int,
     ) -> *mut ::std::os::raw::c_char;
-    pub fn zcatfd(_: libc::c_int, _: libc::c_int, _: *mut libc::c_char) -> libc::c_int;
-    pub fn sh_mktmpfp(
+    fn zcatfd(_: libc::c_int, _: libc::c_int, _: *mut libc::c_char) -> libc::c_int;
+    fn sh_mktmpfp(
         nameroot: *mut libc::c_char,
         flags: i32,
         namep: &mut *mut libc::c_char,
     ) -> *mut libc::FILE;
-    pub fn __strtol_internal(
+    fn __strtol_internal(
         __nptr: *const libc::c_char,
         __endptr: *mut *mut libc::c_char,
         __base: libc::c_int,
         __group: libc::c_int,
     ) -> libc::c_long;
-    pub fn strvec_mresize(
+    fn strvec_mresize(
         arg1: *mut *mut ::std::os::raw::c_char,
         arg2: ::std::os::raw::c_int,
     ) -> *mut *mut ::std::os::raw::c_char;
@@ -375,79 +341,55 @@ extern "C" {
         __fmt: *const ::std::os::raw::c_char,
         ...
     ) -> ::std::os::raw::c_int;
-    pub fn strvec_mcreate(arg1: ::std::os::raw::c_int) -> *mut *mut ::std::os::raw::c_char;
+    fn strvec_mcreate(arg1: ::std::os::raw::c_int) -> *mut *mut ::std::os::raw::c_char;
     pub fn programming_error(arg1: *const ::std::os::raw::c_char, ...);
-    pub fn stat(__filename: *const libc::c_char, __stat_buf: *mut stat) -> libc::c_int;
-    pub fn sh_eaccess(_: *const libc::c_char, _: libc::c_int) -> libc::c_int;
-    pub fn getmaxchild() -> i64;
-    pub fn make_command_string(arg1: *mut COMMAND) -> *mut ::std::os::raw::c_char;
-    pub fn siglongjmp(_: *mut __jmp_buf_tag, _: libc::c_int) -> !;
+    fn stat(__filename: *const libc::c_char, __stat_buf: *mut stat) -> libc::c_int;
+    fn sh_eaccess(_: *const libc::c_char, _: libc::c_int) -> libc::c_int;
+    fn getmaxchild() -> i64;
+
+    fn siglongjmp(_: *mut __jmp_buf_tag, _: libc::c_int) -> !;
     pub fn sys_error(arg1: *const ::std::os::raw::c_char, ...);
-    pub fn sh_exit(arg1: ::std::os::raw::c_int);
-    pub fn optimize_fork(arg1: *mut COMMAND);
-    pub fn wcswidth(__s: *const wchar_t, __n: usize) -> ::std::os::raw::c_int;
-    pub fn putc(__c: ::std::os::raw::c_int, __stream: *mut FILE) -> ::std::os::raw::c_int;
-    pub fn subshell_exit(arg1: ::std::os::raw::c_int);
-    pub fn sh_regmatch(
-        a: *const libc::c_char,
-        b: *const libc::c_char,
-        c: libc::c_int,
-    ) -> libc::c_int;
 
-    pub fn sh_getopt_restore_istate(arg1: *mut sh_getopt_state_t);
-    pub fn optimize_shell_function(arg1: *mut COMMAND);
-    pub fn sh_getopt_save_istate() -> *mut sh_getopt_state_t;
+    fn wcswidth(__s: *const wchar_t, __n: usize) -> ::std::os::raw::c_int;
+    fn putc(__c: ::std::os::raw::c_int, __stream: *mut FILE) -> ::std::os::raw::c_int;
 
-    pub fn unset_bash_input(arg1: ::std::os::raw::c_int);
-    pub fn unbind_args();
-    pub fn bind_function_def(
-        arg1: *const ::std::os::raw::c_char,
-        arg2: *mut FUNCTION_DEF,
-        arg3: ::std::os::raw::c_int,
-    );
-    pub fn bind_function(arg1: *const ::std::os::raw::c_char, arg2: *mut COMMAND)
-        -> *mut SHELL_VAR;
-    pub fn difftimeval(_: *mut timeval, _: *mut timeval, _: *mut timeval) -> *mut timeval;
-    pub fn timeval_to_secs(tvp: *mut timeval, sp: *mut time_t, sfp: *mut libc::c_int);
-    pub fn addtimeval(_: *mut timeval, _: *mut timeval, _: *mut timeval) -> *mut timeval;
-    pub fn timeval_to_cpu(_: *mut timeval, _: *mut timeval, _: *mut timeval) -> libc::c_int;
-    pub fn fmtumax(
+    fn sh_regmatch(a: *const libc::c_char, b: *const libc::c_char, c: libc::c_int) -> libc::c_int;
+
+    fn difftimeval(_: *mut timeval, _: *mut timeval, _: *mut timeval) -> *mut timeval;
+    fn timeval_to_secs(tvp: *mut timeval, sp: *mut time_t, sfp: *mut libc::c_int);
+    fn addtimeval(_: *mut timeval, _: *mut timeval, _: *mut timeval) -> *mut timeval;
+    fn timeval_to_cpu(_: *mut timeval, _: *mut timeval, _: *mut timeval) -> libc::c_int;
+    fn fmtumax(
         arg1: uintmax_t,
         arg2: ::std::os::raw::c_int,
         arg3: *mut ::std::os::raw::c_char,
         arg4: usize,
         arg5: ::std::os::raw::c_int,
     ) -> *mut ::std::os::raw::c_char;
-    pub fn imaxdiv(__numer: intmax_t, __denom: intmax_t) -> imaxdiv_t;
-    pub fn get_new_window_size(_: libc::c_int, _: *mut libc::c_int, _: *mut libc::c_int);
-    pub fn getmaxgroups() -> libc::c_int;
-    pub fn textdomain(__domainname: *const libc::c_char) -> *mut libc::c_char;
-    pub fn bindtextdomain(
+    fn imaxdiv(__numer: intmax_t, __denom: intmax_t) -> imaxdiv_t;
+    fn get_new_window_size(_: libc::c_int, _: *mut libc::c_int, _: *mut libc::c_int);
+    fn getmaxgroups() -> libc::c_int;
+    fn textdomain(__domainname: *const libc::c_char) -> *mut libc::c_char;
+    fn bindtextdomain(
         __domainname: *const libc::c_char,
         __dirname: *const libc::c_char,
     ) -> *mut libc::c_char;
-    pub fn __ctype_get_mb_cur_max() -> libc::size_t;
-    pub fn get_string_value(_: *const libc::c_char) -> *mut libc::c_char;
-    pub fn u32reset();
-    pub fn mailstat(_: *const libc::c_char, _: *mut stat) -> libc::c_int;
-    pub fn isnetconn(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
-    pub fn sh_setlinebuf(_: *mut FILE) -> libc::c_int;
-    pub fn strlist_create(arg1: ::std::os::raw::c_int) -> *mut STRINGLIST;
-    pub fn strlist_prefix_suffix(
+    fn __ctype_get_mb_cur_max() -> libc::size_t;
+    fn u32reset();
+    fn mailstat(_: *const libc::c_char, _: *mut stat) -> libc::c_int;
+    fn isnetconn(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+    fn sh_setlinebuf(_: *mut FILE) -> libc::c_int;
+    fn strlist_create(arg1: ::std::os::raw::c_int) -> *mut STRINGLIST;
+    fn strlist_prefix_suffix(
         arg1: *mut STRINGLIST,
         arg2: *mut ::std::os::raw::c_char,
         arg3: *mut ::std::os::raw::c_char,
     ) -> *mut STRINGLIST;
-    pub fn sh_contains_quotes(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
-    pub fn rl_complete_internal(_: libc::c_int) -> libc::c_int;
-    pub fn rl_filename_completion_function(
-        _: *const libc::c_char,
-        _: libc::c_int,
-    ) -> *mut libc::c_char;
-    pub fn set_signal_handler(arg1: libc::c_int, arg2: *mut SigHandler) -> *mut SigHandler;
-    pub fn rl_complete(_: libc::c_int, _: libc::c_int) -> libc::c_int;
-    pub fn __mbrlen(__s: *const libc::c_char, __n: size_t, __ps: *mut mbstate_t) -> size_t;
-    pub fn mbrtowc(
+    fn sh_contains_quotes(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+    fn rl_complete_internal(_: libc::c_int) -> libc::c_int;
+    fn rl_complete(_: libc::c_int, _: libc::c_int) -> libc::c_int;
+    fn __mbrlen(__s: *const libc::c_char, __n: size_t, __ps: *mut mbstate_t) -> size_t;
+    fn mbrtowc(
         __pwc: *mut wchar_t,
         __s: *const libc::c_char,
         __n: size_t,
@@ -457,11 +399,803 @@ extern "C" {
         __env: *mut __jmp_buf_tag,
         __savemask: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
-    pub fn mblen(s: *const libc::c_char, n: size_t) -> libc::c_int;
+    fn mblen(s: *const libc::c_char, n: size_t) -> libc::c_int;
+}
+
+pub fn c_getrusage(__who: __rusage_who_t, __usage: *mut rusage) -> ::std::os::raw::c_int {
+    unsafe { getrusage(__who, __usage) }
+}
+
+pub fn c_gettimeofday(__tv: *mut timeval, __tz: __timezone_ptr_t) -> libc::c_int {
+    unsafe { gettimeofday(__tv, __tz) }
+}
+
+pub fn c_sigemptyset(__set: *mut sigset_t) -> libc::c_int {
+    unsafe { sigemptyset(__set) }
+}
+
+pub fn c_sigaddset(__set: *mut sigset_t, __signo: libc::c_int) -> libc::c_int {
+    unsafe { sigaddset(__set, __signo) }
+}
+
+pub fn c_sigprocmask(
+    __how: libc::c_int,
+    __set: *const sigset_t,
+    __oset: *mut sigset_t,
+) -> libc::c_int {
+    unsafe { sigprocmask(__how, __set, __oset) }
+}
+
+pub fn c_sigaction(
+    __sig: libc::c_int,
+    __act: *const sigaction,
+    __oact: *mut sigaction,
+) -> libc::c_int {
+    unsafe { sigaction(__sig, __act, __oact) }
+}
+
+pub fn c_sigismember(__set: *const sigset_t, __signo: libc::c_int) -> libc::c_int {
+    unsafe { sigismember(__set, __signo) }
+}
+
+pub fn c_sigdelset(__set: *mut sigset_t, __signo: libc::c_int) -> libc::c_int {
+    unsafe { sigdelset(__set, __signo) }
+}
+
+pub fn c_xfree(a: *mut libc::c_void) -> () {
+    unsafe { xfree(a) }
+}
+
+pub fn c_strlist_resize(a: *mut STRINGLIST, b: libc::c_int) -> *mut STRINGLIST {
+    unsafe { strlist_resize(a, b) }
+}
+
+pub fn c_strlist_dispose(a: *mut STRINGLIST) -> () {
+    unsafe { strlist_dispose(a) }
+}
+
+pub fn c_strlist_append(a: *mut STRINGLIST, b: *mut STRINGLIST) -> *mut STRINGLIST {
+    unsafe { strlist_append(a, b) }
+}
+
+pub fn c_netopen(a: *mut libc::c_char) -> libc::c_int {
+    unsafe { netopen(a) }
+}
+
+pub fn c_sh_mktmpfd(
+    a: *mut libc::c_char,
+    b: libc::c_int,
+    c: *mut *mut libc::c_char,
+) -> libc::c_int {
+    unsafe { sh_mktmpfd(a, b, c) }
+}
+
+pub fn c_mbstrlen(a: *const libc::c_char) -> size_t {
+    unsafe { mbstrlen(a) }
+}
+
+pub fn c_dcgettext(
+    __domainname: *const libc::c_char,
+    __msgid: *const libc::c_char,
+    __category: i32,
+) -> *mut libc::c_char {
+    unsafe { dcgettext(__domainname, __msgid, __category) }
+}
+
+pub fn c_sh_single_quote(a: *const libc::c_char) -> *mut libc::c_char {
+    unsafe { sh_single_quote(a) }
+}
+
+pub fn c_sh_double_quote(string: *const libc::c_char) -> *mut libc::c_char {
+    unsafe { sh_double_quote(string) }
+}
+
+pub fn c_sh_contains_shell_metas(a: *const libc::c_char) -> libc::c_int {
+    unsafe { sh_contains_shell_metas(a) }
+}
+
+pub fn c_qsort(
+    __base: *mut libc::c_void,
+    __nmemb: libc::size_t,
+    __size: libc::size_t,
+    __compar: __compar_fn_t,
+) -> () {
+    unsafe { qsort(__base, __nmemb, __size, __compar) }
+}
+
+// 3
+pub fn c_strvec_len(arg1: *mut *mut ::std::os::raw::c_char) -> ::std::os::raw::c_int {
+    unsafe { strvec_len(arg1) }
+}
+
+pub fn c_mbschr(a: *const libc::c_char, b: libc::c_int) -> *mut libc::c_char {
+    unsafe { mbschr(a, b) }
+}
+
+pub fn c___ctype_b_loc() -> *mut *const libc::c_ushort {
+    unsafe { __ctype_b_loc() }
+}
+
+pub fn c_fmtulong(
+    a: libc::c_ulong,
+    b: libc::c_int,
+    c: *mut libc::c_char,
+    d: size_t,
+    e: libc::c_int,
+) -> *mut libc::c_char {
+    unsafe { fmtulong(a, b, c, d, e) }
+}
+
+pub fn c_match_pattern_wchar(a: *mut wchar_t, b: *mut wchar_t, c: libc::c_int) -> libc::c_int {
+    unsafe { match_pattern_wchar(a, b, c) }
+}
+
+pub fn c_wmatchlen(a: *mut wchar_t, b: size_t) -> libc::c_int {
+    unsafe { wmatchlen(a, b) }
+}
+
+pub fn c_sh_stat(a: *const libc::c_char, b: *mut stat) -> libc::c_int {
+    unsafe { sh_stat(a, b) }
+}
+
+pub fn c_sh_quote_reusable(a: *mut libc::c_char, b: libc::c_int) -> *mut libc::c_char {
+    unsafe { sh_quote_reusable(a, b) }
+}
+
+pub fn c_strvec_to_word_list(
+    a: *mut *mut libc::c_char,
+    b: libc::c_int,
+    c: libc::c_int,
+) -> *mut WORD_LIST {
+    unsafe { strvec_to_word_list(a, b, c) }
+}
+
+pub fn c_get_host_type() -> *mut libc::c_char {
+    unsafe { get_host_type() }
+}
+
+pub fn c_get_os_type() -> *mut libc::c_char {
+    unsafe { get_os_type() }
+}
+
+pub fn c_get_mach_type() -> *mut libc::c_char {
+    unsafe { get_mach_type() }
+}
+
+pub fn c_strvec_flush(a: *mut *mut libc::c_char) -> () {
+    unsafe { strvec_flush(a) }
+}
+
+pub fn c_sbrand(a: libc::c_ulong) -> () {
+    unsafe { sbrand(a) }
+}
+
+pub fn c_brand() -> libc::c_int {
+    unsafe { brand() }
+}
+
+pub fn c_get_urandom32() -> libc::c_uint {
+    unsafe { get_urandom32() }
+}
+
+pub fn c_readline(p: *const libc::c_char) -> *mut libc::c_char {
+    unsafe { readline(p) }
+}
+
+// 4
+pub fn c_ansiexpand(
+    a: *mut libc::c_char,
+    b: libc::c_int,
+    c: libc::c_int,
+    d: *mut libc::c_int,
+) -> *mut libc::c_char {
+    unsafe { ansiexpand(a, b, c, d) }
+}
+
+pub fn c_sh_mkdoublequoted(
+    a: *const libc::c_char,
+    b: libc::c_int,
+    c: libc::c_int,
+) -> *mut libc::c_char {
+    unsafe { sh_mkdoublequoted(a, b, c) }
+}
+
+pub fn c_sh_backslash_quote_for_double_quotes(a: *mut libc::c_char) -> *mut libc::c_char {
+    unsafe { sh_backslash_quote_for_double_quotes(a) }
+}
+
+pub fn c_utf8_mblen(a: *const libc::c_char, b: size_t) -> libc::c_int {
+    unsafe { utf8_mblen(a, b) }
+}
+
+pub fn c_seedrand() -> () {
+    unsafe { seedrand() }
+}
+
+pub fn c_seedrand32() -> () {
+    unsafe { seedrand32() }
+}
+
+pub fn c_wcsmatch(a: *mut wchar_t, b: *mut wchar_t, c: libc::c_int) -> libc::c_int {
+    unsafe { wcsmatch(a, b, c) }
+}
+
+pub fn c_umatchlen(a: *mut libc::c_char, b: size_t) -> libc::c_int {
+    unsafe { umatchlen(a, b) }
+}
+
+pub fn c_match_pattern_char(
+    a: *mut libc::c_char,
+    b: *mut libc::c_char,
+    c: libc::c_int,
+) -> libc::c_int {
+    unsafe { match_pattern_char(a, b, c) }
+}
+
+pub fn c_mbsmbchar(a: *const libc::c_char) -> *mut libc::c_char {
+    unsafe { mbsmbchar(a) }
+}
+
+pub fn c_xdupmbstowcs(
+    a: *mut *mut wchar_t,
+    b: *mut *mut *mut libc::c_char,
+    c: *const libc::c_char,
+) -> size_t {
+    unsafe { xdupmbstowcs(a, b, c) }
+}
+
+pub fn c_rl_set_keymap(map: Keymap) -> () {
+    unsafe { rl_set_keymap(map) }
+}
+
+pub fn c_rl_named_function(string: *const libc::c_char) -> *mut rl_command_func_t {
+    unsafe { rl_named_function(string) }
+}
+
+pub fn c_rl_invoking_keyseqs(function: *mut rl_command_func_t) -> *mut *mut libc::c_char {
+    unsafe { rl_invoking_keyseqs(function) }
+}
+
+pub fn c_rl_unbind_function_in_map(func: *mut rl_command_func_t, map: Keymap) -> i32 {
+    unsafe { rl_unbind_function_in_map(func, map) }
+}
+
+pub fn c_rl_get_keymap() -> Keymap {
+    unsafe { rl_get_keymap() }
+}
+
+pub fn c_rl_bind_keyseq(keyseq: *const libc::c_char, function: *mut rl_command_func_t) -> i32 {
+    unsafe { rl_bind_keyseq(keyseq, function) }
+}
+
+pub fn c_rl_function_of_keyseq_len(
+    keyseq: *const libc::c_char,
+    len: size_t,
+    map: Keymap,
+    Type: *mut i32,
+) -> Option<rl_command_func_t> {
+    unsafe { rl_function_of_keyseq_len(keyseq, len, map, Type) }
+}
+
+pub fn c_rl_translate_keyseq(
+    seq: *const libc::c_char,
+    array: *mut libc::c_char,
+    len: *mut i32,
+) -> i32 {
+    unsafe { rl_translate_keyseq(seq, array, len) }
+}
+
+pub fn c_rl_get_keymap_by_name(name: *const libc::c_char) -> Keymap {
+    unsafe { rl_get_keymap_by_name(name) }
+}
+
+pub fn c_rl_list_funmap_names() -> () {
+    unsafe { rl_list_funmap_names() }
+}
+
+pub fn c_rl_function_dumper(print_readably: i32) -> () {
+    unsafe { rl_function_dumper(print_readably) }
+}
+
+pub fn c_rl_macro_dumper(print_readably: i32) -> () {
+    unsafe { rl_macro_dumper(print_readably) }
+}
+
+pub fn c_rl_variable_dumper(print_readably: i32) -> () {
+    unsafe { rl_variable_dumper(print_readably) }
+}
+
+pub fn c_rl_read_init_file(filename: *const libc::c_char) -> i32 {
+    unsafe { rl_read_init_file(filename) }
+}
+
+pub fn c_rl_parse_and_bind(string: *mut libc::c_char) -> i32 {
+    unsafe { rl_parse_and_bind(string) }
+}
+
+pub fn c_strvec_search(array: *mut *mut libc::c_char, name: *mut libc::c_char) -> i32 {
+    unsafe { strvec_search(array, name) }
+}
+
+pub fn c_strvec_dispose(array: *mut *mut libc::c_char) -> () {
+    unsafe { strvec_dispose(array) }
+}
+
+pub fn c_sh_modcase(
+    a: *const libc::c_char,
+    b: *mut libc::c_char,
+    c: libc::c_int,
+) -> *mut libc::c_char {
+    unsafe { sh_modcase(a, b, c) }
+}
+
+pub fn c_itos(a: intmax_t) -> *mut libc::c_char {
+    unsafe { itos(a) }
+}
+
+pub fn c_strvec_create(a: libc::c_int) -> *mut *mut libc::c_char {
+    unsafe { strvec_create(a) }
+}
+
+pub fn c_inttostr(a: intmax_t, b: *mut libc::c_char, c: size_t) -> *mut libc::c_char {
+    unsafe { inttostr(a, b, c) }
+}
+
+pub fn c_ansic_shouldquote(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int {
+    unsafe { ansic_shouldquote(arg1) }
+}
+
+pub fn c_ansic_quote(
+    arg1: *mut ::std::os::raw::c_char,
+    arg2: ::std::os::raw::c_int,
+    arg3: *mut ::std::os::raw::c_int,
+) -> *mut ::std::os::raw::c_char {
+    unsafe { ansic_quote(arg1, arg2, arg3) }
+}
+
+// 5
+
+pub fn c_read_history(a: *const libc::c_char) -> libc::c_int {
+    unsafe { read_history(a) }
+}
+
+pub fn c_using_history() -> () {
+    unsafe { using_history() }
+}
+
+pub fn c_clear_history() -> () {
+    unsafe { clear_history() }
+}
+
+pub fn c_remove_history(a: libc::c_int) -> *mut HIST_ENTRY {
+    unsafe { remove_history(a) }
+}
+
+pub fn c_free_history_entry(a: *mut HIST_ENTRY) -> histdata_t {
+    unsafe { free_history_entry(a) }
+}
+
+pub fn c_remove_history_range(a: libc::c_int, b: libc::c_int) -> *mut *mut HIST_ENTRY {
+    unsafe { remove_history_range(a, b) }
+}
+
+pub fn c_history_list() -> *mut *mut HIST_ENTRY {
+    unsafe { history_list() }
+}
+
+pub fn c_history_get(a: libc::c_int) -> *mut HIST_ENTRY {
+    unsafe { history_get(a) }
+}
+
+pub fn c_where_history() -> libc::c_int {
+    unsafe { where_history() }
+}
+
+pub fn c_history_set_pos(a: libc::c_int) -> libc::c_int {
+    unsafe { history_set_pos(a) }
+}
+
+pub fn c_append_history(a: libc::c_int, b: *const libc::c_char) -> libc::c_int {
+    unsafe { append_history(a, b) }
+}
+
+pub fn c___errno_location() -> *mut libc::c_int {
+    unsafe { __errno_location() }
+}
+
+pub fn c_write_history(a: *const libc::c_char) -> libc::c_int {
+    unsafe { write_history(a) }
+}
+
+pub fn c_history_expand(a: *mut libc::c_char, b: *mut *mut libc::c_char) -> libc::c_int {
+    unsafe { history_expand(a, b) }
+}
+
+pub fn c_previous_history() -> *mut HIST_ENTRY {
+    unsafe { previous_history() }
+}
+
+pub fn c_replace_history_entry(
+    a: libc::c_int,
+    b: *const libc::c_char,
+    c: histdata_t,
+) -> *mut HIST_ENTRY {
+    unsafe { replace_history_entry(a, b, c) }
+}
+
+pub fn c_history_is_stifled() -> libc::c_int {
+    unsafe { history_is_stifled() }
+}
+
+pub fn c_add_history(a: *const libc::c_char) -> () {
+    unsafe { add_history(a) }
+}
+
+pub fn c_strmatch(a: *mut libc::c_char, b: *mut libc::c_char, c: libc::c_int) -> libc::c_int {
+    unsafe { strmatch(a, b, c) }
+}
+
+// pub fn internal_error(arg1: *const ::std::os::raw::c_char, ...) -> () {
+//     unsafe {
+//         internal_error(arg1)
+//     }
+// }
+
+pub fn c_sh_physpath(path: *mut libc::c_char, flags: i32) -> *mut libc::c_char {
+    unsafe { sh_physpath(path, flags) }
+}
+
+pub fn c_sh_makepath(
+    path: *const libc::c_char,
+    dir: *const libc::c_char,
+    flags: i32,
+) -> *mut libc::c_char {
+    unsafe { sh_makepath(path, dir, flags) }
+}
+
+pub fn c_dirspell(dirname: *mut libc::c_char) -> *mut libc::c_char {
+    unsafe { dirspell(dirname) }
+}
+
+pub fn c_sh_canonpath(path: *mut libc::c_char, flags: i32) -> *mut libc::c_char {
+    unsafe { sh_canonpath(path, flags) }
+}
+
+pub fn c_fpurge(stream: *mut FILE) -> i32 {
+    unsafe { fpurge(stream) }
+}
+
+pub fn c_strvec_from_word_list(
+    list: *mut WordList,
+    alloc: i32,
+    starting_index: i32,
+    ip: *mut i32,
+) -> *mut *mut libc::c_char {
+    unsafe { strvec_from_word_list(list, alloc, starting_index, ip) }
+}
+
+pub fn c_ansicstr(
+    string: *mut libc::c_char,
+    len: i32,
+    flags: i32,
+    sawc: *mut libc::c_int,
+    rlen: *mut libc::c_int,
+) -> *mut libc::c_char {
+    unsafe { ansicstr(string, len, flags, sawc, rlen) }
+}
+
+pub fn c_fstat(__fildes: libc::c_int, __stat_buf: *mut stat) -> libc::c_int {
+    unsafe { fstat(__fildes, __stat_buf) }
+}
+
+pub fn c_lstat(
+    __path: *const libc::c_char,
+    __statbuf: *mut crate::src_common::stat,
+) -> libc::c_int {
+    unsafe { lstat(__path, __statbuf) }
+}
+
+// 6
+
+pub fn c_zmapfd(a: libc::c_int, b: *mut *mut libc::c_char, c: *mut libc::c_char) -> libc::c_int {
+    unsafe { zmapfd(a, b, c) }
+}
+
+pub fn c_uconvert(
+    s: *mut libc::c_char,
+    ip: *mut libc::c_long,
+    up: *mut libc::c_long,
+    ep: *mut *mut libc::c_char,
+) -> libc::c_int {
+    unsafe { uconvert(s, ip, up, ep) }
+}
+
+pub fn c_input_avail(arg1: libc::c_int) -> libc::c_int {
+    unsafe { input_avail(arg1) }
+}
+
+pub fn c_rl_insert_text(p: *const libc::c_char) -> libc::c_int {
+    unsafe { rl_insert_text(p) }
+}
+
+pub fn c_zreadintr(arg1: libc::c_int, arg2: *mut libc::c_char, arg3: size_t) -> libc::ssize_t {
+    unsafe { zreadintr(arg1, arg2, arg3) }
+}
+
+pub fn c_zreadcintr(arg1: libc::c_int, arg2: *mut libc::c_char) -> libc::ssize_t {
+    unsafe { zreadcintr(arg1, arg2) }
+}
+
+pub fn c_zread(a: libc::c_int, b: *mut libc::c_char, c: size_t) -> ssize_t {
+    unsafe { zread(a, b, c) }
+}
+
+pub fn c_zreadn(arg1: libc::c_int, arg2: *mut libc::c_char, arg3: size_t) -> libc::ssize_t {
+    unsafe { zreadn(arg1, arg2, arg3) }
+}
+
+pub fn c_zreadc(arg1: libc::c_int, arg2: *mut libc::c_char) -> libc::ssize_t {
+    unsafe { zreadc(arg1, arg2) }
+}
+
+pub fn c_zsyncfd(fd: libc::c_int) -> libc::c_void {
+    unsafe { zsyncfd(fd) }
+}
+
+pub fn c_zreset() -> () {
+    unsafe { zreset() }
+}
+
+pub fn c_zgetline(
+    arg1: ::std::os::raw::c_int,
+    arg2: *mut *mut ::std::os::raw::c_char,
+    arg3: *mut usize,
+    arg4: ::std::os::raw::c_int,
+    arg5: ::std::os::raw::c_int,
+) -> isize {
+    unsafe { zgetline(arg1, arg2, arg3, arg4, arg5) }
+}
+
+pub fn c_falarm(arg1: libc::c_uint, arg2: libc::c_uint) -> libc::c_uint {
+    unsafe { falarm(arg1, arg2) }
+}
+
+pub fn c_ttgetattr(arg1: libc::c_int, arg2: *mut libc::termios) -> libc::c_int {
+    unsafe { ttgetattr(arg1, arg2) }
+}
+
+pub fn c_ttsetattr(arg1: libc::c_int, arg2: *mut libc::termios) -> libc::c_int {
+    unsafe { ttsetattr(arg1, arg2) }
+}
+
+pub fn c_ttfd_noecho(arg1: libc::c_int, arg2: *mut libc::termios) -> libc::c_int {
+    unsafe { ttfd_noecho(arg1, arg2) }
+}
+
+pub fn c_ttfd_cbreak(fd: libc::c_int, ttp: *mut libc::termios) -> libc::c_int {
+    unsafe { ttfd_cbreak(fd, ttp) }
+}
+
+pub fn c_ttfd_onechar(fd: libc::c_int, ttp: *mut libc::termios) -> libc::c_int {
+    unsafe { ttfd_onechar(fd, ttp) }
+}
+
+pub fn c_fnx_fromfs(
+    arg1: *mut ::std::os::raw::c_char,
+    arg2: size_t,
+) -> *mut ::std::os::raw::c_char {
+    unsafe { fnx_fromfs(arg1, arg2) }
+}
+
+pub fn c_strvec_strcmp(
+    arg1: *mut *mut ::std::os::raw::c_char,
+    arg2: *mut *mut ::std::os::raw::c_char,
+) -> ::std::os::raw::c_int {
+    unsafe { strvec_strcmp(arg1, arg2) }
+}
+
+pub fn c_glob_pattern_p(a: *const libc::c_char) -> libc::c_int {
+    unsafe { glob_pattern_p(a) }
+}
+
+pub fn c_strvec_resize(
+    arg1: *mut *mut ::std::os::raw::c_char,
+    arg2: ::std::os::raw::c_int,
+) -> *mut *mut ::std::os::raw::c_char {
+    unsafe { strvec_resize(arg1, arg2) }
+}
+
+pub fn c_sh_backslash_quote(
+    arg1: *mut ::std::os::raw::c_char,
+    arg2: *const ::std::os::raw::c_char,
+    arg3: ::std::os::raw::c_int,
+) -> *mut ::std::os::raw::c_char {
+    unsafe { sh_backslash_quote(arg1, arg2, arg3) }
+}
+
+pub fn c_zcatfd(a: libc::c_int, b: libc::c_int, c: *mut libc::c_char) -> libc::c_int {
+    unsafe { zcatfd(a, b, c) }
+}
+
+pub fn c_sh_mktmpfp(
+    nameroot: *mut libc::c_char,
+    flags: i32,
+    namep: &mut *mut libc::c_char,
+) -> *mut libc::FILE {
+    unsafe { sh_mktmpfp(nameroot, flags, namep) }
+}
+
+pub fn c___strtol_internal(
+    __nptr: *const libc::c_char,
+    __endptr: *mut *mut libc::c_char,
+    __base: libc::c_int,
+    __group: libc::c_int,
+) -> libc::c_long {
+    unsafe { __strtol_internal(__nptr, __endptr, __base, __group) }
+}
+
+pub fn c_strvec_mresize(
+    arg1: *mut *mut ::std::os::raw::c_char,
+    arg2: ::std::os::raw::c_int,
+) -> *mut *mut ::std::os::raw::c_char {
+    unsafe { strvec_mresize(arg1, arg2) }
+}
+
+pub fn c_strvec_mcreate(arg1: ::std::os::raw::c_int) -> *mut *mut ::std::os::raw::c_char {
+    unsafe { strvec_mcreate(arg1) }
+}
+
+pub fn c_stat(__filename: *const libc::c_char, __stat_buf: *mut stat) -> libc::c_int {
+    unsafe { stat(__filename, __stat_buf) }
+}
+
+pub fn c_sh_eaccess(a: *const libc::c_char, b: libc::c_int) -> libc::c_int {
+    unsafe { sh_eaccess(a, b) }
+}
+
+pub fn c_getmaxchild() -> i64 {
+    unsafe { getmaxchild() }
+}
+
+pub fn c_siglongjmp(a: *mut __jmp_buf_tag, b: libc::c_int) -> ! {
+    unsafe { siglongjmp(a, b) }
+}
+
+pub fn c_wcswidth(__s: *const wchar_t, __n: usize) -> ::std::os::raw::c_int {
+    unsafe { wcswidth(__s, __n) }
+}
+
+pub fn c_putc(__c: ::std::os::raw::c_int, __stream: *mut FILE) -> ::std::os::raw::c_int {
+    unsafe { putc(__c, __stream) }
+}
+
+pub fn c_sh_regmatch(
+    a: *const libc::c_char,
+    b: *const libc::c_char,
+    c: libc::c_int,
+) -> libc::c_int {
+    unsafe { sh_regmatch(a, b, c) }
+}
+
+//   7
+pub fn c_difftimeval(a: *mut timeval, b: *mut timeval, c: *mut timeval) -> *mut timeval {
+    unsafe { difftimeval(a, b, c) }
+}
+
+pub fn c_timeval_to_secs(tvp: *mut timeval, sp: *mut time_t, sfp: *mut libc::c_int) -> () {
+    unsafe { timeval_to_secs(tvp, sp, sfp) }
+}
+
+pub fn c_addtimeval(a: *mut timeval, b: *mut timeval, c: *mut timeval) -> *mut timeval {
+    unsafe { addtimeval(a, b, c) }
+}
+
+pub fn c_timeval_to_cpu(a: *mut timeval, b: *mut timeval, c: *mut timeval) -> libc::c_int {
+    unsafe { timeval_to_cpu(a, b, c) }
+}
+
+pub fn c_fmtumax(
+    arg1: uintmax_t,
+    arg2: ::std::os::raw::c_int,
+    arg3: *mut ::std::os::raw::c_char,
+    arg4: usize,
+    arg5: ::std::os::raw::c_int,
+) -> *mut ::std::os::raw::c_char {
+    unsafe { fmtumax(arg1, arg2, arg3, arg4, arg5) }
+}
+
+pub fn c_imaxdiv(__numer: intmax_t, __denom: intmax_t) -> imaxdiv_t {
+    unsafe { imaxdiv(__numer, __denom) }
+}
+
+pub fn c_get_new_window_size(a: libc::c_int, b: *mut libc::c_int, c: *mut libc::c_int) -> () {
+    unsafe { get_new_window_size(a, b, c) }
+}
+
+pub fn c_getmaxgroups() -> libc::c_int {
+    unsafe { getmaxgroups() }
+}
+
+pub fn c_textdomain(__domainname: *const libc::c_char) -> *mut libc::c_char {
+    unsafe { textdomain(__domainname) }
+}
+
+pub fn c_bindtextdomain(
+    __domainname: *const libc::c_char,
+    __dirname: *const libc::c_char,
+) -> *mut libc::c_char {
+    unsafe { bindtextdomain(__domainname, __dirname) }
+}
+
+pub fn c___ctype_get_mb_cur_max() -> libc::size_t {
+    unsafe { __ctype_get_mb_cur_max() }
+}
+
+pub fn c_u32reset() -> () {
+    unsafe { u32reset() }
+}
+
+pub fn c_mailstat(a: *const libc::c_char, b: *mut stat) -> libc::c_int {
+    unsafe { mailstat(a, b) }
+}
+
+pub fn c_isnetconn(arg1: ::std::os::raw::c_int) -> ::std::os::raw::c_int {
+    unsafe { isnetconn(arg1) }
+}
+
+pub fn c_sh_setlinebuf(a: *mut FILE) -> libc::c_int {
+    unsafe { sh_setlinebuf(a) }
+}
+
+pub fn c_strlist_create(arg1: ::std::os::raw::c_int) -> *mut STRINGLIST {
+    unsafe { strlist_create(arg1) }
+}
+
+pub fn c_strlist_prefix_suffix(
+    arg1: *mut STRINGLIST,
+    arg2: *mut ::std::os::raw::c_char,
+    arg3: *mut ::std::os::raw::c_char,
+) -> *mut STRINGLIST {
+    unsafe { strlist_prefix_suffix(arg1, arg2, arg3) }
+}
+
+pub fn c_sh_contains_quotes(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int {
+    unsafe { sh_contains_quotes(arg1) }
+}
+
+pub fn c_rl_complete_internal(a: libc::c_int) -> libc::c_int {
+    unsafe { rl_complete_internal(a) }
+}
+
+pub fn c_rl_complete(a: libc::c_int, b: libc::c_int) -> libc::c_int {
+    unsafe { rl_complete(a, b) }
+}
+
+pub fn c___mbrlen(__s: *const libc::c_char, __n: size_t, __ps: *mut mbstate_t) -> size_t {
+    unsafe { __mbrlen(__s, __n, __ps) }
+}
+
+pub fn c_mbrtowc(
+    __pwc: *mut wchar_t,
+    __s: *const libc::c_char,
+    __n: size_t,
+    __p: *mut mbstate_t,
+) -> size_t {
+    unsafe { mbrtowc(__pwc, __s, __n, __p) }
+}
+
+// pub fn c___sigsetjmp(__env: *mut __jmp_buf_tag, __savemask: ::std::os::raw::c_int, ) -> ::std::os::raw::c_int {
+//     unsafe {
+//         __sigsetjmp(__env, __savemask)
+//     }
+// }
+
+pub fn c_mblen(s: *const libc::c_char, n: size_t) -> libc::c_int {
+    unsafe { mblen(s, n) }
 }
 
 #[no_mangle]
-pub fn sh_xfree(arg: *mut libc::c_void, unval1: *const libc::c_char, unval2: libc::c_int) {
+pub fn sh_xfree(arg: *mut libc::c_void, _unval1: *const libc::c_char, _unval2: libc::c_int) {
     unsafe {
         free(arg as *mut libc::c_void);
     }
@@ -469,8 +1203,8 @@ pub fn sh_xfree(arg: *mut libc::c_void, unval1: *const libc::c_char, unval2: lib
 #[no_mangle]
 pub fn sh_xmalloc(
     arg: libc::c_ulong,
-    unval1: *const libc::c_char,
-    unval2: libc::c_int,
+    _unval1: *const libc::c_char,
+    _unval2: libc::c_int,
 ) -> *mut libc::c_void {
     unsafe { malloc(arg as usize) }
 }
@@ -478,10 +1212,9 @@ pub fn sh_xmalloc(
 pub fn sh_xrealloc(
     arg: *mut libc::c_void,
     unval1: libc::c_ulong,
-    unval2: *const libc::c_char,
-    unval3: libc::c_int,
+    _unval2: *const libc::c_char,
+    _unval3: libc::c_int,
 ) -> *mut libc::c_void {
-    //    realloc(arg as *mut libc::c_void,unval1:libc::c_ulong)
     unsafe { realloc(arg as *mut libc::c_void, unval1 as libc::size_t) }
 }
 
@@ -683,12 +1416,16 @@ macro_rules! att_cell {
     };
 }
 
+pub fn ISHELP(s: *const libc::c_char) -> bool {
+    let msg = CString::new("--help").unwrap();
+    return unsafe { STREQ(s, msg.as_ptr()) };
+}
 #[macro_export]
 macro_rules! CHECK_HELPOPT {
     ($l:expr) => {
         if $l != std::ptr::null_mut()
             && (*($l)).word != std::ptr::null_mut()
-            && ISHELP!((*(*($l)).word).word) == true
+            && ISHELP((*(*($l)).word).word) == true
         {
             builtin_help();
             return EX_USAGE as i32;
@@ -1349,12 +2086,12 @@ macro_rules! ASS_NAMEREF {
     };
 }
 
-#[macro_export]
-macro_rules! VALID_ECHO_OPTIONS {
-    () => {
-        CString::new("neE").unwrap().as_ptr()
-    };
-}
+// #[macro_export]
+// macro_rules! VALID_ECHO_OPTIONS {
+//     () => {
+//         CString::new("neE").unwrap().as_ptr()
+//     };
+// }
 
 //enable
 pub const ENABLED: i32 = 1;
@@ -1389,14 +2126,14 @@ macro_rules! SEVAL_NOHIST {
 }
 
 //exit
-#[macro_export]
-macro_rules! SYS_BASH_LOGOOUT {
-    () => {
-        CString::new(" \"/etc/utshell.utshell_logout\" ")
-            .unwrap()
-            .as_ptr()
-    };
-}
+// #[macro_export]
+// macro_rules! SYS_BASH_LOGOOUT {
+//     () => {
+//         CString::new(" \"/etc/utshell.utshell_logout\" ")
+//             .unwrap()
+//             .as_ptr()
+//     };
+// }
 
 //fc
 #[repr(C)]
@@ -1406,15 +2143,15 @@ pub struct REPL {
     pub rep: *mut libc::c_char,
 }
 
-#[macro_export]
-macro_rules! ISHELP {
-    ($s:expr) => {
-        STREQ!(
-            $s as *const libc::c_char,
-            CString::new("--help").unwrap().as_ptr()
-        )
-    };
-}
+// #[macro_export]
+// macro_rules! ISHELP {
+//     ($s:expr) => {
+//         STREQ!(
+//             $s as *const libc::c_char,
+//             CString::new("--help").unwrap().as_ptr()
+//         )
+//     };
+// }
 
 #[macro_export]
 macro_rules! HN_LISTING {
@@ -1539,8 +2276,6 @@ macro_rules! G_ARG_MISSING {
     };
 }
 
-type PTR_T = c_void;
-
 //enum
 #[macro_export]
 macro_rules! PARAMS {
@@ -1556,15 +2291,6 @@ pub unsafe fn hash_entries(ht: *mut HASH_TABLE) -> i32 {
     }
 }
 
-fn HASH_ENTRIES(ht: *mut HASH_TABLE) -> i32 {
-    unsafe {
-        if ht != std::ptr::null_mut() {
-            return (*ht).nentries;
-        } else {
-            return 0;
-        }
-    }
-}
 #[macro_export]
 macro_rules! pathdata {
     ($x:expr) => {
@@ -1573,11 +2299,6 @@ macro_rules! pathdata {
 }
 
 //help
-#[repr(C)]
-struct FieldStruct {
-    name: *mut libc::c_char,
-}
-
 #[macro_export]
 macro_rules! EX_USAGE {
     () => {
@@ -1765,20 +2486,21 @@ macro_rules! GET_BINARY_O_OPTION_VALUE {
     };
 }
 
-#[macro_export]
-macro_rules! SET_BINARY_O_OPTION_VALUE {
-    ($a:expr,$onoff:expr,$c:expr) => {
-        if (o_options[$a as usize].set_func).is_some() {
-            (Some((o_options[$a as usize].set_func).expect("non-null function pointer")))
-                .expect("non-null function pointer")($onoff, $c)
-        } else {
-            $onoff == FLAG_ON!();
-            let b = $onoff;
-            *o_options[$a as usize].variable = b;
-            *o_options[$a as usize].variable
-        }
-    };
-}
+// #[macro_export]
+// macro_rules! SET_BINARY_O_OPTION_VALUE {
+//     ($a:expr,$onoff:expr,$c:expr) => {
+//         if (o_options[$a as usize].set_func).is_some() {
+//             (Some((o_options[$a as usize].set_func).expect("non-null function pointer")))
+//                 .expect("non-null function pointer")($onoff, $c)
+//         } else {
+//             *o_options[$a as usize].variable = if $onoff == FLAG_ON!() {
+//                 1
+//             } else {
+//                 0
+//             };
+//         }
+//     };
+// }
 
 #[macro_export]
 macro_rules! N_O_OPTIONS {
@@ -1919,7 +2641,6 @@ macro_rules! CDESC_NOFUNCS {
 
 #[macro_export]
 macro_rules! CDESC_ABSPATH {
-    //CDESC_ABSPATH
     () => {
         0x080
     };
@@ -2022,28 +2743,6 @@ macro_rules! LIMIT_SOFT {
 }
 
 #[macro_export]
-macro_rules! POSIXBLK {
-    () => {
-        -2
-    };
-}
-
-#[macro_export]
-macro_rules! BLOCKSIZE {
-    ($s:expr) => {
-        if $s == POSIXBLK!() {
-            if unsafe { posixly_correct != 0 } {
-                512
-            } else {
-                1024
-            }
-        } else {
-            $s
-        }
-    };
-}
-
-#[macro_export]
 macro_rules! RLIM_SAVED_MAX {
     () => {
         RLIM_INFINITY!()
@@ -2110,7 +2809,6 @@ macro_rules! RLIMIT_MAXUPROC {
 macro_rules! RLIM_INFINITY {
     () => {
         -1
-        //0x7fffffff
     };
 }
 
@@ -3005,12 +3703,12 @@ macro_rules! ENOENT {
     };
 }
 
-#[macro_export]
-macro_rules! errno {
-    () => {
-        *__errno_location()
-    };
-}
+// #[macro_export]
+// macro_rules! errno {
+//     () => {
+//         *c___errno_location()
+//     };
+// }
 
 #[macro_export]
 macro_rules! whitespace {
@@ -3237,7 +3935,7 @@ macro_rules! ADVANCE_CHAR {
                 __count: 0,
                 __value: mbstate_t_value { __wch: 0 },
             };
-            let mut mblength: size_t = 0;
+            let mblength: size_t;
             let mut _f: libc::c_int = 0;
 
             _f = is_basic(*$_str.offset($_i as isize));
@@ -3300,7 +3998,7 @@ macro_rules! COMMAND_SEPARATORS {
 macro_rules! member {
     ($c:expr,$s:expr) => {
         (if *$c as libc::c_int != 0 {
-            (mbschr($s, $c as libc::c_int) != 0 as *mut libc::c_void as *mut libc::c_char)
+            (c_mbschr($s, $c as libc::c_int) != 0 as *mut libc::c_void as *mut libc::c_char)
                 as libc::c_int
         } else {
             0 as libc::c_int
@@ -3421,7 +4119,7 @@ macro_rules! MB_CUR_MAX {
     ($s:expr) => {
         if !$s.is_null() && *$s.offset(0 as isize) as libc::c_int != 0 {
             if *$s.offset(1 as isize) as libc::c_int != 0 {
-                mbstrlen($s) as usize
+                c_mbstrlen($s) as usize
             } else {
                 1 as usize
             }
@@ -3436,7 +4134,7 @@ macro_rules! MBSLEN {
     ($s:expr) => {
         if !$s.is_null() && *$s.offset(0 as isize) as libc::c_int != 0 {
             if *$s.offset(1 as isize) as libc::c_int != 0 {
-                mbstrlen($s) as i32
+                c_mbstrlen($s) as i32
             } else {
                 1
             }
@@ -3658,7 +4356,7 @@ macro_rules! isdigit {
 #[macro_export]
 macro_rules! __isctype_f {
     ($c:expr,$type:expr) => {
-        *(*__ctype_b_loc()).offset($c as libc::c_int as isize) as libc::c_int
+        *(*c___ctype_b_loc()).offset($c as libc::c_int as isize) as libc::c_int
             & ($type as libc::c_int as libc::c_ushort as libc::c_int)
     };
 }
@@ -4137,7 +4835,7 @@ macro_rules! SIG_SETMASK {
 #[macro_export]
 macro_rules! UNBLOCK_SIGNAL_1 {
     ($ovar:expr) => {
-        sigprocmask(
+        c_sigprocmask(
             2 as libc::c_int,
             $ovar,
             0 as *mut libc::c_void as *mut sigset_t,
@@ -4157,10 +4855,10 @@ macro_rules! UNBLOCK_CHILD_1 {
 #[macro_export]
 macro_rules! BLOCK_SIGNAL_1 {
     ($sig:expr, $nvar:expr, $ovar:expr) => {
-        sigemptyset($nvar);
-        sigaddset($nvar, $sig as libc::c_int);
-        sigemptyset($ovar);
-        sigprocmask(0 as libc::c_int, $nvar, $ovar);
+        c_sigemptyset($nvar);
+        c_sigaddset($nvar, $sig as libc::c_int);
+        c_sigemptyset($ovar);
+        c_sigprocmask(0 as libc::c_int, $nvar, $ovar);
     };
 }
 
@@ -4175,16 +4873,16 @@ macro_rules! BLOCK_CHILD_1 {
 #[macro_export]
 macro_rules! BLOCK_SIGNAL {
     ($sig:expr, $nvar:expr, $ovar:expr) => {
-        sigemptyset(&mut $nvar);
-        sigaddset(&mut $nvar, $sig as libc::c_int);
-        sigemptyset(&mut $ovar);
-        sigprocmask(SIG_BLOCK as libc::c_int, &mut $nvar, &mut $ovar);
+        c_sigemptyset(&mut $nvar);
+        c_sigaddset(&mut $nvar, $sig as libc::c_int);
+        c_sigemptyset(&mut $ovar);
+        c_sigprocmask(SIG_BLOCK as libc::c_int, &mut $nvar, &mut $ovar);
     };
 }
 #[macro_export]
 macro_rules! UNBLOCK_SIGNAL {
     ($ovar:expr) => {
-        sigprocmask(SIG_SETMASK as libc::c_int, &mut $ovar, 0 as *mut sigset_t)
+        c_sigprocmask(SIG_SETMASK as libc::c_int, &mut $ovar, 0 as *mut sigset_t)
     };
 }
 
@@ -5622,7 +6320,7 @@ macro_rules! CHECK_WAIT_INTR {
             && this_shell_builtin.is_some()
             && this_shell_builtin == (Some(wait_builtin))
         {
-            siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
+            c_siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
         }
     };
 }
@@ -5910,7 +6608,6 @@ macro_rules! HAVE_DEV_FD {
 #[macro_export]
 macro_rules! DEFAULT_BASHRC {
     () => {
-        // b"~/.bashrc\0" as *const u8 as *const libc::c_char as *mut libc::c_char
         b"~/.utshellrc\0" as *const u8 as *const libc::c_char as *mut libc::c_char
     };
 }
@@ -6336,10 +7033,10 @@ macro_rules! REDIRECTION_ERROR {
                 close($fd);
             }
             set_exit_status(EXECUTION_FAILURE);
-            return if *__errno_location() == 0 as libc::c_int {
+            return if *c___errno_location() == 0 as libc::c_int {
                 EINVAL
             } else {
-                *__errno_location()
+                *c___errno_location()
             };
         }
     };
@@ -6661,7 +7358,7 @@ pub const RL_STATE_SIGHANDLER: libc::c_ulong = 0x0008000;
 macro_rules! CHECK_ALRM {
     () => {
         if sigalrm_seen != 0 {
-            siglongjmp(alrmbuf.as_mut_ptr(), 1 as libc::c_int);
+            c_siglongjmp(alrmbuf.as_mut_ptr(), 1 as libc::c_int);
         }
     };
 }
@@ -7199,7 +7896,7 @@ macro_rules! add_to_export_env {
     ($envstr:expr,$do_alloc:expr) => {{
         if export_env_index >= (export_env_size - 1 as libc::c_int) {
             export_env_size += 16 as libc::c_int;
-            export_env = strvec_resize(export_env, export_env_size);
+            export_env = c_strvec_resize(export_env, export_env_size);
             environ = export_env;
         }
         *export_env.offset(export_env_index as isize) = if $do_alloc != 0 {
@@ -7625,9 +8322,7 @@ pub const DEFAULT_PATH_VALUE: &'static [u8; 63usize] =
 pub const STANDARD_UTILS_PATH: &'static [u8; 30usize] = b"/bin:/usr/bin:/usr/sbin:/sbin\0";
 pub const PPROMPT: &'static [u8; 11usize] = b"\\s-\\\\v\\\\$ \0";
 pub const SPROMPT: &'static [u8; 3usize] = b"> \0";
-// pub const DEFAULT_BASHRC: &'static [u8; 10usize] = b"~/.bashrc\0";
 pub const DEFAULT_BASHRC: &'static [u8; 13usize] = b"~/.utshellrc\0";
-// pub const SYS_BASH_LOGOUT: &'static [u8; 22usize] = b"/etc/bash.bash_logout\0";     //只有定义，没有使用
 pub const SYS_BASH_LOGOUT: &'static [u8; 28usize] = b"/etc/utshell.utshell_logout\0";
 pub const MULTIPLE_COPROCS: u32 = 0;
 pub const CHECKWINSIZE_DEFAULT: u32 = 1;
@@ -8220,21 +8915,14 @@ pub const SIGHUP: u32 = 1;
 pub const SIGQUIT: u32 = 3;
 pub const SIGTRAP: u32 = 5;
 pub const SIGKILL: u32 = 9;
-// pub const SIGBUS: u32 = 10;
 pub const SIGBUS: u32 = 7;
-// pub const SIGSYS: u32 = 12;
 pub const SIGSYS: u32 = 31;
 pub const SIGPIPE: u32 = 13;
 pub const SIGALRM: u32 = 14;
-// pub const SIGURG: u32 = 16;
 pub const SIGURG: u32 = 23;
-// pub const SIGSTOP: u32 = 17;
 pub const SIGSTOP: u32 = 19;
-// pub const SIGTSTP: u32 = 18;
 pub const SIGTSTP: u32 = 20;
-// pub const SIGCONT: u32 = 19;
 pub const SIGCONT: u32 = 18;
-// pub const SIGCHLD: u32 = 20;
 pub const SIGCHLD: u32 = 17;
 pub const SIGTTIN: u32 = 21;
 pub const SIGTTOU: u32 = 22;
@@ -8243,12 +8931,9 @@ pub const SIGXCPU: u32 = 24;
 pub const SIGXFSZ: u32 = 25;
 pub const SIGVTALRM: u32 = 26;
 pub const SIGPROF: u32 = 27;
-// pub const SIGUSR1: u32 = 30;
 pub const SIGUSR1: u32 = 10;
-// pub const SIGUSR2: u32 = 31;
 pub const SIGUSR2: u32 = 12;
 pub const SIGWINCH: u32 = 28;
-// pub const SIGIO: u32 = 23;
 pub const SIGIO: u32 = 29;
 pub const SIGIOT: u32 = 6;
 pub const SIGCLD: u32 = 20;
@@ -10358,7 +11043,6 @@ pub struct mcontext_t {
     pub __reserved1: [::std::os::raw::c_ulonglong; 8usize],
 }
 #[repr(C)]
-// #[derive(Debug, Copy, Clone)]
 #[derive(Copy, Clone)]
 pub struct ucontext_t {
     pub uc_flags: ::std::os::raw::c_ulong,
