@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use super::help::builtin_help;
 use crate::builtins::cd::cd_builtin;
 use crate::builtins::common::{
@@ -19,7 +16,8 @@ fn STREQ(a: *const libc::c_char, b: *const libc::c_char) -> bool {
 }
 
 fn ISHELP(s: *const libc::c_char) -> bool {
-    return STREQ(s, CString::new("--help").unwrap().as_ptr());
+    let msg = CString::new("--help").unwrap();
+    return STREQ(s, msg.as_ptr());
 }
 
 fn ISOPTION(s: *const libc::c_char, c: libc::c_char) -> bool {
@@ -40,203 +38,244 @@ pub fn pushd_builtin(listt: *mut WordList) -> i32 {
     let mut num: libc::c_long = 0;
     let mut direction: libc::c_char;
 
-    unsafe {
-        let mut list: *mut WordList = listt.clone();
-        orig_list = list.clone();
+    let mut list: *mut WordList = listt.clone();
+    orig_list = list.clone();
 
-        if list != std::ptr::null_mut()
+    if unsafe {
+        list != std::ptr::null_mut()
             && (*list).word != std::ptr::null_mut()
             && ISHELP((*((*list).word)).word)
-        {
-            builtin_help();
-            return EX_USAGE;
-        }
+    } {
+        builtin_help();
+        return EX_USAGE;
+    }
 
-        if list != std::ptr::null_mut()
+    if unsafe {
+        list != std::ptr::null_mut()
             && (*list).word != std::ptr::null_mut()
             && ISOPTION((*((*list).word)).word, '-' as libc::c_char)
-        {
-            list = (*list).next;
-            skipopt = 1;
-        } else {
-            skipopt = 0;
+    } {
+        list = unsafe { (*list).next };
+        skipopt = 1;
+    } else {
+        skipopt = 0;
+    }
+
+    /* If there is no argument list then switch current and
+    top of list. */
+    if list == std::ptr::null_mut() {
+        if unsafe { directory_list_offset == 0 } {
+            unsafe {
+                let msg = CString::new("no other directory").unwrap();
+                builtin_error(msg.as_ptr());
+            }
+            return EXECUTION_FAILURE!();
         }
 
-        /* If there is no argument list then switch current and
-        top of list. */
-        if list == std::ptr::null_mut() {
-            if directory_list_offset == 0 {
-                builtin_error(CString::new("no other directory").unwrap().as_ptr());
-                return EXECUTION_FAILURE!();
-            }
+        let msg1 = CString::new("pushd").unwrap();
+        current_directory = get_working_directory(msg1.as_ptr() as *mut libc::c_char);
+        if current_directory == std::ptr::null_mut() {
+            return EXECUTION_FAILURE!();
+        }
 
-            current_directory =
-                get_working_directory(CString::new("pushd").unwrap().as_ptr() as *mut libc::c_char);
-            if current_directory == std::ptr::null_mut() {
-                return EXECUTION_FAILURE!();
-            }
-
-            j = directory_list_offset - 1;
-            temp = *((pushd_directory_list as usize + (j * 8) as usize) as *mut *mut libc::c_char);
+        j = unsafe { directory_list_offset - 1 };
+        temp = unsafe {
+            *((pushd_directory_list as usize + (j * 8) as usize) as *mut *mut libc::c_char)
+        };
+        unsafe {
             *((pushd_directory_list as usize + (j * 8) as usize) as *mut *mut libc::c_char) =
                 current_directory;
-            j = change_to_temp(temp);
-            libc::free(temp as *mut c_void);
-            return j;
         }
+        j = change_to_temp(temp);
+        unsafe {
+            libc::free(temp as *mut c_void);
+        }
+        return j;
+    }
 
-        flags = 0;
+    flags = 0;
 
-        while skipopt == 0 && list != std::ptr::null_mut() {
-            if ISOPTION((*((*list).word)).word, 'n' as libc::c_char) {
-                flags |= NOCD!();
-            } else if ISOPTION((*((*list).word)).word, '-' as libc::c_char) {
+    while skipopt == 0 && list != std::ptr::null_mut() {
+        if unsafe { ISOPTION((*((*list).word)).word, 'n' as libc::c_char) } {
+            flags |= NOCD!();
+        } else if unsafe { ISOPTION((*((*list).word)).word, '-' as libc::c_char) } {
+            unsafe {
                 list = (*list).next;
-                break;
-            } else if *((*((*list).word)).word) == '-' as libc::c_char
+            }
+            break;
+        } else if unsafe {
+            *((*((*list).word)).word) == '-' as libc::c_char
                 && *(((*((*list).word)).word as usize + 1) as *mut libc::c_char)
                     == '\0' as libc::c_char
-            {
-                /* Let `pushd -' work like it used to. */
-                break;
-            } else {
-                direction = *((*((*list).word)).word);
-                if direction == '+' as libc::c_char || direction == '-' as libc::c_char {
-                    if legal_number(
+        } {
+            /* Let `pushd -' work like it used to. */
+            break;
+        } else {
+            direction = unsafe { *((*((*list).word)).word) };
+            if direction == '+' as libc::c_char || direction == '-' as libc::c_char {
+                if unsafe {
+                    legal_number(
                         ((*((*list).word)).word as usize + 1) as *mut libc::c_char,
                         &mut num,
                     ) == 0
-                    {
+                } {
+                    unsafe {
                         sh_invalidnum((*((*list).word)).word);
-                        builtin_usage();
-                        return EX_USAGE;
                     }
-
-                    if direction == '-' as libc::c_char {
-                        num = directory_list_offset as libc::c_long - num;
-                    }
-
-                    if num > directory_list_offset as libc::c_long || num < 0 {
-                        pushd_error(directory_list_offset, (*((*list).word)).word);
-                        return EXECUTION_FAILURE!();
-                    }
-                    flags |= ROTATE!();
-                } else if *((*((*list).word)).word) == '-' as libc::c_char {
-                    sh_invalidopt((*((*list).word)).word);
                     builtin_usage();
                     return EX_USAGE;
-                } else {
-                    break;
                 }
+
+                if direction == '-' as libc::c_char {
+                    num = unsafe { directory_list_offset as libc::c_long - num };
+                }
+
+                if unsafe { num > directory_list_offset as libc::c_long || num < 0 } {
+                    unsafe {
+                        pushd_error(directory_list_offset, (*((*list).word)).word);
+                    }
+                    return EXECUTION_FAILURE!();
+                }
+                flags |= ROTATE!();
+            } else if unsafe { *((*((*list).word)).word) == '-' as libc::c_char } {
+                unsafe {
+                    sh_invalidopt((*((*list).word)).word);
+                }
+                builtin_usage();
+                return EX_USAGE;
+            } else {
+                break;
             }
-            list = (*list).next;
         }
+        list = unsafe { (*list).next };
+    }
 
-        if (flags & ROTATE!()) != 0 {
-            /* Rotate the stack num times.  Remember, the current
-            directory acts like it is part of the stack. */
-            temp =
-                get_working_directory(CString::new("pushd").unwrap().as_ptr() as *mut libc::c_char);
+    if (flags & ROTATE!()) != 0 {
+        /* Rotate the stack num times.  Remember, the current
+        directory acts like it is part of the stack. */
+        let msg = CString::new("pushd").unwrap();
+        temp = get_working_directory(msg.as_ptr() as *mut libc::c_char);
 
-            if num == 0 {
-                if (flags & NOCD!()) == 0 {
-                    j = change_to_temp(temp);
-                } else {
-                    j = EXECUTION_SUCCESS!();
-                }
-
-                libc::free(temp as *mut c_void);
-                return j;
-            }
-
-            {
-                top = *((pushd_directory_list as usize + ((directory_list_offset - 1) * 8) as usize)
-                    as *mut *mut libc::c_char);
-                j = directory_list_offset - 2;
-
-                while j > -1 {
-                    *((pushd_directory_list as usize + ((j + 1) * 8) as usize)
-                        as *mut *mut libc::c_char) = *((pushd_directory_list as usize
-                        + (j * 8) as usize)
-                        as *mut *mut libc::c_char);
-                    j -= 1;
-                }
-
-                *((pushd_directory_list as usize + ((j + 1) * 8) as usize)
-                    as *mut *mut libc::c_char) = temp;
-
-                temp = top;
-                num -= 1;
-            }
-
-            while num != 0 {
-                top = *((pushd_directory_list as usize + ((directory_list_offset - 1) * 8) as usize)
-                    as *mut *mut libc::c_char);
-                j = directory_list_offset - 2;
-
-                while j > -1 {
-                    *((pushd_directory_list as usize + ((j + 1) * 8) as usize)
-                        as *mut *mut libc::c_char) = *((pushd_directory_list as usize
-                        + (j * 8) as usize)
-                        as *mut *mut libc::c_char);
-                    j -= 1;
-                }
-
-                *((pushd_directory_list as usize + ((j + 1) * 8) as usize)
-                    as *mut *mut libc::c_char) = temp;
-
-                temp = top;
-                num -= 1;
-            }
-
+        if num == 0 {
             if (flags & NOCD!()) == 0 {
                 j = change_to_temp(temp);
             } else {
                 j = EXECUTION_SUCCESS!();
             }
 
-            libc::free(temp as *mut c_void);
+            unsafe {
+                libc::free(temp as *mut c_void);
+            }
             return j;
         }
 
-        if list == std::ptr::null_mut() {
-            return EXECUTION_SUCCESS!();
+        {
+            top = unsafe {
+                *((pushd_directory_list as usize + ((directory_list_offset - 1) * 8) as usize)
+                    as *mut *mut libc::c_char)
+            };
+            j = unsafe { directory_list_offset - 2 };
+
+            while j > -1 {
+                unsafe {
+                    *((pushd_directory_list as usize + ((j + 1) * 8) as usize)
+                        as *mut *mut libc::c_char) = *((pushd_directory_list as usize
+                        + (j * 8) as usize)
+                        as *mut *mut libc::c_char);
+                }
+                j -= 1;
+            }
+
+            unsafe {
+                *((pushd_directory_list as usize + ((j + 1) * 8) as usize)
+                    as *mut *mut libc::c_char) = temp;
+            }
+
+            temp = top;
+            num -= 1;
         }
 
-        /* Change to the directory in list->word->word.  Save the current
-        directory on the top of the stack. */
-        current_directory =
-            get_working_directory(CString::new("pushd").unwrap().as_ptr() as *mut libc::c_char);
-        if current_directory == std::ptr::null_mut() {
-            return EXECUTION_FAILURE!();
+        while num != 0 {
+            unsafe {
+                top = *((pushd_directory_list as usize + ((directory_list_offset - 1) * 8) as usize)
+                    as *mut *mut libc::c_char);
+                j = directory_list_offset - 2;
+            }
+
+            while j > -1 {
+                unsafe {
+                    *((pushd_directory_list as usize + ((j + 1) * 8) as usize)
+                        as *mut *mut libc::c_char) = *((pushd_directory_list as usize
+                        + (j * 8) as usize)
+                        as *mut *mut libc::c_char);
+                }
+                j -= 1;
+            }
+
+            unsafe {
+                *((pushd_directory_list as usize + ((j + 1) * 8) as usize)
+                    as *mut *mut libc::c_char) = temp;
+            }
+
+            temp = top;
+            num -= 1;
         }
 
         if (flags & NOCD!()) == 0 {
-            if skipopt != 0 {
-                j = cd_builtin(orig_list);
-            } else {
-                j = cd_builtin(list);
-            }
+            j = change_to_temp(temp);
         } else {
             j = EXECUTION_SUCCESS!();
         }
 
-        if j == EXECUTION_SUCCESS!() {
-            if (flags & NOCD!()) != 0 {
-                add_dirstack_element(savestring!((*((*list).word)).word));
-            } else {
-                add_dirstack_element(current_directory);
-            }
+        unsafe {
+            libc::free(temp as *mut c_void);
+        }
+        return j;
+    }
 
-            dirs_builtin(std::ptr::null_mut());
-            if (flags & NOCD!()) != 0 {
+    if list == std::ptr::null_mut() {
+        return EXECUTION_SUCCESS!();
+    }
+
+    /* Change to the directory in list->word->word.  Save the current
+    directory on the top of the stack. */
+    let msg = CString::new("pushd").unwrap();
+    current_directory = get_working_directory(msg.as_ptr() as *mut libc::c_char);
+    if current_directory == std::ptr::null_mut() {
+        return EXECUTION_FAILURE!();
+    }
+
+    if (flags & NOCD!()) == 0 {
+        if skipopt != 0 {
+            j = cd_builtin(orig_list);
+        } else {
+            j = cd_builtin(list);
+        }
+    } else {
+        j = EXECUTION_SUCCESS!();
+    }
+
+    if j == EXECUTION_SUCCESS!() {
+        if (flags & NOCD!()) != 0 {
+            unsafe {
+                add_dirstack_element(savestring!((*((*list).word)).word));
+            }
+        } else {
+            add_dirstack_element(current_directory);
+        }
+
+        dirs_builtin(std::ptr::null_mut());
+        if (flags & NOCD!()) != 0 {
+            unsafe {
                 libc::free(current_directory as *mut c_void);
             }
-            return EXECUTION_SUCCESS!();
-        } else {
-            libc::free(current_directory as *mut c_void);
-            return EXECUTION_FAILURE!();
         }
+        return EXECUTION_SUCCESS!();
+    } else {
+        unsafe {
+            libc::free(current_directory as *mut c_void);
+        }
+        return EXECUTION_FAILURE!();
     }
 }
 
@@ -269,7 +308,7 @@ pub fn popd_builtin(listt: *mut WordList) -> i32 {
             if ISOPTION((*((*list).word)).word, 'n' as libc::c_char) {
                 flags |= NOCD!();
             } else if ISOPTION((*((*list).word)).word, '-' as libc::c_char) {
-                list = (*list).next;
+                // list = (*list).next;
                 break;
             } else {
                 direction = *((*((*list).word)).word);
@@ -289,10 +328,8 @@ pub fn popd_builtin(listt: *mut WordList) -> i32 {
                     builtin_usage();
                     return EX_USAGE;
                 } else if (*((*list).word)).word != std::ptr::null_mut() {
-                    builtin_error(
-                        CString::new("%s: invalid argument").unwrap().as_ptr() as *mut libc::c_char,
-                        (*((*list).word)).word,
-                    );
+                    let msg = CString::new("%s: invalid argument").unwrap();
+                    builtin_error(msg.as_ptr() as *mut libc::c_char, (*((*list).word)).word);
                     builtin_usage();
                     return EX_USAGE;
                 } else {
@@ -309,10 +346,8 @@ pub fn popd_builtin(listt: *mut WordList) -> i32 {
             if which_word != std::ptr::null_mut() {
                 pushd_error(directory_list_offset, which_word);
             } else {
-                pushd_error(
-                    directory_list_offset,
-                    CString::new("").unwrap().as_ptr() as *mut libc::c_char,
-                );
+                let msg = CString::new("").unwrap();
+                pushd_error(directory_list_offset, msg.as_ptr() as *mut libc::c_char);
             }
             return EXECUTION_FAILURE!();
         }
@@ -354,10 +389,8 @@ pub fn popd_builtin(listt: *mut WordList) -> i32 {
                 if which_word != std::ptr::null_mut() {
                     pushd_error(directory_list_offset, which_word);
                 } else {
-                    pushd_error(
-                        directory_list_offset,
-                        CString::new("").unwrap().as_ptr() as *mut libc::c_char,
-                    );
+                    let msg = CString::new("").unwrap();
+                    pushd_error(directory_list_offset, msg.as_ptr() as *mut libc::c_char);
                 }
 
                 return EXECUTION_FAILURE!();
@@ -391,7 +424,8 @@ pub fn dirs_builtin(listt: *mut WordList) -> i32 {
     let mut vflag: i32 = 0;
     let mut i: libc::c_long = 0;
     let mut temp: *mut libc::c_char;
-    let mut w: *mut libc::c_char = CString::new("").unwrap().as_ptr() as *mut libc::c_char;
+    let msg1 = CString::new("").unwrap();
+    let mut w: *mut libc::c_char = msg1.as_ptr() as *mut libc::c_char;
 
     unsafe {
         let mut list: *mut WordList = listt.clone();
@@ -413,7 +447,7 @@ pub fn dirs_builtin(listt: *mut WordList) -> i32 {
             } else if ISOPTION((*((*list).word)).word, 'p' as libc::c_char) {
                 vflag |= 1;
             } else if ISOPTION((*((*list).word)).word, '-' as libc::c_char) {
-                list = (*list).next;
+                // list = (*list).next;
                 break;
             } else if *((*((*list).word)).word) == '+' as libc::c_char
                 || *((*((*list).word)).word) == '-' as libc::c_char
@@ -453,32 +487,28 @@ pub fn dirs_builtin(listt: *mut WordList) -> i32 {
 
         /* The first directory printed is always the current working directory. */
         if index_flag == 0 || (index_flag == 1 && desired_index == 0) {
-            temp =
-                get_working_directory(CString::new("dirs").unwrap().as_ptr() as *mut libc::c_char);
+            let msg1 = CString::new("dirs").unwrap();
+            temp = get_working_directory(msg1.as_ptr() as *mut libc::c_char);
             if temp == std::ptr::null_mut() {
-                temp =
-                    savestring!(CString::new("<no current directory>").unwrap().as_ptr()
-                        as *mut libc::c_char);
+                let msg2 = CString::new("<no current directory>").unwrap();
+                temp = savestring!(msg2.as_ptr() as *mut libc::c_char);
             }
 
             if (vflag & 2) != 0 {
                 if (flags & LONGFORM!()) != 0 {
-                    libc::printf(CString::new("%2d  %s").unwrap().as_ptr(), 0, temp);
+                    let msg3 = CString::new("%2d  %s").unwrap();
+                    libc::printf(msg3.as_ptr(), 0, temp);
                 } else {
-                    libc::printf(
-                        CString::new("%2d  %s").unwrap().as_ptr(),
-                        0,
-                        polite_directory_format(temp),
-                    );
+                    let msg4 = CString::new("%2d  %s").unwrap();
+                    libc::printf(msg4.as_ptr(), 0, polite_directory_format(temp));
                 }
             } else {
                 if (flags & LONGFORM!()) != 0 {
-                    libc::printf(CString::new("%s").unwrap().as_ptr(), temp);
+                    let msg5 = CString::new("%s").unwrap();
+                    libc::printf(msg5.as_ptr(), temp);
                 } else {
-                    libc::printf(
-                        CString::new("%s").unwrap().as_ptr(),
-                        polite_directory_format(temp),
-                    );
+                    let msg6 = CString::new("%s").unwrap();
+                    libc::printf(msg6.as_ptr(), polite_directory_format(temp));
                 }
             }
 
@@ -493,15 +523,17 @@ pub fn dirs_builtin(listt: *mut WordList) -> i32 {
         if index_flag != 0 {
             if (vflag & 2) != 0 {
                 if (flags & LONGFORM!()) != 0 {
+                    let msg = CString::new("%2d  %s").unwrap();
                     libc::printf(
-                        CString::new("%2d  %s").unwrap().as_ptr(),
+                        msg.as_ptr(),
                         directory_list_offset - desired_index,
                         *((pushd_directory_list as usize + (desired_index * 8) as usize)
                             as *mut *mut libc::c_char),
                     );
                 } else {
+                    let msg = CString::new("%2d  %s").unwrap();
                     libc::printf(
-                        CString::new("%2d  %s").unwrap().as_ptr(),
+                        msg.as_ptr(),
                         directory_list_offset - desired_index,
                         polite_directory_format(
                             *((pushd_directory_list as usize + (desired_index * 8) as usize)
@@ -511,14 +543,16 @@ pub fn dirs_builtin(listt: *mut WordList) -> i32 {
                 }
             } else {
                 if (flags & LONGFORM!()) != 0 {
+                    let msg = CString::new("%s").unwrap();
                     libc::printf(
-                        CString::new("%s").unwrap().as_ptr(),
+                        msg.as_ptr(),
                         *((pushd_directory_list as usize + (desired_index * 8) as usize)
                             as *mut *mut libc::c_char),
                     );
                 } else {
+                    let msg = CString::new("%s").unwrap();
                     libc::printf(
-                        CString::new("%s").unwrap().as_ptr(),
+                        msg.as_ptr(),
                         polite_directory_format(
                             *((pushd_directory_list as usize + (desired_index * 8) as usize)
                                 as *mut *mut libc::c_char),
@@ -531,15 +565,17 @@ pub fn dirs_builtin(listt: *mut WordList) -> i32 {
             while i >= 0 {
                 if vflag >= 2 {
                     if (flags & LONGFORM!()) != 0 {
+                        let msg = CString::new("\n%2d  %s").unwrap();
                         libc::printf(
-                            CString::new("\n%2d  %s").unwrap().as_ptr(),
+                            msg.as_ptr(),
                             directory_list_offset - i as i32,
                             *((pushd_directory_list as usize + (i * 8) as usize)
                                 as *mut *mut libc::c_char),
                         );
                     } else {
+                        let msg = CString::new("\n%2d  %s").unwrap();
                         libc::printf(
-                            CString::new("\n%2d  %s").unwrap().as_ptr(),
+                            msg.as_ptr(),
                             directory_list_offset - i as i32,
                             polite_directory_format(
                                 *((pushd_directory_list as usize + (i * 8) as usize)
@@ -550,34 +586,42 @@ pub fn dirs_builtin(listt: *mut WordList) -> i32 {
                 } else {
                     if (flags & LONGFORM!()) != 0 {
                         if (vflag & 1) != 0 {
+                            let msg1 = CString::new("%s%s").unwrap();
+                            let msg2 = CString::new("\n").unwrap();
                             libc::printf(
-                                CString::new("%s%s").unwrap().as_ptr(),
-                                CString::new("\n").unwrap().as_ptr() as *mut libc::c_char,
+                                msg1.as_ptr(),
+                                msg2.as_ptr() as *mut libc::c_char,
                                 *((pushd_directory_list as usize + (i * 8) as usize)
                                     as *mut *mut libc::c_char),
                             );
                         } else {
+                            let msg1 = CString::new("%s%s").unwrap();
+                            let msg2 = CString::new(" ").unwrap();
                             libc::printf(
-                                CString::new("%s%s").unwrap().as_ptr(),
-                                CString::new(" ").unwrap().as_ptr() as *mut libc::c_char,
+                                msg1.as_ptr(),
+                                msg2.as_ptr() as *mut libc::c_char,
                                 *((pushd_directory_list as usize + (i * 8) as usize)
                                     as *mut *mut libc::c_char),
                             );
                         }
                     } else {
                         if (vflag & 1) != 0 {
+                            let msg1 = CString::new("%s%s").unwrap();
+                            let msg2 = CString::new("\n").unwrap();
                             libc::printf(
-                                CString::new("%s%s").unwrap().as_ptr(),
-                                CString::new("\n").unwrap().as_ptr() as *mut libc::c_char,
+                                msg1.as_ptr(),
+                                msg2.as_ptr() as *mut libc::c_char,
                                 polite_directory_format(
                                     *((pushd_directory_list as usize + (i * 8) as usize)
                                         as *mut *mut libc::c_char),
                                 ),
                             );
                         } else {
+                            let msg1 = CString::new("%s%s").unwrap();
+                            let msg2 = CString::new(" ").unwrap();
                             libc::printf(
-                                CString::new("%s%s").unwrap().as_ptr(),
-                                CString::new(" ").unwrap().as_ptr() as *mut libc::c_char,
+                                msg1.as_ptr(),
+                                msg2.as_ptr() as *mut libc::c_char,
                                 polite_directory_format(
                                     *((pushd_directory_list as usize + (i * 8) as usize)
                                         as *mut *mut libc::c_char),
@@ -597,15 +641,14 @@ pub fn dirs_builtin(listt: *mut WordList) -> i32 {
 
 #[no_mangle]
 pub fn pushd_error(offset: i32, arg: *mut libc::c_char) {
-    unsafe {
-        if offset == 0 {
-            builtin_error(CString::new("directory stack empty").unwrap().as_ptr());
-        } else {
-            sh_erange(
-                arg,
-                CString::new("directory stack index").unwrap().as_ptr() as *mut libc::c_char,
-            );
+    if offset == 0 {
+        let msg = CString::new("directory stack empty").unwrap();
+        unsafe {
+            builtin_error(msg.as_ptr());
         }
+    } else {
+        let msg = CString::new("directory stack index").unwrap();
+        sh_erange(arg, msg.as_ptr() as *mut libc::c_char);
     }
 }
 
@@ -630,17 +673,16 @@ so if the result is EXECUTION_FAILURE then an error message has already
 been printed. */
 #[no_mangle]
 pub fn cd_to_string(name: *mut libc::c_char) -> i32 {
-    unsafe {
-        let tlist: *mut WordList;
-        let dir: *mut WordList;
-        let result: i32;
+    let tlist: *mut WordList;
+    let dir: *mut WordList;
+    let result: i32;
 
-        dir = make_word_list(make_word(name), std::ptr::null_mut());
-        tlist = make_word_list(make_word(CString::new("--").unwrap().as_ptr()), dir);
-        result = cd_builtin(tlist);
-        dispose_words(tlist);
-        return result;
-    }
+    dir = make_word_list(make_word(name), std::ptr::null_mut());
+    let msg = CString::new("--").unwrap();
+    tlist = make_word_list(make_word(msg.as_ptr()), dir);
+    result = cd_builtin(tlist);
+    dispose_words(tlist);
+    return result;
 }
 
 #[no_mangle]
@@ -665,7 +707,7 @@ pub fn add_dirstack_element(dir: *mut libc::c_char) {
     unsafe {
         if directory_list_offset == directory_list_size {
             directory_list_size += 10;
-            pushd_directory_list = strvec_resize(pushd_directory_list, directory_list_size);
+            pushd_directory_list = c_strvec_resize(pushd_directory_list, directory_list_size);
         }
 
         *((pushd_directory_list as usize + (directory_list_offset * 8) as usize)
@@ -719,32 +761,33 @@ pub fn get_dirstack_from_string(strt: *mut libc::c_char) -> *mut libc::c_char {
 
     sign = 1;
     let mut str1 = strt.clone();
-    unsafe {
-        if *str1 == '-' as libc::c_char || *str1 == '+' as libc::c_char {
-            if *str1 == '-' as libc::c_char {
-                sign = -1;
-            } else {
-                sign = 1;
-            }
-            str1 = (str1 as usize + 1) as *mut libc::c_char;
-        }
 
-        if legal_number(str1, &mut i) == 0 {
-            return std::ptr::null_mut();
-        }
-
-        index_flag = 0;
-        ind = get_dirstack_index(i, sign, &mut index_flag);
-        if index_flag != 0 && (ind < 0 || ind > directory_list_offset) {
-            return std::ptr::null_mut();
-        }
-
-        if index_flag == 0 || (index_flag == 1 && ind == 0) {
-            return get_string_value(CString::new("PWD").unwrap().as_ptr());
+    if unsafe { *str1 == '-' as libc::c_char || *str1 == '+' as libc::c_char } {
+        if unsafe { *str1 == '-' as libc::c_char } {
+            sign = -1;
         } else {
-            return *((pushd_directory_list as usize + (ind * 8) as usize)
-                as *mut *mut libc::c_char);
+            sign = 1;
         }
+        str1 = (str1 as usize + 1) as *mut libc::c_char;
+    }
+
+    if legal_number(str1, &mut i) == 0 {
+        return std::ptr::null_mut();
+    }
+
+    index_flag = 0;
+    ind = get_dirstack_index(i, sign, &mut index_flag);
+    if unsafe { index_flag != 0 && (ind < 0 || ind > directory_list_offset) } {
+        return std::ptr::null_mut();
+    }
+
+    if index_flag == 0 || (index_flag == 1 && ind == 0) {
+        let msg = CString::new("PWD").unwrap();
+        return get_string_value(msg.as_ptr());
+    } else {
+        return unsafe {
+            *((pushd_directory_list as usize + (ind * 8) as usize) as *mut *mut libc::c_char)
+        };
     }
 }
 
@@ -784,46 +827,55 @@ pub fn get_directory_stack(flags: i32) -> *mut WordList {
     let mut ret: *mut WordList;
     let mut d: *mut libc::c_char;
     let t: *mut libc::c_char;
-    unsafe {
-        ret = std::ptr::null_mut();
-        i = 0;
-        while i < directory_list_offset {
-            if (flags & 1) != 0 {
-                d = polite_directory_format(
+
+    ret = std::ptr::null_mut();
+    i = 0;
+    while unsafe { i < directory_list_offset } {
+        if (flags & 1) != 0 {
+            d = unsafe {
+                polite_directory_format(
                     *((pushd_directory_list as usize + (i * 8) as usize) as *mut *mut libc::c_char),
-                );
-            } else {
-                d = *((pushd_directory_list as usize + (i * 8) as usize) as *mut *mut libc::c_char)
-            }
-            ret = make_word_list(make_word(d), ret);
-            i += 1;
-        }
-        /* Now the current directory. */
-        d = get_working_directory(CString::new("dirstack").unwrap().as_ptr() as *mut libc::c_char);
-        i = 0; /* sentinel to decide whether or not to free d */
-        if d == std::ptr::null_mut() {
-            d = CString::new(".").unwrap().as_ptr() as *mut libc::c_char;
+                )
+            };
         } else {
-            if (flags & 1) != 0 {
-                t = polite_directory_format(d);
-            } else {
-                t = d;
-            }
-            /* polite_directory_format sometimes returns its argument unchanged.
-            If it does not, we can free d right away.  If it does, we need to
-            mark d to be deleted later. */
-            if t != d {
-                libc::free(d as *mut c_void);
-                d = t;
-            } else {
-                /* t == d, so d is what we want */
-                i = 1;
+            d = unsafe {
+                *((pushd_directory_list as usize + (i * 8) as usize) as *mut *mut libc::c_char)
             }
         }
         ret = make_word_list(make_word(d), ret);
-        if i != 0 {
+        i += 1;
+    }
+    /* Now the current directory. */
+    let msg = CString::new("dirstack").unwrap();
+    d = get_working_directory(msg.as_ptr() as *mut libc::c_char);
+    i = 0; /* sentinel to decide whether or not to free d */
+    if d == std::ptr::null_mut() {
+        let msg = CString::new(".").unwrap();
+        d = msg.as_ptr() as *mut libc::c_char;
+    } else {
+        if (flags & 1) != 0 {
+            t = polite_directory_format(d);
+        } else {
+            t = d;
+        }
+        /* polite_directory_format sometimes returns its argument unchanged.
+        If it does not, we can free d right away.  If it does, we need to
+        mark d to be deleted later. */
+        if t != d {
+            unsafe {
+                libc::free(d as *mut c_void);
+            }
+            d = t;
+        } else {
+            /* t == d, so d is what we want */
+            i = 1;
+        }
+    }
+    ret = make_word_list(make_word(d), ret);
+    if i != 0 {
+        unsafe {
             libc::free(d as *mut c_void);
         }
-        return ret; /* was (REVERSE_LIST (ret, (WordList *)); */
     }
+    return ret; /* was (REVERSE_LIST (ret, (WordList *)); */
 }
