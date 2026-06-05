@@ -7,6 +7,7 @@ use std::sync::Mutex;
 
 use lazy_static::lazy_static;
 
+#[allow(dead_code)]
 pub struct Cmd {
     name: String,
     enable: bool,
@@ -28,7 +29,7 @@ impl Cmd {
 lazy_static! {
     static ref CMD: Mutex<HashMap<String, Box<Cmd>>> = Mutex::new(HashMap::new());
 }
-fn init_cmd_table() {}
+// fn init_cmd_table() {}
 
 pub fn insert_empty_cmd(cmd: String) -> bool {
     let it = Cmd::build_cmd(String::from(&cmd[..]), true);
