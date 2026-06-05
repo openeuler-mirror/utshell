@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::error::command_error;
 use crate::src_common::*;
 
@@ -15,7 +12,7 @@ pub fn dispose_command(command: *mut COMMAND) {
         }
         match (*command).type_0 {
             command_type_cm_for | command_type_cm_select => {
-                let mut c: *mut FOR_COM = 0 as *mut FOR_COM;
+                let c: *mut FOR_COM;
                 if (*command).type_0 == command_type_cm_select {
                     c = (*command).value.Select as *mut FOR_COM;
                 } else {
@@ -27,8 +24,8 @@ pub fn dispose_command(command: *mut COMMAND) {
                 free(c as *mut libc::c_void);
             }
             command_type_cm_arith_for => {
-                let mut c_0: *mut ARITH_FOR_COM = 0 as *mut ARITH_FOR_COM;
-                c_0 = (*command).value.ArithFor;
+                // let mut c_0: *mut ARITH_FOR_COM ;
+                let c_0: *mut arith_for_com = (*command).value.ArithFor;
                 dispose_words((*c_0).init);
                 dispose_words((*c_0).test);
                 dispose_words((*c_0).step);
@@ -49,10 +46,10 @@ pub fn dispose_command(command: *mut COMMAND) {
                 free((*command).value.Coproc as *mut libc::c_void);
             }
             command_type_cm_case => {
-                let mut c_1: *mut CASE_COM = 0 as *mut CASE_COM;
-                let mut t: *mut PATTERN_LIST = 0 as *mut PATTERN_LIST;
-                let mut p: *mut PATTERN_LIST = 0 as *mut PATTERN_LIST;
-                c_1 = (*command).value.Case;
+                // let mut c_1: *mut CASE_COM  ;
+                let mut t: *mut PATTERN_LIST;
+                let mut p: *mut PATTERN_LIST;
+                let c_1 = (*command).value.Case;
                 dispose_word((*c_1).word);
                 p = (*c_1).clauses;
                 while !p.is_null() {
@@ -65,48 +62,48 @@ pub fn dispose_command(command: *mut COMMAND) {
                 free(c_1 as *mut libc::c_void);
             }
             command_type_cm_until | command_type_cm_while => {
-                let mut c_2: *mut WHILE_COM = 0 as *mut WHILE_COM;
-                c_2 = (*command).value.While;
+                // let mut c_2: *mut WHILE_COM  ;
+                let c_2 = (*command).value.While;
                 dispose_command((*c_2).test);
                 dispose_command((*c_2).action);
                 free(c_2 as *mut libc::c_void);
             }
             command_type_cm_if => {
-                let mut c_3: *mut IF_COM = 0 as *mut IF_COM;
-                c_3 = (*command).value.If;
+                // let mut c_3: *mut IF_COM ;
+                let c_3 = (*command).value.If;
                 dispose_command((*c_3).test);
                 dispose_command((*c_3).true_case);
                 dispose_command((*c_3).false_case);
                 free(c_3 as *mut libc::c_void);
             }
             command_type_cm_simple => {
-                let mut c_4: *mut SIMPLE_COM = 0 as *mut SIMPLE_COM;
-                c_4 = (*command).value.Simple;
+                // let mut c_4: *mut SIMPLE_COM  ;
+                let c_4 = (*command).value.Simple;
                 dispose_words((*c_4).words);
                 dispose_redirects((*c_4).redirects);
                 free(c_4 as *mut libc::c_void);
             }
             command_type_cm_connection => {
-                let mut c_5: *mut CONNECTION = 0 as *mut CONNECTION;
-                c_5 = (*command).value.Connection;
+                // let mut c_5: *mut CONNECTION ;
+                let c_5 = (*command).value.Connection;
                 dispose_command((*c_5).first);
                 dispose_command((*c_5).second);
                 free(c_5 as *mut libc::c_void);
             }
             command_type_cm_arith => {
-                let mut c_6: *mut ARITH_COM = 0 as *mut ARITH_COM;
-                c_6 = (*command).value.Arith;
+                // let mut c_6: *mut ARITH_COM ;
+                let c_6 = (*command).value.Arith;
                 dispose_words((*c_6).exp);
                 free(c_6 as *mut libc::c_void);
             }
             command_type_cm_cond => {
-                let mut c_7: *mut COND_COM = 0 as *mut COND_COM;
-                c_7 = (*command).value.Cond;
+                // let mut c_7: *mut COND_COM ;
+                let c_7 = (*command).value.Cond;
                 dispose_cond_node(c_7);
             }
             command_type_cm_function_def => {
-                let mut c_8: *mut FUNCTION_DEF = 0 as *mut FUNCTION_DEF;
-                c_8 = (*command).value.Function_def;
+                // let mut c_8: *mut FUNCTION_DEF ;
+                let c_8 = (*command).value.Function_def;
                 dispose_function_def(c_8);
             }
             _ => {
@@ -161,7 +158,6 @@ pub fn dispose_function_def(c: *mut FUNCTION_DEF) {
 pub fn dispose_word(w: *mut WordDesc) {
     unsafe {
         FREE!((*w).word);
-        // ocache_free!(wdcache, WordDesc, w);
         (*w).word = 0 as *mut libc::c_char;
         free(w as *mut c_void);
     }
@@ -171,21 +167,18 @@ pub fn dispose_word(w: *mut WordDesc) {
 pub fn dispose_word_desc(w: *mut WordDesc) {
     unsafe {
         (*w).word = 0 as *mut libc::c_char;
-        // ocache_free!(wdcache, WordDesc, w);
         free(w as *mut c_void);
     }
 }
 
 #[no_mangle]
 pub fn dispose_words(mut list: *mut WordList) {
-    let mut t: *mut WordList = 0 as *mut WordList;
+    let mut t: *mut WordList;
     while !list.is_null() {
         unsafe {
             t = list;
             list = (*list).next;
             dispose_word((*t).word);
-
-            // ocache_free!(wlcache, WordList, t);
             free(t as *mut c_void);
         }
     }
@@ -193,39 +186,41 @@ pub fn dispose_words(mut list: *mut WordList) {
 
 #[no_mangle]
 pub fn dispose_redirects(mut list: *mut REDIRECT) {
-    let mut t: *mut REDIRECT = 0 as *mut REDIRECT;
-    unsafe {
-        while !list.is_null() {
-            t = list;
+    let mut t: *mut REDIRECT;
+
+    while !list.is_null() {
+        t = list;
+        unsafe {
             list = (*list).next;
 
             if (*t).rflags & REDIR_VARASSIGN as libc::c_int != 0 {
                 dispose_word((*t).redirector.filename);
             }
+        }
+        match unsafe { (*t).instruction } {
+            r_instruction_r_reading_until | r_instruction_r_deblank_reading_until => unsafe {
+                free((*t).here_doc_eof as *mut libc::c_void);
+                dispose_word((*t).redirectee.filename);
+            },
+            r_instruction_r_reading_string
+            | r_instruction_r_output_direction
+            | r_instruction_r_input_direction
+            | r_instruction_r_inputa_direction
+            | r_instruction_r_appending_to
+            | r_instruction_r_err_and_out
+            | r_instruction_r_append_err_and_out
+            | r_instruction_r_input_output
+            | r_instruction_r_output_force
+            | r_instruction_r_duplicating_input_word
+            | r_instruction_r_duplicating_output_word
+            | r_instruction_r_move_input_word
+            | r_instruction_r_move_output_word => unsafe {
+                dispose_word((*t).redirectee.filename);
+            },
+            _ => {}
+        }
 
-            match (*t).instruction {
-                r_instruction_r_reading_until | r_instruction_r_deblank_reading_until => {
-                    free((*t).here_doc_eof as *mut libc::c_void);
-                    dispose_word((*t).redirectee.filename);
-                }
-                r_instruction_r_reading_string
-                | r_instruction_r_output_direction
-                | r_instruction_r_input_direction
-                | r_instruction_r_inputa_direction
-                | r_instruction_r_appending_to
-                | r_instruction_r_err_and_out
-                | r_instruction_r_append_err_and_out
-                | r_instruction_r_input_output
-                | r_instruction_r_output_force
-                | r_instruction_r_duplicating_input_word
-                | r_instruction_r_duplicating_output_word
-                | r_instruction_r_move_input_word
-                | r_instruction_r_move_output_word => {
-                    dispose_word((*t).redirectee.filename);
-                }
-                _ => {}
-            }
-
+        unsafe {
             free(t as *mut libc::c_void);
         }
     }
