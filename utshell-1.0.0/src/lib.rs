@@ -1,21 +1,20 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 // 抑制与 C FFI 兼容性相关的各种编译警告
 #![allow(non_snake_case)] // 允许非蛇形命名(与C兼容)
 #![allow(non_camel_case_types)] // 允许非驼峰类型名(与C兼容)
 #![allow(non_upper_case_globals)] // 允许非大写全局变量(与C兼容)
-#![allow(improper_ctypes)] // 允许不当的C类型(FFI需要)
-#![allow(clashing_extern_declarations)] // 允许冲突的extern声明
-#![allow(dead_code)] // 允许未使用的代码
-#![allow(unused_variables)] // 允许未使用的变量
-#![allow(unused_assignments)] // 允许未使用的赋值
-#![allow(unused_must_use)] // 允许忽略must_use结果
-#![allow(unused_unsafe)] // 允许未使用的unsafe
-#![allow(unused_attributes)] // 允许未使用的属性
-#![allow(path_statements)] // 允许路径语句
-#![allow(unreachable_code)] // 允许不可达代码
-#![allow(temporary_cstring_as_ptr)] // 允许临时CString指针
+#![allow(improper_ctypes)]
+// 允许不当的C类型(FFI需要)
+// #![allow(clashing_extern_declarations)] // 允许冲突的extern声明
+// #![allow(dead_code)] // 允许未使用的代码
+// #![allow(unused_variables)] // 允许未使用的变量
+// #![allow(unused_assignments)] // 允许未使用的赋值
+// #![allow(unused_must_use)] // 允许忽略must_use结果
+// #![allow(unused_unsafe)] // 允许未使用的unsafe
+// #![allow(unused_attributes)]
+// 允许未使用的属性
+// #![allow(path_statements)] // 允许路径语句
+// #![allow(unreachable_code)] // 允许不可达代码
+// #![allow(temporary_cstring_as_ptr)] // 允许临时CString指针
 #![allow(static_mut_refs)] // 允许静态可变引用
 #![allow(const_item_mutation)] // 允许常量项突变
 #![allow(ambiguous_glob_reexports)] // 允许模糊的全局重导出
@@ -100,56 +99,5 @@ pub mod variables;
 pub mod version;
 pub mod y_tab;
 
-pub mod builtins {
-    pub mod alias;
-    pub mod bashgetopt;
-    pub mod bind;
-    pub mod break_1;
-    pub mod builtin;
-    pub mod builtins;
-    pub mod caller;
-    pub mod cd;
-    pub mod cmd;
-    pub mod colon;
-    pub mod command;
-    pub mod common;
-    pub mod complete;
-    pub mod declare;
-    pub mod echo;
-    pub mod enable;
-    pub mod eval;
-    pub mod evalfile;
-    pub mod evalstring;
-    pub mod exec;
-    pub mod exec_cmd;
-    pub mod exit;
-    pub mod fc;
-    pub mod fg_bg;
-    pub mod getopt;
-    pub mod getopts;
-    pub mod hash;
-    pub mod help;
-    pub mod history;
-    pub mod jobs;
-    pub mod kill;
-    pub mod let_1;
-    pub mod mapfile;
-    pub mod printf;
-    pub mod pushd;
-    pub mod read;
-    pub mod return_1;
-    pub mod set;
-    pub mod setattr;
-    pub mod shift;
-    pub mod shopt;
-    pub mod signal;
-    pub mod source;
-    pub mod suspend;
-    pub mod test;
-    pub mod times;
-    pub mod trap;
-    pub mod type_1;
-    pub mod ulimit;
-    pub mod umask;
-    pub mod wait;
-}
+pub mod builtins;
+pub use builtins::*;
