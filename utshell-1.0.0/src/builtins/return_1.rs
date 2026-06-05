@@ -1,13 +1,6 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use super::help::builtin_help;
 use crate::builtins::common::get_exitstat;
 use crate::src_common::*;
-
-extern "C" {
-    pub fn siglongjmp(__env: *mut __jmp_buf_tag, __val: libc::c_int);
-}
 
 #[no_mangle]
 pub fn return_builtin(list: *mut WordList) -> i32 {
@@ -25,7 +18,7 @@ pub fn return_builtin(list: *mut WordList) -> i32 {
 
         return_catch_value = get_exitstat(list);
         if return_catch_flag != 0 {
-            siglongjmp(std::mem::transmute(&return_catch), 1);
+            c_siglongjmp(std::mem::transmute(&return_catch), 1);
         } else {
             builtin_error(
                 "can only `return' from a function or sourced script\0".as_ptr()
@@ -34,5 +27,4 @@ pub fn return_builtin(list: *mut WordList) -> i32 {
             return EX_USAGE;
         }
     }
-    return EXECUTION_SUCCESS;
 }
