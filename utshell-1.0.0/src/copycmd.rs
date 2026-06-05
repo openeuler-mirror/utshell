@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::list::list_reverse;
 use crate::make_cmd::{make_bare_word, make_word_list};
 use crate::src_common::*;
@@ -70,43 +67,42 @@ fn copy_case_clauses(mut clauses: *mut PATTERN_LIST) -> *mut PATTERN_LIST {
 
 #[no_mangle]
 pub fn copy_redirect(redirect: *mut REDIRECT) -> *mut REDIRECT {
+    let new_redirect: *mut REDIRECT =
+        unsafe { malloc(::core::mem::size_of::<REDIRECT>() as usize) as *mut REDIRECT };
     unsafe {
-        let new_redirect: *mut REDIRECT =
-            malloc(::core::mem::size_of::<REDIRECT>() as usize) as *mut REDIRECT;
         *new_redirect = *redirect;
         if (*redirect).rflags & 0x1 as libc::c_int != 0 {
             (*new_redirect).redirector.filename = copy_word((*redirect).redirector.filename);
         }
-
-        match (*redirect).instruction as libc::c_uint {
-            r_reading_until | r_deblank_reading_until => {
-                (*new_redirect).here_doc_eof = if !((*redirect).here_doc_eof).is_null() {
-                    savestring!((*redirect).here_doc_eof) as *mut libc::c_char
-                } else {
-                    0 as *mut libc::c_char
-                };
-                (*new_redirect).redirectee.filename = copy_word((*redirect).redirectee.filename);
-            }
-            r_reading_string
-            | r_appending_to
-            | r_output_direction
-            | r_input_direction
-            | r_inputa_direction
-            | r_err_and_out
-            | r_append_err_and_out
-            | r_input_output
-            | r_output_force
-            | r_duplicating_input_word
-            | r_duplicating_output_word
-            | r_move_input_word
-            | r_move_output_word => {
-                (*new_redirect).redirectee.filename = copy_word((*redirect).redirectee.filename);
-            }
-            r_duplicating_input | r_duplicating_output | r_move_input | r_move_output
-            | r_close_this | _ => {}
-        }
-        return new_redirect;
     }
+    match unsafe { (*redirect).instruction as libc::c_uint } {
+        r_reading_until | r_deblank_reading_until => unsafe {
+            (*new_redirect).here_doc_eof = if !((*redirect).here_doc_eof).is_null() {
+                savestring!((*redirect).here_doc_eof) as *mut libc::c_char
+            } else {
+                0 as *mut libc::c_char
+            };
+            (*new_redirect).redirectee.filename = copy_word((*redirect).redirectee.filename);
+        },
+        r_reading_string
+        | r_appending_to
+        | r_output_direction
+        | r_input_direction
+        | r_inputa_direction
+        | r_err_and_out
+        | r_append_err_and_out
+        | r_input_output
+        | r_output_force
+        | r_duplicating_input_word
+        | r_duplicating_output_word
+        | r_move_input_word
+        | r_move_output_word => unsafe {
+            (*new_redirect).redirectee.filename = copy_word((*redirect).redirectee.filename);
+        },
+        r_duplicating_input | r_duplicating_output | r_move_input | r_move_output
+        | r_close_this | _ => {}
+    }
+    return new_redirect;
 }
 
 #[no_mangle]
@@ -114,19 +110,20 @@ pub fn copy_redirects(mut list: *mut REDIRECT) -> *mut REDIRECT {
     let mut new_list: *mut REDIRECT;
     let mut temp: *mut REDIRECT;
     new_list = 0 as *mut libc::c_void as *mut REDIRECT;
-    unsafe {
-        while !list.is_null() {
+
+    while !list.is_null() {
+        unsafe {
             temp = copy_redirect(list);
             (*temp).next = new_list;
             new_list = temp;
             list = (*list).next;
         }
-        return if !new_list.is_null() && !((*new_list).next).is_null() {
-            list_reverse(new_list as *mut GENERIC_LIST) as *mut REDIRECT
-        } else {
-            new_list
-        };
     }
+    return if unsafe { !new_list.is_null() && !((*new_list).next).is_null() } {
+        list_reverse(new_list as *mut GENERIC_LIST) as *mut REDIRECT
+    } else {
+        new_list
+    };
 }
 
 fn copy_for_command(com: *mut FOR_COM) -> *mut FOR_COM {
@@ -309,12 +306,10 @@ pub fn copy_function_def_contents(
 
 #[no_mangle]
 pub fn copy_function_def(com: *mut FUNCTION_DEF) -> *mut FUNCTION_DEF {
-    unsafe {
-        let mut new_def: *mut FUNCTION_DEF =
-            malloc(::core::mem::size_of::<FUNCTION_DEF>() as usize) as *mut FUNCTION_DEF;
-        new_def = copy_function_def_contents(com, new_def);
-        return new_def;
-    }
+    let mut new_def: *mut FUNCTION_DEF =
+        unsafe { malloc(::core::mem::size_of::<FUNCTION_DEF>() as usize) as *mut FUNCTION_DEF };
+    new_def = copy_function_def_contents(com, new_def);
+    return new_def;
 }
 
 #[no_mangle]
