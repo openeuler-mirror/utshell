@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::src_common::*;
 
 #[no_mangle]
@@ -9,8 +6,8 @@ pub fn sh_getopt(
     argv: *const *mut libc::c_char,
     optstring: *const libc::c_char,
 ) -> libc::c_int {
-    let mut c: libc::c_char = 0;
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut c: libc::c_char;
+    let mut temp: *mut libc::c_char;
     unsafe {
         sh_optarg = 0 as *mut libc::c_char;
         if sh_optind >= argc || sh_optind < 0 as libc::c_int {
@@ -57,7 +54,7 @@ pub fn sh_getopt(
             if sh_opterr != 0 {
                 fprintf(
                     stderr,
-                    dcgettext(
+                    c_dcgettext(
                         0 as *const libc::c_char,
                         b"%s: illegal option -- %c\n\0" as *const u8 as *const libc::c_char,
                         5 as libc::c_int,
@@ -76,7 +73,7 @@ pub fn sh_getopt(
                 if sh_opterr != 0 {
                     fprintf(
                         stderr,
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"%s: option requires an argument -- %c\n\0" as *const u8
                                 as *const libc::c_char,
@@ -113,11 +110,11 @@ pub fn sh_getopt_restore_state(argv: *mut *mut libc::c_char) {
 }
 #[no_mangle]
 pub fn sh_getopt_alloc_istate() -> *mut sh_getopt_state_t {
+    let ret: *mut sh_getopt_state_t;
     unsafe {
-        let mut ret: *mut sh_getopt_state_t = 0 as *mut sh_getopt_state_t;
         ret = malloc(::std::mem::size_of::<sh_getopt_state_t>() as usize) as *mut sh_getopt_state_t;
-        return ret;
     }
+    return ret;
 }
 #[no_mangle]
 pub fn sh_getopt_dispose_istate(gs: *mut sh_getopt_state_t) {
@@ -128,8 +125,8 @@ pub fn sh_getopt_dispose_istate(gs: *mut sh_getopt_state_t) {
 #[no_mangle]
 pub fn sh_getopt_save_istate() -> *mut sh_getopt_state_t {
     unsafe {
-        let mut ret: *mut sh_getopt_state_t = 0 as *mut sh_getopt_state_t;
-        ret = sh_getopt_alloc_istate();
+        // let ret: *mut sh_getopt_state_t ;
+        let ret = sh_getopt_alloc_istate();
         let ref mut fresh2 = (*ret).gs_optarg;
         *fresh2 = sh_optarg;
         (*ret).gs_optind = sh_optind;
