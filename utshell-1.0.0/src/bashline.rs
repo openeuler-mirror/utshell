@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::alias::{alias_expand, all_aliases, get_alias_value};
 use crate::bashhist::{bash_add_history, pre_process_line};
 use crate::bracecomp::bash_brace_completion;
@@ -9,11 +6,18 @@ use crate::builtins::read::read_builtin;
 use crate::builtins::read::sigalrm_seen;
 use crate::dispose_cmd::{dispose_word, dispose_words};
 use crate::findcmd::{executable_file, executable_or_directory, search_for_command};
+use crate::general::bash_tilde_expand;
+use crate::general::extract_colon_unit;
+use crate::general::file_exists;
+use crate::general::tilde_initialize;
+use crate::general::{absolute_program, assignment, path_dot_or_dotdot};
 use crate::make_cmd::alloc_word_desc;
+use crate::parse_and_execute;
 use crate::pathexp::{setup_ignore_patterns, shell_glob_filename};
+use crate::pcomplete::pcomp_set_readline_variables;
 use crate::pcomplete::prog_completion_enabled;
+use crate::pcomplete::programmable_completions;
 use crate::pcomplib::{progcomp_search, progcomp_size};
-use crate::readline::putc;
 use crate::readline::*;
 use crate::sig::throw_to_top_level;
 use crate::src_common::*;
@@ -22,7 +26,7 @@ use crate::subst::{
     char_is_quoted, expand_prompt_string, expand_word, skip_to_delim, string_list, unclosed_pair,
 };
 use crate::syntax::sh_syntaxtab;
-use crate::trap::first_pending_trap;
+use crate::trap::{check_signals_and_traps, first_pending_trap};
 use crate::variables::{
     all_variables_matching_prefix, all_visible_functions, bind_int_variable, bind_variable,
     check_unbind_variable, find_variable, get_string_value,
@@ -43,11 +47,8 @@ extern "C" {
 macro_rules! BACKUP_CHAR {
     ($_str:expr, $_strsize:expr, $_i:expr,$state:expr) => {
         if locale_mb_cur_max > 1 as libc::c_int {
-            let mut state_bak: mbstate_t = __mbstate_t {
-                __count: 0,
-                __value: mbstate_t_value { __wch: 0 },
-            };
-            let mut mblength: size_t = 0;
+            let mut state_bak: mbstate_t;
+            let mut mblength: size_t;
             let mut _x: libc::c_int = 0;
             let mut _p: libc::c_int = 0;
             _p = 0 as libc::c_int;
@@ -82,35 +83,29 @@ pub fn posix_readline_initialize(on_or_off: libc::c_int) {
     static mut kseq: [libc::c_char; 2] = [CTRL!('I' as i32) as libc::c_char, 0 as libc::c_char];
     unsafe {
         if on_or_off != 0 {
-            rl_variable_bind(
+            c_rl_variable_bind(
                 b"comment-begin\0" as *const u8 as *const libc::c_char,
                 b"#\0" as *const u8 as *const libc::c_char,
             );
         }
         if on_or_off != 0 {
-            vi_tab_binding = rl_function_of_keyseq(
+            vi_tab_binding = c_rl_function_of_keyseq(
                 kseq.as_mut_ptr(),
                 vi_insertion_keymap.as_mut_ptr(),
                 0 as *mut libc::c_void as *mut libc::c_int,
             );
-            rl_bind_key_in_map(
+            c_rl_bind_key_in_map(
                 CTRL!('I' as i32) as libc::c_int,
-                Some(std::mem::transmute::<
-                    unsafe extern "C" fn(libc::c_int, libc::c_int) -> libc::c_int,
-                    fn(libc::c_int, libc::c_int) -> libc::c_int,
-                >(rl_insert)),
+                Some(c_rl_insert),
                 vi_insertion_keymap.as_mut_ptr(),
             );
-        } else if rl_function_of_keyseq(
+        } else if c_rl_function_of_keyseq(
             kseq.as_mut_ptr(),
             vi_insertion_keymap.as_mut_ptr(),
             0 as *mut c_void as *mut libc::c_int,
-        ) == Some(std::mem::transmute::<
-            unsafe extern "C" fn(libc::c_int, libc::c_int) -> libc::c_int,
-            fn(libc::c_int, libc::c_int) -> libc::c_int,
-        >(rl_insert))
+        ) == Some(c_rl_insert)
         {
-            rl_bind_key_in_map(
+            c_rl_bind_key_in_map(
                 CTRL!('I' as i32) as libc::c_int,
                 vi_tab_binding,
                 vi_insertion_keymap.as_mut_ptr(),
@@ -132,10 +127,10 @@ pub fn reset_completer_word_break_chars() {
 
 #[no_mangle]
 pub fn enable_hostname_completion(on_or_off: libc::c_int) -> libc::c_int {
-    let mut old_value: libc::c_int = 0;
-    let mut at: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut nv: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut nval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let old_value: libc::c_int;
+    let mut at: *mut libc::c_char;
+    let mut nv: *mut libc::c_char;
+    let nval: *mut libc::c_char;
     unsafe {
         old_value = perform_hostname_completion;
 
@@ -201,7 +196,7 @@ pub fn enable_hostname_completion(on_or_off: libc::c_int) -> libc::c_int {
 
 #[no_mangle]
 pub fn initialize_readline() {
-    let mut func: Option<rl_command_func_t> = None;
+    let mut func: Option<rl_command_func_t>;
     let mut kseq: [libc::c_char; 2] = [0; 2];
     unsafe {
         if bash_readline_initialized != 0 {
@@ -212,363 +207,360 @@ pub fn initialize_readline() {
         rl_outstream = stderr;
 
         rl_readline_name = b"Bash\0" as *const u8 as *const libc::c_char;
-
-        rl_add_defun(
-            b"shell-expand-line\0" as *const u8 as *const libc::c_char,
-            Some(shell_expand_line),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"history-expand-line\0" as *const u8 as *const libc::c_char,
-            Some(history_expand_line),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"magic-space\0" as *const u8 as *const libc::c_char,
-            Some(tcsh_magic_space),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"shell-forward-word\0" as *const u8 as *const libc::c_char,
-            Some(bash_forward_shellword),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"shell-backward-word\0" as *const u8 as *const libc::c_char,
-            Some(bash_backward_shellword),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"shell-kill-word\0" as *const u8 as *const libc::c_char,
-            Some(bash_kill_shellword),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"shell-backward-kill-word\0" as *const u8 as *const libc::c_char,
-            Some(bash_backward_kill_shellword),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"shell-transpose-words\0" as *const u8 as *const libc::c_char,
-            Some(bash_transpose_shellwords),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"alias-expand-line\0" as *const u8 as *const libc::c_char,
-            Some(alias_expand_line),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"history-and-alias-expand-line\0" as *const u8 as *const libc::c_char,
-            Some(history_and_alias_expand_line),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"insert-last-argument\0" as *const u8 as *const libc::c_char,
-            Some(std::mem::transmute::<
-                unsafe extern "C" fn(libc::c_int, libc::c_int) -> libc::c_int,
-                fn(libc::c_int, libc::c_int) -> libc::c_int,
-            >(rl_yank_last_arg)),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"display-shell-version\0" as *const u8 as *const libc::c_char,
-            Some(display_shell_version),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"edit-and-execute-command\0" as *const u8 as *const libc::c_char,
-            Some(emacs_edit_and_execute_command),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"complete-into-braces\0" as *const u8 as *const libc::c_char,
-            Some(bash_brace_completion),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"complete-filename\0" as *const u8 as *const libc::c_char,
-            Some(bash_complete_filename),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"possible-filename-completions\0" as *const u8 as *const libc::c_char,
-            Some(bash_possible_filename_completions),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"complete-username\0" as *const u8 as *const libc::c_char,
-            Some(bash_complete_username),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"possible-username-completions\0" as *const u8 as *const libc::c_char,
-            Some(bash_possible_username_completions),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"complete-hostname\0" as *const u8 as *const libc::c_char,
-            Some(bash_complete_hostname),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"possible-hostname-completions\0" as *const u8 as *const libc::c_char,
-            Some(bash_possible_hostname_completions),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"complete-variable\0" as *const u8 as *const libc::c_char,
-            Some(bash_complete_variable),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"possible-variable-completions\0" as *const u8 as *const libc::c_char,
-            Some(bash_possible_variable_completions),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"complete-command\0" as *const u8 as *const libc::c_char,
-            Some(bash_complete_command),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"possible-command-completions\0" as *const u8 as *const libc::c_char,
-            Some(bash_possible_command_completions),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"glob-complete-word\0" as *const u8 as *const libc::c_char,
-            Some(bash_glob_complete_word),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"glob-expand-word\0" as *const u8 as *const libc::c_char,
-            Some(bash_glob_expand_word),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"glob-list-expansions\0" as *const u8 as *const libc::c_char,
-            Some(bash_glob_list_expansions),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"dynamic-complete-history\0" as *const u8 as *const libc::c_char,
-            Some(dynamic_complete_history),
-            -(1 as libc::c_int),
-        );
-        rl_add_defun(
-            b"dabbrev-expand\0" as *const u8 as *const libc::c_char,
-            Some(bash_dabbrev_expand),
-            -(1 as libc::c_int),
-        );
-        if rl_readline_state & 0x2 as libc::c_int as libc::c_ulong
-            == 0 as libc::c_int as libc::c_ulong
-        {
-            rl_initialize();
-        }
-        rl_bind_key_if_unbound_in_map(
+    }
+    c_rl_add_defun(
+        b"shell-expand-line\0" as *const u8 as *const libc::c_char,
+        Some(shell_expand_line),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"history-expand-line\0" as *const u8 as *const libc::c_char,
+        Some(history_expand_line),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"magic-space\0" as *const u8 as *const libc::c_char,
+        Some(tcsh_magic_space),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"shell-forward-word\0" as *const u8 as *const libc::c_char,
+        Some(bash_forward_shellword),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"shell-backward-word\0" as *const u8 as *const libc::c_char,
+        Some(bash_backward_shellword),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"shell-kill-word\0" as *const u8 as *const libc::c_char,
+        Some(bash_kill_shellword),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"shell-backward-kill-word\0" as *const u8 as *const libc::c_char,
+        Some(bash_backward_kill_shellword),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"shell-transpose-words\0" as *const u8 as *const libc::c_char,
+        Some(bash_transpose_shellwords),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"alias-expand-line\0" as *const u8 as *const libc::c_char,
+        Some(alias_expand_line),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"history-and-alias-expand-line\0" as *const u8 as *const libc::c_char,
+        Some(history_and_alias_expand_line),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"insert-last-argument\0" as *const u8 as *const libc::c_char,
+        Some(c_rl_yank_last_arg),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"display-shell-version\0" as *const u8 as *const libc::c_char,
+        Some(display_shell_version),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"edit-and-execute-command\0" as *const u8 as *const libc::c_char,
+        Some(emacs_edit_and_execute_command),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"complete-into-braces\0" as *const u8 as *const libc::c_char,
+        Some(bash_brace_completion),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"complete-filename\0" as *const u8 as *const libc::c_char,
+        Some(bash_complete_filename),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"possible-filename-completions\0" as *const u8 as *const libc::c_char,
+        Some(bash_possible_filename_completions),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"complete-username\0" as *const u8 as *const libc::c_char,
+        Some(bash_complete_username),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"possible-username-completions\0" as *const u8 as *const libc::c_char,
+        Some(bash_possible_username_completions),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"complete-hostname\0" as *const u8 as *const libc::c_char,
+        Some(bash_complete_hostname),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"possible-hostname-completions\0" as *const u8 as *const libc::c_char,
+        Some(bash_possible_hostname_completions),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"complete-variable\0" as *const u8 as *const libc::c_char,
+        Some(bash_complete_variable),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"possible-variable-completions\0" as *const u8 as *const libc::c_char,
+        Some(bash_possible_variable_completions),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"complete-command\0" as *const u8 as *const libc::c_char,
+        Some(bash_complete_command),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"possible-command-completions\0" as *const u8 as *const libc::c_char,
+        Some(bash_possible_command_completions),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"glob-complete-word\0" as *const u8 as *const libc::c_char,
+        Some(bash_glob_complete_word),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"glob-expand-word\0" as *const u8 as *const libc::c_char,
+        Some(bash_glob_expand_word),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"glob-list-expansions\0" as *const u8 as *const libc::c_char,
+        Some(bash_glob_list_expansions),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"dynamic-complete-history\0" as *const u8 as *const libc::c_char,
+        Some(dynamic_complete_history),
+        -(1 as libc::c_int),
+    );
+    c_rl_add_defun(
+        b"dabbrev-expand\0" as *const u8 as *const libc::c_char,
+        Some(bash_dabbrev_expand),
+        -(1 as libc::c_int),
+    );
+    if unsafe {
+        rl_readline_state & 0x2 as libc::c_int as libc::c_ulong == 0 as libc::c_int as libc::c_ulong
+    } {
+        c_rl_initialize();
+    }
+    unsafe {
+        c_rl_bind_key_if_unbound_in_map(
             'E' as i32 & 0x1f as libc::c_int,
             Some(shell_expand_line),
             emacs_meta_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             '^' as i32,
             Some(history_expand_line),
             emacs_meta_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             'V' as i32 & 0x1f as libc::c_int,
             Some(display_shell_version),
             emacs_ctlx_keymap.as_mut_ptr(),
         );
-        kseq[0 as usize] = CTRL!('J' as i32) as libc::c_char;
-        kseq[1 as usize] = '\u{0}' as i32 as libc::c_char;
-        func = rl_function_of_keyseq(
+    }
+    kseq[0 as usize] = CTRL!('J' as i32) as libc::c_char;
+    kseq[1 as usize] = '\u{0}' as i32 as libc::c_char;
+    unsafe {
+        func = c_rl_function_of_keyseq(
             kseq.as_mut_ptr(),
             emacs_meta_keymap.as_mut_ptr(),
             0 as *mut libc::c_void as *mut libc::c_int,
         );
-        if func
-            == Some(std::mem::transmute::<
-                unsafe extern "C" fn(libc::c_int, libc::c_int) -> libc::c_int,
-                fn(libc::c_int, libc::c_int) -> libc::c_int,
-            >(rl_vi_editing_mode))
-        {
-            rl_unbind_key_in_map(
+    }
+    if func == Some(c_rl_vi_editing_mode) {
+        unsafe {
+            c_rl_unbind_key_in_map(
                 CTRL!('J' as i32) as libc::c_int,
                 emacs_meta_keymap.as_mut_ptr(),
             );
         }
-        kseq[0 as usize] = CTRL!('M' as i32) as libc::c_char;
-        func = rl_function_of_keyseq(
+    }
+    kseq[0 as usize] = CTRL!('M' as i32) as libc::c_char;
+    unsafe {
+        func = c_rl_function_of_keyseq(
             kseq.as_mut_ptr(),
             emacs_meta_keymap.as_mut_ptr(),
             0 as *mut c_void as *mut libc::c_int,
         );
-        if func
-            == Some(std::mem::transmute::<
-                unsafe extern "C" fn(libc::c_int, libc::c_int) -> libc::c_int,
-                fn(libc::c_int, libc::c_int) -> libc::c_int,
-            >(rl_vi_editing_mode))
-        {
-            rl_unbind_key_in_map(
+    }
+    if func == Some(c_rl_vi_editing_mode) {
+        unsafe {
+            c_rl_unbind_key_in_map(
                 CTRL!('M' as i32) as libc::c_int,
                 emacs_meta_keymap.as_mut_ptr(),
             );
         }
-        kseq[0 as usize] = CTRL!('E' as i32) as libc::c_char;
-        func = rl_function_of_keyseq(
+    }
+    kseq[0 as usize] = CTRL!('E' as i32) as libc::c_char;
+    unsafe {
+        func = c_rl_function_of_keyseq(
             kseq.as_mut_ptr(),
             vi_movement_keymap.as_mut_ptr(),
             0 as *mut c_void as *mut libc::c_int,
         );
-        if func
-            == Some(std::mem::transmute::<
-                unsafe extern "C" fn(libc::c_int, libc::c_int) -> libc::c_int,
-                fn(libc::c_int, libc::c_int) -> libc::c_int,
-            >(rl_emacs_editing_mode))
-        {
-            rl_unbind_key_in_map(
+    }
+    if func == Some(c_rl_emacs_editing_mode) {
+        unsafe {
+            c_rl_unbind_key_in_map(
                 CTRL!('E' as i32) as libc::c_int,
                 vi_movement_keymap.as_mut_ptr(),
             );
         }
-        rl_bind_key_if_unbound_in_map(
+    }
+    unsafe {
+        c_rl_bind_key_if_unbound_in_map(
             '{' as i32,
             Some(bash_brace_completion),
             emacs_meta_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             '/' as i32,
             Some(bash_complete_filename),
             emacs_meta_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             '/' as i32,
             Some(bash_possible_filename_completions),
             emacs_ctlx_keymap.as_mut_ptr(),
         );
-        kseq[0 as libc::c_int as usize] = '~' as i32 as libc::c_char;
-        kseq[1 as libc::c_int as usize] = '\u{0}' as i32 as libc::c_char;
-        func = rl_function_of_keyseq(
+    }
+    kseq[0 as libc::c_int as usize] = '~' as i32 as libc::c_char;
+    kseq[1 as libc::c_int as usize] = '\u{0}' as i32 as libc::c_char;
+    unsafe {
+        func = c_rl_function_of_keyseq(
             kseq.as_mut_ptr(),
             emacs_meta_keymap.as_mut_ptr(),
             0 as *mut c_void as *mut libc::c_int,
         );
-        if func.is_none()
-            || func
-                == Some(std::mem::transmute::<
-                    unsafe extern "C" fn(libc::c_int, libc::c_int) -> libc::c_int,
-                    fn(libc::c_int, libc::c_int) -> libc::c_int,
-                >(rl_tilde_expand))
-        {
-            rl_bind_keyseq_in_map(
+    }
+    if func.is_none() || func == Some(c_rl_tilde_expand) {
+        unsafe {
+            c_rl_bind_keyseq_in_map(
                 kseq.as_mut_ptr(),
                 Some(bash_complete_username),
                 emacs_meta_keymap.as_mut_ptr(),
             );
         }
-        rl_bind_key_if_unbound_in_map(
+    }
+    unsafe {
+        c_rl_bind_key_if_unbound_in_map(
             '~' as i32,
             Some(bash_possible_username_completions),
             emacs_ctlx_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             '@' as i32,
             Some(bash_complete_hostname),
             emacs_meta_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             '@' as i32,
             Some(bash_possible_hostname_completions),
             emacs_ctlx_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             '$' as i32,
             Some(bash_complete_variable),
             emacs_meta_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             '$' as i32,
             Some(bash_possible_variable_completions),
             emacs_ctlx_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             '!' as i32,
             Some(bash_complete_command),
             emacs_meta_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             '!' as i32,
             Some(bash_possible_command_completions),
             emacs_ctlx_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             'g' as i32,
             Some(bash_glob_complete_word),
             emacs_meta_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             '*' as i32,
             Some(bash_glob_expand_word),
             emacs_ctlx_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             'g' as i32,
             Some(bash_glob_list_expansions),
             emacs_ctlx_keymap.as_mut_ptr(),
         );
-        kseq[0 as libc::c_int as usize] = '\t' as i32 as libc::c_char;
-        kseq[1 as libc::c_int as usize] = '\u{0}' as i32 as libc::c_char;
-        func = rl_function_of_keyseq(
+    }
+    kseq[0 as libc::c_int as usize] = '\t' as i32 as libc::c_char;
+    kseq[1 as libc::c_int as usize] = '\u{0}' as i32 as libc::c_char;
+    unsafe {
+        func = c_rl_function_of_keyseq(
             kseq.as_mut_ptr(),
             emacs_meta_keymap.as_mut_ptr(),
             0 as *mut c_void as *mut libc::c_int,
         );
-        if func.is_none()
-            || func
-                == Some(std::mem::transmute::<
-                    unsafe extern "C" fn(libc::c_int, libc::c_int) -> libc::c_int,
-                    fn(libc::c_int, libc::c_int) -> libc::c_int,
-                >(rl_tab_insert))
-        {
-            rl_bind_key_in_map(
+    }
+    if func.is_none() || func == Some(c_rl_tab_insert) {
+        unsafe {
+            c_rl_bind_key_in_map(
                 '\t' as i32,
                 Some(dynamic_complete_history),
                 emacs_meta_keymap.as_mut_ptr(),
             );
         }
+    }
+    unsafe {
         rl_attempted_completion_function = Some(attempt_shell_completion);
         set_directory_hook();
         rl_filename_rewrite_hook = Some(bash_filename_rewrite_hook);
         rl_filename_stat_hook = Some(bash_filename_stat_hook);
         rl_ignore_some_completions_function = Some(filename_completion_ignore);
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             'E' as i32 & 0x1f as libc::c_int,
             Some(emacs_edit_and_execute_command),
             emacs_ctlx_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             'v' as i32,
             Some(vi_edit_and_execute_command),
             vi_movement_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             '@' as i32,
             Some(posix_edit_macros),
             vi_movement_keymap.as_mut_ptr(),
         );
-        rl_bind_key_in_map(
+        c_rl_bind_key_in_map(
             '\\' as i32,
             Some(bash_vi_complete),
             vi_movement_keymap.as_mut_ptr(),
         );
-        rl_bind_key_in_map(
+        c_rl_bind_key_in_map(
             '*' as i32,
             Some(bash_vi_complete),
             vi_movement_keymap.as_mut_ptr(),
         );
-        rl_bind_key_in_map(
+        c_rl_bind_key_in_map(
             '=' as i32,
             Some(bash_vi_complete),
             vi_movement_keymap.as_mut_ptr(),
@@ -580,22 +572,22 @@ pub fn initialize_readline() {
         rl_filename_quoting_function = Some(bash_quote_filename);
         rl_filename_dequoting_function = Some(bash_dequote_filename);
         rl_char_is_quoted_p = Some(char_is_quoted);
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             'B' as i32 & 0x1f as libc::c_int,
             Some(bash_backward_shellword),
             emacs_meta_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             'D' as i32 & 0x1f as libc::c_int,
             Some(bash_kill_shellword),
             emacs_meta_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             'F' as i32 & 0x1f as libc::c_int,
             Some(bash_forward_shellword),
             emacs_meta_keymap.as_mut_ptr(),
         );
-        rl_bind_key_if_unbound_in_map(
+        c_rl_bind_key_if_unbound_in_map(
             'T' as i32 & 0x1f as libc::c_int,
             Some(bash_transpose_shellwords),
             emacs_meta_keymap.as_mut_ptr(),
@@ -625,8 +617,8 @@ pub fn bashline_reset_event_hook() {
 
 #[no_mangle]
 pub fn bashline_reset() {
+    tilde_initialize();
     unsafe {
-        tilde_initialize();
         rl_attempted_completion_function = Some(attempt_shell_completion);
         rl_completion_entry_function = None;
         rl_ignore_some_completions_function = Some(filename_completion_ignore);
@@ -647,7 +639,7 @@ static mut push_to_readline: *mut libc::c_char = 0 as *mut libc::c_char;
 fn bash_push_line() -> libc::c_int {
     unsafe {
         if !push_to_readline.is_null() {
-            rl_insert_text(push_to_readline);
+            c_rl_insert_text(push_to_readline);
             libc::free(push_to_readline as *mut c_void);
             push_to_readline = 0 as *mut libc::c_char;
             rl_startup_hook = old_rl_startup_hook;
@@ -668,15 +660,16 @@ pub fn bash_re_edit(line: *mut libc::c_char) -> libc::c_int {
     return 0;
 }
 
-fn display_shell_version(count: libc::c_int, c: libc::c_int) -> libc::c_int {
+fn display_shell_version(_count: libc::c_int, _c: libc::c_int) -> libc::c_int {
+    c_rl_crlf();
+    show_shell_version(0);
     unsafe {
-        rl_crlf();
-        show_shell_version(0);
-        putc('\r' as i32, rl_outstream);
+        c_putc('\r' as i32, rl_outstream);
         fflush(rl_outstream);
-        rl_on_new_line();
-        rl_redisplay();
     }
+    c_rl_on_new_line();
+    c_rl_redisplay();
+
     return 0;
 }
 
@@ -689,7 +682,7 @@ static mut hostname_list_length: libc::c_int = 0;
 #[no_mangle]
 pub static mut hostname_list_initialized: libc::c_int = 0;
 fn initialize_hostname_list() {
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut temp: *mut libc::c_char;
 
     temp = get_string_value(b"HOSTFILE\0" as *const u8 as *const libc::c_char);
     if temp.is_null() {
@@ -711,7 +704,7 @@ fn add_host_name(name: *mut libc::c_char) {
     unsafe {
         if hostname_list_length + 2 > hostname_list_size {
             hostname_list_size = hostname_list_size + 32 - hostname_list_size % 32;
-            hostname_list = strvec_resize(hostname_list, hostname_list_size);
+            hostname_list = c_strvec_resize(hostname_list, hostname_list_size);
         }
         //有可能存在错误的地方
         *hostname_list.offset(hostname_list_length as isize) = savestring!(name);
@@ -721,45 +714,47 @@ fn add_host_name(name: *mut libc::c_char) {
 }
 
 fn snarf_hosts_from_file(filename: *mut libc::c_char) {
-    let mut file: *mut FILE = 0 as *mut FILE;
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let file: *mut FILE;
+    let mut temp: *mut libc::c_char;
     let mut buffer: [libc::c_char; 256] = [0; 256];
     let mut name: [libc::c_char; 256] = [0; 256];
-    let mut i: libc::c_int = 0;
-    let mut start: libc::c_int = 0;
-    unsafe {
-        file = libc::fopen(filename, b"r\0" as *const u8 as *const libc::c_char);
-        if file.is_null() {
-            return;
+    let mut i: libc::c_int;
+    let mut start: libc::c_int;
+
+    file = unsafe { libc::fopen(filename, b"r\0" as *const u8 as *const libc::c_char) };
+    if file.is_null() {
+        return;
+    }
+
+    loop {
+        temp = unsafe { libc::fgets(buffer.as_mut_ptr(), 255 as libc::c_int, file) };
+        if temp.is_null() {
+            break;
         }
 
-        loop {
-            temp = libc::fgets(buffer.as_mut_ptr(), 255 as libc::c_int, file);
-            if temp.is_null() {
-                break;
-            }
+        i = 0;
+        while buffer[i as usize] as libc::c_int != 0 && cr_whitespace!(buffer[i as usize]) {
+            i += 1;
+        }
 
-            i = 0;
-            while buffer[i as usize] as libc::c_int != 0 && cr_whitespace!(buffer[i as usize]) {
-                i += 1;
-            }
+        if buffer[i as usize] as libc::c_int == '\u{0}' as i32
+            || buffer[i as usize] as libc::c_int == '#' as i32
+        {
+            continue;
+        }
 
-            if buffer[i as usize] as libc::c_int == '\u{0}' as i32
-                || buffer[i as usize] as libc::c_int == '#' as i32
-            {
-                continue;
-            }
-
-            if libc::strncmp(
+        if unsafe {
+            libc::strncmp(
                 buffer.as_mut_ptr().offset(i as isize),
                 b"$include \0" as *const u8 as *const libc::c_char,
                 (9 as libc::c_int as libc::c_ulong).try_into().unwrap(),
             ) == 0
-            {
-                let mut incfile: *mut libc::c_char = 0 as *mut libc::c_char;
-                let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+        } {
+            let mut incfile: *mut libc::c_char;
+            let mut t: *mut libc::c_char;
 
-                incfile = buffer.as_mut_ptr().offset(i as isize).offset(9 as isize);
+            incfile = unsafe { buffer.as_mut_ptr().offset(i as isize).offset(9 as isize) };
+            unsafe {
                 while *incfile as libc::c_int != 0 && whitespace!(*incfile) {
                     incfile = incfile.offset(1);
                 }
@@ -769,46 +764,49 @@ fn snarf_hosts_from_file(filename: *mut libc::c_char) {
                     t = t.offset(1);
                 }
                 *t = '\u{0}' as i32 as libc::c_char;
-                snarf_hosts_from_file(incfile);
-            } else {
-                if DIGIT![i as usize] {
-                    while buffer[i as usize] as libc::c_int != 0
-                        && cr_whitespace!(buffer[i as usize]) == false
-                    {
-                        i += 1;
-                    }
+            }
+            snarf_hosts_from_file(incfile);
+        } else {
+            if DIGIT![i as usize] {
+                while buffer[i as usize] as libc::c_int != 0
+                    && cr_whitespace!(buffer[i as usize]) == false
+                {
+                    i += 1;
+                }
+            }
+
+            while buffer[i as usize] != 0 {
+                while cr_whitespace!(buffer[i as usize]) {
+                    i += 1;
+                }
+                if buffer[i as usize] as libc::c_int == '\u{0}' as i32
+                    || buffer[i as usize] as libc::c_int == '#' as i32
+                {
+                    break;
+                }
+                start = i;
+                while buffer[i as usize] as libc::c_int != 0
+                    && cr_whitespace!(buffer[i as usize]) == false
+                {
+                    i += 1;
                 }
 
-                while buffer[i as usize] != 0 {
-                    while cr_whitespace!(buffer[i as usize]) {
-                        i += 1;
-                    }
-                    if buffer[i as usize] as libc::c_int == '\u{0}' as i32
-                        || buffer[i as usize] as libc::c_int == '#' as i32
-                    {
-                        break;
-                    }
-                    start = i;
-                    while buffer[i as usize] as libc::c_int != 0
-                        && cr_whitespace!(buffer[i as usize]) == false
-                    {
-                        i += 1;
-                    }
-
-                    if i == start {
-                        continue;
-                    }
-
+                if i == start {
+                    continue;
+                }
+                unsafe {
                     libc::strncpy(
                         name.as_mut_ptr(),
                         buffer.as_mut_ptr().offset(start as isize),
                         ((i - start) as libc::c_ulong).try_into().unwrap(),
                     );
-                    name[(i - start) as usize] = '\u{0}' as i32 as libc::c_char;
-                    add_host_name(name.as_mut_ptr());
                 }
+                name[(i - start) as usize] = '\u{0}' as i32 as libc::c_char;
+                add_host_name(name.as_mut_ptr());
             }
         }
+    }
+    unsafe {
         libc::fclose(file);
     }
 }
@@ -825,7 +823,7 @@ pub fn get_hostname_list() -> *mut *mut libc::c_char {
 
 #[no_mangle]
 pub fn clear_hostname_list() {
-    let mut i: libc::c_int = 0;
+    let mut i: libc::c_int;
     unsafe {
         if hostname_list_initialized == 0 as libc::c_int {
             return;
@@ -841,11 +839,11 @@ pub fn clear_hostname_list() {
 }
 
 fn hostnames_matching(text: *mut libc::c_char) -> *mut *mut libc::c_char {
-    let mut i: libc::c_int = 0;
-    let mut len: libc::c_int = 0;
-    let mut nmatch: libc::c_int = 0;
-    let mut rsize: libc::c_int = 0;
-    let mut result: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+    let mut i: libc::c_int;
+    let len: libc::c_int;
+    let mut nmatch: libc::c_int;
+    let mut rsize: libc::c_int;
+    let mut result: *mut *mut libc::c_char;
     unsafe {
         if hostname_list_initialized == 0 {
             initialize_hostname_list();
@@ -856,7 +854,7 @@ fn hostnames_matching(text: *mut libc::c_char) -> *mut *mut libc::c_char {
         }
 
         if *text as libc::c_int == '\u{0}' as i32 {
-            result = strvec_create(1 + hostname_list_length);
+            result = c_strvec_create(1 + hostname_list_length);
             i = 0;
             while i < hostname_list_length {
                 *result.offset(i as isize) = *hostname_list.offset(i as isize);
@@ -879,7 +877,7 @@ fn hostnames_matching(text: *mut libc::c_char) -> *mut *mut libc::c_char {
 
             if nmatch >= rsize - 1 {
                 rsize = rsize + 16 - rsize % 16;
-                result = strvec_resize(result, rsize);
+                result = c_strvec_resize(result, rsize);
             }
 
             *result.offset(nmatch as isize) = *hostname_list.offset(i as isize);
@@ -901,11 +899,11 @@ fn edit_and_execute_command(
     editing_mode: libc::c_int,
     edit_command: *mut libc::c_char,
 ) -> libc::c_int {
-    let mut command: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut metaval: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut r: libc::c_int = 0;
-    let mut rrs: libc::c_int = 0;
-    let mut metaflag: libc::c_int = 0;
+    let command: *mut libc::c_char;
+    let metaval: *mut libc::c_char;
+    let r: libc::c_int;
+    let rrs: libc::c_int;
+    let metaflag: libc::c_int;
     let mut ps: sh_parser_state_t = sh_parser_state_t {
         parser_state: 0,
         token_state: 0 as *mut libc::c_int,
@@ -930,9 +928,9 @@ fn edit_and_execute_command(
     unsafe {
         rrs = rl_readline_state as libc::c_int;
         saved_command_line_count = current_command_line_count;
-
-        rl_newline(1, c);
-
+    }
+    c_rl_newline(1, c);
+    unsafe {
         if rl_explicit_arg != 0 {
             command = libc::malloc((libc::strlen(edit_command)).wrapping_add(8 as usize) as usize)
                 as *mut libc::c_char;
@@ -943,44 +941,46 @@ fn edit_and_execute_command(
                 count,
             );
         } else {
-            using_history();
+            c_using_history();
             current_command_line_count += 1;
             bash_add_history(rl_line_buffer);
             current_command_line_count = 0 as libc::c_int;
             bash_add_history(b"\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
             history_lines_this_session += 1;
-            using_history();
+            c_using_history();
             command = savestring!(edit_command);
         }
-
-        metaval = rl_variable_value(b"input-meta\0" as *const u8 as *const libc::c_char);
-        metaflag = RL_BOOLEAN_VARIABLE_VALUE!(metaval) as libc::c_int;
-
+    }
+    metaval = c_rl_variable_value(b"input-meta\0" as *const u8 as *const libc::c_char);
+    metaflag = unsafe { RL_BOOLEAN_VARIABLE_VALUE!(metaval) as libc::c_int };
+    unsafe {
         if rl_deprep_term_function.is_some() {
             (Some(rl_deprep_term_function.expect("non-null function pointer")))
                 .expect("non-null function pointer")();
         }
-        rl_clear_signals();
-        save_parser_state(&mut ps);
-        r = parse_and_execute(
-            command,
-            if editing_mode == 0 as libc::c_int {
-                b"v\0" as *const u8 as *const libc::c_char
-            } else {
-                b"C-xC-e\0" as *const u8 as *const libc::c_char
-            },
-            SEVAL_NOHIST as libc::c_int,
-        );
-        restore_parser_state(&mut ps);
+    }
+    c_rl_clear_signals();
+    save_parser_state(&mut ps);
+    r = parse_and_execute(
+        command,
+        if editing_mode == 0 as libc::c_int {
+            b"v\0" as *const u8 as *const libc::c_char
+        } else {
+            b"C-xC-e\0" as *const u8 as *const libc::c_char
+        },
+        SEVAL_NOHIST as libc::c_int,
+    );
+    restore_parser_state(&mut ps);
 
-        reset_readahead_token();
-
+    reset_readahead_token();
+    unsafe {
         if rl_prep_term_function.is_some() {
             (Some(rl_prep_term_function.expect("non-null function pointer")))
                 .expect("non-null function pointer")(metaflag);
         }
-        rl_set_signals();
-
+    }
+    c_rl_set_signals();
+    unsafe {
         current_command_line_count = saved_command_line_count;
 
         *rl_line_buffer.offset(0 as libc::c_int as isize) = '\u{0}' as i32 as libc::c_char;
@@ -988,12 +988,12 @@ fn edit_and_execute_command(
         rl_point = rl_end;
         rl_done = 0 as libc::c_int;
         rl_readline_state = rrs as libc::c_ulong;
-
-        if editing_mode == 0 {
-            rl_vi_insertion_mode(1 as libc::c_int, c);
-        }
-        rl_forced_update_display();
     }
+    if editing_mode == 0 {
+        c_rl_vi_insertion_mode(1 as libc::c_int, c);
+    }
+    c_rl_forced_update_display();
+
     return r;
 }
 
@@ -1009,23 +1009,25 @@ fn emacs_edit_and_execute_command(count: libc::c_int, c: libc::c_int) -> libc::c
     return edit_and_execute_command(count, c, EMACS_EDITING_MODE!(), EMACS_EDIT_COMMAND!());
 }
 
-fn posix_edit_macros(count: libc::c_int, key: libc::c_int) -> libc::c_int {
-    let mut c: libc::c_int = 0;
+fn posix_edit_macros(_count: libc::c_int, _key: libc::c_int) -> libc::c_int {
+    let c: libc::c_int;
     let mut alias_name: [libc::c_char; 3] = [0; 3];
-    let mut alias_value: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut macro_0: *mut libc::c_char = 0 as *mut libc::c_char;
-    unsafe {
-        c = rl_read_key();
-        alias_name[0 as usize] = '_' as i32 as libc::c_char;
-        alias_name[1 as usize] = c as libc::c_char;
-        alias_name[2 as usize] = '\u{0}' as i32 as libc::c_char;
+    let alias_value: *mut libc::c_char;
+    let macro_0: *mut libc::c_char;
 
-        alias_value = get_alias_value(alias_name.as_mut_ptr());
-        if !alias_value.is_null() && *alias_value as libc::c_int != 0 {
+    c = c_rl_read_key();
+    alias_name[0 as usize] = '_' as i32 as libc::c_char;
+    alias_name[1 as usize] = c as libc::c_char;
+    alias_name[2 as usize] = '\u{0}' as i32 as libc::c_char;
+
+    alias_value = get_alias_value(alias_name.as_mut_ptr());
+    if unsafe { !alias_value.is_null() && *alias_value as libc::c_int != 0 } {
+        unsafe {
             macro_0 = savestring!(alias_value);
-            rl_push_macro_input(macro_0);
         }
+        c_rl_push_macro_input(macro_0);
     }
+
     return 0;
 }
 
@@ -1040,9 +1042,9 @@ fn is_basic(c: libc::c_char) -> libc::c_int {
 }
 
 fn bash_forward_shellword(mut count: libc::c_int, key: libc::c_int) -> libc::c_int {
-    let mut slen: size_t = 0;
+    let slen: size_t;
     let mut c: libc::c_int = 0;
-    let mut p: libc::c_int = 0;
+    let mut p: libc::c_int;
     let mut state: mbstate_t = __mbstate_t {
         __count: 0,
         __value: mbstate_t_value { __wch: 0 },
@@ -1122,7 +1124,7 @@ fn bash_forward_shellword(mut count: libc::c_int, key: libc::c_int) -> libc::c_i
 
                 if *rl_line_buffer.offset(p as isize) as libc::c_int == 0 || p == rl_end {
                     rl_point = rl_end;
-                    rl_ding();
+                    c_rl_ding();
                     return 0;
                 }
 
@@ -1184,10 +1186,10 @@ fn bash_forward_shellword(mut count: libc::c_int, key: libc::c_int) -> libc::c_i
 }
 
 fn bash_backward_shellword(mut count: libc::c_int, key: libc::c_int) -> libc::c_int {
-    let mut slen: size_t = 0;
-    let mut c: libc::c_int = 0;
-    let mut p: libc::c_int = 0;
-    let mut prev_p: libc::c_int = 0;
+    let slen: size_t;
+    let mut c: libc::c_int;
+    let mut p: libc::c_int;
+    let mut prev_p: libc::c_int;
     let mut state: mbstate_t = __mbstate_t {
         __count: 0,
         __value: mbstate_t_value { __wch: 0 },
@@ -1243,7 +1245,7 @@ fn bash_backward_shellword(mut count: libc::c_int, key: libc::c_int) -> libc::c_
 }
 
 fn bash_kill_shellword(count: libc::c_int, key: libc::c_int) -> libc::c_int {
-    let mut p: libc::c_int = 0;
+    let p: libc::c_int;
 
     if count < 0 {
         return bash_backward_kill_shellword(-count, key);
@@ -1253,7 +1255,7 @@ fn bash_kill_shellword(count: libc::c_int, key: libc::c_int) -> libc::c_int {
         bash_forward_shellword(count, key);
 
         if rl_point != p {
-            rl_kill_text(p, rl_point);
+            c_rl_kill_text(p, rl_point);
         }
 
         rl_point = p;
@@ -1265,7 +1267,7 @@ fn bash_kill_shellword(count: libc::c_int, key: libc::c_int) -> libc::c_int {
 }
 
 fn bash_backward_kill_shellword(count: libc::c_int, key: libc::c_int) -> libc::c_int {
-    let mut p: libc::c_int = 0;
+    let p: libc::c_int;
 
     if count < 0 as libc::c_int {
         return bash_kill_shellword(-count, key);
@@ -1275,7 +1277,7 @@ fn bash_backward_kill_shellword(count: libc::c_int, key: libc::c_int) -> libc::c
         bash_backward_shellword(count, key);
 
         if rl_point != p {
-            rl_kill_text(p, rl_point);
+            c_rl_kill_text(p, rl_point);
         }
         if rl_editing_mode == 1 as libc::c_int {
             rl_mark = rl_point;
@@ -1285,12 +1287,12 @@ fn bash_backward_kill_shellword(count: libc::c_int, key: libc::c_int) -> libc::c
 }
 
 fn bash_transpose_shellwords(count: libc::c_int, key: libc::c_int) -> libc::c_int {
-    let mut word1: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut word2: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut w1_beg: libc::c_int = 0;
-    let mut w1_end: libc::c_int = 0;
-    let mut w2_beg: libc::c_int = 0;
-    let mut w2_end: libc::c_int = 0;
+    let word1: *mut libc::c_char;
+    let word2: *mut libc::c_char;
+    let w1_beg: libc::c_int;
+    let w1_end: libc::c_int;
+    let w2_beg: libc::c_int;
+    let w2_end: libc::c_int;
     unsafe {
         let orig_point: libc::c_int = rl_point;
 
@@ -1308,27 +1310,27 @@ fn bash_transpose_shellwords(count: libc::c_int, key: libc::c_int) -> libc::c_in
         w1_end = rl_point;
 
         if w1_beg == w2_beg || w2_beg < w1_end {
-            rl_ding();
+            c_rl_ding();
             rl_point = orig_point;
             return 1;
         }
 
-        word1 = rl_copy_text(w1_beg, w1_end);
-        word2 = rl_copy_text(w2_beg, w2_end);
+        word1 = c_rl_copy_text(w1_beg, w1_end);
+        word2 = c_rl_copy_text(w2_beg, w2_end);
 
-        rl_begin_undo_group();
+        c_rl_begin_undo_group();
 
         rl_point = w2_beg;
-        rl_delete_text(w2_beg, w2_end);
-        rl_insert_text(word1);
+        c_rl_delete_text(w2_beg, w2_end);
+        c_rl_insert_text(word1);
 
         rl_point = w1_beg;
-        rl_delete_text(w1_beg, w1_end);
-        rl_insert_text(word2);
+        c_rl_delete_text(w1_beg, w1_end);
+        c_rl_insert_text(word2);
 
         rl_point = w2_end;
 
-        rl_end_undo_group();
+        c_rl_end_undo_group();
         libc::free(word1 as *mut c_void);
         libc::free(word2 as *mut c_void);
     }
@@ -1336,37 +1338,37 @@ fn bash_transpose_shellwords(count: libc::c_int, key: libc::c_int) -> libc::c_in
 }
 
 fn check_redir(ti: libc::c_int) -> libc::c_int {
-    let mut this_char: libc::c_int = 0;
-    let mut prev_char: libc::c_int = 0;
-    unsafe {
-        this_char = *rl_line_buffer.offset(ti as isize) as libc::c_int;
-        prev_char = if ti > 0 as libc::c_int {
-            *rl_line_buffer.offset((ti - 1 as libc::c_int) as isize) as libc::c_int
-        } else {
-            0 as libc::c_int
-        };
+    let this_char: libc::c_int;
+    let prev_char: libc::c_int;
 
-        if this_char == '&' as i32 && (prev_char == '<' as i32 || prev_char == '>' as i32)
-            || this_char == '|' as i32 && prev_char == '>' as i32
-        {
+    this_char = unsafe { *rl_line_buffer.offset(ti as isize) as libc::c_int };
+    prev_char = if ti > 0 as libc::c_int {
+        unsafe { *rl_line_buffer.offset((ti - 1 as libc::c_int) as isize) as libc::c_int }
+    } else {
+        0 as libc::c_int
+    };
+
+    if this_char == '&' as i32 && (prev_char == '<' as i32 || prev_char == '>' as i32)
+        || this_char == '|' as i32 && prev_char == '>' as i32
+    {
+        return 1 as libc::c_int;
+    } else {
+        if this_char == '{' as i32 && prev_char == '$' as i32 {
             return 1 as libc::c_int;
         } else {
-            if this_char == '{' as i32 && prev_char == '$' as i32 {
+            if unsafe { char_is_quoted(rl_line_buffer, ti) != 0 } {
                 return 1 as libc::c_int;
-            } else {
-                if char_is_quoted(rl_line_buffer, ti) != 0 {
-                    return 1 as libc::c_int;
-                }
             }
         }
     }
+
     return 0 as libc::c_int;
 }
 
 fn find_cmd_start(start: libc::c_int) -> libc::c_int {
-    let mut s: libc::c_int = 0;
-    let mut os: libc::c_int = 0;
-    let mut ns: libc::c_int = 0;
+    let mut s: libc::c_int;
+    let mut os: libc::c_int;
+    let mut ns: libc::c_int;
     os = 0 as libc::c_int;
     unsafe {
         loop {
@@ -1398,8 +1400,8 @@ fn find_cmd_start(start: libc::c_int) -> libc::c_int {
                 os = ns + 1 as libc::c_int;
             } else {
                 if s >= os && *rl_line_buffer.offset(s as isize) as libc::c_int == '{' as i32 {
-                    let mut pc: libc::c_int = 0;
-                    let mut nc: libc::c_int = 0;
+                    let mut pc: libc::c_int;
+                    let nc: libc::c_int;
                     pc = if s > os { s - 1 as libc::c_int } else { os };
                     while pc > os
                         && (*rl_line_buffer.offset(pc as isize) as libc::c_int == ' ' as i32
@@ -1446,7 +1448,7 @@ fn find_cmd_start(start: libc::c_int) -> libc::c_int {
 }
 
 fn find_cmd_end(end: libc::c_int) -> libc::c_int {
-    let mut e: libc::c_int = 0;
+    let e: libc::c_int;
 
     e = unsafe {
         skip_to_delim(
@@ -1463,9 +1465,9 @@ fn find_cmd_name(
     sp: *mut libc::c_int,
     ep: *mut libc::c_int,
 ) -> *mut libc::c_char {
-    let mut name: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut s: libc::c_int = 0;
-    let mut e: libc::c_int = 0;
+    let name: *mut libc::c_char;
+    let mut s: libc::c_int;
+    let e: libc::c_int;
     unsafe {
         s = start;
         while whitespace!(*rl_line_buffer.offset(s as isize)) {
@@ -1491,7 +1493,7 @@ fn find_cmd_name(
 static mut prog_complete_matches: *mut *mut libc::c_char =
     0 as *const *mut libc::c_char as *mut *mut libc::c_char;
 
-fn prog_complete_return(text: *const libc::c_char, matchnum: libc::c_int) -> *mut libc::c_char {
+fn prog_complete_return(_text: *const libc::c_char, matchnum: libc::c_int) -> *mut libc::c_char {
     static mut ind: libc::c_int = 0;
     unsafe {
         if matchnum == 0 as libc::c_int {
@@ -1509,8 +1511,8 @@ fn prog_complete_return(text: *const libc::c_char, matchnum: libc::c_int) -> *mu
     }
 }
 
-fn invalid_completion(text: *const libc::c_char, ind: libc::c_int) -> libc::c_int {
-    let mut pind: libc::c_int = 0;
+fn invalid_completion(_text: *const libc::c_char, ind: libc::c_int) -> libc::c_int {
+    let mut pind: libc::c_int;
     unsafe {
         if ind > 0 as libc::c_int
             && *rl_line_buffer.offset(ind as isize) as libc::c_int == '(' as i32
@@ -1546,15 +1548,15 @@ fn attempt_shell_completion(
     start: libc::c_int,
     end: libc::c_int,
 ) -> *mut *mut libc::c_char {
-    let mut in_command_position: libc::c_int = 0;
-    let mut ti: libc::c_int = 0;
-    let mut qc: libc::c_int = 0;
-    let mut dflags: libc::c_int = 0;
-    let mut matches: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-    let mut command_separator_chars: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut have_progcomps: libc::c_int = 0;
-    let mut was_assignment: libc::c_int = 0;
-    let mut iw_compspec: *mut COMPSPEC = 0 as *mut COMPSPEC;
+    let mut in_command_position: libc::c_int;
+    let mut ti: libc::c_int;
+    let mut qc: libc::c_int;
+    let mut dflags: libc::c_int;
+    let mut matches: *mut *mut libc::c_char;
+    let command_separator_chars: *mut libc::c_char;
+    let have_progcomps: libc::c_int;
+    let mut was_assignment: libc::c_int;
+    let iw_compspec: *mut COMPSPEC;
     unsafe {
         // 内存安全检查：验证输入参数
         // 基本安全检查
@@ -1642,7 +1644,7 @@ fn attempt_shell_completion(
                         b"`\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                     ) != 0)
         {
-            matches = rl_completion_matches(text, Some(command_subst_completion_function));
+            matches = c_rl_completion_matches(text, Some(command_subst_completion_function));
         }
         have_progcomps =
             (prog_completion_enabled != 0 && progcomp_size() > 0 as libc::c_int) as libc::c_int;
@@ -1653,13 +1655,13 @@ fn attempt_shell_completion(
                 || in_command_position != 0 && !iw_compspec.is_null())
             && current_prompt_string == ps1_prompt
         {
-            let mut s: libc::c_int = 0;
-            let mut e: libc::c_int = 0;
+            let mut s: libc::c_int;
+            let e: libc::c_int;
             let mut s1: libc::c_int = 0;
             let mut e1: libc::c_int = 0;
-            let mut os: libc::c_int = 0;
+            let os: libc::c_int;
             let mut foundcs: libc::c_int = 0;
-            let mut n: *mut libc::c_char = 0 as *mut libc::c_char;
+            let mut n: *mut libc::c_char;
 
             if !prog_complete_matches.is_null() {
                 libc::free(prog_complete_matches as *mut c_void);
@@ -1768,7 +1770,7 @@ fn attempt_shell_completion(
 
             if foundcs != 0 {
                 pcomp_set_readline_variables(foundcs, 1 as libc::c_int);
-                matches = rl_completion_matches(text, Some(prog_complete_return));
+                matches = c_rl_completion_matches(text, Some(prog_complete_return));
                 if foundcs & COPT_DEFAULT as libc::c_int == 0 {
                     rl_attempted_completion_over = 1;
                 }
@@ -1796,16 +1798,16 @@ pub fn bash_default_completion(
     qc: libc::c_int,
     compflags: libc::c_int,
 ) -> *mut *mut libc::c_char {
-    let mut matches: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut matches: *mut *mut libc::c_char;
+    let mut t: *mut libc::c_char;
 
     matches = 0 as *mut c_void as *mut *mut libc::c_char;
     unsafe {
         if *text as libc::c_int == '$' as i32 {
             if qc != '\'' as i32 && *text.offset(1 as isize) as libc::c_int == '(' as i32 {
-                matches = rl_completion_matches(text, Some(command_subst_completion_function));
+                matches = c_rl_completion_matches(text, Some(command_subst_completion_function));
             } else {
-                matches = rl_completion_matches(text, Some(variable_completion_function));
+                matches = c_rl_completion_matches(text, Some(variable_completion_function));
                 if !matches.is_null()
                     && !(*matches.offset(0 as isize)).is_null()
                     && (*matches.offset(1 as isize)).is_null()
@@ -1821,22 +1823,16 @@ pub fn bash_default_completion(
         }
         if matches.is_null()
             && *text as libc::c_int == '~' as i32
-            && (mbschr(text, '/' as i32)).is_null()
+            && (c_mbschr(text, '/' as i32)).is_null()
         {
-            rl_completion_matches(
-                text,
-                Some(std::mem::transmute::<
-                    unsafe extern "C" fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-                    fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-                >(rl_username_completion_function)),
-            );
+            c_rl_completion_matches(text, Some(c_rl_username_completion_function));
         }
 
         if matches.is_null()
             && perform_hostname_completion != 0
             && *text as libc::c_int == '@' as i32
         {
-            matches = rl_completion_matches(
+            matches = c_rl_completion_matches(
                 text,
                 Some(
                     hostname_completion_function
@@ -1854,7 +1850,7 @@ pub fn bash_default_completion(
                 rl_ignore_some_completions_function = Some(bash_ignore_everything);
             } else {
                 dot_in_path = 0;
-                matches = rl_completion_matches(text, Some(command_word_completion_function));
+                matches = c_rl_completion_matches(text, Some(command_word_completion_function));
                 if matches.is_null() {
                     rl_ignore_some_completions_function = Some(bash_ignore_filenames);
                 } else if (*matches.offset(1 as libc::c_int as isize)).is_null()
@@ -1874,13 +1870,13 @@ pub fn bash_default_completion(
             }
         }
         if matches.is_null() && completion_glob_pattern(text as *mut libc::c_char) != 0 {
-            matches = rl_completion_matches(text, Some(glob_complete_word));
+            matches = c_rl_completion_matches(text, Some(glob_complete_word));
 
             if !matches.is_null()
                 && !(*matches.offset(1 as isize)).is_null()
                 && rl_completion_type == '\t' as i32
             {
-                strvec_dispose(matches);
+                c_strvec_dispose(matches);
                 matches = 0 as *mut *mut libc::c_char;
             } else if !matches.is_null()
                 && !(*matches.offset(1 as libc::c_int as isize)).is_null()
@@ -1895,8 +1891,8 @@ pub fn bash_default_completion(
 }
 
 fn bash_command_name_stat_hook(name: *mut *mut libc::c_char) -> libc::c_int {
-    let mut cname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut result: *mut libc::c_char = 0 as *mut libc::c_char;
+    let cname: *mut libc::c_char;
+    let result: *mut libc::c_char;
     unsafe {
         if absolute_program(*name) != 0 {
             return bash_filename_stat_hook(name);
@@ -1915,37 +1911,32 @@ fn executable_completion(
     filename: *const libc::c_char,
     searching_path: libc::c_int,
 ) -> libc::c_int {
-    let mut f: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut r: libc::c_int = 0;
+    let mut f: *mut libc::c_char;
+    let r: libc::c_int;
+
+    f = unsafe { savestring!(filename) };
+
+    bash_directory_completion_hook(&mut f);
+
+    r = if searching_path != 0 {
+        executable_file(f)
+    } else {
+        executable_or_directory(f)
+    };
     unsafe {
-        f = savestring!(filename);
-
-        bash_directory_completion_hook(&mut f);
-
-        r = if searching_path != 0 {
-            executable_file(f)
-        } else {
-            executable_or_directory(f)
-        };
         libc::free(f as *mut c_void);
     }
+
     return r;
 }
-
-// #[macro_export]
-// macro_rules! TAB {
-//     () => {
-//         '\t' as i32
-//     };
-// }
 
 #[no_mangle]
 pub fn command_word_completion_function(
     hint_text: *const libc::c_char,
     state: libc::c_int,
 ) -> *mut libc::c_char {
-    let mut match_0: libc::c_int = 0;
-    let mut freetemp: libc::c_int = 0;
+    let mut match_0: libc::c_int;
+    let mut freetemp: libc::c_int;
     let mut current_block: u64;
     static mut hint: *mut libc::c_char = 0 as *mut libc::c_char;
     static mut path: *mut libc::c_char = 0 as *mut libc::c_char;
@@ -1967,8 +1958,8 @@ pub fn command_word_completion_function(
     static mut globpat: libc::c_int = 0;
     static mut varlist: *mut *mut SHELL_VAR = 0 as *mut *mut SHELL_VAR;
     static mut alias_list: *mut *mut alias_t = 0 as *mut *mut alias_t;
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut cval: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut temp: *mut libc::c_char;
+    let mut cval: *mut libc::c_char;
     unsafe {
         if state == 0 {
             rl_filename_stat_hook = Some(bash_command_name_stat_hook);
@@ -1985,8 +1976,9 @@ pub fn command_word_completion_function(
             hint_is_dir = CMD_IS_DIR!(hint_text) as i32;
             val = 0 as *mut libc::c_char;
 
-            temp =
-                rl_variable_value(b"completion-ignore-case\0" as *const u8 as *const libc::c_char);
+            temp = c_rl_variable_value(
+                b"completion-ignore-case\0" as *const u8 as *const libc::c_char,
+            );
             igncase = RL_BOOLEAN_VARIABLE_VALUE!(temp) as libc::c_int;
 
             if !glob_matches.is_null() {
@@ -2086,7 +2078,7 @@ pub fn command_word_completion_function(
                         while !alias_list.is_null()
                             && !(*alias_list.offset(local_index as isize)).is_null()
                         {
-                            let mut alias: *mut libc::c_char = 0 as *mut libc::c_char;
+                            let alias: *mut libc::c_char;
 
                             alias = (**alias_list.offset(local_index as isize)).name;
                             local_index = local_index + 1;
@@ -2125,7 +2117,7 @@ pub fn command_word_completion_function(
                         while !((*word_token_alist.as_mut_ptr().offset(local_index as isize)).word)
                             .is_null()
                         {
-                            let mut reserved_word: *mut libc::c_char = 0 as *mut libc::c_char;
+                            let reserved_word: *mut libc::c_char;
 
                             reserved_word =
                                 (*word_token_alist.as_mut_ptr().offset(local_index as isize)).word;
@@ -2147,7 +2139,7 @@ pub fn command_word_completion_function(
                         while !varlist.is_null()
                             && !(*varlist.offset(local_index as isize)).is_null()
                         {
-                            let mut varname: *mut libc::c_char = 0 as *mut libc::c_char;
+                            let varname: *mut libc::c_char;
 
                             varname = (**varlist.offset(local_index as isize)).name;
                             local_index = local_index + 1;
@@ -2258,7 +2250,7 @@ pub fn command_word_completion_function(
         loop {
             match current_block {
                 14702977349412626834 => {
-                    val = rl_filename_completion_function(fnhint, istate);
+                    val = c_rl_filename_completion_function(fnhint, istate);
                     if mapping_over == 4 as libc::c_int && dircomplete_expand != 0 {
                         set_directory_hook();
                     }
@@ -2271,8 +2263,8 @@ pub fn command_word_completion_function(
                         }
                         current_block = 14531478163722833811;
                     } else {
-                        match_0 = 0;
-                        freetemp = 0;
+                        // match_0 = 0;
+                        // freetemp = 0;
                         if absolute_program(hint) != 0 {
                             if igncase == 0 {
                                 match_0 = (libc::strncmp(val, hint, hint_len as usize) == 0)
@@ -2349,7 +2341,7 @@ pub fn command_word_completion_function(
                             current_path = savestring!(b".\0" as *const u8 as *const libc::c_char);
                         }
                         if *current_path as libc::c_int == '~' as i32 {
-                            let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+                            let t: *mut libc::c_char;
 
                             t = bash_tilde_expand(current_path, 0 as libc::c_int);
                             libc::free(current_path as *mut c_void);
@@ -2367,14 +2359,14 @@ pub fn command_word_completion_function(
                         if !filename_hint.is_null() {
                             libc::free(filename_hint as *mut c_void);
                         }
-                        filename_hint = sh_makepath(current_path, hint, 0);
+                        filename_hint = c_sh_makepath(current_path, hint, 0);
                         if !(strpbrk(
                             filename_hint,
                             b"\"'\\\0" as *const u8 as *const libc::c_char,
                         ))
                         .is_null()
                         {
-                            fnhint = sh_backslash_quote(
+                            fnhint = c_sh_backslash_quote(
                                 filename_hint,
                                 filename_bstab.as_mut_ptr(),
                                 0 as libc::c_int,
@@ -2409,7 +2401,7 @@ fn command_subst_completion_function(
     static mut cmd_index: libc::c_int = 0;
     static mut start_len: libc::c_int = 0;
     unsafe {
-        let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
+        let mut value: *mut libc::c_char;
 
         if state == 0 as libc::c_int {
             if !filename_text.is_null() {
@@ -2443,25 +2435,18 @@ fn command_subst_completion_function(
 
             if value <= filename_text {
                 matches =
-                    rl_completion_matches(filename_text, Some(command_word_completion_function));
+                    c_rl_completion_matches(filename_text, Some(command_word_completion_function));
             } else {
                 value = value.offset(1);
                 start_len = (start_len as libc::c_long
                     + value.offset_from(filename_text) as libc::c_long)
                     as libc::c_int;
                 if whitespace!(value.offset(-(1 as libc::c_int) as isize)) {
-                    matches = rl_completion_matches(
-                        value,
-                        Some(std::mem::transmute::<
-                            unsafe extern "C" fn(
-                                *const libc::c_char,
-                                libc::c_int,
-                            ) -> *mut libc::c_char,
-                            fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-                        >(rl_filename_completion_function)),
-                    );
+                    matches =
+                        c_rl_completion_matches(value, Some(c_rl_filename_completion_function));
                 } else {
-                    matches = rl_completion_matches(value, Some(command_word_completion_function));
+                    matches =
+                        c_rl_completion_matches(value, Some(command_word_completion_function));
                 }
             }
 
@@ -2537,7 +2522,7 @@ fn variable_completion_function(
             varname = savestring!(text.offset(first_char_loc as isize));
 
             if !varlist.is_null() {
-                strvec_dispose(varlist);
+                c_strvec_dispose(varlist);
             }
 
             varlist = all_variables_matching_prefix(varname);
@@ -2547,7 +2532,7 @@ fn variable_completion_function(
         if varlist.is_null() || (*varlist.offset(varlist_index as isize)).is_null() {
             return 0 as *mut libc::c_char;
         } else {
-            let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
+            let value: *mut libc::c_char;
             value = libc::malloc(
                 (4 + libc::strlen(*varlist.offset(varlist_index as isize)))
                     .try_into()
@@ -2602,11 +2587,11 @@ fn hostname_completion_function(
         }
 
         if !list.is_null() && !(*list.offset(list_index as isize)).is_null() {
-            let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+            let t: *mut libc::c_char;
 
             t = libc::malloc(
                 (2 as libc::c_int as libc::c_ulong)
-                    .wrapping_add(strlen(*list.offset(list_index as isize)))
+                    .wrapping_add(libc::strlen(*list.offset(list_index as isize)) as u64)
                     as usize,
             ) as *mut libc::c_char;
 
@@ -2630,8 +2615,8 @@ pub fn bash_servicename_completion_function(
     static mut sname: *mut libc::c_char = 0 as *const c_void as *mut c_void as *mut libc::c_char;
     static mut srvent: *mut servent = 0 as *const servent as *mut servent;
     static mut snamelen: libc::c_int = 0;
-    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut alist: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+    let value: *mut libc::c_char;
+    let mut alist: *mut *mut libc::c_char;
     let mut aentry: *mut libc::c_char = 0 as *mut libc::c_char;
     let mut afound: libc::c_int = 0;
     unsafe {
@@ -2690,7 +2675,7 @@ pub fn bash_groupname_completion_function(
     static mut gname: *mut libc::c_char = 0 as *const c_void as *mut c_void as *mut libc::c_char;
     static mut grent: *mut group = 0 as *const group as *mut group;
     static mut gnamelen: libc::c_int = 0;
-    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
+    let value: *mut libc::c_char;
     unsafe {
         if state == 0 {
             FREE!(gname);
@@ -2720,8 +2705,8 @@ pub fn bash_groupname_completion_function(
 }
 
 fn history_expand_line_internal(line: *mut libc::c_char) -> *mut libc::c_char {
-    let mut new_line: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut old_verify: libc::c_int = 0;
+    let new_line: *mut libc::c_char;
+    let old_verify: libc::c_int;
     unsafe {
         old_verify = hist_verify;
         hist_verify = 0 as libc::c_int;
@@ -2736,8 +2721,8 @@ fn history_expand_line_internal(line: *mut libc::c_char) -> *mut libc::c_char {
     }
 }
 fn cleanup_expansion_error() {
-    let mut to_free: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut old_verify: libc::c_int = 0;
+    let to_free: *mut libc::c_char;
+    let old_verify: libc::c_int;
     unsafe {
         old_verify = hist_verify;
         hist_verify = 0 as libc::c_int;
@@ -2750,8 +2735,8 @@ fn cleanup_expansion_error() {
         if to_free != rl_line_buffer {
             FREE!(to_free);
         }
-        putc('\r' as i32, rl_outstream);
-        rl_forced_update_display();
+        c_putc('\r' as i32, rl_outstream);
+        c_rl_forced_update_display();
     }
 }
 
@@ -2759,22 +2744,22 @@ fn maybe_make_readline_line(new_line: *mut libc::c_char) {
     unsafe {
         if !new_line.is_null() && libc::strcmp(new_line, rl_line_buffer) != 0 as libc::c_int {
             rl_point = rl_end;
-            rl_add_undo(UNDO_BEGIN!(), 0, 0, 0 as *mut libc::c_char);
-            rl_delete_text(0 as libc::c_int, rl_point);
+            c_rl_add_undo(UNDO_BEGIN!(), 0, 0, 0 as *mut libc::c_char);
+            c_rl_delete_text(0 as libc::c_int, rl_point);
             rl_mark = 0 as libc::c_int;
             rl_end = rl_mark;
             rl_point = rl_end;
-            rl_insert_text(new_line);
-            rl_add_undo(UNDO_END!(), 0, 0, 0 as *mut libc::c_char);
+            c_rl_insert_text(new_line);
+            c_rl_add_undo(UNDO_END!(), 0, 0, 0 as *mut libc::c_char);
         }
     }
 }
 
 fn set_up_new_line(new_line: *mut libc::c_char) {
-    let mut old_point: libc::c_int = 0;
-    let mut at_end: libc::c_int = 0;
+    let at_end: libc::c_int;
     unsafe {
-        old_point = rl_point;
+        let old_point: libc::c_int = rl_point;
+        // old_point = rl_point;
         at_end = (rl_point == rl_end) as libc::c_int;
 
         maybe_make_readline_line(new_line);
@@ -2785,15 +2770,15 @@ fn set_up_new_line(new_line: *mut libc::c_char) {
         } else if old_point < rl_end {
             rl_point = old_point;
             if !whitespace!(*rl_line_buffer.offset(rl_point as isize)) {
-                rl_forward_word(1 as libc::c_int, 0 as libc::c_int);
+                c_rl_forward_word(1 as libc::c_int, 0 as libc::c_int);
             }
         }
     }
 }
 
-fn alias_expand_line(count: libc::c_int, ignore: libc::c_int) -> libc::c_int {
-    let mut new_line: *mut libc::c_char = 0 as *mut libc::c_char;
-    new_line = unsafe { alias_expand(rl_line_buffer) };
+fn alias_expand_line(_count: libc::c_int, _ignore: libc::c_int) -> libc::c_int {
+    // let new_line: *mut libc::c_char  ;
+    let new_line = unsafe { alias_expand(rl_line_buffer) };
     if !new_line.is_null() {
         set_up_new_line(new_line);
         return 0;
@@ -2803,10 +2788,10 @@ fn alias_expand_line(count: libc::c_int, ignore: libc::c_int) -> libc::c_int {
     };
 }
 
-fn history_expand_line(count: libc::c_int, ignore: libc::c_int) -> libc::c_int {
-    let mut new_line: *mut libc::c_char = 0 as *mut libc::c_char;
+fn history_expand_line(_count: libc::c_int, _ignore: libc::c_int) -> libc::c_int {
+    // let mut new_line: *mut libc::c_char ;
 
-    new_line = unsafe { history_expand_line_internal(rl_line_buffer) };
+    let new_line = unsafe { history_expand_line_internal(rl_line_buffer) };
 
     if !new_line.is_null() {
         set_up_new_line(new_line);
@@ -2818,10 +2803,10 @@ fn history_expand_line(count: libc::c_int, ignore: libc::c_int) -> libc::c_int {
 }
 
 fn tcsh_magic_space(count: libc::c_int, ignore: libc::c_int) -> libc::c_int {
-    let mut dist_from_end: libc::c_int = 0;
-    let mut old_point: libc::c_int = 0;
+    let dist_from_end: libc::c_int;
     unsafe {
-        old_point = rl_point;
+        let old_point: libc::c_int = rl_point;
+        // old_point = rl_point;
         dist_from_end = rl_end - rl_point;
 
         if history_expand_line(count, ignore) == 0 {
@@ -2830,7 +2815,7 @@ fn tcsh_magic_space(count: libc::c_int, ignore: libc::c_int) -> libc::c_int {
             } else {
                 rl_end - dist_from_end
             };
-            rl_insert(1, ' ' as i32);
+            c_rl_insert(1, ' ' as i32);
             return 0;
         } else {
             return 1;
@@ -2838,15 +2823,15 @@ fn tcsh_magic_space(count: libc::c_int, ignore: libc::c_int) -> libc::c_int {
     }
 }
 
-fn history_and_alias_expand_line(count: libc::c_int, ignore: libc::c_int) -> libc::c_int {
-    let mut new_line: *mut libc::c_char = 0 as *mut libc::c_char;
+fn history_and_alias_expand_line(_count: libc::c_int, _ignore: libc::c_int) -> libc::c_int {
+    let mut new_line: *mut libc::c_char;
     unsafe {
-        new_line = 0 as *mut libc::c_char;
+        // new_line = 0 as *mut libc::c_char;
         new_line = history_expand_line_internal(rl_line_buffer);
 
         if !new_line.is_null() {
-            let mut alias_line: *mut libc::c_char = 0 as *mut libc::c_char;
-            alias_line = alias_expand(new_line);
+            // let alias_line: *mut libc::c_char ;
+            let alias_line = alias_expand(new_line);
             libc::free(new_line as *mut c_void);
             new_line = alias_line;
         }
@@ -2860,17 +2845,17 @@ fn history_and_alias_expand_line(count: libc::c_int, ignore: libc::c_int) -> lib
     };
 }
 
-fn shell_expand_line(count: libc::c_int, ignore: libc::c_int) -> libc::c_int {
-    let mut new_line: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut expanded_string: *mut WordList = 0 as *mut WordList;
-    let mut w: *mut WordDesc = 0 as *mut WordDesc;
+fn shell_expand_line(_count: libc::c_int, _ignore: libc::c_int) -> libc::c_int {
+    // let mut new_line: *mut libc::c_char ;
+    let expanded_string: *mut WordList;
+    let w: *mut WordDesc;
     unsafe {
-        new_line = 0 as *mut libc::c_char;
-        new_line = history_expand_line_internal(rl_line_buffer);
+        // let new_line = 0 as *mut libc::c_char;
+        let mut new_line = history_expand_line_internal(rl_line_buffer);
 
         if !new_line.is_null() {
-            let mut alias_line: *mut libc::c_char = 0 as *mut libc::c_char;
-            alias_line = alias_expand(new_line);
+            // let mut alias_line: *mut libc::c_char = 0 as *mut libc::c_char;
+            let alias_line = alias_expand(new_line);
             libc::free(new_line as *mut c_void);
             new_line = alias_line;
         }
@@ -2882,7 +2867,7 @@ fn shell_expand_line(count: libc::c_int, ignore: libc::c_int) -> libc::c_int {
             libc::free(new_line as *mut c_void);
 
             w = alloc_word_desc();
-            let ref mut fresh16 = (*w).word;
+            // let ref mut fresh16 = (*w).word;
             (*w).word = savestring!(rl_line_buffer);
             (*w).flags = if rl_explicit_arg != 0 {
                 (W_NOPROCSUB as libc::c_int) | (W_NOCOMSUB as libc::c_int)
@@ -2916,7 +2901,7 @@ fn shell_expand_line(count: libc::c_int, ignore: libc::c_int) -> libc::c_int {
             } else if old_point < rl_end {
                 rl_point = old_point;
                 if !whitespace!(*rl_line_buffer.offset(rl_point as isize)) {
-                    rl_forward_word(1, 0);
+                    c_rl_forward_word(1, 0);
                 }
             }
             return 0;
@@ -2939,9 +2924,9 @@ static mut fignore: ignorevar = {
 };
 
 fn _ignore_completion_names(names: *mut *mut libc::c_char, name_func: Option<sh_ignore_func_t>) {
-    let mut newnames: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-    let mut idx: libc::c_int = 0;
-    let mut nidx: libc::c_int = 0;
+    let newnames: *mut *mut libc::c_char;
+    let mut idx: libc::c_int;
+    let mut nidx: libc::c_int;
     let mut oldnames: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
     let mut oidx: libc::c_int = 0;
     unsafe {
@@ -2986,10 +2971,10 @@ fn _ignore_completion_names(names: *mut *mut libc::c_char, name_func: Option<sh_
             return;
         }
 
-        newnames = strvec_create(nidx + 1);
+        newnames = c_strvec_create(nidx + 1);
 
         if force_fignore == 0 {
-            oldnames = strvec_create(nidx - 1);
+            oldnames = c_strvec_create(nidx - 1);
             oidx = 0;
         }
 
@@ -3082,8 +3067,8 @@ fn _ignore_completion_names(names: *mut *mut libc::c_char, name_func: Option<sh_
 }
 
 fn name_is_acceptable(name: *const libc::c_char) -> libc::c_int {
-    let mut p: *mut ign = 0 as *mut ign;
-    let mut nlen: libc::c_int = 0;
+    let mut p: *mut ign;
+    let nlen: libc::c_int;
     unsafe {
         nlen = libc::strlen(name) as libc::c_int;
         p = fignore.ignores;
@@ -3117,8 +3102,8 @@ fn filename_completion_ignore(names: *mut *mut libc::c_char) -> libc::c_int {
 }
 
 fn test_for_directory(name: *const libc::c_char) -> libc::c_int {
-    let mut fn_0: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut r: libc::c_int = 0;
+    let fn_0: *mut libc::c_char;
+    let r: libc::c_int;
     unsafe {
         fn_0 = bash_tilde_expand(name, 0);
         r = file_isdir(fn_0);
@@ -3128,8 +3113,8 @@ fn test_for_directory(name: *const libc::c_char) -> libc::c_int {
 }
 
 fn test_for_canon_directory(name: *const libc::c_char) -> libc::c_int {
-    let mut fn_0: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut r: libc::c_int = 0;
+    let mut fn_0: *mut libc::c_char;
+    let r: libc::c_int;
     unsafe {
         fn_0 = if *name as libc::c_int == '~' as i32 {
             bash_tilde_expand(name, 0)
@@ -3153,7 +3138,7 @@ fn bash_progcomp_ignore_filenames(names: *mut *mut libc::c_char) -> libc::c_int 
     return 0;
 }
 
-fn return_zero(name: *const libc::c_char) -> libc::c_int {
+fn return_zero(_name: *const libc::c_char) -> libc::c_int {
     return 0;
 }
 
@@ -3163,14 +3148,14 @@ fn bash_ignore_everything(names: *mut *mut libc::c_char) -> libc::c_int {
 }
 
 fn restore_tilde(val: *mut libc::c_char, directory_part: *mut libc::c_char) -> *mut libc::c_char {
-    let mut l: libc::c_int = 0;
-    let mut vl: libc::c_int = 0;
-    let mut dl2: libc::c_int = 0;
-    let mut xl: libc::c_int = 0;
-    let mut dh2: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut expdir: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
+    let l: libc::c_int;
+    let mut vl: libc::c_int;
+    let dl2: libc::c_int;
+    let xl: libc::c_int;
+    let mut dh2: *mut libc::c_char;
+    let expdir: *mut libc::c_char;
+    let ret: *mut libc::c_char;
+    let v: *mut libc::c_char;
     unsafe {
         vl = libc::strlen(val) as libc::c_int;
         dh2 = if !directory_part.is_null() {
@@ -3184,7 +3169,7 @@ fn restore_tilde(val: *mut libc::c_char, directory_part: *mut libc::c_char) -> *
         expdir = bash_tilde_expand(directory_part, 0);
         xl = libc::strlen(expdir) as libc::c_int;
         if *directory_part as libc::c_int == '~' as i32 && STREQ!(directory_part, expdir) {
-            v = mbschr(val, '/' as i32);
+            v = c_mbschr(val, '/' as i32);
             vl = STRLEN!(v) as libc::c_int;
             ret = libc::malloc(((xl + vl + 2 as libc::c_int) as size_t).try_into().unwrap())
                 as *mut libc::c_char;
@@ -3220,8 +3205,8 @@ fn maybe_restore_tilde(
     val: *mut libc::c_char,
     directory_part: *mut libc::c_char,
 ) -> *mut libc::c_char {
-    let mut save: rl_icppfunc_t = None;
-    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
+    let save: rl_icppfunc_t;
+    let ret: *mut libc::c_char;
     save = if unsafe { dircomplete_expand == 0 as libc::c_int } {
         save_directory_hook()
     } else {
@@ -3235,8 +3220,8 @@ fn maybe_restore_tilde(
 }
 
 fn bash_directory_expansion(dirname: *mut *mut libc::c_char) {
-    let mut d: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut nd: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut d: *mut libc::c_char;
+    let nd: *mut libc::c_char;
     unsafe {
         d = savestring!(*dirname);
         if rl_directory_rewrite_hook.is_some()
@@ -3259,9 +3244,9 @@ fn bash_directory_expansion(dirname: *mut *mut libc::c_char) {
 }
 
 fn bash_filename_rewrite_hook(fname: *mut libc::c_char, fnlen: libc::c_int) -> *mut libc::c_char {
-    let mut conv: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut conv: *mut libc::c_char;
     unsafe {
-        conv = fnx_fromfs(fname, fnlen as size_t);
+        conv = c_fnx_fromfs(fname, fnlen as size_t);
         if conv != fname {
             conv = savestring!(conv);
         }
@@ -3285,7 +3270,7 @@ pub fn set_directory_hook() {
 }
 
 fn save_directory_hook() -> rl_icppfunc_t {
-    let mut ret: rl_icppfunc_t = None;
+    let ret: rl_icppfunc_t;
     unsafe {
         if dircomplete_expand != 0 {
             ret = rl_directory_completion_hook;
@@ -3311,9 +3296,9 @@ fn restore_directory_hook(hookf: rl_icppfunc_t) {
 }
 
 fn directory_exists(dirname: *const libc::c_char, should_dequote: libc::c_int) -> libc::c_int {
-    let mut new_dirname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut dirlen: libc::c_int = 0;
-    let mut r: libc::c_int = 0;
+    let new_dirname: *mut libc::c_char;
+    let dirlen: libc::c_int;
+    let r: libc::c_int;
     let mut sb: crate::src_common::stat = crate::src_common::stat_init;
     unsafe {
         new_dirname = if should_dequote != 0 {
@@ -3327,37 +3312,37 @@ fn directory_exists(dirname: *const libc::c_char, should_dequote: libc::c_int) -
             *new_dirname.offset((dirlen - 1 as libc::c_int) as isize) =
                 '\u{0}' as i32 as libc::c_char;
         }
-        r = (crate::src_common::lstat(new_dirname, &mut sb) == 0) as libc::c_int;
+        r = (crate::src_common::c_lstat(new_dirname, &mut sb) == 0) as libc::c_int;
         libc::free(new_dirname as *mut c_void);
     }
     return r;
 }
 
 fn bash_filename_stat_hook(dirname: *mut *mut libc::c_char) -> libc::c_int {
-    let mut local_dirname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut new_dirname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut should_expand_dirname: libc::c_int = 0;
-    let mut return_value: libc::c_int = 0;
-    let mut global_nounset: libc::c_int = 0;
-    let mut wl: *mut WordList = 0 as *mut WordList;
-    unsafe {
-        local_dirname = *dirname;
-        return_value = 0;
-        should_expand_dirname = return_value;
-        t = mbschr(local_dirname, '$' as i32);
-        if !t.is_null() {
-            should_expand_dirname = '$' as i32;
-        } else {
-            t = mbschr(local_dirname, '`' as i32);
-            if !t.is_null() {
-                should_expand_dirname = '`' as i32;
-            }
-        }
-        if should_expand_dirname != 0 && directory_exists(local_dirname, 0 as libc::c_int) != 0 {
-            should_expand_dirname = 0 as libc::c_int;
-        }
+    let mut local_dirname: *mut libc::c_char;
+    let mut new_dirname: *mut libc::c_char;
+    let mut t: *mut libc::c_char;
+    let mut should_expand_dirname: libc::c_int;
+    let mut return_value: libc::c_int;
+    let global_nounset: libc::c_int;
+    let wl: *mut WordList;
 
+    local_dirname = unsafe { *dirname };
+    return_value = 0;
+    should_expand_dirname = return_value;
+    t = c_mbschr(local_dirname, '$' as i32);
+    if !t.is_null() {
+        should_expand_dirname = '$' as i32;
+    } else {
+        t = c_mbschr(local_dirname, '`' as i32);
+        if !t.is_null() {
+            should_expand_dirname = '`' as i32;
+        }
+    }
+    if should_expand_dirname != 0 && directory_exists(local_dirname, 0 as libc::c_int) != 0 {
+        should_expand_dirname = 0 as libc::c_int;
+    }
+    unsafe {
         if should_expand_dirname != 0 {
             new_dirname = savestring!(local_dirname);
 
@@ -3392,14 +3377,14 @@ fn bash_filename_stat_hook(dirname: *mut *mut libc::c_char) -> libc::c_int {
             && (*local_dirname.offset(0 as isize) as libc::c_int != '.' as i32
                 || *local_dirname.offset(1 as isize) as libc::c_int != 0)
         {
-            let mut temp1: *mut libc::c_char = 0 as *mut libc::c_char;
-            let mut temp2: *mut libc::c_char = 0 as *mut libc::c_char;
+            let temp1: *mut libc::c_char;
+            let temp2: *mut libc::c_char;
             t = get_working_directory(
                 b"symlink-hook\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             );
             temp1 = make_absolute(local_dirname, t);
             libc::free(t as *mut c_void);
-            temp2 = sh_canonpath(temp1, 0x1 as libc::c_int | 0x2 as libc::c_int);
+            temp2 = c_sh_canonpath(temp1, 0x1 as libc::c_int | 0x2 as libc::c_int);
 
             if temp2.is_null() {
                 libc::free(temp1 as *mut c_void);
@@ -3414,69 +3399,72 @@ fn bash_filename_stat_hook(dirname: *mut *mut libc::c_char) -> libc::c_int {
 }
 
 fn bash_directory_completion_hook(dirname: *mut *mut libc::c_char) -> libc::c_int {
-    let mut local_dirname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut new_dirname: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut return_value: libc::c_int = 0;
-    let mut should_expand_dirname: libc::c_int = 0;
-    let mut nextch: libc::c_int = 0;
-    let mut closer: libc::c_int = 0;
-    let mut wl: *mut WordList = 0 as *mut WordList;
-    unsafe {
-        closer = 0;
-        nextch = closer;
-        should_expand_dirname = nextch;
-        return_value = should_expand_dirname;
+    let mut local_dirname: *mut libc::c_char;
+    let new_dirname: *mut libc::c_char;
+    let mut t: *mut libc::c_char;
+    let mut return_value: libc::c_int;
+    let mut should_expand_dirname: libc::c_int;
+    let mut nextch: libc::c_int;
+    let mut closer: libc::c_int;
+    let wl: *mut WordList;
 
-        local_dirname = *dirname;
+    closer = 0;
+    nextch = closer;
+    should_expand_dirname = nextch;
+    // return_value = should_expand_dirname;
 
-        t = mbschr(local_dirname, '$' as i32);
-        if !t.is_null() {
-            should_expand_dirname = '$' as i32;
-            nextch = *t.offset(1 as isize) as libc::c_int;
+    local_dirname = unsafe { *dirname };
 
-            if nextch == '(' as i32 {
-                closer = ')' as i32;
-            } else if nextch == '{' as i32 {
-                closer = '}' as i32;
-            } else {
-                nextch = 0 as libc::c_int;
-            }
+    t = c_mbschr(local_dirname, '$' as i32);
+    if !t.is_null() {
+        should_expand_dirname = '$' as i32;
+        nextch = unsafe { *t.offset(1 as isize) as libc::c_int };
 
-            if closer != 0 {
-                let mut p: libc::c_int = 0;
-                let mut delims: [libc::c_char; 2] = [0; 2];
-
-                delims[0 as usize] = closer as libc::c_char;
-                delims[1 as usize] = 0 as libc::c_char;
-                p = skip_to_delim(
-                    t,
-                    1,
-                    delims.as_mut_ptr(),
-                    SD_NOJMP as libc::c_int | SD_COMPLETE as libc::c_int,
-                );
-                if *t.offset(p as isize) as libc::c_int != closer {
-                    should_expand_dirname = 0 as libc::c_int;
-                }
-            }
-        } else if *local_dirname.offset(0 as isize) as libc::c_int == '~' as i32 {
-            should_expand_dirname = '~' as i32;
+        if nextch == '(' as i32 {
+            closer = ')' as i32;
+        } else if nextch == '{' as i32 {
+            closer = '}' as i32;
         } else {
-            t = mbschr(local_dirname, '`' as i32);
-            if !t.is_null()
-                && unclosed_pair(
+            nextch = 0 as libc::c_int;
+        }
+
+        if closer != 0 {
+            let p: libc::c_int;
+            let mut delims: [libc::c_char; 2] = [0; 2];
+
+            delims[0 as usize] = closer as libc::c_char;
+            delims[1 as usize] = 0 as libc::c_char;
+            p = skip_to_delim(
+                t,
+                1,
+                delims.as_mut_ptr(),
+                SD_NOJMP as libc::c_int | SD_COMPLETE as libc::c_int,
+            );
+            if unsafe { *t.offset(p as isize) as libc::c_int != closer } {
+                should_expand_dirname = 0 as libc::c_int;
+            }
+        }
+    } else if unsafe { *local_dirname.offset(0 as isize) as libc::c_int == '~' as i32 } {
+        should_expand_dirname = '~' as i32;
+    } else {
+        t = c_mbschr(local_dirname, '`' as i32);
+        if !t.is_null()
+            && unsafe {
+                unclosed_pair(
                     local_dirname,
                     libc::strlen(local_dirname) as libc::c_int,
                     b"`\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
                 ) == 0 as libc::c_int
-            {
-                should_expand_dirname = '`' as i32;
             }
+        {
+            should_expand_dirname = '`' as i32;
         }
+    }
 
-        if should_expand_dirname != 0 && directory_exists(local_dirname, 1 as libc::c_int) != 0 {
-            should_expand_dirname = 0 as libc::c_int;
-        }
+    if should_expand_dirname != 0 && directory_exists(local_dirname, 1 as libc::c_int) != 0 {
+        should_expand_dirname = 0 as libc::c_int;
+    }
+    unsafe {
         if should_expand_dirname != 0 {
             new_dirname = savestring!(local_dirname);
             wl = expand_prompt_string(
@@ -3497,11 +3485,11 @@ fn bash_directory_completion_hook(dirname: *mut *mut libc::c_char) -> libc::c_in
                 if !rl_filename_quote_characters.is_null()
                     && *rl_filename_quote_characters as libc::c_int != 0
                 {
-                    let mut i: libc::c_int = 0;
-                    let mut j: libc::c_int = 0;
-                    let mut c: libc::c_int = 0;
+                    let mut i: libc::c_int;
+                    let mut j: libc::c_int;
+                    let mut c: libc::c_int;
                     i = libc::strlen(default_filename_quote_characters) as libc::c_int;
-                    custom_filename_quote_characters = xrealloc(
+                    custom_filename_quote_characters = c_xrealloc(
                         custom_filename_quote_characters as *mut c_void,
                         (i + 1 as libc::c_int) as usize,
                     ) as *mut libc::c_char;
@@ -3546,26 +3534,26 @@ fn bash_directory_completion_hook(dirname: *mut *mut libc::c_char) -> libc::c_in
             && (*local_dirname.offset(0 as isize) as libc::c_int != '.' as i32
                 || *local_dirname.offset(1 as isize) as libc::c_int != 0)
         {
-            let mut temp1: *mut libc::c_char = 0 as *mut libc::c_char;
-            let mut temp2: *mut libc::c_char = 0 as *mut libc::c_char;
-            let mut len1: libc::c_int = 0;
-            let mut len2: libc::c_int = 0;
+            let mut temp1: *mut libc::c_char;
+            let mut temp2: *mut libc::c_char;
+            let len1: libc::c_int;
+            let len2: libc::c_int;
             t = get_working_directory(
                 b"symlink-hook\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
             );
             temp1 = make_absolute(local_dirname, t);
             libc::free(t as *mut c_void);
-            temp2 = sh_canonpath(
+            temp2 = c_sh_canonpath(
                 temp1,
                 PATH_CHECKDOTDOT!() as libc::c_int | PATH_CHECKEXISTS!() as libc::c_int,
             );
 
             if temp2.is_null() && dircomplete_spelling != 0 && dircomplete_expand != 0 {
-                temp2 = dirspell(temp1);
+                temp2 = c_dirspell(temp1);
                 if !temp2.is_null() {
                     libc::free(temp1 as *mut c_void);
                     temp1 = temp2;
-                    temp2 = sh_canonpath(
+                    temp2 = c_sh_canonpath(
                         temp1,
                         PATH_CHECKDOTDOT!() as libc::c_int | PATH_CHECKEXISTS!() as libc::c_int,
                     );
@@ -3580,7 +3568,7 @@ fn bash_directory_completion_hook(dirname: *mut *mut libc::c_char) -> libc::c_in
             if *temp1.offset((len1 - 1) as isize) as libc::c_int == '/' as i32 {
                 len2 = libc::strlen(temp2) as libc::c_int;
                 if len2 > 2 as libc::c_int {
-                    temp2 = xrealloc(temp2 as *mut c_void, (len2 + 2 as libc::c_int) as usize)
+                    temp2 = c_xrealloc(temp2 as *mut c_void, (len2 + 2 as libc::c_int) as usize)
                         as *mut libc::c_char;
                     *temp2.offset(len2 as isize) = '/' as i32 as libc::c_char;
                     *temp2.offset((len2 + 1) as isize) = '\u{0}' as i32 as libc::c_char;
@@ -3608,18 +3596,18 @@ static mut harry_size: libc::c_int = 0;
 static mut harry_len: libc::c_int = 0;
 
 fn build_history_completion_array() {
-    let mut i: libc::c_int = 0;
-    let mut j: libc::c_int = 0;
-    let mut hlist: *mut *mut HIST_ENTRY = 0 as *mut *mut HIST_ENTRY;
-    let mut tokens: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
+    let mut i: libc::c_int;
+    let mut j: libc::c_int;
+    let hlist: *mut *mut HIST_ENTRY;
+    let mut tokens: *mut *mut libc::c_char;
     unsafe {
         if harry_size != 0 {
-            strvec_dispose(history_completion_array);
+            c_strvec_dispose(history_completion_array);
             history_completion_array = 0 as *mut c_void as *mut *mut libc::c_char;
             harry_size = 0 as libc::c_int;
             harry_len = 0 as libc::c_int;
         }
-        hlist = history_list();
+        hlist = c_history_list();
         if !hlist.is_null() {
             i = 0 as libc::c_int;
             while !(*hlist.offset(i as isize)).is_null() {
@@ -3627,13 +3615,13 @@ fn build_history_completion_array() {
             }
             i -= 1;
             while i >= 0 as libc::c_int {
-                tokens = history_tokenize((**hlist.offset(i as isize)).line);
+                tokens = c_history_tokenize((**hlist.offset(i as isize)).line);
                 j = 0 as libc::c_int;
                 while !tokens.is_null() && !(*tokens.offset(j as isize)).is_null() {
                     if harry_len + 2 as libc::c_int > harry_size {
                         harry_size += 10 as libc::c_int;
                         history_completion_array =
-                            strvec_resize(history_completion_array, harry_size);
+                            c_strvec_resize(history_completion_array, harry_size);
                     }
 
                     *history_completion_array.offset(harry_len as isize) =
@@ -3648,14 +3636,14 @@ fn build_history_completion_array() {
             }
 
             if dabbrev_expand_active == 0 {
-                qsort(
+                c_qsort(
                     history_completion_array as *mut c_void,
                     harry_len as usize,
                     ::std::mem::size_of::<*mut libc::c_char>() as usize,
                     ::std::mem::transmute::<
-                        unsafe extern "C" fn(*mut *mut libc::c_char, *mut *mut libc::c_char) -> i32,
+                        fn(*mut *mut libc::c_char, *mut *mut libc::c_char) -> i32,
                         Option<fn(*const c_void, *const c_void) -> i32>,
-                    >(strvec_strcmp),
+                    >(c_strvec_strcmp),
                 );
             }
         }
@@ -3698,11 +3686,11 @@ fn history_completion_generator(
     return 0 as *mut libc::c_char;
 }
 
-fn dynamic_complete_history(count: libc::c_int, key: libc::c_int) -> libc::c_int {
-    let mut r: libc::c_int = 0;
-    let mut orig_func: Option<rl_compentry_func_t> = None;
-    let mut orig_attempt_func: Option<rl_completion_func_t> = None;
-    let mut orig_ignore_func: Option<rl_compignore_func_t> = None;
+fn dynamic_complete_history(_count: libc::c_int, _key: libc::c_int) -> libc::c_int {
+    let r: libc::c_int;
+    let orig_func: Option<rl_compentry_func_t>;
+    let orig_attempt_func: Option<rl_completion_func_t>;
+    let orig_ignore_func: Option<rl_compignore_func_t>;
     unsafe {
         orig_func = rl_completion_entry_function;
         orig_attempt_func = rl_attempted_completion_function;
@@ -3720,9 +3708,9 @@ fn dynamic_complete_history(count: libc::c_int, key: libc::c_int) -> libc::c_int
                 >(dynamic_complete_history)),
             )
         {
-            r = rl_complete_internal('?' as i32);
+            r = c_rl_complete_internal('?' as i32);
         } else {
-            r = rl_complete_internal('\t' as i32);
+            r = c_rl_complete_internal('\t' as i32);
         }
 
         rl_completion_entry_function = orig_func;
@@ -3733,12 +3721,12 @@ fn dynamic_complete_history(count: libc::c_int, key: libc::c_int) -> libc::c_int
 }
 
 fn bash_dabbrev_expand(count: libc::c_int, key: libc::c_int) -> libc::c_int {
-    let mut r: libc::c_int = 0;
-    let mut orig_suppress: libc::c_int = 0;
-    let mut orig_sort: libc::c_int = 0;
-    let mut orig_func: Option<rl_compentry_func_t> = None;
-    let mut orig_attempt_func: Option<rl_completion_func_t> = None;
-    let mut orig_ignore_func: Option<rl_compignore_func_t> = None;
+    let r: libc::c_int;
+    let orig_suppress: libc::c_int;
+    let orig_sort: libc::c_int;
+    let orig_func: Option<rl_compentry_func_t>;
+    let orig_attempt_func: Option<rl_completion_func_t>;
+    let orig_ignore_func: Option<rl_compignore_func_t>;
     unsafe {
         orig_func = rl_menu_completion_entry_function;
         orig_attempt_func = rl_attempted_completion_function;
@@ -3762,13 +3750,10 @@ fn bash_dabbrev_expand(count: libc::c_int, key: libc::c_int) -> libc::c_int {
                 >(bash_dabbrev_expand)),
             )
         {
-            rl_last_func = Some(std::mem::transmute::<
-                unsafe extern "C" fn(libc::c_int, libc::c_int) -> libc::c_int,
-                fn(libc::c_int, libc::c_int) -> libc::c_int,
-            >(rl_menu_complete));
+            rl_last_func = Some(c_rl_menu_complete);
         }
 
-        r = rl_menu_complete(count, key);
+        r = c_rl_menu_complete(count, key);
         dabbrev_expand_active = 0 as libc::c_int;
         rl_last_func = ::std::mem::transmute::<
             Option<fn() -> libc::c_int>,
@@ -3786,9 +3771,9 @@ fn bash_dabbrev_expand(count: libc::c_int, key: libc::c_int) -> libc::c_int {
     return r;
 }
 
-fn bash_complete_username(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_int {
+fn bash_complete_username(_ignore: libc::c_int, _ignore2: libc::c_int) -> libc::c_int {
     unsafe {
-        return bash_complete_username_internal(rl_completion_mode(::core::mem::transmute::<
+        return bash_complete_username_internal(c_rl_completion_mode(::core::mem::transmute::<
             Option<fn() -> libc::c_int>,
             Option<rl_command_func_t>,
         >(Some(
@@ -3800,25 +3785,17 @@ fn bash_complete_username(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_
     }
 }
 
-fn bash_possible_username_completions(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_int {
+fn bash_possible_username_completions(_ignore: libc::c_int, _ignore2: libc::c_int) -> libc::c_int {
     return bash_complete_username_internal('?' as i32);
 }
 
 fn bash_complete_username_internal(what_to_do: libc::c_int) -> libc::c_int {
-    return bash_specific_completion(
-        what_to_do,
-        Some(unsafe {
-            std::mem::transmute::<
-                unsafe extern "C" fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-                fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-            >(rl_username_completion_function)
-        }),
-    );
+    return bash_specific_completion(what_to_do, Some(c_rl_username_completion_function));
 }
 
-fn bash_complete_filename(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_int {
+fn bash_complete_filename(_ignore: libc::c_int, _ignore2: libc::c_int) -> libc::c_int {
     unsafe {
-        return bash_complete_filename_internal(rl_completion_mode(::std::mem::transmute::<
+        return bash_complete_filename_internal(c_rl_completion_mode(::std::mem::transmute::<
             Option<fn() -> libc::c_int>,
             Option<rl_command_func_t>,
         >(Some(
@@ -3829,38 +3806,32 @@ fn bash_complete_filename(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_
     }
 }
 
-fn bash_possible_filename_completions(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_int {
+fn bash_possible_filename_completions(_ignore: libc::c_int, _ignore2: libc::c_int) -> libc::c_int {
     return bash_complete_filename_internal('?' as i32);
 }
 
 fn bash_complete_filename_internal(what_to_do: libc::c_int) -> libc::c_int {
-    let mut orig_func: Option<rl_compentry_func_t> = None;
-    let mut orig_attempt_func: Option<rl_completion_func_t> = None;
-    let mut orig_dir_func: rl_icppfunc_t = None;
-    let mut orig_ignore_func: Option<rl_compignore_func_t> = None;
-    let mut orig_rl_completer_word_break_characters: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut r: libc::c_int = 0;
+    let orig_func: Option<rl_compentry_func_t>;
+    let orig_attempt_func: Option<rl_completion_func_t>;
+    let orig_dir_func: rl_icppfunc_t;
+    let orig_ignore_func: Option<rl_compignore_func_t>;
+    let orig_rl_completer_word_break_characters: *mut libc::c_char;
+    let r: libc::c_int;
     unsafe {
         orig_func = rl_completion_entry_function;
         orig_attempt_func = rl_attempted_completion_function;
         orig_ignore_func = rl_ignore_some_completions_function;
         orig_rl_completer_word_break_characters = rl_completer_word_break_characters;
         orig_dir_func = save_directory_hook();
-        rl_completion_entry_function = Some(std::mem::transmute::<
-            unsafe extern "C" fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-            fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-        >(rl_filename_completion_function));
+        rl_completion_entry_function = Some(c_rl_filename_completion_function);
 
-        rl_completion_entry_function = Some(std::mem::transmute::<
-            unsafe extern "C" fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-            fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-        >(rl_filename_completion_function));
+        rl_completion_entry_function = Some(c_rl_filename_completion_function);
         rl_attempted_completion_function = None;
         rl_ignore_some_completions_function = Some(filename_completion_ignore);
         rl_completer_word_break_characters =
             b" \t\n\"'\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
 
-        r = rl_complete_internal(what_to_do);
+        r = c_rl_complete_internal(what_to_do);
         rl_completion_entry_function = orig_func;
         rl_attempted_completion_function = orig_attempt_func;
         rl_ignore_some_completions_function = orig_ignore_func;
@@ -3870,9 +3841,9 @@ fn bash_complete_filename_internal(what_to_do: libc::c_int) -> libc::c_int {
     return r;
 }
 
-fn bash_complete_hostname(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_int {
+fn bash_complete_hostname(_ignore: libc::c_int, _ignore2: libc::c_int) -> libc::c_int {
     unsafe {
-        return bash_complete_hostname_internal(rl_completion_mode(::std::mem::transmute::<
+        return bash_complete_hostname_internal(c_rl_completion_mode(::std::mem::transmute::<
             Option<fn() -> libc::c_int>,
             Option<rl_command_func_t>,
         >(Some(
@@ -3883,13 +3854,13 @@ fn bash_complete_hostname(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_
     }
 }
 
-fn bash_possible_hostname_completions(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_int {
+fn bash_possible_hostname_completions(_ignore: libc::c_int, _ignore2: libc::c_int) -> libc::c_int {
     return bash_complete_hostname_internal('?' as i32);
 }
 
-fn bash_complete_variable(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_int {
+fn bash_complete_variable(_ignore: libc::c_int, _ignore2: libc::c_int) -> libc::c_int {
     unsafe {
-        return bash_complete_variable_internal(rl_completion_mode(::std::mem::transmute::<
+        return bash_complete_variable_internal(c_rl_completion_mode(::std::mem::transmute::<
             Option<fn() -> libc::c_int>,
             Option<rl_command_func_t>,
         >(Some(
@@ -3900,13 +3871,13 @@ fn bash_complete_variable(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_
     }
 }
 
-fn bash_possible_variable_completions(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_int {
+fn bash_possible_variable_completions(_ignore: libc::c_int, _ignore2: libc::c_int) -> libc::c_int {
     return bash_complete_variable_internal('?' as i32);
 }
 
-fn bash_complete_command(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_int {
+fn bash_complete_command(_ignore: libc::c_int, _ignore2: libc::c_int) -> libc::c_int {
     unsafe {
-        return bash_complete_command_internal(rl_completion_mode(::std::mem::transmute::<
+        return bash_complete_command_internal(c_rl_completion_mode(::std::mem::transmute::<
             Option<fn() -> libc::c_int>,
             Option<rl_command_func_t>,
         >(Some(
@@ -3917,7 +3888,7 @@ fn bash_complete_command(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_i
     }
 }
 
-fn bash_possible_command_completions(ignore: libc::c_int, ignore2: libc::c_int) -> libc::c_int {
+fn bash_possible_command_completions(_ignore: libc::c_int, _ignore2: libc::c_int) -> libc::c_int {
     return bash_complete_command_internal('?' as i32);
 }
 
@@ -3934,9 +3905,7 @@ fn bash_complete_command_internal(what_to_do: libc::c_int) -> libc::c_int {
 }
 
 fn completion_glob_pattern(string: *mut libc::c_char) -> libc::c_int {
-    unsafe {
-        return (glob_pattern_p(string) == 1 as libc::c_int) as libc::c_int;
-    }
+    return (c_glob_pattern_p(string) == 1 as libc::c_int) as libc::c_int;
 }
 
 static mut globtext: *mut libc::c_char = 0 as *const libc::c_char as *mut libc::c_char;
@@ -3946,9 +3915,9 @@ fn glob_complete_word(text: *const libc::c_char, state: libc::c_int) -> *mut lib
     static mut matches: *mut *mut libc::c_char =
         0 as *const c_void as *mut c_void as *mut *mut libc::c_char;
     static mut ind: libc::c_int = 0;
-    let mut glen: libc::c_int = 0;
-    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ttext: *mut libc::c_char = 0 as *mut libc::c_char;
+    let glen: libc::c_int;
+    let ret: *mut libc::c_char;
+    let ttext: *mut libc::c_char;
     unsafe {
         if state == 0 {
             rl_filename_completion_desired = 1;
@@ -4015,9 +3984,9 @@ fn bash_glob_quote_filename(
     }
 }
 
-fn bash_glob_complete_word(count: libc::c_int, key: libc::c_int) -> libc::c_int {
-    let mut r: libc::c_int = 0;
-    let mut orig_quoting_function: Option<rl_quote_func_t> = None;
+fn bash_glob_complete_word(_count: libc::c_int, _key: libc::c_int) -> libc::c_int {
+    let r: libc::c_int;
+    let orig_quoting_function: Option<rl_quote_func_t>;
     unsafe {
         if rl_editing_mode == EMACS_EDITING_MODE!() {
             rl_explicit_arg = 1;
@@ -4025,18 +3994,18 @@ fn bash_glob_complete_word(count: libc::c_int, key: libc::c_int) -> libc::c_int 
         orig_quoting_function = rl_filename_quoting_function;
         rl_filename_quoting_function = Some(bash_glob_quote_filename);
 
-        r = bash_glob_completion_internal(rl_completion_mode(Some(bash_glob_complete_word)));
+        r = bash_glob_completion_internal(c_rl_completion_mode(Some(bash_glob_complete_word)));
 
         rl_filename_quoting_function = orig_quoting_function;
     }
     return r;
 }
 
-fn bash_glob_expand_word(count: libc::c_int, key: libc::c_int) -> libc::c_int {
+fn bash_glob_expand_word(_count: libc::c_int, _key: libc::c_int) -> libc::c_int {
     return bash_glob_completion_internal('*' as i32);
 }
 
-fn bash_glob_list_expansions(count: libc::c_int, key: libc::c_int) -> libc::c_int {
+fn bash_glob_list_expansions(_count: libc::c_int, _key: libc::c_int) -> libc::c_int {
     return bash_glob_completion_internal('?' as i32);
 }
 
@@ -4044,10 +4013,10 @@ fn bash_specific_completion(
     what_to_do: libc::c_int,
     generator: Option<rl_compentry_func_t>,
 ) -> libc::c_int {
-    let mut orig_func: Option<rl_compentry_func_t> = None;
-    let mut orig_attempt_func: Option<rl_completion_func_t> = None;
-    let mut orig_ignore_func: Option<rl_compignore_func_t> = None;
-    let mut r: libc::c_int = 0;
+    let orig_func: Option<rl_compentry_func_t>;
+    let orig_attempt_func: Option<rl_completion_func_t>;
+    let orig_ignore_func: Option<rl_compignore_func_t>;
+    let r: libc::c_int;
     unsafe {
         orig_func = rl_completion_entry_function;
         orig_attempt_func = rl_attempted_completion_function;
@@ -4055,7 +4024,7 @@ fn bash_specific_completion(
         rl_completion_entry_function = generator;
         rl_attempted_completion_function = None;
         rl_ignore_some_completions_function = orig_ignore_func;
-        r = rl_complete_internal(what_to_do);
+        r = c_rl_complete_internal(what_to_do);
         rl_completion_entry_function = orig_func;
         rl_attempted_completion_function = orig_attempt_func;
         rl_ignore_some_completions_function = orig_ignore_func;
@@ -4064,13 +4033,13 @@ fn bash_specific_completion(
 }
 
 fn bash_vi_complete(count: libc::c_int, key: libc::c_int) -> libc::c_int {
-    let mut p: libc::c_int = 0;
-    let mut r: libc::c_int = 0;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut p: libc::c_int;
+    let mut r: libc::c_int;
+    let mut t: *mut libc::c_char;
     unsafe {
         if rl_point < rl_end && !whitespace!(*rl_line_buffer.offset(rl_point as isize)) {
             if !whitespace!(*rl_line_buffer.offset((rl_point + 1) as isize)) {
-                rl_vi_end_word(1, 'E' as i32);
+                c_rl_vi_end_word(1, 'E' as i32);
             }
             rl_point += 1;
         }
@@ -4078,7 +4047,7 @@ fn bash_vi_complete(count: libc::c_int, key: libc::c_int) -> libc::c_int {
         t = 0 as *mut libc::c_char;
         if rl_point > 0 {
             p = rl_point;
-            rl_vi_bWord(1, 'B' as i32);
+            c_rl_vi_bWord(1, 'B' as i32);
             r = rl_point;
             rl_point = p;
             p = r;
@@ -4089,29 +4058,29 @@ fn bash_vi_complete(count: libc::c_int, key: libc::c_int) -> libc::c_int {
             rl_explicit_arg = 1;
         }
         FREE!(t);
-
-        if key == '*' as i32 {
-            r = bash_glob_expand_word(count, key);
-        } else if key == '=' as i32 {
-            r = bash_glob_list_expansions(count, key);
-        } else if key == '\\' as i32 {
-            r = bash_glob_complete_word(count, key);
-        } else {
-            r = rl_complete(0, key);
-        }
-        if key == '*' as i32 || key == '\\' as i32 {
-            rl_vi_start_inserting(key, 1, 1);
-        }
     }
+    if key == '*' as i32 {
+        r = bash_glob_expand_word(count, key);
+    } else if key == '=' as i32 {
+        r = bash_glob_list_expansions(count, key);
+    } else if key == '\\' as i32 {
+        r = bash_glob_complete_word(count, key);
+    } else {
+        r = c_rl_complete(0, key);
+    }
+    if key == '*' as i32 || key == '\\' as i32 {
+        c_rl_vi_start_inserting(key, 1, 1);
+    }
+
     return r;
 }
 
 fn bash_dequote_filename(text: *mut libc::c_char, quote_char: libc::c_int) -> *mut libc::c_char {
-    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut r: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut l: libc::c_int = 0;
-    let mut quoted: libc::c_int = 0;
+    let ret: *mut libc::c_char;
+    let mut p: *mut libc::c_char;
+    let mut r: *mut libc::c_char;
+    let l: libc::c_int;
+    let mut quoted: libc::c_int;
     unsafe {
         l = libc::strlen(text) as libc::c_int;
         ret = libc::malloc((l + 1 as libc::c_int) as usize) as *mut libc::c_char;
@@ -4161,10 +4130,10 @@ fn bash_dequote_filename(text: *mut libc::c_char, quote_char: libc::c_int) -> *m
 }
 
 fn quote_word_break_chars(text: *mut libc::c_char) -> *mut libc::c_char {
-    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut r: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut s: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut l: libc::c_int = 0;
+    let ret: *mut libc::c_char;
+    let mut r: *mut libc::c_char;
+    let mut s: *mut libc::c_char;
+    let l: libc::c_int;
     unsafe {
         l = libc::strlen(text) as libc::c_int;
         ret = libc::malloc(
@@ -4188,7 +4157,7 @@ fn quote_word_break_chars(text: *mut libc::c_char) -> *mut libc::c_char {
                     break;
                 }
             } else {
-                if !(mbschr(rl_completer_word_break_characters, *s as libc::c_int)).is_null() {
+                if !(c_mbschr(rl_completer_word_break_characters, *s as libc::c_int)).is_null() {
                     *r = '\\' as i32 as libc::c_char;
                     r = r.offset(1);
                 }
@@ -4208,7 +4177,7 @@ fn quote_word_break_chars(text: *mut libc::c_char) -> *mut libc::c_char {
 
 fn set_filename_bstab(string: *const libc::c_char) {
     unsafe {
-        let mut s: *const libc::c_char = 0 as *const libc::c_char;
+        let mut s: *const libc::c_char;
         memset(
             filename_bstab.as_mut_ptr() as *mut c_void,
             0 as libc::c_int,
@@ -4227,11 +4196,11 @@ fn bash_quote_filename(
     rtype: libc::c_int,
     qcp: *mut libc::c_char,
 ) -> *mut libc::c_char {
-    let mut rtext: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut mtext: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut rlen: libc::c_int = 0;
-    let mut cs: libc::c_int = 0;
+    let mut rtext: *mut libc::c_char;
+    let mut mtext: *mut libc::c_char;
+    let ret: *mut libc::c_char;
+    let rlen: libc::c_int;
+    let mut cs: libc::c_int;
 
     rtext = 0 as *mut libc::c_char;
     unsafe {
@@ -4239,7 +4208,7 @@ fn bash_quote_filename(
 
         if *qcp as libc::c_int == '\u{0}' as i32
             && cs == COMPLETE_BSQUOTE!()
-            && !(mbschr(s, '\n' as i32)).is_null()
+            && !(c_mbschr(s, '\n' as i32)).is_null()
         {
             cs = COMPLETE_SQUOTE!();
         } else if *qcp as libc::c_int == '"' as i32 {
@@ -4250,7 +4219,7 @@ fn bash_quote_filename(
             && history_expansion != 0
             && cs == COMPLETE_DQUOTE!()
             && history_expansion_inhibited == 0
-            && !(mbschr(s, '!' as i32)).is_null()
+            && !(c_mbschr(s, '!' as i32)).is_null()
         {
             cs = COMPLETE_BSQUOTE!();
         }
@@ -4258,7 +4227,7 @@ fn bash_quote_filename(
             && history_expansion != 0
             && cs == COMPLETE_DQUOTE!()
             && history_expansion_inhibited == 0
-            && !(mbschr(s, '!' as i32)).is_null()
+            && !(c_mbschr(s, '!' as i32)).is_null()
         {
             cs = COMPLETE_BSQUOTE!();
             *qcp = '\u{0}' as i32 as libc::c_char;
@@ -4273,13 +4242,13 @@ fn bash_quote_filename(
         }
         match cs {
             COMPLETE_DQUOTE!() => {
-                rtext = sh_double_quote(mtext);
+                rtext = c_sh_double_quote(mtext);
             }
             COMPLETE_SQUOTE!() => {
-                rtext = sh_single_quote(mtext);
+                rtext = c_sh_single_quote(mtext);
             }
             COMPLETE_BSQUOTE!() => {
-                rtext = sh_backslash_quote(
+                rtext = c_sh_backslash_quote(
                     mtext,
                     if complete_fullquote != 0 {
                         0 as *mut libc::c_char
@@ -4324,17 +4293,17 @@ static mut emacs_std_cmd_xmap: Keymap = 0 as *const KEYMAP_ENTRY as *mut KEYMAP_
 static mut vi_insert_cmd_xmap: Keymap = 0 as *const KEYMAP_ENTRY as *mut KEYMAP_ENTRY;
 static mut vi_movement_cmd_xmap: Keymap = 0 as *const KEYMAP_ENTRY as *mut KEYMAP_ENTRY;
 
-fn putx(c: libc::c_int) -> libc::c_int {
-    let mut x: libc::c_int = 0;
-    unsafe {
-        x = putc(c, rl_outstream);
-    }
-    return x;
-}
+// fn putx(c: libc::c_int) -> libc::c_int {
+//     let mut x: libc::c_int = 0;
+//     unsafe {
+//         x = c_putc(c, rl_outstream);
+//     }
+//     return x;
+// }
 
 fn readline_get_char_offset(ind: libc::c_int) -> libc::c_int {
-    let mut r: libc::c_int = 0;
-    let mut old_ch: libc::c_int = 0;
+    let mut r: libc::c_int;
+    let old_ch: libc::c_int;
 
     r = ind;
     unsafe {
@@ -4349,11 +4318,11 @@ fn readline_get_char_offset(ind: libc::c_int) -> libc::c_int {
 }
 
 fn readline_set_char_offset(ind: libc::c_int, varp: *mut libc::c_int) {
-    let mut i: libc::c_int = 0;
+    let mut i: libc::c_int;
     i = ind;
     unsafe {
         if i > 0 as libc::c_int && locale_mb_cur_max > 1 as libc::c_int {
-            i = _rl_find_next_mbchar(rl_line_buffer, 0 as libc::c_int, i, 0 as libc::c_int);
+            i = c__rl_find_next_mbchar(rl_line_buffer, 0 as libc::c_int, i, 0 as libc::c_int);
         }
         if i != *varp {
             if i > rl_end {
@@ -4367,10 +4336,10 @@ fn readline_set_char_offset(ind: libc::c_int, varp: *mut libc::c_int) {
 }
 
 #[no_mangle]
-pub fn bash_execute_unix_command(count: libc::c_int, key: libc::c_int) -> libc::c_int {
+pub fn bash_execute_unix_command(_count: libc::c_int, _key: libc::c_int) -> libc::c_int {
     let mut type_0: libc::c_int = 0;
-    let mut i: libc::c_int = 0;
-    let mut r: libc::c_int = 0;
+    let mut i: libc::c_int;
+    let r: libc::c_int;
     let mut mi: intmax_t = 0;
     let mut ps: sh_parser_state_t = sh_parser_state_t {
         parser_state: 0,
@@ -4393,164 +4362,185 @@ pub fn bash_execute_unix_command(count: libc::c_int, key: libc::c_int) -> libc::
         here_doc_first_line: 0,
         redir_stack: [0 as *mut REDIRECT; 16],
     };
-    let mut cmd: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut ce: *mut libc::c_char = 0 as *mut libc::c_char;
-    let old_ch: libc::c_char = 0;
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut cmd: *mut libc::c_char;
+    let mut value: *mut libc::c_char;
+    let ce: *mut libc::c_char;
+    // let old_ch: libc::c_char = 0;
+    let mut v: *mut SHELL_VAR;
     let mut ibuf: [libc::c_char; 12] = [0; 12];
-    let mut cmd_xmap: Keymap = 0 as *mut KEYMAP_ENTRY;
-    unsafe {
-        cmd_xmap = get_cmd_xmap_from_keymap(rl_get_keymap());
-        cmd = ::std::mem::transmute::<Option<rl_command_func_t>, *mut libc::c_char>(
-            rl_function_of_keyseq_len(
+    let cmd_xmap: Keymap;
+
+    cmd_xmap = get_cmd_xmap_from_keymap(c_rl_get_keymap());
+    cmd = unsafe {
+        ::std::mem::transmute::<Option<rl_command_func_t>, *mut libc::c_char>(
+            c_rl_function_of_keyseq_len(
                 rl_executing_keyseq,
                 rl_key_sequence_length as size_t,
                 cmd_xmap,
                 &mut type_0,
             ),
-        );
-
-        if type_0 == ISKMAP as libc::c_int && {
-            type_0 = (*(cmd as Keymap).offset(ANYOTHERKEY as isize)).Type as libc::c_int;
+        )
+    };
+    unsafe {
+        if type_0 == ISKMAP!() as libc::c_int && {
+            type_0 = (*(cmd as Keymap).offset(ANYOTHERKEY!() as isize)).Type as libc::c_int;
             type_0 == ISMACR as libc::c_int
         } {
             cmd = ::core::mem::transmute::<Option<rl_command_func_t>, *mut libc::c_char>(
-                (*(cmd as Keymap).offset(ANYOTHERKEY as isize)).function,
+                (*(cmd as Keymap).offset(ANYOTHERKEY!() as isize)).function,
             );
         }
-
-        if cmd.is_null() || type_0 != ISMACR as libc::c_int {
-            rl_crlf();
+    }
+    if cmd.is_null() || type_0 != ISMACR as libc::c_int {
+        c_rl_crlf();
+        unsafe {
             internal_error(
                 b"bash_execute_unix_command: cannot find keymap for command\0" as *const u8
                     as *const libc::c_char,
             );
-            rl_forced_update_display();
-            return 1 as libc::c_int;
         }
+        c_rl_forced_update_display();
+        return 1 as libc::c_int;
+    }
 
-        ce = rl_get_termcap(b"ce\0" as *const u8 as *const libc::c_char);
-        if !ce.is_null() {
-            rl_clear_visible_line();
+    ce = c_rl_get_termcap(b"ce\0" as *const u8 as *const libc::c_char);
+    if !ce.is_null() {
+        c_rl_clear_visible_line();
+        unsafe {
             fflush(rl_outstream);
-        } else {
-            rl_crlf();
         }
+    } else {
+        c_rl_crlf();
+    }
 
-        v = bind_variable(
+    v = unsafe {
+        bind_variable(
             b"READLINE_LINE\0" as *const u8 as *const libc::c_char,
             rl_line_buffer,
             0 as libc::c_int,
-        );
+        )
+    };
 
-        if !v.is_null() {
+    if !v.is_null() {
+        unsafe {
             VSETATTR_1!(v, att_exported as i32);
         }
+    }
 
-        i = readline_get_char_offset(rl_point);
-        value = inttostr(
-            i as intmax_t,
-            ibuf.as_mut_ptr(),
-            ::std::mem::size_of::<[libc::c_char; 12]>() as libc::c_ulong,
-        );
-        v = bind_int_variable(
-            b"READLINE_POINT\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-            value,
-            0,
-        );
+    i = unsafe { readline_get_char_offset(rl_point) };
+    value = c_inttostr(
+        i as intmax_t,
+        ibuf.as_mut_ptr(),
+        ::std::mem::size_of::<[libc::c_char; 12]>() as libc::c_ulong,
+    );
+    v = bind_int_variable(
+        b"READLINE_POINT\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        value,
+        0,
+    );
 
-        if !v.is_null() {
+    if !v.is_null() {
+        unsafe {
             VSETATTR_1!(v, att_exported as i32);
         }
+    }
 
-        i = readline_get_char_offset(rl_mark);
-        value = inttostr(
-            i as intmax_t,
-            ibuf.as_mut_ptr(),
-            ::std::mem::size_of::<[libc::c_char; 12]>() as libc::c_ulong,
-        );
-        v = bind_int_variable(
-            b"READLINE_MARK\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-            value,
-            0,
-        );
+    i = unsafe { readline_get_char_offset(rl_mark) };
+    value = c_inttostr(
+        i as intmax_t,
+        ibuf.as_mut_ptr(),
+        ::std::mem::size_of::<[libc::c_char; 12]>() as libc::c_ulong,
+    );
+    v = bind_int_variable(
+        b"READLINE_MARK\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        value,
+        0,
+    );
 
-        if !v.is_null() {
-            VSETATTR!(v, att_exported as i32);
-        }
+    if !v.is_null() {
+        unsafe { VSETATTR!(v, att_exported as i32) };
+    }
+    unsafe {
         array_needs_making = 1;
+    }
 
-        save_parser_state(&mut ps);
-        rl_clear_signals();
-        r = parse_and_execute(
+    save_parser_state(&mut ps);
+    c_rl_clear_signals();
+    r = unsafe {
+        parse_and_execute(
             savestring!(cmd),
             b"bash_execute_unix_command\0" as *const u8 as *const libc::c_char,
             SEVAL_NOHIST as libc::c_int,
-        );
-        rl_set_signals();
-        restore_parser_state(&mut ps);
+        )
+    };
+    c_rl_set_signals();
+    restore_parser_state(&mut ps);
 
-        v = find_variable(b"READLINE_LINE\0" as *const u8 as *const libc::c_char);
-        maybe_make_readline_line(if !v.is_null() {
-            value_cell!(v)
-        } else {
-            0 as *mut libc::c_char
-        });
+    v = find_variable(b"READLINE_LINE\0" as *const u8 as *const libc::c_char);
+    maybe_make_readline_line(if !v.is_null() {
+        unsafe { value_cell!(v) }
+    } else {
+        0 as *mut libc::c_char
+    });
 
-        v = find_variable(b"READLINE_POINT\0" as *const u8 as *const libc::c_char);
+    v = find_variable(b"READLINE_POINT\0" as *const u8 as *const libc::c_char);
+    unsafe {
         if !v.is_null() && legal_number(value_cell!(v), &mut mi) != 0 {
             readline_set_char_offset(mi as libc::c_int, &mut rl_point);
         }
-        v = find_variable(b"READLINE_MARK\0" as *const u8 as *const libc::c_char);
+    }
+    v = find_variable(b"READLINE_MARK\0" as *const u8 as *const libc::c_char);
+    unsafe {
         if !v.is_null() && legal_number(value_cell!(v), &mut mi) != 0 {
             readline_set_char_offset(mi as libc::c_int, &mut rl_mark);
         }
-
-        check_unbind_variable(b"READLINE_LINE\0" as *const u8 as *const libc::c_char);
-        check_unbind_variable(b"READLINE_POINT\0" as *const u8 as *const libc::c_char);
-        check_unbind_variable(b"READLINE_MARK\0" as *const u8 as *const libc::c_char);
-        array_needs_making = 1;
-
-        if !ce.is_null() && r != 124 {
-            rl_redraw_prompt_last_line();
-        } else {
-            rl_forced_update_display();
-        }
-        return 0 as libc::c_int;
     }
+
+    check_unbind_variable(b"READLINE_LINE\0" as *const u8 as *const libc::c_char);
+    check_unbind_variable(b"READLINE_POINT\0" as *const u8 as *const libc::c_char);
+    check_unbind_variable(b"READLINE_MARK\0" as *const u8 as *const libc::c_char);
+    unsafe {
+        array_needs_making = 1;
+    }
+
+    if !ce.is_null() && r != 124 {
+        c_rl_redraw_prompt_last_line();
+    } else {
+        c_rl_forced_update_display();
+    }
+    return 0 as libc::c_int;
 }
 
 #[no_mangle]
 pub fn print_unix_command_map() -> libc::c_int {
-    let mut save: Keymap = 0 as *mut KEYMAP_ENTRY;
-    let mut cmd_xmap: Keymap = 0 as *mut KEYMAP_ENTRY;
-    unsafe {
-        save = rl_get_keymap();
-        cmd_xmap = get_cmd_xmap_from_keymap(save);
-        rl_set_keymap(cmd_xmap);
-        rl_macro_dumper(1 as libc::c_int);
-        rl_set_keymap(save);
-    }
+    let save: Keymap;
+    let cmd_xmap: Keymap;
+
+    save = c_rl_get_keymap();
+    cmd_xmap = get_cmd_xmap_from_keymap(save);
+    c_rl_set_keymap(cmd_xmap);
+    c_rl_macro_dumper(1 as libc::c_int);
+    c_rl_set_keymap(save);
+
     return 0 as libc::c_int;
 }
 
 fn init_unix_command_map() {
     unsafe {
-        emacs_std_cmd_xmap = rl_make_bare_keymap();
+        emacs_std_cmd_xmap = c_rl_make_bare_keymap();
 
         (*emacs_std_cmd_xmap.offset(CTRL!('X' as i32) as isize)).Type =
             ISKMAP as libc::c_int as libc::c_char;
-        let ref mut fresh43 = (*emacs_std_cmd_xmap.offset(CTRL!('X' as i32) as isize)).function;
+        // let ref mut fresh43 = (*emacs_std_cmd_xmap.offset(CTRL!('X' as i32) as isize)).function;
         (*emacs_std_cmd_xmap.offset(CTRL!('X' as i32) as isize)).function =
-            ::std::mem::transmute::<Keymap, Option<rl_command_func_t>>(rl_make_bare_keymap());
+            ::std::mem::transmute::<Keymap, Option<rl_command_func_t>>(c_rl_make_bare_keymap());
 
         (*emacs_std_cmd_xmap.offset(ESC!() as isize)).Type = ISKMAP as libc::c_int as libc::c_char;
         (*emacs_std_cmd_xmap.offset(ESC!() as isize)).function =
-            ::std::mem::transmute::<Keymap, Option<rl_command_func_t>>(rl_make_bare_keymap());
+            ::std::mem::transmute::<Keymap, Option<rl_command_func_t>>(c_rl_make_bare_keymap());
 
-        vi_insert_cmd_xmap = rl_make_bare_keymap();
-        vi_movement_cmd_xmap = rl_make_bare_keymap();
+        vi_insert_cmd_xmap = c_rl_make_bare_keymap();
+        vi_movement_cmd_xmap = c_rl_make_bare_keymap();
     }
 }
 
@@ -4586,19 +4576,19 @@ fn isolate_sequence(
     need_dquote: libc::c_int,
     startp: *mut libc::c_int,
 ) -> libc::c_int {
-    let mut i: libc::c_int = 0;
-    let mut c: libc::c_int = 0;
-    let mut passc: libc::c_int = 0;
-    let mut delim: libc::c_int = 0;
+    let mut i: libc::c_int;
+    let mut c: libc::c_int;
+    let mut passc: libc::c_int;
+    let delim: libc::c_int;
 
     i = ind;
-    unsafe {
-        while *string.offset(i as isize) as libc::c_int != 0
-            && whitespace!(*string.offset(i as isize))
-        {
-            i += 1;
-        }
 
+    while unsafe {
+        *string.offset(i as isize) as libc::c_int != 0 && whitespace!(*string.offset(i as isize))
+    } {
+        i += 1;
+    }
+    unsafe {
         if need_dquote != 0 && *string.offset(i as isize) as libc::c_int != '"' as i32 {
             builtin_error(
                 b"%s: first non-whitespace character is not `\"'\0" as *const u8
@@ -4615,8 +4605,9 @@ fn isolate_sequence(
         } else {
             0 as libc::c_int
         };
-
-        if !startp.is_null() {
+    }
+    if !startp.is_null() {
+        unsafe {
             *startp = if delim != 0 {
                 i += 1;
                 i
@@ -4624,22 +4615,24 @@ fn isolate_sequence(
                 i
             };
         }
+    }
 
-        passc = 0 as libc::c_int;
-        loop {
-            c = *string.offset(i as isize) as libc::c_int;
-            if !(c != 0) {
-                break;
-            }
-            if passc != 0 {
-                passc = 0 as libc::c_int;
-            } else if c == '\\' as i32 {
-                passc += 1;
-            } else if c == delim {
-                break;
-            }
-            i += 1;
+    passc = 0 as libc::c_int;
+    loop {
+        c = unsafe { *string.offset(i as isize) as libc::c_int };
+        if !(c != 0) {
+            break;
         }
+        if passc != 0 {
+            passc = 0 as libc::c_int;
+        } else if c == '\\' as i32 {
+            passc += 1;
+        } else if c == delim {
+            break;
+        }
+        i += 1;
+    }
+    unsafe {
         if delim != 0 && *string.offset(i as isize) as libc::c_int != delim {
             builtin_error(
                 b"no closing `%c' in %s\0" as *const u8 as *const libc::c_char,
@@ -4648,33 +4641,35 @@ fn isolate_sequence(
             );
             return -(1 as libc::c_int);
         }
-        return i;
     }
+    return i;
 }
 
 #[no_mangle]
 pub fn bind_keyseq_to_unix_command(line: *mut libc::c_char) -> libc::c_int {
-    let mut kmap: Keymap = 0 as *mut KEYMAP_ENTRY;
-    let mut cmd_xmap: Keymap = 0 as *mut KEYMAP_ENTRY;
-    let mut kseq: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut value: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut i: libc::c_int = 0;
+    let kmap: Keymap;
+    let cmd_xmap: Keymap;
+    let kseq: *mut libc::c_char;
+    let value: *mut libc::c_char;
+    let mut i: libc::c_int;
     let mut kstart: libc::c_int = 0;
-    unsafe {
-        kmap = rl_get_keymap();
 
-        i = isolate_sequence(line, 0 as libc::c_int, 1 as libc::c_int, &mut kstart);
-        if i < 0 {
-            return -(1 as libc::c_int);
-        }
+    kmap = c_rl_get_keymap();
 
-        kseq = substring(line, kstart, i);
+    i = isolate_sequence(line, 0 as libc::c_int, 1 as libc::c_int, &mut kstart);
+    if i < 0 {
+        return -(1 as libc::c_int);
+    }
 
-        while *line.offset(i as isize) as libc::c_int != 0
+    kseq = substring(line, kstart, i);
+
+    while unsafe {
+        *line.offset(i as isize) as libc::c_int != 0
             && *line.offset(i as isize) as libc::c_int != ':' as i32
-        {
-            i += 1;
-        }
+    } {
+        i += 1;
+    }
+    unsafe {
         if *line.offset(i as isize) as libc::c_int != ':' as i32 {
             builtin_error(
                 b"%s: missing colon separator\0" as *const u8 as *const libc::c_char,
@@ -4683,18 +4678,21 @@ pub fn bind_keyseq_to_unix_command(line: *mut libc::c_char) -> libc::c_int {
             FREE!(kseq);
             return -(1 as libc::c_int);
         }
-
-        i = isolate_sequence(line, i + 1 as libc::c_int, 0 as libc::c_int, &mut kstart);
-        if i < 0 {
+    }
+    i = isolate_sequence(line, i + 1 as libc::c_int, 0 as libc::c_int, &mut kstart);
+    if i < 0 {
+        unsafe {
             FREE!(kseq);
-            return -(1 as libc::c_int);
         }
+        return -(1 as libc::c_int);
+    }
 
-        value = substring(line, kstart, i);
-        cmd_xmap = get_cmd_xmap_from_keymap(kmap);
-        rl_generic_bind(ISMACR as libc::c_int, kseq, value, cmd_xmap);
+    value = substring(line, kstart, i);
+    cmd_xmap = get_cmd_xmap_from_keymap(kmap);
+    c_rl_generic_bind(ISMACR as libc::c_int, kseq, value, cmd_xmap);
 
-        rl_bind_keyseq_in_map(
+    unsafe {
+        c_rl_bind_keyseq_in_map(
             kseq,
             ::std::mem::transmute::<Option<fn() -> libc::c_int>, Option<rl_command_func_t>>(Some(
                 ::std::mem::transmute::<
@@ -4711,10 +4709,10 @@ pub fn bind_keyseq_to_unix_command(line: *mut libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn unbind_unix_command(kseq: *mut libc::c_char) -> libc::c_int {
-    let mut cmd_xmap: Keymap = 0 as *mut KEYMAP_ENTRY;
+    let cmd_xmap: Keymap;
     unsafe {
-        cmd_xmap = get_cmd_xmap_from_keymap(rl_get_keymap());
-        if rl_bind_keyseq_in_map(
+        cmd_xmap = get_cmd_xmap_from_keymap(c_rl_get_keymap());
+        if c_rl_bind_keyseq_in_map(
             kseq,
             ::std::mem::transmute::<*mut c_void, Option<rl_command_func_t>>(0 as *mut c_void),
             cmd_xmap,
@@ -4733,44 +4731,41 @@ pub fn unbind_unix_command(kseq: *mut libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn bash_directory_completion_matches(text: *const libc::c_char) -> *mut *mut libc::c_char {
-    let mut m1: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-    let mut dfn: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut qc: libc::c_int = 0;
-    unsafe {
-        qc = if rl_dispatching != 0 {
+    let m1: *mut *mut libc::c_char;
+    let dfn: *mut libc::c_char;
+    let qc: libc::c_int;
+
+    qc = unsafe {
+        if rl_dispatching != 0 {
             rl_completion_quote_character
         } else {
             0 as libc::c_int
-        };
-        if rl_dispatching != 0 && rl_completion_found_quote == 0 {
-            dfn = bash_dequote_filename(text as *mut libc::c_char, qc);
-        } else {
-            dfn = text as *mut libc::c_char;
         }
-        m1 = rl_completion_matches(
-            dfn,
-            Some(std::mem::transmute::<
-                unsafe extern "C" fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-                fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-            >(rl_filename_completion_function)),
-        );
+    };
+    if unsafe { rl_dispatching != 0 && rl_completion_found_quote == 0 } {
+        dfn = bash_dequote_filename(text as *mut libc::c_char, qc);
+    } else {
+        dfn = text as *mut libc::c_char;
+    }
+    m1 = c_rl_completion_matches(dfn, Some(c_rl_filename_completion_function));
 
-        if dfn != text as *mut libc::c_char {
+    if dfn != text as *mut libc::c_char {
+        unsafe {
             libc::free(dfn as *mut c_void);
         }
+    }
 
-        if m1.is_null() || (*m1.offset(0 as libc::c_int as isize)).is_null() {
-            return m1;
-        }
-        bash_progcomp_ignore_filenames(m1);
+    if unsafe { m1.is_null() || (*m1.offset(0 as libc::c_int as isize)).is_null() } {
         return m1;
     }
+    bash_progcomp_ignore_filenames(m1);
+    return m1;
 }
 
 #[no_mangle]
 pub fn bash_dequote_text(text: *const libc::c_char) -> *mut libc::c_char {
-    let mut dtxt: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut qc: libc::c_int = 0;
+    let dtxt: *mut libc::c_char;
+    let qc: libc::c_int;
     unsafe {
         qc = if *text.offset(0 as isize) as libc::c_int == '"' as i32
             || *text.offset(0 as isize) as libc::c_int == '\'' as i32
@@ -4785,12 +4780,12 @@ pub fn bash_dequote_text(text: *const libc::c_char) -> *mut libc::c_char {
 }
 
 fn bash_event_hook() -> libc::c_int {
-    let mut sig: libc::c_int = 0;
+    let sig: libc::c_int;
     unsafe {
         if sigterm_received != 0 {
             return 0;
         }
-        sig = 0;
+        // sig = 0;
         if terminating_signal != 0 {
             sig = terminating_signal;
         } else if interrupt_state != 0 {
@@ -4801,7 +4796,7 @@ fn bash_event_hook() -> libc::c_int {
             sig = first_pending_trap();
         }
         if terminating_signal != 0 || interrupt_state != 0 || sigalrm_seen != 0 {
-            rl_cleanup_after_signal();
+            c_rl_cleanup_after_signal();
         }
         bashline_reset_event_hook();
         if posixly_correct != 0 && this_shell_builtin == Some(read_builtin) && sig == 2 {
