@@ -1,13 +1,10 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
+use crate::array::array_reference;
 use crate::arrayfunc::{array_value, valid_array_reference};
 use crate::assoc::assoc_reference;
 use crate::builtins::common::number_of_args;
 use crate::builtins::set::minus_o_option_value;
 use crate::expr::evalexp;
 use crate::general::{legal_number, same_file};
-use crate::readline::array_reference;
 use crate::src_common::*;
 use crate::variables::{find_variable, find_variable_noref};
 use crate::version::shell_compatibility_level;
@@ -55,15 +52,14 @@ pub type __jmp_buf = [libc::c_long; 8];
 
 #[no_mangle]
 pub fn patcomp(string: *mut libc::c_char, pat: *mut libc::c_char, op: libc::c_int) -> libc::c_int {
-    let mut m: libc::c_int = 0;
-    unsafe {
-        m = strmatch(pat, string, FNMATCH_EXTFLAG!() | FNMATCH_IGNCASE!());
-        return if op == EQ as libc::c_int {
-            (m == 0) as libc::c_int
-        } else {
-            (m != 0) as i32
-        };
-    }
+    let m: libc::c_int;
+
+    m = unsafe { c_strmatch(pat, string, FNMATCH_EXTFLAG!() | FNMATCH_IGNCASE!()) };
+    return if op == EQ as libc::c_int {
+        (m == 0) as libc::c_int
+    } else {
+        (m != 0) as i32
+    };
 }
 
 #[no_mangle]
@@ -90,35 +86,39 @@ fn beyond() {
 
 #[no_mangle]
 fn unary_operator() -> libc::c_int {
-    unsafe {
-        let mut op: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut r: intmax_t = 0;
-        op = *argv.offset(pos as isize);
-        if test_unop(op) == 0 as libc::c_int {
-            return 0 as libc::c_int;
-        }
-        if *op.offset(1 as libc::c_int as isize) as libc::c_int == 't' as i32 {
+    let op: *mut libc::c_char;
+    let mut r: intmax_t = 0;
+    op = unsafe { *argv.offset(pos as isize) };
+    if test_unop(op) == 0 as libc::c_int {
+        return 0 as libc::c_int;
+    }
+    if unsafe { *op.offset(1 as libc::c_int as isize) as libc::c_int == 't' as i32 } {
+        unsafe {
             pos += 1;
-            if 0 as libc::c_int != 0 && pos >= argc {
-                beyond();
-            }
-            if pos < argc {
-                if legal_number(*argv.offset(pos as isize), &mut r) != 0 {
-                    pos += 1;
-                    if 0 as libc::c_int != 0 && pos >= argc {
-                        beyond();
-                    }
-                    return unary_test(op, *argv.offset((pos - 1 as libc::c_int) as isize));
-                } else {
-                    return 0 as libc::c_int;
-                }
-            } else {
-                return unary_test(
-                    op,
-                    b"1\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-                );
-            }
         }
+        if unsafe { 0 as libc::c_int != 0 && pos >= argc } {
+            beyond();
+        }
+        if unsafe { pos < argc } {
+            if unsafe { legal_number(*argv.offset(pos as isize), &mut r) != 0 } {
+                unsafe {
+                    pos += 1;
+                }
+                if unsafe { 0 as libc::c_int != 0 && pos >= argc } {
+                    beyond();
+                }
+                return unsafe { unary_test(op, *argv.offset((pos - 1 as libc::c_int) as isize)) };
+            } else {
+                return 0 as libc::c_int;
+            }
+        } else {
+            return unary_test(
+                op,
+                b"1\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+            );
+        }
+    }
+    unsafe {
         pos += 1;
         if 1 as libc::c_int != 0 && pos >= argc {
             beyond();
@@ -196,7 +196,6 @@ fn three_arguments() -> libc::c_int {
             if 1 as libc::c_int != 0 && pos >= argc {
                 beyond();
             }
-            //value = !two_arguments();
             value = (two_arguments() == 0) as libc::c_int;
         } else if *(*argv.offset(pos as isize)).offset(0 as libc::c_int as isize) as libc::c_int
             == '(' as i32
@@ -255,66 +254,67 @@ fn two_arguments() -> libc::c_int {
 
 #[no_mangle]
 fn expr() -> libc::c_int {
-    unsafe {
-        if pos >= argc {
-            beyond();
-        }
-        return 0 as libc::c_int ^ or();
+    if unsafe { pos >= argc } {
+        beyond();
     }
+    return 0 as libc::c_int ^ or();
 }
 
 #[no_mangle]
 fn or() -> libc::c_int {
-    let mut value: libc::c_int = 0;
-    let mut v2: libc::c_int = 0;
+    let value: libc::c_int;
+    let v2: libc::c_int;
     value = and();
-    unsafe {
-        if pos < argc
+
+    if unsafe {
+        pos < argc
             && *(*argv.offset(pos as isize)).offset(0 as libc::c_int as isize) as libc::c_int
                 == '-' as i32
             && *(*argv.offset(pos as isize)).offset(1 as libc::c_int as isize) as libc::c_int
                 == 'o' as i32
             && *(*argv.offset(pos as isize)).offset(2 as libc::c_int as isize) == 0
-        {
+    } {
+        unsafe {
             pos += 1;
-            if 0 as libc::c_int != 0 && pos >= argc {
-                beyond();
-            }
-            v2 = or();
-            return (value != 0 || v2 != 0) as libc::c_int;
         }
-        return value;
+        if unsafe { 0 as libc::c_int != 0 && pos >= argc } {
+            beyond();
+        }
+        v2 = or();
+        return (value != 0 || v2 != 0) as libc::c_int;
     }
+    return value;
 }
 
 #[no_mangle]
 fn and() -> libc::c_int {
-    unsafe {
-        let mut value: libc::c_int = 0;
-        let mut v2: libc::c_int = 0;
-        value = term();
-        if pos < argc
+    let value: libc::c_int;
+    let v2: libc::c_int;
+    value = term();
+    if unsafe {
+        pos < argc
             && *(*argv.offset(pos as isize)).offset(0 as libc::c_int as isize) as libc::c_int
                 == '-' as i32
             && *(*argv.offset(pos as isize)).offset(1 as libc::c_int as isize) as libc::c_int
                 == 'a' as i32
             && *(*argv.offset(pos as isize)).offset(2 as libc::c_int as isize) == 0
-        {
+    } {
+        unsafe {
             pos += 1;
-            if 0 as libc::c_int != 0 && pos >= argc {
-                beyond();
-            }
-            v2 = and();
-            return (value != 0 && v2 != 0) as libc::c_int;
         }
-        return value;
+        if unsafe { 0 as libc::c_int != 0 && pos >= argc } {
+            beyond();
+        }
+        v2 = and();
+        return (value != 0 && v2 != 0) as libc::c_int;
     }
+    return value;
 }
 
 #[no_mangle]
 fn term() -> libc::c_int {
+    let mut value: libc::c_int;
     unsafe {
-        let mut value: libc::c_int = 0;
         if pos >= argc {
             beyond();
         }
@@ -423,7 +423,6 @@ fn posixtest() -> libc::c_int {
                     if 1 as libc::c_int != 0 && pos >= argc {
                         beyond();
                     }
-                    //value = !three_arguments() as libc::c_int;
                     value = (three_arguments() == 0) as libc::c_int;
                 } else if *(*argv.offset(pos as isize)).offset(0 as libc::c_int as isize)
                     as libc::c_int
@@ -456,9 +455,9 @@ fn posixtest() -> libc::c_int {
 
 #[no_mangle]
 fn binary_operator() -> libc::c_int {
+    let value: libc::c_int;
+    let w: *mut libc::c_char;
     unsafe {
-        let mut value: libc::c_int = 0;
-        let mut w: *mut libc::c_char = 0 as *mut libc::c_char;
         w = *argv.offset((pos + 1 as libc::c_int) as isize);
         if *w.offset(0 as libc::c_int as isize) as libc::c_int == '=' as i32
             && (*w.offset(1 as libc::c_int as isize) as libc::c_int == '\u{0}' as i32
@@ -563,9 +562,9 @@ pub fn test_binop(op: *mut libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn test_command(mut margc: libc::c_int, margv: *mut *mut libc::c_char) -> libc::c_int {
+    let value: libc::c_int;
+    let code: libc::c_int;
     unsafe {
-        let mut value: libc::c_int = 0;
-        let mut code: libc::c_int = 0;
         code = __sigsetjmp(test_exit_buf.as_mut_ptr(), 0 as libc::c_int);
         if code != 0 {
             return test_error_return;
@@ -593,14 +592,14 @@ pub fn test_command(mut margc: libc::c_int, margv: *mut *mut libc::c_char) -> li
             }
             if margc < 2 as libc::c_int {
                 test_error_return = (0 as libc::c_int == 0) as libc::c_int;
-                siglongjmp(test_exit_buf.as_mut_ptr(), 1 as libc::c_int);
+                c_siglongjmp(test_exit_buf.as_mut_ptr(), 1 as libc::c_int);
             }
         }
         argc = margc;
         pos = 1 as libc::c_int;
         if pos >= argc {
             test_error_return = (0 as libc::c_int == 0) as libc::c_int;
-            siglongjmp(test_exit_buf.as_mut_ptr(), 1 as libc::c_int);
+            c_siglongjmp(test_exit_buf.as_mut_ptr(), 1 as libc::c_int);
         }
         noeval = 0 as libc::c_int;
         value = posixtest();
@@ -620,7 +619,7 @@ pub fn test_command(mut margc: libc::c_int, margv: *mut *mut libc::c_char) -> li
         }
 
         test_error_return = (value == 0) as libc::c_int;
-        siglongjmp(test_exit_buf.as_mut_ptr(), 1 as libc::c_int);
+        c_siglongjmp(test_exit_buf.as_mut_ptr(), 1 as libc::c_int);
     }
 }
 
@@ -672,15 +671,15 @@ pub fn stat_mtime(
     st: *mut crate::src_common::stat,
     ts: *mut crate::src_common::timespec,
 ) -> libc::c_int {
-    unsafe {
-        let mut r: libc::c_int = 0;
-        r = sh_stat(fn0, st);
-        if r < 0 {
-            return r;
-        }
-        *ts = get_stat_mtime(st);
-        return 0;
+    let r: libc::c_int;
+    r = c_sh_stat(fn0, st);
+    if r < 0 {
+        return r;
     }
+    unsafe {
+        *ts = get_stat_mtime(st);
+    }
+    return 0;
 }
 
 #[no_mangle]
@@ -696,8 +695,8 @@ pub fn filecomp(s: *mut libc::c_char, t: *mut libc::c_char, op: libc::c_int) -> 
         tv_sec: 0,
         tv_nsec: 0,
     };
-    let mut r1: libc::c_int = 0;
-    let mut r2: libc::c_int = 0;
+    let r1: libc::c_int;
+    let r2: libc::c_int;
 
     r1 = stat_mtime(s, &mut st1, &mut ts1);
     if r1 < 0 {
@@ -733,313 +732,332 @@ pub fn binary_test(
     arg2: *mut libc::c_char,
     flags: libc::c_int,
 ) -> libc::c_int {
-    unsafe {
-        let mut patmatch: libc::c_int = 0;
-        patmatch = flags & 1 as libc::c_int;
-        if *op.offset(0 as libc::c_int as isize) as libc::c_int == '=' as i32
+    let patmatch: libc::c_int;
+    patmatch = flags & 1 as libc::c_int;
+    if unsafe {
+        *op.offset(0 as libc::c_int as isize) as libc::c_int == '=' as i32
             && (*op.offset(1 as libc::c_int as isize) as libc::c_int == '\u{0}' as i32
                 || *op.offset(1 as libc::c_int as isize) as libc::c_int == '=' as i32
                     && *op.offset(2 as libc::c_int as isize) as libc::c_int == '\u{0}' as i32)
-        {
-            return if patmatch != 0 {
-                patcomp(arg1, arg2, 0 as libc::c_int)
-            } else {
+    } {
+        return if patmatch != 0 {
+            patcomp(arg1, arg2, 0 as libc::c_int)
+        } else {
+            unsafe {
                 (*arg1.offset(0 as libc::c_int as isize) as libc::c_int
                     == *arg2.offset(0 as libc::c_int as isize) as libc::c_int
                     && strcmp(arg1, arg2) == 0 as libc::c_int) as libc::c_int
-            };
-        } else if *op.offset(0 as isize) as libc::c_int == '>' as i32
+            }
+        };
+    } else if unsafe {
+        *op.offset(0 as isize) as libc::c_int == '>' as i32
             || *op.offset(0 as isize) as libc::c_int == '<' as i32
                 && *op.offset(1 as isize) as libc::c_int == '\u{0}' as i32
-        {
-            if shell_compatibility_level > 40 as libc::c_int
-                && flags & TEST_LOCALE as libc::c_int != 0
-            {
+    } {
+        if unsafe {
+            shell_compatibility_level > 40 as libc::c_int && flags & TEST_LOCALE as libc::c_int != 0
+        } {
+            unsafe {
                 return if *op.offset(0 as libc::c_int as isize) as libc::c_int == '>' as i32 {
                     (strcoll(arg1, arg2) > 0 as libc::c_int) as libc::c_int
                 } else {
                     (strcoll(arg1, arg2) < 0 as libc::c_int) as libc::c_int
                 };
-            } else {
+            }
+        } else {
+            unsafe {
                 return if *op.offset(0 as libc::c_int as isize) as libc::c_int == '>' as i32 {
                     (strcmp(arg1, arg2) > 0 as libc::c_int) as libc::c_int
                 } else {
                     (strcmp(arg1, arg2) < 0 as libc::c_int) as libc::c_int
                 };
             }
-        } else if *op.offset(0 as libc::c_int as isize) as libc::c_int == '!' as i32
+        }
+    } else if unsafe {
+        *op.offset(0 as libc::c_int as isize) as libc::c_int == '!' as i32
             && *op.offset(1 as libc::c_int as isize) as libc::c_int == '=' as i32
             && *op.offset(2 as libc::c_int as isize) as libc::c_int == '\u{0}' as i32
-        {
-            return if patmatch != 0 {
-                patcomp(arg1, arg2, 1 as libc::c_int)
-            } else {
+    } {
+        return if patmatch != 0 {
+            patcomp(arg1, arg2, 1 as libc::c_int)
+        } else {
+            unsafe {
                 ((*arg1.offset(0 as libc::c_int as isize) as libc::c_int
                     == *arg2.offset(0 as libc::c_int as isize) as libc::c_int
                     && strcmp(arg1, arg2) == 0 as libc::c_int) as libc::c_int
                     == 0 as libc::c_int) as libc::c_int
-            };
-        } else if *op.offset(2 as libc::c_int as isize) as libc::c_int == 't' as i32 {
-            match *op.offset(1 as libc::c_int as isize) as u8 as char {
-                'n' => {
-                    return filecomp(arg1, arg2, NT) as libc::c_int;
-                }
-                'o' => {
-                    return filecomp(arg1, arg2, OT) as libc::c_int;
-                }
-                'l' => {
-                    return arithcomp(arg1, arg2, LT, flags) as libc::c_int;
-                }
-                'g' => {
-                    return arithcomp(arg1, arg2, GT, flags) as libc::c_int;
-                }
-                _ => {}
             }
-        } else if *op.offset(1 as libc::c_int as isize) as libc::c_int == 'e' as i32 {
-            match *op.offset(2 as libc::c_int as isize) as u8 as char {
-                'f' => {
-                    return filecomp(arg1, arg2, EF) as libc::c_int;
-                }
-                'q' => {
-                    return arithcomp(arg1, arg2, EQ, flags) as libc::c_int;
-                }
-                _ => {}
+        };
+    } else if unsafe { *op.offset(2 as libc::c_int as isize) as libc::c_int == 't' as i32 } {
+        match unsafe { *op.offset(1 as libc::c_int as isize) as u8 as char } {
+            'n' => {
+                return filecomp(arg1, arg2, NT) as libc::c_int;
             }
-        } else if *op.offset(2 as libc::c_int as isize) as libc::c_int == 'e' as i32 {
-            match *op.offset(1 as libc::c_int as isize) as u8 as char {
-                'n' => {
-                    return arithcomp(arg1, arg2, NE, flags) as libc::c_int;
-                }
-                'g' => {
-                    return arithcomp(arg1, arg2, GE, flags) as libc::c_int;
-                }
-                'l' => {
-                    return arithcomp(arg1, arg2, LE, flags) as libc::c_int;
-                }
-                _ => {}
+            'o' => {
+                return filecomp(arg1, arg2, OT) as libc::c_int;
             }
+            'l' => {
+                return arithcomp(arg1, arg2, LT, flags) as libc::c_int;
+            }
+            'g' => {
+                return arithcomp(arg1, arg2, GT, flags) as libc::c_int;
+            }
+            _ => {}
         }
-        return 0;
+    } else if unsafe { *op.offset(1 as libc::c_int as isize) as libc::c_int == 'e' as i32 } {
+        match unsafe { *op.offset(2 as libc::c_int as isize) as u8 as char } {
+            'f' => {
+                return filecomp(arg1, arg2, EF) as libc::c_int;
+            }
+            'q' => {
+                return arithcomp(arg1, arg2, EQ, flags) as libc::c_int;
+            }
+            _ => {}
+        }
+    } else if unsafe { *op.offset(2 as libc::c_int as isize) as libc::c_int == 'e' as i32 } {
+        match unsafe { *op.offset(1 as libc::c_int as isize) as u8 as char } {
+            'n' => {
+                return arithcomp(arg1, arg2, NE, flags) as libc::c_int;
+            }
+            'g' => {
+                return arithcomp(arg1, arg2, GE, flags) as libc::c_int;
+            }
+            'l' => {
+                return arithcomp(arg1, arg2, LE, flags) as libc::c_int;
+            }
+            _ => {}
+        }
     }
+    return 0;
 }
 
-//whether diff types of variables from stat at arch arm/x86?
+//whether diff types of variables from c_stat at arch arm/x86?
 #[no_mangle]
 pub fn unary_test(op: *mut libc::c_char, arg: *mut libc::c_char) -> libc::c_int {
     let mut r: intmax_t = 0;
     let mut stat_buf: crate::src_common::stat = crate::src_common::stat_init;
-    let mut mtime: crate::src_common::timespec = crate::src_common::timespec {
-        tv_sec: 0,
-        tv_nsec: 0,
-    };
-    let mut atime: crate::src_common::timespec = crate::src_common::timespec {
-        tv_sec: 0,
-        tv_nsec: 0,
-    };
-    let mut v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-    unsafe {
-        match *op.offset(1) as u8 as char {
-            'a' | 'e' => {
-                return (sh_stat(arg, &mut stat_buf) == 0) as libc::c_int;
-            }
-            'r' => {
-                return (sh_eaccess(arg, R_OK) == 0) as libc::c_int;
-            }
-            'w' => {
-                return (sh_eaccess(arg, W_OK) == 0) as libc::c_int;
-            }
-            'x' => {
-                return (sh_eaccess(arg, X_OK) == 0) as libc::c_int;
-            }
-            'O' => {
-                return (sh_stat(arg, &mut stat_buf) == 0 && current_user.euid == stat_buf.st_uid)
-                    as libc::c_int;
-            }
-            'G' => {
-                return (sh_stat(arg, &mut stat_buf) == 0 && current_user.egid == stat_buf.st_gid)
-                    as libc::c_int;
-            }
-            'N' => {
-                if sh_stat(arg, &mut stat_buf) < 0 {
-                    return 0;
-                }
-                atime = get_stat_atime(&mut stat_buf);
-                mtime = get_stat_mtime(&mut stat_buf);
-                return (timespec_cmp(mtime, atime) > 0) as libc::c_int;
-            }
-            'f' => {
-                if sh_stat(arg, &mut stat_buf) < 0 {
-                    return 0;
-                }
-                return (stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint
-                    == 0o100000 as libc::c_int as libc::c_uint
-                    || stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint == 0)
-                    as libc::c_int;
-            }
-            'd' => {
-                return (sh_stat(arg, &mut stat_buf) == 0
-                    && stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint
-                        == 0o40000 as libc::c_int as libc::c_uint)
-                    as libc::c_int;
-            }
-            's' => {
-                return (sh_stat(arg, &mut stat_buf) == 0 && stat_buf.st_size > 0 as off_t)
-                    as libc::c_int;
-            }
-            'S' => {
-                return (sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
-                    && stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint
-                        == 0o140000 as libc::c_int as libc::c_uint)
-                    as libc::c_int;
-            }
-            'c' => {
-                return (sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
-                    && stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint
-                        == 0o20000 as libc::c_int as libc::c_uint)
-                    as libc::c_int;
-            }
-            'b' => {
-                return (sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
-                    && stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint
-                        == 0o60000 as libc::c_int as libc::c_uint)
-                    as libc::c_int;
-            }
-            'p' => {
-                return (sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
-                    && stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint
-                        == 0o10000 as libc::c_int as libc::c_uint)
-                    as libc::c_int;
-            }
-            'L' | 'h' => {
-                return (*arg.offset(0 as libc::c_int as isize) as i32 != '\u{0}' as i32
-                    && lstat(arg, &mut stat_buf) == 0 as i32
-                    && stat_buf.st_mode & 0o170000 as i32 as u32 == 0o120000 as i32 as u32)
-                    as libc::c_int;
-            }
-            'u' => {
-                return (sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
-                    && stat_buf.st_mode & 0o4000 as libc::c_int as libc::c_uint
-                        != 0 as libc::c_int as libc::c_uint) as libc::c_int;
-            }
-            'g' => {
-                return (sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
-                    && stat_buf.st_mode & 0o2000 as libc::c_int as libc::c_uint
-                        != 0 as libc::c_int as libc::c_uint) as libc::c_int;
-            }
-            'k' => {
-                return (sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
-                    && stat_buf.st_mode & 0o1000 as libc::c_int as libc::c_uint
-                        != 0 as libc::c_int as libc::c_uint) as libc::c_int;
-            }
-            't' => {
-                if legal_number(arg, &mut r) == 0 as libc::c_int {
-                    return 0 as libc::c_int;
-                }
-                return (r == r as libc::c_int as libc::c_long && isatty(r as libc::c_int) != 0)
-                    as libc::c_int;
-            }
-            'n' => {
-                return (*arg.offset(0 as libc::c_int as isize) as libc::c_int != '\u{0}' as i32)
-                    as libc::c_int;
-            }
-            'z' => {
-                return (*arg.offset(0 as libc::c_int as isize) as libc::c_int == '\u{0}' as i32)
-                    as libc::c_int;
-            }
-            'o' => {
-                return (minus_o_option_value(arg) == 1 as libc::c_int) as libc::c_int;
-            }
-            'v' => {
-                if valid_array_reference(arg, 0) != 0 {
-                    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-                    let mut rtype: libc::c_int = 0;
-                    let mut ret: libc::c_int = 0;
-                    let mut flags: libc::c_int = 0;
-                    flags = if assoc_expand_once != 0 {
-                        0x20 as libc::c_int
-                    } else {
-                        0 as libc::c_int
-                    };
-                    t = array_value(
-                        arg,
-                        0 as libc::c_int,
-                        flags,
-                        &mut rtype,
-                        0 as *mut arrayind_t,
-                    );
-                    ret = if !t.is_null() {
-                        1 as libc::c_int
-                    } else {
-                        0 as libc::c_int
-                    };
-                    if rtype > 0 as libc::c_int {
-                        free(t as *mut libc::c_void);
-                    }
-                    return ret;
-                } else {
-                    if legal_number(arg, &mut r) != 0 {
-                        return if r >= 0 as libc::c_int as libc::c_long
-                            && r <= number_of_args() as libc::c_long
-                        {
-                            1 as libc::c_int
-                        } else {
-                            0 as libc::c_int
-                        };
-                    }
-                }
+    let mtime: crate::src_common::timespec;
+    let atime: crate::src_common::timespec;
+    let v: *mut SHELL_VAR;
 
-                v = find_variable(arg);
-                if !v.is_null()
-                    && (*v).attributes & 0x1000 as libc::c_int == 0 as libc::c_int
-                    && (*v).attributes & 0x4 as libc::c_int != 0
-                {
-                    let mut t_0: *mut libc::c_char = 0 as *mut libc::c_char;
-                    t_0 = array_reference((*v).value as *mut ARRAY, 0 as libc::c_int as arrayind_t);
-                    return if !t_0.is_null() {
-                        1 as libc::c_int
-                    } else {
-                        0 as libc::c_int
-                    };
+    match unsafe { *op.offset(1) as u8 as char } {
+        'a' | 'e' => {
+            return (c_sh_stat(arg, &mut stat_buf) == 0) as libc::c_int;
+        }
+        'r' => {
+            return (c_sh_eaccess(arg, R_OK) == 0) as libc::c_int;
+        }
+        'w' => {
+            return (c_sh_eaccess(arg, W_OK) == 0) as libc::c_int;
+        }
+        'x' => {
+            return (c_sh_eaccess(arg, X_OK) == 0) as libc::c_int;
+        }
+        'O' => {
+            return unsafe {
+                (c_sh_stat(arg, &mut stat_buf) == 0 && current_user.euid == stat_buf.st_uid)
+                    as libc::c_int
+            };
+        }
+        'G' => {
+            return unsafe {
+                (c_sh_stat(arg, &mut stat_buf) == 0 && current_user.egid == stat_buf.st_gid)
+                    as libc::c_int
+            };
+        }
+        'N' => {
+            if c_sh_stat(arg, &mut stat_buf) < 0 {
+                return 0;
+            }
+            atime = get_stat_atime(&mut stat_buf);
+            mtime = get_stat_mtime(&mut stat_buf);
+            return (timespec_cmp(mtime, atime) > 0) as libc::c_int;
+        }
+        'f' => {
+            if c_sh_stat(arg, &mut stat_buf) < 0 {
+                return 0;
+            }
+            return (stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint
+                == 0o100000 as libc::c_int as libc::c_uint
+                || stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint == 0)
+                as libc::c_int;
+        }
+        'd' => {
+            return (c_sh_stat(arg, &mut stat_buf) == 0
+                && stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint
+                    == 0o40000 as libc::c_int as libc::c_uint) as libc::c_int;
+        }
+        's' => {
+            return (c_sh_stat(arg, &mut stat_buf) == 0 && stat_buf.st_size > 0 as off_t)
+                as libc::c_int;
+        }
+        'S' => {
+            return (c_sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
+                && stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint
+                    == 0o140000 as libc::c_int as libc::c_uint) as libc::c_int;
+        }
+        'c' => {
+            return (c_sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
+                && stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint
+                    == 0o20000 as libc::c_int as libc::c_uint) as libc::c_int;
+        }
+        'b' => {
+            return (c_sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
+                && stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint
+                    == 0o60000 as libc::c_int as libc::c_uint) as libc::c_int;
+        }
+        'p' => {
+            return (c_sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
+                && stat_buf.st_mode & 0o170000 as libc::c_int as libc::c_uint
+                    == 0o10000 as libc::c_int as libc::c_uint) as libc::c_int;
+        }
+        'L' | 'h' => {
+            return unsafe {
+                (*arg.offset(0 as libc::c_int as isize) as i32 != '\u{0}' as i32
+                    && c_lstat(arg, &mut stat_buf) == 0 as i32
+                    && stat_buf.st_mode & 0o170000 as i32 as u32 == 0o120000 as i32 as u32)
+                    as libc::c_int
+            };
+        }
+        'u' => {
+            return (c_sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
+                && stat_buf.st_mode & 0o4000 as libc::c_int as libc::c_uint
+                    != 0 as libc::c_int as libc::c_uint) as libc::c_int;
+        }
+        'g' => {
+            return (c_sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
+                && stat_buf.st_mode & 0o2000 as libc::c_int as libc::c_uint
+                    != 0 as libc::c_int as libc::c_uint) as libc::c_int;
+        }
+        'k' => {
+            return (c_sh_stat(arg, &mut stat_buf) == 0 as libc::c_int
+                && stat_buf.st_mode & 0o1000 as libc::c_int as libc::c_uint
+                    != 0 as libc::c_int as libc::c_uint) as libc::c_int;
+        }
+        't' => {
+            if legal_number(arg, &mut r) == 0 as libc::c_int {
+                return 0 as libc::c_int;
+            }
+            return unsafe {
+                (r == r as libc::c_int as libc::c_long && isatty(r as libc::c_int) != 0)
+                    as libc::c_int
+            };
+        }
+        'n' => {
+            return unsafe {
+                (*arg.offset(0 as libc::c_int as isize) as libc::c_int != '\u{0}' as i32)
+                    as libc::c_int
+            };
+        }
+        'z' => {
+            return unsafe {
+                (*arg.offset(0 as libc::c_int as isize) as libc::c_int == '\u{0}' as i32)
+                    as libc::c_int
+            };
+        }
+        'o' => {
+            return (minus_o_option_value(arg) == 1 as libc::c_int) as libc::c_int;
+        }
+        'v' => {
+            if valid_array_reference(arg, 0) != 0 {
+                let t: *mut libc::c_char;
+                let mut rtype: libc::c_int = 0;
+                let ret: libc::c_int;
+                let flags: libc::c_int;
+                flags = if unsafe { assoc_expand_once != 0 } {
+                    0x20 as libc::c_int
                 } else {
-                    if !v.is_null()
-                        && (*v).attributes & 0x1000 as libc::c_int == 0 as libc::c_int
-                        && (*v).attributes & 0x40 as libc::c_int != 0
-                    {
-                        let mut t_1: *mut libc::c_char = 0 as *mut libc::c_char;
-                        t_1 = assoc_reference(
-                            (*v).value as *mut HASH_TABLE,
-                            b"0\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-                        );
-                        return if !t_1.is_null() {
-                            1 as libc::c_int
-                        } else {
-                            0 as libc::c_int
-                        };
-                    }
-                }
-                return if !v.is_null()
-                    && (*v).attributes & 0x1000 as libc::c_int == 0 as libc::c_int
-                    && !((*v).value).is_null()
-                {
+                    0 as libc::c_int
+                };
+                t = array_value(
+                    arg,
+                    0 as libc::c_int,
+                    flags,
+                    &mut rtype,
+                    0 as *mut arrayind_t,
+                );
+                ret = if !t.is_null() {
                     1 as libc::c_int
                 } else {
                     0 as libc::c_int
                 };
+                if rtype > 0 as libc::c_int {
+                    unsafe {
+                        free(t as *mut libc::c_void);
+                    }
+                }
+                return ret;
+            } else {
+                if legal_number(arg, &mut r) != 0 {
+                    return if r >= 0 as libc::c_int as libc::c_long
+                        && r <= number_of_args() as libc::c_long
+                    {
+                        1 as libc::c_int
+                    } else {
+                        0 as libc::c_int
+                    };
+                }
             }
-            'R' => {
-                v = find_variable_noref(arg);
-                return if !v.is_null()
+
+            v = find_variable(arg);
+            if unsafe {
+                !v.is_null()
+                    && (*v).attributes & 0x1000 as libc::c_int == 0 as libc::c_int
+                    && (*v).attributes & 0x4 as libc::c_int != 0
+            } {
+                let t_0: *mut libc::c_char;
+                t_0 = unsafe {
+                    array_reference((*v).value as *mut ARRAY, 0 as libc::c_int as arrayind_t)
+                };
+                return if !t_0.is_null() {
+                    1 as libc::c_int
+                } else {
+                    0 as libc::c_int
+                };
+            } else {
+                if unsafe {
+                    !v.is_null()
+                        && (*v).attributes & 0x1000 as libc::c_int == 0 as libc::c_int
+                        && (*v).attributes & 0x40 as libc::c_int != 0
+                } {
+                    let t_1: *mut libc::c_char;
+                    t_1 = unsafe {
+                        assoc_reference(
+                            (*v).value as *mut HASH_TABLE,
+                            b"0\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+                        )
+                    };
+                    return if !t_1.is_null() {
+                        1 as libc::c_int
+                    } else {
+                        0 as libc::c_int
+                    };
+                }
+            }
+            return if unsafe {
+                !v.is_null()
+                    && (*v).attributes & 0x1000 as libc::c_int == 0 as libc::c_int
+                    && !((*v).value).is_null()
+            } {
+                1 as libc::c_int
+            } else {
+                0 as libc::c_int
+            };
+        }
+        'R' => {
+            v = find_variable_noref(arg);
+            return if unsafe {
+                !v.is_null()
                     && (*v).attributes & 0x1000 as libc::c_int == 0 as libc::c_int
                     && !((*v).value).is_null()
                     && (*v).attributes & 0x800 as libc::c_int != 0
-                {
-                    1 as libc::c_int
-                } else {
-                    0 as libc::c_int
-                };
-            }
-            _ => {}
+            } {
+                1 as libc::c_int
+            } else {
+                0 as libc::c_int
+            };
         }
+        _ => {}
     }
     return 0;
 }
