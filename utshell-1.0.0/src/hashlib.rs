@@ -1,19 +1,15 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::src_common::*;
 
 #[no_mangle]
 pub fn hash_create(mut buckets: libc::c_int) -> *mut HASH_TABLE {
+    let new_table: *mut HASH_TABLE;
+    let mut i: libc::c_int;
+
+    new_table = unsafe { malloc(::std::mem::size_of::<HASH_TABLE>() as usize) as *mut HASH_TABLE };
+    if buckets == 0 {
+        buckets = DEFAULT_HASH_BUCKETS as libc::c_int;
+    }
     unsafe {
-        let mut new_table: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
-        let mut i: libc::c_int = 0;
-
-        new_table = malloc(::std::mem::size_of::<HASH_TABLE>() as usize) as *mut HASH_TABLE;
-        if buckets == 0 {
-            buckets = DEFAULT_HASH_BUCKETS as libc::c_int;
-        }
-
         (*new_table).bucket_array = malloc(
             (buckets as libc::c_ulong)
                 .wrapping_mul(::std::mem::size_of::<*mut BUCKET_CONTENTS>() as libc::c_ulong)
@@ -21,15 +17,16 @@ pub fn hash_create(mut buckets: libc::c_int) -> *mut HASH_TABLE {
         ) as *mut *mut BUCKET_CONTENTS;
         (*new_table).nbuckets = buckets;
         (*new_table).nentries = 0;
-
-        i = 0;
-        while i < buckets {
-            *((*new_table).bucket_array).offset(i as isize) = 0 as *mut BUCKET_CONTENTS;
-
-            i += 1;
-        }
-        return new_table;
     }
+    i = 0;
+    while i < buckets {
+        unsafe {
+            *((*new_table).bucket_array).offset(i as isize) = 0 as *mut BUCKET_CONTENTS;
+        }
+
+        i += 1;
+    }
+    return new_table;
 }
 
 #[no_mangle]
@@ -43,18 +40,18 @@ fn copy_bucket_array(
     ba: *mut BUCKET_CONTENTS,
     cpdata: Option<sh_string_func_t>,
 ) -> *mut BUCKET_CONTENTS {
-    unsafe {
-        let mut new_bucket: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-        let mut n: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-        let mut e: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let mut new_bucket: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let mut n: *mut BUCKET_CONTENTS;
+    let mut e: *mut BUCKET_CONTENTS;
 
-        if ba.is_null() {
-            return 0 as *mut BUCKET_CONTENTS;
-        }
+    if ba.is_null() {
+        return 0 as *mut BUCKET_CONTENTS;
+    }
 
-        n = 0 as *mut BUCKET_CONTENTS;
-        e = ba;
-        while !e.is_null() {
+    n = 0 as *mut BUCKET_CONTENTS;
+    e = ba;
+    while !e.is_null() {
+        unsafe {
             if n.is_null() {
                 new_bucket = malloc(::std::mem::size_of::<BUCKET_CONTENTS>() as usize)
                     as *mut BUCKET_CONTENTS;
@@ -82,17 +79,17 @@ fn copy_bucket_array(
 
             e = (*e).next;
         }
-        return new_bucket;
     }
+    return new_bucket;
 }
 
 fn hash_rehash(table: *mut HASH_TABLE, nsize: libc::c_int) {
-    let mut osize: libc::c_int = 0;
-    let mut i: libc::c_int = 0;
-    let mut j: libc::c_int = 0;
-    let mut old_bucket_array: *mut *mut BUCKET_CONTENTS = 0 as *mut *mut BUCKET_CONTENTS;
-    let mut item: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut next: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let osize: libc::c_int;
+    let mut i: libc::c_int;
+    let mut j: libc::c_int;
+    let old_bucket_array: *mut *mut BUCKET_CONTENTS;
+    let mut item: *mut BUCKET_CONTENTS;
+    let mut next: *mut BUCKET_CONTENTS;
     unsafe {
         if table.is_null() || nsize == (*table).nbuckets {
             return;
@@ -134,31 +131,30 @@ fn hash_rehash(table: *mut HASH_TABLE, nsize: libc::c_int) {
 }
 
 fn hash_grow(table: *mut HASH_TABLE) {
-    let mut nsize: libc::c_int = 0;
-    unsafe {
-        nsize = (*table).nbuckets * HASH_REHASH_MULTIPLIER!();
-        if nsize > 0 {
-            hash_rehash(table, nsize);
-        }
-    }
-}
+    let nsize: libc::c_int;
 
-fn hash_shrink(table: *mut HASH_TABLE) {
-    let mut nsize: libc::c_int = 0;
-    unsafe {
-        nsize = (*table).nbuckets / HASH_REHASH_MULTIPLIER!();
+    nsize = unsafe { (*table).nbuckets * HASH_REHASH_MULTIPLIER!() };
+    if nsize > 0 {
         hash_rehash(table, nsize);
     }
 }
 
+// fn hash_shrink(table: *mut HASH_TABLE) {
+//     let mut nsize: libc::c_int = 0;
+
+//     nsize = unsafe { (*table).nbuckets / HASH_REHASH_MULTIPLIER!() };
+//     hash_rehash(table, nsize);
+// }
+
 #[no_mangle]
 pub fn hash_copy(table: *mut HASH_TABLE, cpdata: Option<sh_string_func_t>) -> *mut HASH_TABLE {
-    let mut new_table: *mut HASH_TABLE = 0 as *mut HASH_TABLE;
-    let mut i: libc::c_int = 0;
+    let new_table: *mut HASH_TABLE;
+    let mut i: libc::c_int;
+
+    if table.is_null() {
+        return 0 as *mut HASH_TABLE;
+    }
     unsafe {
-        if table.is_null() {
-            return 0 as *mut HASH_TABLE;
-        }
         new_table = hash_create((*table).nbuckets);
 
         i = 0;
@@ -175,28 +171,28 @@ pub fn hash_copy(table: *mut HASH_TABLE, cpdata: Option<sh_string_func_t>) -> *m
 
 #[no_mangle]
 pub fn hash_string(mut s: *const libc::c_char) -> libc::c_uint {
-    unsafe {
-        let mut i: libc::c_uint = 0;
+    let mut i: libc::c_uint;
 
-        i = FNV_OFFSET!();
-        while *s != 0 {
-            i = i.wrapping_add(
-                (i << 1 as libc::c_int)
-                    .wrapping_add(i << 4 as libc::c_int)
-                    .wrapping_add(i << 7 as libc::c_int)
-                    .wrapping_add(i << 8 as libc::c_int)
-                    .wrapping_add(i << 24 as libc::c_int),
-            );
+    i = FNV_OFFSET!();
+    while unsafe { *s != 0 } {
+        i = i.wrapping_add(
+            (i << 1 as libc::c_int)
+                .wrapping_add(i << 4 as libc::c_int)
+                .wrapping_add(i << 7 as libc::c_int)
+                .wrapping_add(i << 8 as libc::c_int)
+                .wrapping_add(i << 24 as libc::c_int),
+        );
+        unsafe {
             i ^= *s as libc::c_uint;
             s = s.offset(1);
         }
-        return i;
     }
+    return i;
 }
 
 #[no_mangle]
 pub fn hash_bucket(string: *const libc::c_char, table: *mut HASH_TABLE) -> libc::c_int {
-    let mut h: libc::c_uint = 0;
+    let h: libc::c_uint;
     unsafe {
         return HASH_BUCKET!(string, table, h) as i32;
     }
@@ -208,9 +204,9 @@ pub fn hash_search(
     table: *mut HASH_TABLE,
     flags: libc::c_int,
 ) -> *mut BUCKET_CONTENTS {
-    let mut list: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut bucket: libc::c_int = 0;
-    let mut hv: libc::c_uint = 0;
+    let mut list: *mut BUCKET_CONTENTS;
+    let mut bucket: libc::c_int;
+    let mut hv: libc::c_uint;
     unsafe {
         if table.is_null()
             || flags & HASH_CREATE as libc::c_int == 0 as libc::c_int
@@ -237,7 +233,7 @@ pub fn hash_search(
         if flags & HASH_CREATE as libc::c_int != 0 {
             if HASH_SHOULDGROW!(table) {
                 hash_grow(table);
-                hv = hash_string(string);
+                hash_string(string);
                 bucket = HASH_BUCKET!(string, table, hv) as i32;
             }
             list =
@@ -261,12 +257,12 @@ pub fn hash_search(
 pub fn hash_remove(
     string: *const libc::c_char,
     table: *mut HASH_TABLE,
-    flags: libc::c_int,
+    _flags: libc::c_int,
 ) -> *mut BUCKET_CONTENTS {
-    let mut bucket: libc::c_int = 0;
-    let mut prev: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut temp: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut hv: libc::c_uint = 0;
+    let bucket: libc::c_int;
+    let mut prev: *mut BUCKET_CONTENTS;
+    let mut temp: *mut BUCKET_CONTENTS;
+    let hv: libc::c_uint;
     unsafe {
         if table.is_null() || HASH_ENTRIES!(table) == 0 as libc::c_int {
             return 0 as *mut BUCKET_CONTENTS;
@@ -299,24 +295,23 @@ pub fn hash_insert(
     mut table: *mut HASH_TABLE,
     flags: libc::c_int,
 ) -> *mut BUCKET_CONTENTS {
-    unsafe {
-        let mut item: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-        let mut bucket: libc::c_int = 0;
-        let mut hv: libc::c_uint = 0;
+    let mut item: *mut BUCKET_CONTENTS;
+    let bucket: libc::c_int;
+    let hv: libc::c_uint;
 
-        if table.is_null() {
-            table = hash_create(0 as libc::c_int);
+    if table.is_null() {
+        table = hash_create(0 as libc::c_int);
+    }
+    item = if flags & 0x1 as libc::c_int != 0 {
+        0 as *mut c_void as *mut BUCKET_CONTENTS
+    } else {
+        hash_search(string, table, 0 as libc::c_int)
+    };
+    if item.is_null() {
+        if unsafe { HASH_SHOULDGROW!(table) } {
+            hash_grow(table);
         }
-        item = if flags & 0x1 as libc::c_int != 0 {
-            0 as *mut c_void as *mut BUCKET_CONTENTS
-        } else {
-            hash_search(string, table, 0 as libc::c_int)
-        };
-        if item.is_null() {
-            if HASH_SHOULDGROW!(table) {
-                hash_grow(table);
-            }
-
+        unsafe {
             bucket = HASH_BUCKET!(string, table, hv) as i32;
             item =
                 malloc(::std::mem::size_of::<BUCKET_CONTENTS>() as usize) as *mut BUCKET_CONTENTS;
@@ -331,16 +326,16 @@ pub fn hash_insert(
 
             (*table).nentries += 1;
         }
-
-        return item;
     }
+
+    return item;
 }
 
 #[no_mangle]
 pub fn hash_flush(table: *mut HASH_TABLE, free_data: sh_free_func_t) {
-    let mut i: libc::c_int = 0;
-    let mut bucket: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut item: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let mut i: libc::c_int;
+    let mut bucket: *mut BUCKET_CONTENTS;
+    let mut item: *mut BUCKET_CONTENTS;
     unsafe {
         if table.is_null() || HASH_ENTRIES!(table) == 0 as libc::c_int {
             return;
@@ -380,8 +375,8 @@ pub fn hash_dispose(table: *mut HASH_TABLE) {
 
 #[no_mangle]
 pub fn hash_walk(table: *mut HASH_TABLE, func: Option<hash_wfunc>) {
-    let mut i: libc::c_int = 0;
-    let mut item: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let mut i: libc::c_int;
+    let mut item: *mut BUCKET_CONTENTS;
     unsafe {
         if table.is_null() || HASH_ENTRIES!(table) == 0 as libc::c_int {
             return;
