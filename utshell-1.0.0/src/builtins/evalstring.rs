@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use libc::{close, free, malloc, open, strcmp, strcpy, strlen};
 
 use crate::bashhist::bash_history_disable;
@@ -10,7 +7,7 @@ use crate::error::{command_error, file_error};
 use crate::eval::parse_command;
 use crate::execute_cmd::{dispose_fd_bitmap, execute_command_internal, new_fd_bitmap};
 use crate::jobs::unfreeze_jobs_list;
-use crate::readline::siglongjmp;
+// use crate::readline::c_siglongjmp;
 use crate::redir::{redirection_error, redirection_expand};
 use crate::sig::{jump_to_top_level, throw_to_top_level, top_level_cleanup};
 use crate::src_common::*;
@@ -26,15 +23,6 @@ use crate::y_tab::{
     pop_stream, push_stream, reset_parser, set_current_prompt_level, shell_eof_token,
     with_input_from_string,
 };
-
-extern "C" {
-    fn sigprocmask(
-        __how: ::std::os::raw::c_int,
-        __set: *const sigset_t,
-        __oset: *mut sigset_t,
-    ) -> ::std::os::raw::c_int;
-    fn sigemptyset(__set: *mut sigset_t) -> ::std::os::raw::c_int;
-}
 
 #[no_mangle]
 pub static mut parse_and_execute_level: libc::c_int = 0 as libc::c_int;
@@ -126,7 +114,7 @@ pub fn optimize_subshell_command(command: *mut COMMAND) {
 }
 #[no_mangle]
 pub fn optimize_shell_function(command: *mut COMMAND) {
-    let mut fc: *mut COMMAND = 0 as *mut COMMAND;
+    let fc: *mut COMMAND;
     unsafe {
         fc = if (*command).type_0 as libc::c_uint == cm_group as libc::c_int as libc::c_uint {
             (*(*command).value.Group).command
@@ -150,26 +138,28 @@ pub fn optimize_shell_function(command: *mut COMMAND) {
 }
 #[no_mangle]
 pub fn parse_and_execute_cleanup(old_running_trap: libc::c_int) {
-    unsafe {
-        if running_trap > 0 as libc::c_int {
-            if running_trap != old_running_trap {
+    if unsafe { running_trap > 0 as libc::c_int } {
+        if unsafe { running_trap != old_running_trap } {
+            unsafe {
                 run_trap_cleanup(running_trap - 1 as libc::c_int);
             }
-            unfreeze_jobs_list();
         }
-        if have_unwind_protects() != 0 {
-            run_unwind_frame(
-                b"parse_and_execute top\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-            );
-        } else {
-            parse_and_execute_level = 0 as libc::c_int;
-        };
+        unfreeze_jobs_list();
     }
+    if have_unwind_protects() != 0 {
+        run_unwind_frame(
+            b"parse_and_execute top\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        );
+    } else {
+        unsafe {
+            parse_and_execute_level = 0 as libc::c_int;
+        }
+    };
 }
 fn parse_prologue(string: *mut libc::c_char, flags: libc::c_int, tag: *mut libc::c_char) {
-    let mut orig_string: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut lastcom: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut x: libc::c_int = 0;
+    let orig_string: *mut libc::c_char;
+    let lastcom: *mut libc::c_char;
+    let x: libc::c_int;
     orig_string = string;
     unsafe {
         begin_unwind_frame(tag);
@@ -212,10 +202,6 @@ fn parse_prologue(string: *mut libc::c_char, flags: libc::c_int, tag: *mut libc:
             );
         }
         if parse_and_execute_level == 0 as libc::c_int {
-            // let shr: Functions = Functions {
-            //     set_history_remembering,
-            // };
-            // add_unwind_protect(set_history_remembering, 0 as *mut libc::c_void as *mut libc::c_char);
             add_unwind_protect(
                 std::mem::transmute::<fn(), Option<Function>>(set_history_remembering),
                 0 as *mut libc::c_void as *mut libc::c_char,
@@ -232,10 +218,6 @@ fn parse_prologue(string: *mut libc::c_char, flags: libc::c_int, tag: *mut libc:
         );
         if interactive_shell != 0 {
             x = get_current_prompt_level();
-            // let scpl: Functions = Functions {
-            //     set_current_prompt_level,
-            // };
-            // add_unwind_protect(scpl, x);
             add_unwind_protect(
                 std::mem::transmute::<fn(x: libc::c_int), Option<Function>>(
                     set_current_prompt_level,
@@ -252,24 +234,16 @@ fn parse_prologue(string: *mut libc::c_char, flags: libc::c_int, tag: *mut libc:
                 ) as *mut libc::c_char,
                 the_printed_command_except_trap,
             );
-            // let rl: Functions = Functions { restore_lastcom };
-            // add_unwind_protect(rl, lastcom);
             add_unwind_protect(
                 std::mem::transmute::<fn(x: *mut libc::c_char), Option<Function>>(restore_lastcom),
                 lastcom,
             );
         }
-        // let ps: Functions = Functions { pop_stream };
-        // add_unwind_protect(ps, 0 as *mut libc::c_void as *mut libc::c_char);
         add_unwind_protect(
             std::mem::transmute::<fn(), Option<Function>>(pop_stream),
             0 as *mut libc::c_void as *mut libc::c_char,
         );
         if parser_expanding_alias() != 0 {
-            // let pra: Functions = Functions {
-            //     parser_restore_alias,
-            // };
-            // add_unwind_protect(pra, 0 as *mut libc::c_void as *mut libc::c_char);
             add_unwind_protect(
                 std::mem::transmute::<fn(), Option<Function>>(parser_restore_alias),
                 0 as *mut libc::c_void as *mut libc::c_char,
@@ -277,8 +251,6 @@ fn parse_prologue(string: *mut libc::c_char, flags: libc::c_int, tag: *mut libc:
         }
         if !orig_string.is_null() && flags & CMD_IGNORE_RETURN!() as libc::c_int == 0 as libc::c_int
         {
-            // let xf: Functions = Functions { free };
-            // add_unwind_protect(xf, orig_string);
             add_unwind_protect(
                 std::mem::transmute::<unsafe extern "C" fn(_), Option<Function>>(free),
                 orig_string,
@@ -305,8 +277,8 @@ pub fn parse_and_execute(
     from_file: *const libc::c_char,
     flags: libc::c_int,
 ) -> libc::c_int {
-    let mut code: libc::c_int = 0;
-    let mut lreset: libc::c_int = 0;
+    let mut code: libc::c_int;
+    let lreset: libc::c_int;
     let mut should_jump_to_top_level: libc::c_int = 0;
     let mut last_result: libc::c_int = 0;
     let mut command: *mut COMMAND = 0 as *mut COMMAND;
@@ -319,8 +291,8 @@ pub fn parse_and_execute(
         );
         parse_and_execute_level += 1;
         lreset = flags & SEVAL_RESETLINE!() as libc::c_int;
-        sigemptyset(&mut pe_sigmask as *mut sigset_t as *mut sigset_t);
-        sigprocmask(
+        c_sigemptyset(&mut pe_sigmask as *mut sigset_t as *mut sigset_t);
+        c_sigprocmask(
             0 as libc::c_int,
             0 as *mut libc::c_void as *mut sigset_t,
             &mut pe_sigmask as *mut sigset_t as *mut sigset_t,
@@ -449,7 +421,7 @@ pub fn parse_and_execute(
                                 }
                                 return last_result;
                             } else {
-                                sigprocmask(
+                                c_sigprocmask(
                                     2 as libc::c_int,
                                     &mut pe_sigmask as *mut sigset_t as *mut sigset_t,
                                     0 as *mut libc::c_void as *mut sigset_t,
@@ -489,9 +461,9 @@ pub fn parse_and_execute(
                         {
                             continue;
                         }
-                        let mut bitmap: *mut fd_bitmap = 0 as *mut fd_bitmap;
+                        let bitmap: *mut fd_bitmap;
                         if flags & CMD_TIME_PIPELINE!() as libc::c_int != 0 {
-                            let mut x: *mut libc::c_char = 0 as *mut libc::c_char;
+                            let x: *mut libc::c_char;
                             if (*command).type_0 as libc::c_uint
                                 != cm_function_def as libc::c_int as libc::c_uint
                                 || {
@@ -510,7 +482,7 @@ pub fn parse_and_execute(
                                     == 0 as libc::c_int
                             {
                                 internal_warning(
-                                    dcgettext(
+                                    c_dcgettext(
                                         0 as *const libc::c_char,
                                         b"%s: ignoring function definition attempt\0" as *const u8
                                             as *const libc::c_char,
@@ -542,10 +514,6 @@ pub fn parse_and_execute(
                             b"pe_dispose\0" as *const u8 as *const libc::c_char
                                 as *mut libc::c_char,
                         );
-                        // let dfb: Functions = Functions { dispose_fd_bitmap };
-                        // add_unwind_protect(dfb, bitmap);
-                        // let dc: Functions = Functions { dispose_command };
-                        // add_unwind_protect(dc, command);
                         add_unwind_protect(
                             std::mem::transmute::<fn(*mut fd_bitmap), Option<Function>>(
                                 dispose_fd_bitmap,
@@ -592,7 +560,7 @@ pub fn parse_and_execute(
                             && (*(*(*command).value.Simple).redirects).redirector.dest
                                 == 0 as libc::c_int
                         {
-                            let mut r: libc::c_int = 0;
+                            let r: libc::c_int;
                             r = cat_file((*(*command).value.Simple).redirects);
                             ::std::ptr::write_volatile(
                                 &mut last_result as *mut libc::c_int,
@@ -604,7 +572,6 @@ pub fn parse_and_execute(
                             );
                         } else {
                             ::std::ptr::write_volatile(
-                                //问题
                                 &mut last_result as *mut libc::c_int,
                                 execute_command_internal(
                                     command,
@@ -674,29 +641,30 @@ pub fn parse_string(
     flags: libc::c_int,
     endp: *mut *mut libc::c_char,
 ) -> libc::c_int {
-    let mut code: libc::c_int = 0;
-    let mut nc: libc::c_int = 0;
+    let mut code: libc::c_int;
+    let nc: libc::c_int;
     let mut should_jump_to_top_level: libc::c_int = 0;
     let mut command: *mut COMMAND = 0 as *mut COMMAND;
-    let mut oglobal: *mut COMMAND = 0 as *mut COMMAND;
-    let mut ostring: *mut libc::c_char = 0 as *mut libc::c_char;
+    let oglobal: *mut COMMAND;
+    let ostring: *mut libc::c_char;
     let mut ps_sigmask: sigset_t = __sigset_t { __val: [0; 16] };
+
+    parse_prologue(
+        string,
+        flags,
+        b"parse_string top\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+    );
+    c_sigemptyset(&mut ps_sigmask as *mut sigset_t as *mut sigset_t);
+    c_sigprocmask(
+        0 as libc::c_int,
+        0 as *mut libc::c_void as *mut sigset_t,
+        &mut ps_sigmask as *mut sigset_t as *mut sigset_t,
+    );
+    push_stream(0 as libc::c_int);
+    if parser_expanding_alias() != 0 {
+        parser_save_alias();
+    }
     unsafe {
-        parse_prologue(
-            string,
-            flags,
-            b"parse_string top\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-        );
-        sigemptyset(&mut ps_sigmask as *mut sigset_t as *mut sigset_t);
-        sigprocmask(
-            0 as libc::c_int,
-            0 as *mut libc::c_void as *mut sigset_t,
-            &mut ps_sigmask as *mut sigset_t as *mut sigset_t,
-        );
-        push_stream(0 as libc::c_int);
-        if parser_expanding_alias() != 0 {
-            parser_save_alias();
-        }
         ::std::ptr::write_volatile(
             &mut should_jump_to_top_level as *mut libc::c_int,
             0 as libc::c_int,
@@ -705,24 +673,30 @@ pub fn parse_string(
             &should_jump_to_top_level as *const libc::c_int,
         );
         oglobal = global_command;
-        ostring = string;
-        with_input_from_string(string, from_file);
-        while *bash_input.location.string != 0 {
+    }
+    ostring = string;
+    with_input_from_string(string, from_file);
+    while unsafe { *bash_input.location.string != 0 } {
+        unsafe {
             ::std::ptr::write_volatile(
                 &mut command as *mut *mut COMMAND,
                 0 as *mut libc::c_void as *mut COMMAND,
             );
             code = __sigsetjmp(top_level.as_mut_ptr(), 0 as libc::c_int);
-            if code != 0 {
+        }
+        if code != 0 {
+            unsafe {
                 ::std::ptr::write_volatile(
                     &mut should_jump_to_top_level as *mut libc::c_int,
                     0 as libc::c_int,
                 );
-                match code {
-                    1 | 4 | 3 | 2 => {
-                        if !command.is_null() {
-                            dispose_command(command);
-                        }
+            }
+            match code {
+                1 | 4 | 3 | 2 => {
+                    if !command.is_null() {
+                        dispose_command(command);
+                    }
+                    unsafe {
                         ::std::ptr::write_volatile(
                             &mut should_jump_to_top_level as *mut libc::c_int,
                             1 as libc::c_int,
@@ -733,79 +707,87 @@ pub fn parse_string(
                         if !endp.is_null() {
                             *endp = bash_input.location.string;
                         }
-                        run_unwind_frame(
-                            b"parse_string top\0" as *const u8 as *const libc::c_char
-                                as *mut libc::c_char,
-                        );
-                        if should_jump_to_top_level != 0 {
-                            if parse_and_execute_level == 0 as libc::c_int {
-                                top_level_cleanup();
-                            }
-                            if code == 2 as libc::c_int {
-                                return -(2 as libc::c_int);
-                            }
-                            jump_to_top_level(code);
+                    }
+                    run_unwind_frame(
+                        b"parse_string top\0" as *const u8 as *const libc::c_char
+                            as *mut libc::c_char,
+                    );
+                    if should_jump_to_top_level != 0 {
+                        if unsafe { parse_and_execute_level == 0 as libc::c_int } {
+                            top_level_cleanup();
                         }
-                        return nc;
+                        if code == 2 as libc::c_int {
+                            return -(2 as libc::c_int);
+                        }
+                        jump_to_top_level(code);
                     }
-                    _ => {
-                        sigprocmask(
-                            2 as libc::c_int,
-                            &mut ps_sigmask as *mut sigset_t as *mut sigset_t,
-                            0 as *mut libc::c_void as *mut sigset_t,
-                        );
-                        command_error(
-                            b"parse_string\0" as *const u8 as *const libc::c_char,
-                            3 as libc::c_int,
-                            code,
-                            0 as libc::c_int,
-                        );
-                    }
+                    return nc;
+                }
+                _ => {
+                    c_sigprocmask(
+                        2 as libc::c_int,
+                        &mut ps_sigmask as *mut sigset_t as *mut sigset_t,
+                        0 as *mut libc::c_void as *mut sigset_t,
+                    );
+                    command_error(
+                        b"parse_string\0" as *const u8 as *const libc::c_char,
+                        3 as libc::c_int,
+                        code,
+                        0 as libc::c_int,
+                    );
                 }
             }
-            if parse_command() == 0 as libc::c_int {
+        }
+        if parse_command() == 0 as libc::c_int {
+            unsafe {
                 dispose_command(global_command);
                 global_command = 0 as *mut libc::c_void as *mut COMMAND;
-                if current_token == 304 as libc::c_int || current_token == shell_eof_token {
-                    break;
-                }
-            } else {
-                if flags & CMD_NO_FORK!() as libc::c_int == 0 as libc::c_int {
+            }
+            if unsafe { current_token == 304 as libc::c_int || current_token == shell_eof_token } {
+                break;
+            }
+        } else {
+            if flags & CMD_NO_FORK!() as libc::c_int == 0 as libc::c_int {
+                unsafe {
                     ::std::ptr::write_volatile(
                         &mut should_jump_to_top_level as *mut libc::c_int,
                         1 as libc::c_int,
                     );
-                    code = 2 as libc::c_int;
-                } else {
-                    reset_parser();
                 }
-                break;
+                code = 2 as libc::c_int;
+            } else {
+                reset_parser();
             }
+            break;
         }
+    }
+    unsafe {
         global_command = oglobal;
         nc = (bash_input.location.string).offset_from(ostring) as libc::c_long as libc::c_int;
-        if !endp.is_null() {
+    }
+    if !endp.is_null() {
+        unsafe {
             *endp = bash_input.location.string;
         }
-        run_unwind_frame(
-            b"parse_string top\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-        );
-        if should_jump_to_top_level != 0 {
-            if parse_and_execute_level == 0 as libc::c_int {
-                top_level_cleanup();
-            }
-            if code == 2 as libc::c_int {
-                return -(2 as libc::c_int);
-            }
-            jump_to_top_level(code);
-        }
-        return nc;
     }
+    run_unwind_frame(
+        b"parse_string top\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+    );
+    if should_jump_to_top_level != 0 {
+        if unsafe { parse_and_execute_level == 0 as libc::c_int } {
+            top_level_cleanup();
+        }
+        if code == 2 as libc::c_int {
+            return -(2 as libc::c_int);
+        }
+        jump_to_top_level(code);
+    }
+    return nc;
 }
 fn cat_file(r: *mut REDIRECT) -> libc::c_int {
-    let mut fn_0: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut fd: libc::c_int = 0;
-    let mut rval: libc::c_int = 0;
+    let fn_0: *mut libc::c_char;
+    let fd: libc::c_int;
+    let rval: libc::c_int;
     unsafe {
         if (*r).instruction as libc::c_uint != r_input_direction as libc::c_int as libc::c_uint {
             return -(1 as libc::c_int);
@@ -827,7 +809,7 @@ fn cat_file(r: *mut REDIRECT) -> libc::c_int {
             free(fn_0 as *mut libc::c_void);
             return -(1 as libc::c_int);
         }
-        rval = zcatfd(fd, 1 as libc::c_int, fn_0);
+        rval = c_zcatfd(fd, 1 as libc::c_int, fn_0);
         free(fn_0 as *mut libc::c_void);
         close(fd);
         return rval;
@@ -880,7 +862,7 @@ pub fn evalstring(
             );
             if rcatch != 0 && return_catch_flag != 0 {
                 return_catch_value = r;
-                siglongjmp(return_catch.as_mut_ptr(), 1 as libc::c_int);
+                c_siglongjmp(return_catch.as_mut_ptr(), 1 as libc::c_int);
             }
         }
         return r;
