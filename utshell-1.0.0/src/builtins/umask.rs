@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::src_common::*;
 
 use crate::builtins::bashgetopt::{internal_getopt, reset_internal_getopt};
@@ -13,7 +10,10 @@ extern "C" {
     fn umask(__mask: __mode_t) -> __mode_t;
 }
 
-//有可能错误
+fn c_umask(__mask: __mode_t) -> __mode_t {
+    unsafe { umask(__mask) }
+}
+
 fn member(c: *mut libc::c_char, s: *mut libc::c_char) -> bool {
     if c != std::ptr::null_mut() {
         let c = c as libc::c_int;
@@ -28,7 +28,6 @@ fn member(c: *mut libc::c_char, s: *mut libc::c_char) -> bool {
     }
 }
 
-//
 #[no_mangle]
 /* Set or display the mask used by the system when creating files.  Flag
 of -S means display the umask in a symbolic mode. */
@@ -90,14 +89,14 @@ pub fn umask_builtin(mut list: *mut WordList) -> i32 {
             }
         }
         umask_arg = umask_value as u32;
-        unsafe { umask(umask_arg as __mode_t) };
+        c_umask(umask_arg as __mode_t);
         if print_symbolically != 0 {
             print_symbolic_umask(umask_arg);
         }
     } else {
         /* Display the UMASK for this user. */
-        umask_arg = unsafe { umask(0o22 as libc::c_uint) };
-        unsafe { umask(umask_arg as __mode_t) };
+        umask_arg = c_umask(0o22 as libc::c_uint);
+        c_umask(umask_arg as __mode_t);
         if pflag != 0 {
             if print_symbolically != 0 {
                 println!("umask  -S");
@@ -105,16 +104,7 @@ pub fn umask_builtin(mut list: *mut WordList) -> i32 {
                 print!("umask ")
             }
         }
-        /*
-                    if pflag != 0{
-                        if print_symbolically != 0{
-                            println!("umask \" -S\" ");
-                        }
-                        else{
-                            println!("umask \"\" ")
-                        }
-                    }
-        */
+
         if print_symbolically != 0 {
             print_symbolic_umask(umask_arg);
         } else {
@@ -181,7 +171,7 @@ fn parse_symbolic_mode(mode: *mut libc::c_char, initial_bits: i32) -> i32 {
 
     loop {
         who = 0;
-        op = 0;
+        // op = 0;
         perm = 0;
 
         /* Parse the `who' portion of the symbolic mode clause. */
@@ -214,7 +204,6 @@ fn parse_symbolic_mode(mode: *mut libc::c_char, initial_bits: i32) -> i32 {
 
         /* The operation is now sitting in *s. */
         op = unsafe { *s } as libc::c_int;
-        // *s = *s + 1;
         s = (s as usize + 1) as *mut libc::c_char;
         let opu8 = op as u8;
         let op_str = char::from(opu8);
@@ -230,7 +219,6 @@ fn parse_symbolic_mode(mode: *mut libc::c_char, initial_bits: i32) -> i32 {
         let c_rwx_str = CString::new("rwx").unwrap();
         while member(s, c_rwx_str.as_ptr() as *mut libc::c_char) {
             c = s as libc::c_int;
-            //*s = *s + 1;
             s = (s as usize + 1) as *mut libc::c_char;
             let optu8 = c as u8;
             let op_str = char::from(optu8);
@@ -266,7 +254,6 @@ fn parse_symbolic_mode(mode: *mut libc::c_char, initial_bits: i32) -> i32 {
             if unsafe { *s } == '\0' as libc::c_char {
                 break;
             } else {
-                //*s = *s + 1;
                 s = (s as usize + 1) as *mut libc::c_char;
             }
         } else {
@@ -288,8 +275,8 @@ fn symbolic_umask(list: *mut WordList) -> i32 {
     let bits: i32;
 
     /* Get the initial umask.  Don't change it yet. */
-    um = unsafe { umask(0o22 as libc::c_uint) } as i32;
-    unsafe { umask(um as __mode_t) };
+    um = c_umask(0o22 as libc::c_uint) as i32;
+    c_umask(um as __mode_t);
 
     /* All work is done with the complement of the umask -- it's
     more intuitive and easier to deal with.  It is complemented
