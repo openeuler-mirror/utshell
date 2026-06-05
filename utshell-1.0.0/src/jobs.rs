@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::builtins::{
     common::{get_working_directory, the_current_working_directory},
     evalfile::sourcelevel,
@@ -13,6 +10,7 @@ use crate::flags::change_flag;
 use crate::general::{move_to_high_fd, polite_directory_format, sh_closepipe};
 use crate::input::sync_buffered_stream;
 use crate::list::list_reverse;
+use crate::parse_and_execute;
 use crate::readline::rl_readline_state;
 use crate::sig::{
     restore_sigmask, set_signal_handler, sigint_sighandler, termsig_handler, throw_to_top_level,
@@ -28,6 +26,7 @@ use crate::trap::{trap_handler, trap_to_sighandler};
 use crate::unwind_prot::{
     add_unwind_protect, begin_unwind_frame, run_unwind_frame, unwind_protect_mem,
 };
+use crate::utshell::set_exit_status;
 use crate::utshell::unset_bash_input;
 use crate::variables::{get_string_value, set_pipestatus_array};
 use crate::version::shell_compatibility_level;
@@ -48,34 +47,28 @@ pub fn UNQUEUE_SIGCHLD(os: libc::c_int) {
 
 #[no_mangle]
 pub fn PSTOPPED(p: *mut PROCESS) -> libc::c_int {
-    unsafe {
-        if (*p).status & 0xff == 0x7f {
-            return 1;
-        } else {
-            return 0;
-        }
+    if unsafe { (*p).status & 0xff == 0x7f } {
+        return 1;
+    } else {
+        return 0;
     }
 }
 
 #[no_mangle]
 pub fn BLOCK_CHILD(nvar: *mut sigset_t, ovar: *mut sigset_t) {
-    unsafe {
-        sigemptyset(nvar);
-        sigaddset(nvar, SIGCHLD as libc::c_int);
-        sigemptyset(ovar);
-        sigprocmask(SIG_BLOCK as libc::c_int, nvar, ovar);
-    }
+    c_sigemptyset(nvar);
+    c_sigaddset(nvar, SIGCHLD as libc::c_int);
+    c_sigemptyset(ovar);
+    c_sigprocmask(SIG_BLOCK as libc::c_int, nvar, ovar);
 }
 
 #[no_mangle]
 pub fn UNBLOCK_CHILD(over: *const sigset_t) {
-    unsafe {
-        sigprocmask(
-            SIG_SETMASK as libc::c_int,
-            over,
-            0 as *mut c_void as *mut sigset_t,
-        );
-    }
+    c_sigprocmask(
+        SIG_SETMASK as libc::c_int,
+        over,
+        0 as *mut c_void as *mut sigset_t,
+    );
 }
 
 /* 函数部分重构 */
@@ -87,60 +80,58 @@ pub fn init_job_stats() {
 }
 
 fn current_working_directory() -> *mut libc::c_char {
+    let mut dir: *mut libc::c_char;
+    let mut d: [libc::c_char; PATH_MAX as usize] = [0; PATH_MAX as usize];
+
+    dir = get_string_value(b"PWD\0" as *const u8 as *const libc::c_char);
     unsafe {
-        let mut dir: *mut libc::c_char;
-        let mut d: [libc::c_char; PATH_MAX as usize] = [0; PATH_MAX as usize];
-
-        dir = get_string_value(b"PWD\0" as *const u8 as *const libc::c_char);
-
         if dir.is_null() && !the_current_working_directory.is_null() && no_symbolic_links != 0 {
             dir = the_current_working_directory;
         }
-
-        if dir.is_null() {
-            dir = getcwd(
+    }
+    if dir.is_null() {
+        dir = unsafe {
+            getcwd(
                 d.as_mut_ptr(),
                 (::std::mem::size_of::<[libc::c_char; 4096]>() as libc::c_ulong)
                     .try_into()
                     .unwrap(),
-            );
-            if !dir.is_null() {
-                dir = d.as_mut_ptr();
-            }
+            )
+        };
+        if !dir.is_null() {
+            dir = d.as_mut_ptr();
         }
+    }
 
-        if dir.is_null() {
-            return b"<unknown>\0" as *const u8 as *mut libc::c_char;
-        } else {
-            return dir;
-        }
+    if dir.is_null() {
+        return b"<unknown>\0" as *const u8 as *mut libc::c_char;
+    } else {
+        return dir;
     }
 }
 
 fn job_working_directory() -> *mut libc::c_char {
-    unsafe {
-        let mut dir: *mut libc::c_char;
+    let dir: *mut libc::c_char;
 
-        dir = get_string_value(b"PWD\0" as *const u8 as *const libc::c_char);
-        dir = get_working_directory(b"job-working-directory\0" as *const u8 as *mut libc::c_char);
-        if !dir.is_null() {
-            return savestring!(dir);
-        }
-
-        return savestring!(b"<unknown>\0" as *const u8 as *const libc::c_char);
+    get_string_value(b"PWD\0" as *const u8 as *const libc::c_char);
+    dir = get_working_directory(b"job-working-directory\0" as *const u8 as *mut libc::c_char);
+    if !dir.is_null() {
+        return unsafe { savestring!(dir) };
     }
+
+    return unsafe { savestring!(b"<unknown>\0" as *const u8 as *const libc::c_char) };
 }
 
 #[no_mangle]
 pub fn making_children() {
-    unsafe {
-        if already_making_children != 0 {
-            return;
-        }
-
-        already_making_children = 1;
-        start_pipeline();
+    if unsafe { already_making_children != 0 } {
+        return;
     }
+
+    unsafe {
+        already_making_children = 1;
+    }
+    start_pipeline();
 }
 
 #[no_mangle]
@@ -152,19 +143,19 @@ pub fn stop_making_children() {
 
 #[no_mangle]
 pub fn cleanup_the_pipeline() {
-    unsafe {
-        let disposer: *mut PROCESS;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let disposer: *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-        BLOCK_CHILD(&mut set, &mut oset);
+    BLOCK_CHILD(&mut set, &mut oset);
+    unsafe {
         disposer = the_pipeline;
         the_pipeline = 0 as *mut PROCESS;
-        UNBLOCK_CHILD(&mut oset);
+    }
+    UNBLOCK_CHILD(&mut oset);
 
-        if !disposer.is_null() {
-            discard_pipeline(disposer);
-        }
+    if !disposer.is_null() {
+        discard_pipeline(disposer);
     }
 }
 
@@ -173,29 +164,28 @@ pub fn discard_last_procsub_child() {
     let disposer: *mut PROCESS;
     let mut set: sigset_t = __sigset_t { __val: [0; 16] };
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+    BLOCK_CHILD(&mut set, &mut oset);
     unsafe {
-        BLOCK_CHILD(&mut set, &mut oset);
         disposer = last_procsub_child;
         last_procsub_child = 0 as *mut PROCESS;
-        UNBLOCK_CHILD(&mut oset);
+    }
+    UNBLOCK_CHILD(&mut oset);
 
-        if !disposer.is_null() {
-            discard_pipeline(disposer);
-        }
+    if !disposer.is_null() {
+        discard_pipeline(disposer);
     }
 }
 
 fn alloc_pipeline_saver() -> *mut pipeline_saver {
+    let ret: *mut pipeline_saver;
     unsafe {
-        let ret: *mut pipeline_saver;
-
         ret = malloc(::std::mem::size_of::<pipeline_saver>() as usize) as *mut pipeline_saver;
 
         (*ret).pipeline = 0 as *mut process;
         (*ret).next = 0 as *mut pipeline_saver;
-
-        return ret;
     }
+    return ret;
 }
 
 #[no_mangle]
@@ -203,9 +193,10 @@ pub fn save_pipeline(clear: libc::c_int) {
     let mut set: sigset_t = __sigset_t { __val: [0; 16] };
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
     let saver: *mut pipeline_saver;
+
+    BLOCK_CHILD(&mut set, &mut oset);
+    saver = alloc_pipeline_saver();
     unsafe {
-        BLOCK_CHILD(&mut set, &mut oset);
-        saver = alloc_pipeline_saver();
         (*saver).pipeline = the_pipeline;
         (*saver).next = saved_pipeline;
         saved_pipeline = saver;
@@ -214,33 +205,33 @@ pub fn save_pipeline(clear: libc::c_int) {
             the_pipeline = 0 as *mut PROCESS;
         }
         saved_already_making_children = already_making_children;
-        UNBLOCK_CHILD(&mut oset);
     }
+    UNBLOCK_CHILD(&mut oset);
 }
 
 #[no_mangle]
 pub fn restore_pipeline(discard: libc::c_int) -> *mut PROCESS {
-    unsafe {
-        let old_pipeline: *mut PROCESS;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-        let saver: *mut pipeline_saver;
+    let old_pipeline: *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let saver: *mut pipeline_saver;
 
-        BLOCK_CHILD(&mut set, &mut oset);
+    BLOCK_CHILD(&mut set, &mut oset);
+    unsafe {
         old_pipeline = the_pipeline;
         the_pipeline = (*saved_pipeline).pipeline;
         saver = saved_pipeline;
         saved_pipeline = (*saved_pipeline).next;
         free(saver as *mut c_void);
         already_making_children = saved_already_making_children;
-        UNBLOCK_CHILD(&mut oset);
-
-        if discard != 0 && !old_pipeline.is_null() {
-            discard_pipeline(old_pipeline);
-            return 0 as *mut PROCESS;
-        }
-        return old_pipeline;
     }
+    UNBLOCK_CHILD(&mut oset);
+
+    if discard != 0 && !old_pipeline.is_null() {
+        discard_pipeline(old_pipeline);
+        return 0 as *mut PROCESS;
+    }
+    return old_pipeline;
 }
 
 #[no_mangle]
@@ -337,10 +328,10 @@ pub fn stop_pipeline(async_0: libc::c_int, deferred: *mut COMMAND) -> libc::c_in
         }
 
         if !the_pipeline.is_null() {
-            let mut p: *mut PROCESS = 0 as *mut PROCESS;
-            let mut any_running: libc::c_int = 0;
-            let mut any_stopped: libc::c_int = 0;
-            let mut n: libc::c_int = 0;
+            let mut p: *mut PROCESS;
+            let mut any_running: libc::c_int;
+            let mut any_stopped: libc::c_int;
+            let mut n: libc::c_int;
 
             newjob = malloc(std::mem::size_of::<JOB>() as libc::c_int as usize) as *mut JOB;
 
@@ -460,43 +451,49 @@ pub fn stop_pipeline(async_0: libc::c_int, deferred: *mut COMMAND) -> libc::c_in
 
 #[no_mangle]
 fn bgp_resize() {
-    let mut nsize: ps_index_t = 0;
-    let mut nsize_cur: ps_index_t = 0;
-    let mut nsize_max: ps_index_t = 0;
-    let mut psi: ps_index_t = 0;
-    unsafe {
-        if bgpids.nalloc == 0 {
-            psi = 0 as libc::c_int;
-            while psi < r_pidstat_table_SZ as libc::c_int {
+    let mut nsize: ps_index_t;
+    let mut nsize_cur: ps_index_t;
+    let mut nsize_max: ps_index_t;
+    let mut psi: ps_index_t;
+
+    if unsafe { bgpids.nalloc == 0 } {
+        psi = 0 as libc::c_int;
+        while psi < r_pidstat_table_SZ as libc::c_int {
+            unsafe {
                 r_pidstat_table[psi as usize] = NO_PIDSTAT;
-                psi += 1;
             }
-            nsize = BGPIDS_TABLE_SZ as ps_index_t;
+            psi += 1;
+        }
+        nsize = BGPIDS_TABLE_SZ as ps_index_t;
+        unsafe {
             bgpids.head = 0;
-        } else {
+        }
+    } else {
+        unsafe {
             nsize = bgpids.nalloc;
         }
-
+    }
+    unsafe {
         nsize_max = TYPE_MAXIMUM!(ps_index_t);
         nsize_cur = js.c_childmax as ps_index_t;
+    }
+    if nsize_cur < 0 {
+        nsize_cur = MAX_CHILD_MAX as libc::c_int;
+    }
 
-        if nsize_cur < 0 {
-            nsize_cur = MAX_CHILD_MAX as libc::c_int;
-        }
+    while nsize > 0 && nsize < nsize_cur {
+        nsize <<= 1;
+    }
 
-        while nsize > 0 && nsize < nsize_cur {
-            nsize <<= 1;
-        }
+    if nsize > nsize_max || nsize <= 0 {
+        nsize = nsize_max;
+    }
 
-        if nsize > nsize_max || nsize <= 0 {
-            nsize = nsize_max;
-        }
-
-        if nsize > MAX_CHILD_MAX as libc::c_int {
-            nsize_max = MAX_CHILD_MAX as libc::c_int;
-            nsize = nsize_max;
-        }
-
+    if nsize > MAX_CHILD_MAX as libc::c_int {
+        nsize_max = MAX_CHILD_MAX as libc::c_int;
+        nsize = nsize_max;
+    }
+    unsafe {
         if bgpids.nalloc < nsize_cur && bgpids.nalloc < nsize_max {
             bgpids.storage = realloc(
                 bgpids.storage as *mut c_void,
@@ -528,7 +525,7 @@ fn bgp_getindex() -> ps_index_t {
 
 #[no_mangle]
 fn pshash_getbucket(pid: pid_t) -> *mut ps_index_t {
-    let mut hash: libc::c_ulong = 0;
+    let hash: libc::c_ulong;
     hash = (pid as libc::c_ulong).wrapping_mul(0x9e370001 as libc::c_ulong);
     unsafe {
         return &mut *r_pidstat_table
@@ -539,12 +536,12 @@ fn pshash_getbucket(pid: pid_t) -> *mut ps_index_t {
 
 #[no_mangle]
 fn bgp_add(pid: pid_t, status: libc::c_int) -> *mut pidstat {
+    let bucket: *mut ps_index_t;
+    let mut psi: ps_index_t;
+    let ps: *mut pidstat;
+    bucket = pshash_getbucket(pid);
+    psi = bgp_getindex();
     unsafe {
-        let mut bucket: *mut ps_index_t = 0 as *mut ps_index_t;
-        let mut psi: ps_index_t = 0;
-        let mut ps: *mut pidstat = 0 as *mut pidstat;
-        bucket = pshash_getbucket(pid);
-        psi = bgp_getindex();
         if psi == *bucket {
             (*(bgpids.storage).offset(psi as isize)).pid = -1;
             psi = bgp_getindex();
@@ -559,14 +556,14 @@ fn bgp_add(pid: pid_t, status: libc::c_int) -> *mut pidstat {
             (*(bgpids.storage).offset((*ps).bucket_next as isize)).bucket_prev = psi;
         }
         *bucket = psi;
-        return ps;
     }
+    return ps;
 }
 
 #[no_mangle]
 fn pshash_delindex(psi: ps_index_t) {
-    let mut ps: *mut pidstat = 0 as *mut pidstat;
-    let mut bucket: *mut ps_index_t = 0 as *mut ps_index_t;
+    let ps: *mut pidstat;
+    let bucket: *mut ps_index_t;
     unsafe {
         ps = &mut *(bgpids.storage).offset(psi as isize) as *mut pidstat;
         if (*ps).pid == NO_PID {
@@ -589,8 +586,8 @@ fn pshash_delindex(psi: ps_index_t) {
 
 fn bgp_delete(pid: pid_t) -> libc::c_int {
     unsafe {
-        let mut psi: ps_index_t = 0;
-        let mut orig_psi: ps_index_t = 0;
+        let mut psi: ps_index_t;
+        let orig_psi: ps_index_t;
 
         if (bgpids.storage).is_null() || bgpids.nalloc == 0 || bgpids.npid == 0 {
             return 0;
@@ -637,8 +634,8 @@ fn bgp_clear() {
 
 fn bgp_search(pid: pid_t) -> libc::c_int {
     unsafe {
-        let mut psi: ps_index_t = 0;
-        let mut orig_psi: ps_index_t = 0;
+        let mut psi: ps_index_t;
+        let orig_psi: ps_index_t;
         if (bgpids.storage).is_null() || bgpids.nalloc == 0 || bgpids.npid == 0 {
             return -1;
         }
@@ -667,11 +664,10 @@ fn bgp_search(pid: pid_t) -> libc::c_int {
 pub fn save_proc_status(pid: pid_t, status: libc::c_int) {
     let mut set: sigset_t = __sigset_t { __val: [0; 16] };
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-    unsafe {
-        BLOCK_CHILD(&mut set, &mut oset);
-        bgp_add(pid, status);
-        UNBLOCK_CHILD(&mut oset);
-    }
+
+    BLOCK_CHILD(&mut set, &mut oset);
+    bgp_add(pid, status);
+    UNBLOCK_CHILD(&mut oset);
 }
 
 fn procsub_free(p: *mut PROCESS) {
@@ -706,36 +702,34 @@ pub fn procsub_add(p: *mut PROCESS) -> *mut PROCESS {
 
 #[no_mangle]
 pub fn procsub_search(pid: pid_t) -> *mut PROCESS {
-    unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut p: *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-        BLOCK_CHILD(&mut set, &mut oset);
-        p = procsubs.head;
-        while !p.is_null() {
-            if (*p).pid == pid {
-                break;
-            }
-            p = (*p).next;
+    BLOCK_CHILD(&mut set, &mut oset);
+    p = unsafe { procsubs.head };
+    while !p.is_null() {
+        if unsafe { (*p).pid == pid } {
+            break;
         }
-        UNBLOCK_CHILD(&mut oset);
-        return p;
+        p = unsafe { (*p).next };
     }
+    UNBLOCK_CHILD(&mut oset);
+    return p;
 }
 
 #[no_mangle]
 pub fn procsub_delete(pid: pid_t) -> *mut PROCESS {
-    unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        let mut prev: *mut PROCESS = 0 as *mut PROCESS;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut p: *mut PROCESS;
+    let mut prev: *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-        BLOCK_CHILD(&mut set, &mut oset);
-        prev = procsubs.head;
-        p = prev;
-        while !p.is_null() {
+    BLOCK_CHILD(&mut set, &mut oset);
+    prev = unsafe { procsubs.head };
+    p = prev;
+    while !p.is_null() {
+        unsafe {
             if (*p).pid == pid {
                 (*prev).next = (*p).next;
                 break;
@@ -744,10 +738,12 @@ pub fn procsub_delete(pid: pid_t) -> *mut PROCESS {
                 p = (*p).next;
             }
         }
-        if p.is_null() {
-            UNBLOCK_CHILD(&mut oset);
-            return p;
-        }
+    }
+    if p.is_null() {
+        UNBLOCK_CHILD(&mut oset);
+        return p;
+    }
+    unsafe {
         if p == procsubs.head {
             procsubs.head = (*procsubs.head).next;
         } else if p == procsubs.end {
@@ -760,40 +756,41 @@ pub fn procsub_delete(pid: pid_t) -> *mut PROCESS {
         } else if procsubs.nproc == 1 {
             procsubs.end = procsubs.head;
         }
+
         bgp_add((*p).pid, process_exit_status((*p).status));
-        UNBLOCK_CHILD(&mut oset);
-        return p;
     }
+    UNBLOCK_CHILD(&mut oset);
+    return p;
 }
 
 #[no_mangle]
 pub fn procsub_waitpid(pid: pid_t) -> libc::c_int {
-    unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        let mut r: libc::c_int = 0;
+    let p: *mut PROCESS;
+    let r: libc::c_int;
 
-        p = procsub_search(pid);
-        if p.is_null() {
-            return -1;
-        }
+    p = procsub_search(pid);
+    if p.is_null() {
+        return -1;
+    }
+    unsafe {
         if (*p).running == PS_DONE as i32 {
             return (*p).status;
         }
         r = wait_for((*p).pid, 0);
-        return r;
     }
+    return r;
 }
 
 #[no_mangle]
 pub fn procsub_waitall() {
+    let mut p: *mut PROCESS;
+    // let mut r: libc::c_int = 0;
     unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        let mut r: libc::c_int = 0;
-
         p = procsubs.head;
         while !p.is_null() {
             if !((*p).running == PS_DONE as i32) {
-                r = wait_for((*p).pid, 0);
+                // r = wait_for((*p).pid, 0);
+                wait_for((*p).pid, 0);
             }
             p = (*p).next;
         }
@@ -802,13 +799,13 @@ pub fn procsub_waitall() {
 
 #[no_mangle]
 pub fn procsub_clear() {
-    unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        let mut ps: *mut PROCESS = 0 as *mut PROCESS;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut p: *mut PROCESS;
+    let mut ps: *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-        BLOCK_CHILD(&mut set, &mut oset);
+    BLOCK_CHILD(&mut set, &mut oset);
+    unsafe {
         ps = procsubs.head;
         while !ps.is_null() {
             p = ps;
@@ -824,26 +821,26 @@ pub fn procsub_clear() {
 
 #[no_mangle]
 pub fn procsub_prune() {
+    let ohead: *mut PROCESS;
+    // let mut oend: *mut PROCESS = 0 as *mut PROCESS;
+    let mut ps: *mut PROCESS;
+    let mut p: *mut PROCESS;
+    // let mut onproc: libc::c_int = 0;
     unsafe {
-        let mut ohead: *mut PROCESS = 0 as *mut PROCESS;
-        let mut oend: *mut PROCESS = 0 as *mut PROCESS;
-        let mut ps: *mut PROCESS = 0 as *mut PROCESS;
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        let mut onproc: libc::c_int = 0;
-
         if procsubs.nproc == 0 {
             return;
         }
         ohead = procsubs.head;
-        oend = procsubs.end;
-        onproc = procsubs.nproc;
+        // oend = procsubs.end;
+        // onproc = procsubs.nproc;
 
         procsubs.end = 0 as *mut PROCESS;
         procsubs.head = procsubs.end;
         procsubs.nproc = 0 as libc::c_int;
-
-        p = ohead;
-        while !p.is_null() {
+    }
+    p = ohead;
+    while !p.is_null() {
+        unsafe {
             ps = (*p).next;
             (*p).next = 0 as *mut process;
             if (*p).running == 0 as libc::c_int {
@@ -859,7 +856,7 @@ pub fn procsub_prune() {
 
 fn reset_job_indices() {
     unsafe {
-        let mut old: libc::c_int = 0;
+        let mut old: libc::c_int;
 
         if (*jobs.offset(js.j_firstj as isize)).is_null() {
             js.j_firstj = js.j_firstj + 1;
@@ -907,57 +904,60 @@ fn reset_job_indices() {
 }
 
 fn cleanup_dead_jobs() {
-    unsafe {
-        let mut i: libc::c_int = 0;
-        let mut os: libc::c_int = 0;
-        let discard: *mut PROCESS = 0 as *mut PROCESS;
+    let mut i: libc::c_int;
+    let os: libc::c_int;
+    // let discard: *mut PROCESS = 0 as *mut PROCESS;
 
-        if js.j_jobslots == 0 || jobs_list_frozen != 0 {
-            return;
-        }
-        QUEUE_SIGCHLD!(os);
-        i = 0;
-        while i < js.j_jobslots {
-            if !(*jobs.offset(i as isize)).is_null() && DEADJOB!(i) && IS_NOTIFIED!(i) {
-                delete_job(i, 0 as libc::c_int);
-            }
-            i += 1;
-        }
-        procsub_prune();
-        last_procsub_child = 0 as *mut c_void as *mut PROCESS;
-        coproc_reap();
-        UNQUEUE_SIGCHLD(os)
+    if unsafe { js.j_jobslots == 0 || jobs_list_frozen != 0 } {
+        return;
     }
+
+    unsafe {
+        QUEUE_SIGCHLD!(os);
+    }
+    i = 0;
+    while unsafe { i < js.j_jobslots } {
+        if unsafe { !(*jobs.offset(i as isize)).is_null() && DEADJOB!(i) && IS_NOTIFIED!(i) } {
+            delete_job(i, 0 as libc::c_int);
+        }
+        i += 1;
+    }
+    procsub_prune();
+    unsafe {
+        last_procsub_child = 0 as *mut c_void as *mut PROCESS;
+    }
+    coproc_reap();
+    UNQUEUE_SIGCHLD(os)
 }
 
 fn processes_in_job(job: libc::c_int) -> libc::c_int {
-    unsafe {
-        let mut nproc: libc::c_int = 0;
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut nproc: libc::c_int;
+    let mut p: *mut PROCESS;
 
-        nproc = 0 as libc::c_int;
-        p = (**jobs.offset(job as isize)).pipe;
-        loop {
+    nproc = 0 as libc::c_int;
+    p = unsafe { (**jobs.offset(job as isize)).pipe };
+    loop {
+        unsafe {
             p = (*p).next;
-            nproc += 1;
-            if !(p != (**jobs.offset(job as isize)).pipe) {
-                break;
-            }
         }
-        return nproc;
+        nproc += 1;
+        if unsafe { !(p != (**jobs.offset(job as isize)).pipe) } {
+            break;
+        }
     }
+    return nproc;
 }
 
 fn delete_old_job(pid: pid_t) {
-    unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        let mut job: libc::c_int = 0;
+    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let job: libc::c_int;
 
-        job = find_job(pid, 0, &mut p);
-        if job != NO_JOB {
-            if JOBSTATE!(job) == JDEAD {
-                delete_job(job, 2 as libc::c_int);
-            } else if !p.is_null() {
+    job = find_job(pid, 0, &mut p);
+    if job != NO_JOB {
+        if unsafe { JOBSTATE!(job) == JDEAD } {
+            delete_job(job, 2 as libc::c_int);
+        } else if !p.is_null() {
+            unsafe {
                 (*p).pid = 0;
             }
         }
@@ -968,12 +968,12 @@ fn realloc_jobs_list() {
     unsafe {
         let mut set: sigset_t = __sigset_t { __val: [0; 16] };
         let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut nsize: libc::c_int = 0;
-        let mut i: libc::c_int = 0;
-        let mut j: libc::c_int = 0;
-        let mut ncur: libc::c_int = 0;
-        let mut nprev: libc::c_int = 0;
-        let mut nlist: *mut *mut JOB = 0 as *mut *mut JOB;
+        let mut nsize: libc::c_int;
+        let mut i: libc::c_int;
+        let mut j: libc::c_int;
+        let mut ncur: libc::c_int;
+        let mut nprev: libc::c_int;
+        let nlist: *mut *mut JOB;
 
         nprev = NO_JOB;
         ncur = nprev;
@@ -1004,7 +1004,7 @@ fn realloc_jobs_list() {
                 }
 
                 *nlist.offset(j as isize) = *jobs.offset(i as isize);
-                j = j + 1; //
+                j = j + 1;
                 if (**jobs.offset(i as isize)).state as libc::c_int == JDEAD as libc::c_int {
                     js.j_ndead += 1;
                     js.c_reaped += processes_in_job(i);
@@ -1047,7 +1047,7 @@ fn realloc_jobs_list() {
     }
 }
 
-fn compact_jobs_list(flags: libc::c_int) -> libc::c_int {
+fn compact_jobs_list(_flags: libc::c_int) -> libc::c_int {
     unsafe {
         if js.j_jobslots == 0 || jobs_list_frozen != 0 {
             return js.j_jobslots;
@@ -1065,9 +1065,9 @@ fn compact_jobs_list(flags: libc::c_int) -> libc::c_int {
 #[no_mangle]
 pub fn delete_job(job_index: libc::c_int, dflags: libc::c_int) {
     unsafe {
-        let mut temp: *mut JOB = 0 as *mut JOB;
-        let mut proc_0: *mut PROCESS = 0 as *mut PROCESS;
-        let mut ndel: libc::c_int = 0;
+        let temp: *mut JOB;
+        let proc_0: *mut PROCESS;
+        let ndel: libc::c_int;
 
         if js.j_jobslots == 0 || jobs_list_frozen != 0 {
             return;
@@ -1139,9 +1139,8 @@ pub fn delete_job(job_index: libc::c_int, dflags: libc::c_int) {
 
 #[no_mangle]
 pub fn nohup_job(job_index: libc::c_int) {
+    let temp: *mut JOB;
     unsafe {
-        let mut temp: *mut JOB = 0 as *mut JOB;
-
         if js.j_jobslots == 0 {
             return;
         }
@@ -1154,34 +1153,33 @@ pub fn nohup_job(job_index: libc::c_int) {
 
 #[no_mangle]
 pub fn discard_pipeline(chain: *mut PROCESS) -> libc::c_int {
-    unsafe {
-        let mut this: *mut PROCESS = 0 as *mut PROCESS;
-        let mut next: *mut PROCESS = 0 as *mut PROCESS;
-        let mut n: libc::c_int = 0;
+    let mut this: *mut PROCESS;
+    let mut next: *mut PROCESS;
+    let mut n: libc::c_int;
 
-        this = chain;
-        n = 0;
-        loop {
+    this = chain;
+    n = 0;
+    loop {
+        unsafe {
             next = (*this).next;
             if !((*this).command).is_null() {
                 libc::free((*this).command as *mut c_void);
             }
             libc::free(this as *mut c_void);
-            n += 1;
-            this = next;
-            if !(this != chain) {
-                break;
-            }
         }
-        return n;
+        n += 1;
+        this = next;
+        if !(this != chain) {
+            break;
+        }
     }
+    return n;
 }
 
 fn add_process(name: *mut libc::c_char, pid: pid_t) {
+    let t: *mut PROCESS;
+    let mut p: *mut PROCESS;
     unsafe {
-        let mut t: *mut PROCESS = 0 as *mut PROCESS;
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-
         t = malloc(::std::mem::size_of::<PROCESS>() as usize) as *mut PROCESS;
         (*t).next = the_pipeline;
         (*t).pid = pid;
@@ -1204,10 +1202,9 @@ fn add_process(name: *mut libc::c_char, pid: pid_t) {
 
 #[no_mangle]
 pub fn append_process(name: *mut libc::c_char, pid: pid_t, status: libc::c_int, jid: libc::c_int) {
+    let t: *mut PROCESS;
+    let mut p: *mut PROCESS;
     unsafe {
-        let mut t: *mut PROCESS = 0 as *mut PROCESS;
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-
         t = malloc(::std::mem::size_of::<PROCESS>() as usize) as *mut PROCESS;
         (*t).next = 0 as *mut c_void as *mut PROCESS;
         (*t).pid = pid;
@@ -1231,32 +1228,35 @@ fn map_over_jobs(
     arg1: libc::c_int,
     arg2: libc::c_int,
 ) -> libc::c_int {
-    unsafe {
-        let mut i: libc::c_int = 0;
-        let mut result: libc::c_int = 0;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-        if js.j_jobslots == 0 {
-            return 0;
-        }
-        BLOCK_CHILD(&mut set, &mut oset);
-        result = 0;
-        i = result;
-        while i < js.j_jobslots {
-            if !(*jobs.offset(i as isize)).is_null() {
-                result = (Some(func.expect("non-null function pointer")))
-                    .expect("non-null function pointer")(
-                    *jobs.offset(i as isize), arg1, arg2, i
-                );
-                if result != 0 {
-                    break;
-                }
-            }
-            i += 1;
-        }
-        UNBLOCK_CHILD(&mut oset);
-        return result;
+    let mut i: libc::c_int;
+    let mut result: libc::c_int;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+    if unsafe { js.j_jobslots == 0 } {
+        return 0;
     }
+    BLOCK_CHILD(&mut set, &mut oset);
+    result = 0;
+    i = result;
+    while unsafe { i < js.j_jobslots } {
+        if unsafe { !(*jobs.offset(i as isize)).is_null() } {
+            result = unsafe {
+                (Some(func.expect("non-null function pointer"))).expect("non-null function pointer")(
+                    *jobs.offset(i as isize),
+                    arg1,
+                    arg2,
+                    i,
+                )
+            };
+            if result != 0 {
+                break;
+            }
+        }
+        i += 1;
+    }
+    UNBLOCK_CHILD(&mut oset);
+    return result;
 }
 
 #[no_mangle]
@@ -1271,25 +1271,25 @@ pub fn terminate_current_pipeline() {
 
 #[no_mangle]
 pub fn terminate_stopped_jobs() {
-    unsafe {
-        let mut i: libc::c_int = 0;
-        i = 0 as libc::c_int;
-        while i < js.j_jobslots {
+    let mut i: libc::c_int;
+    i = 0 as libc::c_int;
+    while unsafe { i < js.j_jobslots } {
+        unsafe {
             if !(*jobs.offset(i as isize)).is_null() && STOPPED!(i) {
                 killpg((**jobs.offset(i as isize)).pgrp, SIGTERM as libc::c_int);
                 killpg((**jobs.offset(i as isize)).pgrp, SIGCONT as libc::c_int);
             }
-            i += 1;
         }
+        i += 1;
     }
 }
 
 #[no_mangle]
 pub fn hangup_all_jobs() {
-    unsafe {
-        let mut i: libc::c_int = 0;
-        i = 0;
-        while i < js.j_jobslots {
+    let mut i: libc::c_int;
+    i = 0;
+    while unsafe { i < js.j_jobslots } {
+        unsafe {
             if !(*jobs.offset(i as isize)).is_null() {
                 if !((**jobs.offset(i as isize)).flags & J_NOHUP as libc::c_int != 0) {
                     continue;
@@ -1299,8 +1299,8 @@ pub fn hangup_all_jobs() {
                     killpg((**jobs.offset(i as isize)).pgrp, SIGCONT as libc::c_int);
                 }
             }
-            i += 1;
         }
+        i += 1;
     }
 }
 
@@ -1315,48 +1315,52 @@ fn find_pid_in_pipeline(
     pipeline: *mut PROCESS,
     alive_only: libc::c_int,
 ) -> *mut PROCESS {
-    unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        p = pipeline;
-        loop {
-            if (*p).pid == pid && (alive_only == 0 && PRECYCLED!(p) == 0 || PALIVE!(p)) {
-                return p;
-            }
-            p = (*p).next;
-            if !(p != pipeline) {
-                break;
-            }
+    let mut p: *mut PROCESS;
+    p = pipeline;
+    loop {
+        if unsafe { (*p).pid == pid && (alive_only == 0 && PRECYCLED!(p) == 0 || PALIVE!(p)) } {
+            return p;
         }
-        return 0 as *mut PROCESS;
+        p = unsafe { (*p).next };
+        if !(p != pipeline) {
+            break;
+        }
     }
+    return 0 as *mut PROCESS;
 }
 
 fn find_pipeline(pid: pid_t, alive_only: libc::c_int, jobp: *mut libc::c_int) -> *mut PROCESS {
-    unsafe {
-        let mut job: libc::c_int = 0;
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        let mut save: *mut pipeline_saver = 0 as *mut pipeline_saver;
-        p = 0 as *mut libc::c_void as *mut PROCESS;
-        if !jobp.is_null() {
+    let job: libc::c_int;
+    let mut p: *mut PROCESS;
+    let mut save: *mut pipeline_saver;
+    p = 0 as *mut libc::c_void as *mut PROCESS;
+    if !jobp.is_null() {
+        unsafe {
             *jobp = -(1 as libc::c_int);
         }
-        if !the_pipeline.is_null() && {
+    }
+    if unsafe {
+        !the_pipeline.is_null() && {
             p = find_pid_in_pipeline(pid, the_pipeline, alive_only);
             !p.is_null()
+        }
+    } {
+        return p;
+    }
+    save = unsafe { saved_pipeline };
+    while !save.is_null() {
+        if unsafe {
+            !((*save).pipeline).is_null() && {
+                p = find_pid_in_pipeline(pid, (*save).pipeline, alive_only);
+                !p.is_null()
+            }
         } {
             return p;
         }
-        save = saved_pipeline;
-        while !save.is_null() {
-            if !((*save).pipeline).is_null() && {
-                p = find_pid_in_pipeline(pid, (*save).pipeline, alive_only);
-                !p.is_null()
-            } {
-                return p;
-            }
-            save = (*save).next;
-        }
-        if procsubs.nproc > 0 as libc::c_int
+        save = unsafe { (*save).next };
+    }
+    if unsafe {
+        procsubs.nproc > 0 as libc::c_int
             && {
                 p = procsub_search(pid);
                 !p.is_null()
@@ -1364,39 +1368,40 @@ fn find_pipeline(pid: pid_t, alive_only: libc::c_int, jobp: *mut libc::c_int) ->
             && (alive_only == 0 as libc::c_int && 0 as libc::c_int == 0 as libc::c_int
                 || ((*p).running == 1 as libc::c_int
                     || (*p).status & 0xff as libc::c_int == 0x7f as libc::c_int))
-        {
-            return p;
-        }
-        job = find_job(pid, alive_only, &mut p);
-        if !jobp.is_null() {
+    } {
+        return p;
+    }
+    job = find_job(pid, alive_only, &mut p);
+    if !jobp.is_null() {
+        unsafe {
             *jobp = job;
         }
-        return if job == -(1 as libc::c_int) {
-            0 as *mut libc::c_void as *mut PROCESS
-        } else {
-            (**jobs.offset(job as isize)).pipe
-        };
     }
+    return if job == -(1 as libc::c_int) {
+        0 as *mut libc::c_void as *mut PROCESS
+    } else {
+        unsafe { (**jobs.offset(job as isize)).pipe }
+    };
 }
 
 fn find_process(pid: pid_t, alive_only: libc::c_int, jobp: *mut libc::c_int) -> *mut PROCESS {
+    let mut p: *mut PROCESS;
+    p = find_pipeline(pid, alive_only, jobp);
     unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        p = find_pipeline(pid, alive_only, jobp);
         while !p.is_null() && (*p).pid != pid {
             p = (*p).next;
         }
-        return p;
     }
+    return p;
 }
 
 fn find_job(pid: pid_t, alive_only: libc::c_int, procp: *mut *mut PROCESS) -> libc::c_int {
-    unsafe {
-        let mut i: libc::c_int = 0;
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        i = 0 as libc::c_int;
-        while i < js.j_jobslots {
-            if !(*jobs.offset(i as isize)).is_null() {
+    let mut i: libc::c_int;
+    let mut p: *mut PROCESS;
+    i = 0 as libc::c_int;
+    while unsafe { i < js.j_jobslots } {
+        if unsafe { !(*jobs.offset(i as isize)).is_null() } {
+            unsafe {
                 p = (**jobs.offset(i as isize)).pipe;
                 loop {
                     if (*p).pid == pid
@@ -1415,40 +1420,37 @@ fn find_job(pid: pid_t, alive_only: libc::c_int, procp: *mut *mut PROCESS) -> li
                     }
                 }
             }
-            i += 1;
         }
-        return -(1 as libc::c_int);
+        i += 1;
     }
+    return -(1 as libc::c_int);
 }
 
 #[no_mangle]
 pub fn get_job_by_pid(pid: pid_t, block: libc::c_int, procp: *mut *mut PROCESS) -> libc::c_int {
-    unsafe {
-        let mut job: libc::c_int = 0;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let job: libc::c_int;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-        if block != 0 {
-            BLOCK_CHILD(&mut set, &mut oset);
-        }
-        job = find_job(pid, 0 as libc::c_int, procp);
-        if block != 0 {
-            UNBLOCK_CHILD(&mut oset);
-        }
-        return job;
+    if block != 0 {
+        BLOCK_CHILD(&mut set, &mut oset);
     }
+    job = find_job(pid, 0 as libc::c_int, procp);
+    if block != 0 {
+        UNBLOCK_CHILD(&mut oset);
+    }
+    return job;
 }
 
 #[no_mangle]
 pub fn describe_pid(pid: pid_t) {
+    let job: libc::c_int;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+
+    BLOCK_CHILD(&mut set, &mut oset);
+    job = find_job(pid, 0, 0 as *mut *mut PROCESS);
     unsafe {
-        let mut job: libc::c_int = 0;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-
-        BLOCK_CHILD(&mut set, &mut oset);
-        job = find_job(pid, 0, 0 as *mut *mut PROCESS);
-
         if job != NO_JOB {
             libc::fprintf(
                 stderr,
@@ -1462,13 +1464,13 @@ pub fn describe_pid(pid: pid_t) {
                 pid as libc::c_long,
             );
         }
-        UNBLOCK_CHILD(&mut oset);
     }
+    UNBLOCK_CHILD(&mut oset);
 }
 
 fn j_strsignal(s: libc::c_int) -> *mut libc::c_char {
+    let mut x: *mut libc::c_char;
     unsafe {
-        let mut x: *mut libc::c_char = 0 as *mut libc::c_char;
         x = strsignal(s);
         if x.is_null() {
             x = retcode_name_buffer.as_mut_ptr();
@@ -1479,14 +1481,14 @@ fn j_strsignal(s: libc::c_int) -> *mut libc::c_char {
                 s,
             );
         }
-        return x;
     }
+    return x;
 }
 
 fn printable_job_status(j: libc::c_int, p: *mut PROCESS, format: libc::c_int) -> *mut libc::c_char {
     unsafe {
         static mut temp: *mut libc::c_char = 0 as *const libc::c_char as *mut libc::c_char;
-        let mut es: libc::c_int = 0;
+        let es: libc::c_int;
         temp = b"Done\0" as *const u8 as *const libc::c_char as *mut libc::c_char;
 
         if STOPPED!(j) && format == 0 {
@@ -1552,18 +1554,17 @@ fn print_pipeline(
     format: libc::c_int,
     stream: *mut libc::FILE,
 ) {
+    let first: *mut PROCESS;
+    let mut last: *mut PROCESS;
+    let mut show: *mut PROCESS;
+    let mut es: libc::c_int;
+    let mut name_padding: libc::c_int;
+    let mut temp: *mut libc::c_char;
+
+    if p.is_null() {
+        return;
+    }
     unsafe {
-        let mut first: *mut PROCESS = 0 as *mut PROCESS;
-        let mut last: *mut PROCESS = 0 as *mut PROCESS;
-        let mut show: *mut PROCESS = 0 as *mut PROCESS;
-        let mut es: libc::c_int = 0;
-        let mut name_padding: libc::c_int = 0;
-        let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-
-        if p.is_null() {
-            return;
-        }
-
         last = p;
         first = last;
         while (*last).next != first {
@@ -1670,24 +1671,26 @@ fn print_pipeline(
 }
 
 fn pretty_print_job(job_index: libc::c_int, mut format: libc::c_int, stream: *mut libc::FILE) {
-    unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let p: *mut PROCESS;
 
-        if format == JLIST_PID_ONLY as libc::c_int {
+    if format == JLIST_PID_ONLY as libc::c_int {
+        unsafe {
             fprintf(
                 stream,
                 b"%ld\n\0" as *const u8 as *const libc::c_char,
                 (*(**jobs.offset(job_index as isize)).pipe).pid as libc::c_long,
             );
+        }
+        return;
+    }
+    if format == JLIST_CHANGED_ONLY as libc::c_int {
+        if unsafe { IS_NOTIFIED!(job_index) } {
             return;
         }
-        if format == JLIST_CHANGED_ONLY as libc::c_int {
-            if IS_NOTIFIED!(job_index) {
-                return;
-            }
-            format = JLIST_STANDARD as libc::c_int;
-        }
-        if format != JLIST_NONINTERACTIVE as libc::c_int {
+        format = JLIST_STANDARD as libc::c_int;
+    }
+    if format != JLIST_NONINTERACTIVE as libc::c_int {
+        unsafe {
             fprintf(
                 stream,
                 b"[%d]%c \0" as *const u8 as *const libc::c_char,
@@ -1701,11 +1704,13 @@ fn pretty_print_job(job_index: libc::c_int, mut format: libc::c_int, stream: *mu
                 },
             );
         }
-        if format == JLIST_NONINTERACTIVE as libc::c_int {
-            format = JLIST_LONG as libc::c_int;
-        }
-        p = (**jobs.offset(job_index as isize)).pipe;
-        print_pipeline(p, job_index, format, stream);
+    }
+    if format == JLIST_NONINTERACTIVE as libc::c_int {
+        format = JLIST_LONG as libc::c_int;
+    }
+    p = unsafe { (**jobs.offset(job_index as isize)).pipe };
+    print_pipeline(p, job_index, format, stream);
+    unsafe {
         (**jobs.offset(job_index as isize)).flags |= J_NOTIFIED as libc::c_int;
     }
 }
@@ -1716,33 +1721,33 @@ fn print_job(
     state: libc::c_int,
     job_index: libc::c_int,
 ) -> libc::c_int {
-    unsafe {
-        if state == -(1 as libc::c_int)
-            || state as JOB_STATE as libc::c_int == (*job).state as libc::c_int
-        {
+    if state == -(1 as libc::c_int)
+        || unsafe { state as JOB_STATE as libc::c_int == (*job).state as libc::c_int }
+    {
+        unsafe {
             pretty_print_job(job_index, format, stdout);
         }
-        return 0 as libc::c_int;
     }
+    return 0 as libc::c_int;
 }
 
 #[no_mangle]
 pub fn list_one_job(
-    job: *mut JOB,
+    _job: *mut JOB,
     format: libc::c_int,
-    ignore: libc::c_int,
+    _ignore: libc::c_int,
     job_index: libc::c_int,
 ) {
     unsafe {
         pretty_print_job(job_index, format, stdout);
-        cleanup_dead_jobs();
     }
+    cleanup_dead_jobs();
 }
 
 #[no_mangle]
 pub fn list_stopped_jobs(format: libc::c_int) {
+    cleanup_dead_jobs();
     unsafe {
-        cleanup_dead_jobs();
         map_over_jobs(
             ::std::mem::transmute::<Option<fn() -> libc::c_int>, Option<sh_job_map_func_t>>(Some(
                 ::std::mem::transmute::<
@@ -1792,30 +1797,29 @@ pub fn list_all_jobs(format: libc::c_int) {
 
 #[no_mangle]
 pub fn make_child(command: *mut libc::c_char, flags: libc::c_int) -> pid_t {
+    let async_p: libc::c_int;
+    let mut forksleep: libc::c_int;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    // let termset: sigset_t = __sigset_t { __val: [0; 16] };
+    // let chldset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset_copy: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut pid: pid_t;
+    let mut oterm: Option<SigHandler> = None;
+    c_sigemptyset(&mut oset_copy);
+    c_sigprocmask(
+        0 as libc::c_int,
+        0 as *mut libc::c_void as *mut sigset_t,
+        &mut oset_copy,
+    );
+    c_sigaddset(&mut oset_copy, 15 as libc::c_int);
+    c_sigemptyset(&mut set);
+    c_sigaddset(&mut set, 17 as libc::c_int);
+    c_sigaddset(&mut set, 2 as libc::c_int);
+    c_sigaddset(&mut set, 15 as libc::c_int);
+    c_sigemptyset(&mut oset);
+    c_sigprocmask(0 as libc::c_int, &mut set, &mut oset);
     unsafe {
-        let mut async_p: libc::c_int = 0;
-        let mut forksleep: libc::c_int = 0;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-        let termset: sigset_t = __sigset_t { __val: [0; 16] };
-        let chldset: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset_copy: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut pid: pid_t = 0;
-        //let mut oterm: *mut SigHandler = 0 as *mut SigHandler;
-        let mut oterm: Option<SigHandler> = None;
-        sigemptyset(&mut oset_copy);
-        sigprocmask(
-            0 as libc::c_int,
-            0 as *mut libc::c_void as *mut sigset_t,
-            &mut oset_copy,
-        );
-        sigaddset(&mut oset_copy, 15 as libc::c_int);
-        sigemptyset(&mut set);
-        sigaddset(&mut set, 17 as libc::c_int);
-        sigaddset(&mut set, 2 as libc::c_int);
-        sigaddset(&mut set, 15 as libc::c_int);
-        sigemptyset(&mut oset);
-        sigprocmask(0 as libc::c_int, &mut set, &mut oset);
         if interactive_shell != 0 {
             oterm = set_signal_handler(15 as libc::c_int, None);
         }
@@ -1830,18 +1834,18 @@ pub fn make_child(command: *mut libc::c_char, flags: libc::c_int) -> pid_t {
         loop {
             pid = fork();
             if !(pid < 0 as libc::c_int
-                && *__errno_location() == 11 as libc::c_int
+                && *c___errno_location() == 11 as libc::c_int
                 && forksleep < 16 as libc::c_int)
             {
                 break;
             }
-            sigprocmask(
+            c_sigprocmask(
                 2 as libc::c_int,
                 &mut oset_copy,
                 0 as *mut libc::c_void as *mut sigset_t,
             );
             waitchld(-(1 as libc::c_int), 0 as libc::c_int);
-            *__errno_location() = 11 as libc::c_int;
+            *c___errno_location() = 11 as libc::c_int;
             sys_error(b"fork: retry\0" as *const u8 as *const libc::c_char);
             if sleep(forksleep as libc::c_uint) != 0 as libc::c_int as libc::c_uint {
                 break;
@@ -1850,7 +1854,7 @@ pub fn make_child(command: *mut libc::c_char, flags: libc::c_int) -> pid_t {
             if interrupt_state != 0 {
                 break;
             }
-            sigprocmask(
+            c_sigprocmask(
                 2 as libc::c_int,
                 &mut set,
                 0 as *mut libc::c_void as *mut sigset_t,
@@ -1871,7 +1875,7 @@ pub fn make_child(command: *mut libc::c_char, flags: libc::c_int) -> pid_t {
             throw_to_top_level();
         }
         if pid == 0 as libc::c_int {
-            let mut mypid: pid_t = 0;
+            let mypid: pid_t;
             mypid = getpid();
             unset_bash_input(0 as libc::c_int);
             ::std::ptr::write_volatile(&mut interrupt_state as *mut sig_atomic_t, 0 as libc::c_int);
@@ -1887,7 +1891,7 @@ pub fn make_child(command: *mut libc::c_char, flags: libc::c_int) -> pid_t {
                 }
                 if setpgid(mypid, pipeline_pgrp) < 0 as libc::c_int {
                     sys_error(
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"child setpgid (%ld to %ld)\0" as *const u8 as *const libc::c_char,
                             5 as libc::c_int,
@@ -1933,7 +1937,7 @@ pub fn make_child(command: *mut libc::c_char, flags: libc::c_int) -> pid_t {
             ::std::ptr::write_volatile(&mut last_made_pid as *mut pid_t, pid);
             js.c_totforked += 1;
             js.c_living += 1;
-            sigprocmask(
+            c_sigprocmask(
                 2 as libc::c_int,
                 &mut oset,
                 0 as *mut libc::c_void as *mut sigset_t,
@@ -1954,45 +1958,50 @@ pub fn ignore_tty_job_signals() {
 
 #[no_mangle]
 pub fn default_tty_job_signals() {
-    unsafe {
-        if signal_is_trapped(SIGTSTP as libc::c_int) == 0
-            && signal_is_hard_ignored(SIGTSTP as libc::c_int) != 0
-        {
+    if signal_is_trapped(SIGTSTP as libc::c_int) == 0
+        && signal_is_hard_ignored(SIGTSTP as libc::c_int) != 0
+    {
+        unsafe {
             set_signal_handler(SIGTSTP as libc::c_int, SIG_IGN!());
-        } else {
-            set_signal_handler(SIGTSTP as libc::c_int, None);
         }
-        if signal_is_trapped(SIGTTIN as libc::c_int) == 0
-            && signal_is_hard_ignored(SIGTTIN as libc::c_int) != 0
-        {
-            set_signal_handler(SIGTTIN as libc::c_int, SIG_IGN!());
-        } else {
-            set_signal_handler(SIGTTIN as libc::c_int, None);
-        }
-        if signal_is_trapped(SIGTTOU as libc::c_int) == 0
-            && signal_is_hard_ignored(SIGTTOU as libc::c_int) != 0
-        {
-            set_signal_handler(SIGTTOU as libc::c_int, SIG_IGN!());
-        } else {
-            set_signal_handler(SIGTTOU as libc::c_int, None);
-        };
+    } else {
+        set_signal_handler(SIGTSTP as libc::c_int, None);
     }
+    if signal_is_trapped(SIGTTIN as libc::c_int) == 0
+        && signal_is_hard_ignored(SIGTTIN as libc::c_int) != 0
+    {
+        unsafe {
+            set_signal_handler(SIGTTIN as libc::c_int, SIG_IGN!());
+        }
+    } else {
+        set_signal_handler(SIGTTIN as libc::c_int, None);
+    }
+    if signal_is_trapped(SIGTTOU as libc::c_int) == 0
+        && signal_is_hard_ignored(SIGTTOU as libc::c_int) != 0
+    {
+        unsafe {
+            set_signal_handler(SIGTTOU as libc::c_int, SIG_IGN!());
+        }
+    } else {
+        set_signal_handler(SIGTTOU as libc::c_int, None);
+    };
 }
 
 #[no_mangle]
 pub fn get_original_tty_job_signals() {
     static mut fetched: libc::c_int = 0 as libc::c_int;
-    unsafe {
-        if fetched == 0 as libc::c_int {
-            if interactive_shell != 0 {
-                set_original_signal(SIGTSTP as libc::c_int, None);
-                set_original_signal(SIGTTIN as libc::c_int, None);
-                set_original_signal(SIGTTOU as libc::c_int, None);
-            } else {
-                get_original_signal(SIGTSTP as libc::c_int);
-                get_original_signal(SIGTTIN as libc::c_int);
-                get_original_signal(SIGTTOU as libc::c_int);
-            }
+
+    if unsafe { fetched == 0 as libc::c_int } {
+        if unsafe { interactive_shell != 0 } {
+            set_original_signal(SIGTSTP as libc::c_int, None);
+            set_original_signal(SIGTTIN as libc::c_int, None);
+            set_original_signal(SIGTTOU as libc::c_int, None);
+        } else {
+            get_original_signal(SIGTSTP as libc::c_int);
+            get_original_signal(SIGTTIN as libc::c_int);
+            get_original_signal(SIGTTOU as libc::c_int);
+        }
+        unsafe {
             fetched = 1;
         }
     }
@@ -2011,32 +2020,34 @@ static mut shell_tty_info: libc::termios = libc::termios {
 
 #[no_mangle]
 pub fn get_tty_state() -> libc::c_int {
-    let mut tty: libc::c_int = 0;
-    unsafe {
-        tty = input_tty!();
-        if tty != -1 {
-            if libc::tcgetattr(tty, &mut shell_tty_info) < 0 {
-                return -(1 as libc::c_int);
-            }
-            if check_window_size != 0 {
-                get_new_window_size(
-                    0 as libc::c_int,
-                    0 as *mut libc::c_int,
-                    0 as *mut libc::c_int,
-                );
-            }
+    let tty: libc::c_int;
+
+    tty = unsafe { input_tty!() };
+    if tty != -1 {
+        if unsafe { libc::tcgetattr(tty, &mut shell_tty_info) < 0 } {
+            return -(1 as libc::c_int);
+        }
+        if unsafe { check_window_size != 0 } {
+            c_get_new_window_size(
+                0 as libc::c_int,
+                0 as *mut libc::c_int,
+                0 as *mut libc::c_int,
+            );
         }
     }
+
     return 0 as libc::c_int;
 }
 
 #[no_mangle]
 pub fn set_tty_state() -> libc::c_int {
-    let mut tty: libc::c_int = 0;
-    unsafe {
-        tty = input_tty!();
-        if tty != -1 {
-            if libc::tcsetattr(tty, 1 as libc::c_int, &mut shell_tty_info) < 0 as libc::c_int {
+    let tty: libc::c_int;
+
+    tty = unsafe { input_tty!() };
+    if tty != -1 {
+        if unsafe { libc::tcsetattr(tty, 1 as libc::c_int, &mut shell_tty_info) < 0 as libc::c_int }
+        {
+            unsafe {
                 if interactive != 0 {
                     sys_error(
                         b"[%ld: %d (%d)] tcsetattr\0" as *const u8 as *const libc::c_char,
@@ -2045,122 +2056,129 @@ pub fn set_tty_state() -> libc::c_int {
                         tty,
                     );
                 }
-                return -1;
             }
+            return -1;
         }
-        return 0;
     }
+    return 0;
 }
 
 fn find_last_proc(job: libc::c_int, block: libc::c_int) -> *mut PROCESS {
-    unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut p: *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-        if block != 0 {
-            BLOCK_CHILD(&mut set, &mut oset);
-        }
+    if block != 0 {
+        BLOCK_CHILD(&mut set, &mut oset);
+    }
+    unsafe {
         p = (**jobs.offset(job as isize)).pipe;
         while !p.is_null() && (*p).next != (**jobs.offset(job as isize)).pipe {
             p = (*p).next;
         }
-        if block != 0 {
-            UNBLOCK_CHILD(&mut oset);
-        }
-        return p;
     }
+    if block != 0 {
+        UNBLOCK_CHILD(&mut oset);
+    }
+    return p;
 }
 
 fn find_last_pid(job: libc::c_int, block: libc::c_int) -> pid_t {
+    let p: *mut PROCESS;
+    p = find_last_proc(job, block);
     unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        p = find_last_proc(job, block);
         return (*p).pid;
     }
 }
 
 #[no_mangle]
 pub fn wait_for_single_pid(pid: pid_t, flags: libc::c_int) -> libc::c_int {
-    unsafe {
-        let mut child: *mut PROCESS = 0 as *mut PROCESS;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut r: libc::c_int = 0;
-        let mut job: libc::c_int = 0;
-        let mut alive: libc::c_int = 0;
+    let child: *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut r: libc::c_int;
+    let job: libc::c_int;
+    let mut alive: libc::c_int;
 
-        BLOCK_CHILD(&mut set, &mut oset);
-        child = find_pipeline(pid, 0, 0 as *mut libc::c_int);
-        UNBLOCK_CHILD(&mut oset);
+    BLOCK_CHILD(&mut set, &mut oset);
+    child = find_pipeline(pid, 0, 0 as *mut libc::c_int);
+    UNBLOCK_CHILD(&mut oset);
 
-        if child.is_null() {
-            r = bgp_search(pid);
-            if r >= 0 {
-                return r;
-            }
+    if child.is_null() {
+        r = bgp_search(pid);
+        if r >= 0 {
+            return r;
         }
-        if child.is_null() {
-            if flags & JWAIT_PERROR as libc::c_int != 0 {
+    }
+    if child.is_null() {
+        if flags & JWAIT_PERROR as libc::c_int != 0 {
+            unsafe {
                 internal_error(
                     b"wait: pid %ld is not a child of this shell\0" as *const u8
                         as *const libc::c_char,
                     pid as libc::c_long,
                 );
             }
-            return 127;
         }
-        alive = 0;
-        loop {
-            r = wait_for(pid, 0);
-            if flags & JWAIT_FORCE as libc::c_int == 0 {
-                break;
-            }
-
-            BLOCK_CHILD(&mut set, &mut oset);
-            alive = PALIVE!(child) as libc::c_int;
-            UNBLOCK_CHILD(&mut oset);
-
-            if !(alive != 0) {
-                break;
-            }
+        return 127;
+    }
+    // alive = 0;
+    loop {
+        r = wait_for(pid, 0);
+        if flags & JWAIT_FORCE as libc::c_int == 0 {
+            break;
         }
 
         BLOCK_CHILD(&mut set, &mut oset);
-        job = find_job(pid, 0, 0 as *mut *mut PROCESS);
-        if job != NO_JOB && !(*jobs.offset(job as isize)).is_null() && DEADJOB!(job) {
-            (**jobs.offset(job as isize)).flags |= J_NOTIFIED as libc::c_int;
+        unsafe {
+            alive = PALIVE!(child) as libc::c_int;
         }
         UNBLOCK_CHILD(&mut oset);
 
-        if posixly_correct != 0 {
-            cleanup_dead_jobs();
-            bgp_delete(pid);
+        if !(alive != 0) {
+            break;
         }
-
-        CHECK_WAIT_INTR!();
-
-        return r;
     }
+
+    BLOCK_CHILD(&mut set, &mut oset);
+    job = find_job(pid, 0, 0 as *mut *mut PROCESS);
+    unsafe {
+        if job != NO_JOB && !(*jobs.offset(job as isize)).is_null() && DEADJOB!(job) {
+            (**jobs.offset(job as isize)).flags |= J_NOTIFIED as libc::c_int;
+        }
+    }
+    UNBLOCK_CHILD(&mut oset);
+
+    if unsafe { posixly_correct != 0 } {
+        cleanup_dead_jobs();
+        bgp_delete(pid);
+    }
+
+    unsafe {
+        CHECK_WAIT_INTR!();
+    }
+
+    return r;
 }
 
 #[no_mangle]
 pub fn wait_for_background_pids(ps: *mut procstat) {
-    let mut i: libc::c_int = 0;
-    let mut r: libc::c_int = 0;
-    let mut any_stopped: libc::c_int = 0;
-    let mut check_async: libc::c_int = 0;
+    let mut i: libc::c_int;
+    let mut r: libc::c_int;
+    // let mut any_stopped: libc::c_int = 0;
+    // let mut check_async: libc::c_int = 0;
     let mut set: sigset_t = __sigset_t { __val: [0; 16] };
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-    let mut pid: pid_t = 0;
+    let mut pid: pid_t;
 
-    any_stopped = 0;
-    check_async = 1;
-    unsafe {
-        loop {
-            BLOCK_CHILD(&mut set, &mut set);
+    // any_stopped = 0;
+    // check_async = 1;
 
-            i = 0;
+    loop {
+        BLOCK_CHILD(&mut set, &mut set);
+
+        i = 0;
+        unsafe {
             while i < js.j_jobslots {
                 if !(*jobs.offset(i as isize)).is_null() && STOPPED!(i) {
                     builtin_warning(
@@ -2168,20 +2186,22 @@ pub fn wait_for_background_pids(ps: *mut procstat) {
                         i + 1,
                         find_last_pid(i, 0),
                     );
-                    any_stopped = 1;
+                    // any_stopped = 1;
                 }
                 if !(*jobs.offset(i as isize)).is_null() && RUNNING!(i) && IS_FOREGROUND!(i) {
                     break;
                 }
                 i += 1;
             }
-            if i == js.j_jobslots {
-                UNBLOCK_CHILD(&mut oset);
-                break;
-            }
-
-            pid = find_last_pid(i, 0);
+        }
+        if unsafe { i == js.j_jobslots } {
             UNBLOCK_CHILD(&mut oset);
+            break;
+        }
+
+        pid = find_last_pid(i, 0);
+        UNBLOCK_CHILD(&mut oset);
+        unsafe {
             QUIT!();
             if terminating_signal != 0 {
                 termsig_handler(terminating_signal);
@@ -2189,9 +2209,11 @@ pub fn wait_for_background_pids(ps: *mut procstat) {
             if interrupt_state != 0 {
                 throw_to_top_level();
             }
-            *__errno_location() = 0;
-            r = wait_for_single_pid(pid, JWAIT_PERROR as libc::c_int);
-            if !ps.is_null() {
+            *c___errno_location() = 0;
+        }
+        r = wait_for_single_pid(pid, JWAIT_PERROR as libc::c_int);
+        if !ps.is_null() {
+            unsafe {
                 (*ps).pid = pid;
                 (*ps).status = (if r < 0 as libc::c_int {
                     127 as libc::c_int
@@ -2199,16 +2221,16 @@ pub fn wait_for_background_pids(ps: *mut procstat) {
                     r
                 }) as libc::c_short;
             }
-            if r == -1 && *__errno_location() == ECHILD as libc::c_int {
-                check_async = 0;
-                mark_all_jobs_as_dead();
-            }
         }
-        procsub_waitall();
-        mark_dead_jobs_as_notified(1);
-        cleanup_dead_jobs();
-        bgp_clear();
+        if unsafe { r == -1 && *c___errno_location() == ECHILD as libc::c_int } {
+            // check_async = 0;
+            mark_all_jobs_as_dead();
+        }
     }
+    procsub_waitall();
+    mark_dead_jobs_as_notified(1);
+    cleanup_dead_jobs();
+    bgp_clear();
 }
 
 static mut wait_sigint_received: libc::c_int = 0;
@@ -2243,9 +2265,9 @@ fn restore_sigint_handler() {
     }
 }
 
-fn wait_sigint_handler(sig: libc::c_int) {
+fn wait_sigint_handler(_sig: libc::c_int) {
     unsafe {
-        let mut sigint_handler: Option<SigHandler> = None;
+        let sigint_handler: Option<SigHandler>;
 
         if this_shell_builtin.is_some() && this_shell_builtin == Some(wait_builtin) {
             set_exit_status(128 + SIGINT as libc::c_int);
@@ -2254,8 +2276,6 @@ fn wait_sigint_handler(sig: libc::c_int) {
                 && this_shell_builtin == Some(wait_builtin)
                 && signal_is_trapped(SIGINT as libc::c_int) != 0
                 && {
-                    // sigint_handler = Some(trap_to_sighandler(SIGINT as libc::c_int));
-                    // sigint_handler == Some(Some(trap_handler as unsafe extern "C" fn(c_int) -> ()))
                     sigint_handler = trap_to_sighandler(SIGINT as libc::c_int);
                     sigint_handler == Some(trap_handler)
                 }
@@ -2263,7 +2283,7 @@ fn wait_sigint_handler(sig: libc::c_int) {
                 trap_handler(SIGINT as libc::c_int);
                 wait_signal_received = SIGINT as libc::c_int;
                 if wait_intr_flag != 0 {
-                    siglongjmp(wait_intr_buf.as_mut_ptr(), 1);
+                    c_siglongjmp(wait_intr_buf.as_mut_ptr(), 1);
                 } else {
                     return;
                 }
@@ -2289,22 +2309,19 @@ fn process_exit_signal(status: WAIT) -> libc::c_int {
     }
 }
 fn process_exit_status(status: WAIT) -> libc::c_int {
-    unsafe {
-        if WIFSIGNALED!(status) {
-            return 128 + WTERMSIG!(status);
-        } else if WIFSTOPPED!(status) as libc::c_int == 0 {
-            return WEXITSTATUS!(status);
-        } else {
-            return 0;
-        }
+    if WIFSIGNALED!(status) {
+        return 128 + WTERMSIG!(status);
+    } else if WIFSTOPPED!(status) as libc::c_int == 0 {
+        return WEXITSTATUS!(status);
+    } else {
+        return 0;
     }
 }
 
 fn job_signal_status(job: libc::c_int) -> WAIT {
+    let mut p: *mut PROCESS;
+    let mut s: WAIT;
     unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        let mut s: WAIT = 0;
-
         p = (**jobs.offset(job as isize)).pipe;
         loop {
             s = (*p).status;
@@ -2316,16 +2333,15 @@ fn job_signal_status(job: libc::c_int) -> WAIT {
                 break;
             }
         }
-        return s;
     }
+    return s;
 }
 
 fn raw_job_exit_status(job: libc::c_int) -> WAIT {
+    let mut p: *mut PROCESS;
+    let mut fail: libc::c_int;
+    let ret: WAIT;
     unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        let mut fail: libc::c_int = 0;
-        let mut ret: WAIT = 0;
-
         if (**jobs.offset(job as isize)).flags & J_PIPEFAIL as libc::c_int != 0 {
             fail = 0;
             p = (**jobs.offset(job as isize)).pipe;
@@ -2360,28 +2376,26 @@ pub fn job_exit_signal(job: libc::c_int) -> libc::c_int {
 
 #[no_mangle]
 pub fn wait_for(pid: pid_t, flags: libc::c_int) -> libc::c_int {
+    let current_block: u64;
+    let mut job: libc::c_int;
+    let mut termination_state: libc::c_int;
+    let mut r: libc::c_int;
+    let s: WAIT;
+    let mut child: *mut PROCESS;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    child = 0 as *mut PROCESS;
+    c_sigemptyset(&mut set);
+    c_sigaddset(&mut set, 17 as libc::c_int);
+    c_sigemptyset(&mut oset);
+    c_sigprocmask(0 as libc::c_int, &mut set, &mut oset);
     unsafe {
-        let current_block: u64;
-        let mut job: libc::c_int = 0;
-        let mut termination_state: libc::c_int = 0;
-        let mut r: libc::c_int = 0;
-        let mut s: WAIT = 0;
-        let mut child: *mut PROCESS = 0 as *mut PROCESS;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-        child = 0 as *mut PROCESS;
-        sigemptyset(&mut set);
-        sigaddset(&mut set, 17 as libc::c_int);
-        sigemptyset(&mut oset);
-        sigprocmask(0 as libc::c_int, &mut set, &mut oset);
         child_caught_sigint = 0 as libc::c_int;
         wait_sigint_received = child_caught_sigint;
         if job_control == 0 as libc::c_int || subshell_environment & 0x4 as libc::c_int != 0 {
-            //let mut temp_sigint_handler: *mut SigHandler;
-            let mut temp_sigint_handler: Option<SigHandler> = None;
+            let temp_sigint_handler: Option<SigHandler>;
             temp_sigint_handler = set_signal_handler(
                 SIGINT as libc::c_int,
-                //wait_sigint_handler as *mut Option<unsafe extern "C" fn(i32)>,
                 ::core::mem::transmute::<Option<fn() -> ()>, Option<SigHandler>>(Some(
                     ::core::mem::transmute::<fn(libc::c_int) -> (), fn() -> ()>(
                         wait_sigint_handler,
@@ -2423,7 +2437,7 @@ pub fn wait_for(pid: pid_t, flags: libc::c_int) -> libc::c_int {
             && this_shell_builtin.is_some()
             && this_shell_builtin == Some(wait_builtin)
         {
-            siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
+            c_siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
         }
         job = -(1 as libc::c_int);
         loop {
@@ -2435,13 +2449,13 @@ pub fn wait_for(pid: pid_t, flags: libc::c_int) -> libc::c_int {
                 );
                 if child.is_null() {
                     give_terminal_to(shell_pgrp, 0 as libc::c_int);
-                    sigprocmask(
+                    c_sigprocmask(
                         2 as libc::c_int,
                         &mut oset,
                         0 as *mut libc::c_void as *mut sigset_t,
                     );
                     internal_error(
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"wait_for: No record of process %ld\0" as *const u8
                                 as *const libc::c_char,
@@ -2462,7 +2476,7 @@ pub fn wait_for(pid: pid_t, flags: libc::c_int) -> libc::c_int {
                 || job != -(1 as libc::c_int)
                     && (**jobs.offset(job as isize)).state as libc::c_int == JRUNNING as libc::c_int
             {
-                let mut old_waiting: libc::c_int = 0;
+                let old_waiting: libc::c_int;
                 queue_sigchld = 1 as libc::c_int;
                 old_waiting = waiting_for_child;
                 waiting_for_child = 1 as libc::c_int;
@@ -2471,20 +2485,20 @@ pub fn wait_for(pid: pid_t, flags: libc::c_int) -> libc::c_int {
                     && this_shell_builtin.is_some()
                     && this_shell_builtin == Some(wait_builtin)
                 {
-                    siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
+                    c_siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
                 }
                 r = waitchld(pid, 1 as libc::c_int);
                 waiting_for_child = old_waiting;
                 queue_sigchld = 0 as libc::c_int;
                 if r == -(1 as libc::c_int)
-                    && *__errno_location() == 10 as libc::c_int
+                    && *c___errno_location() == 10 as libc::c_int
                     && this_shell_builtin == Some(wait_builtin)
                 {
                     termination_state = -(1 as libc::c_int);
                     restore_sigint_handler();
                     current_block = 6718615339517147058;
                     break;
-                } else if r == -(1 as libc::c_int) && *__errno_location() == 10 as libc::c_int {
+                } else if r == -(1 as libc::c_int) && *c___errno_location() == 10 as libc::c_int {
                     if !child.is_null() {
                         (*child).running = 0 as libc::c_int;
                         (*child).status = 0 as libc::c_int;
@@ -2518,7 +2532,7 @@ pub fn wait_for(pid: pid_t, flags: libc::c_int) -> libc::c_int {
                 && this_shell_builtin.is_some()
                 && this_shell_builtin == Some(wait_builtin)
             {
-                siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
+                c_siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
             }
             if pid == -(1 as libc::c_int) {
                 restore_sigint_handler();
@@ -2584,7 +2598,7 @@ pub fn wait_for(pid: pid_t, flags: libc::c_int) -> libc::c_int {
                                     || (**jobs.offset(job as isize)).flags & 0x1 as libc::c_int
                                         != 0 as libc::c_int)
                             {
-                                get_new_window_size(
+                                c_get_new_window_size(
                                     0 as libc::c_int,
                                     0 as *mut libc::c_int,
                                     0 as *mut libc::c_int,
@@ -2645,7 +2659,7 @@ pub fn wait_for(pid: pid_t, flags: libc::c_int) -> libc::c_int {
                         if child_caught_sigint == 0 as libc::c_int
                             && signal_is_trapped(2 as libc::c_int) == 0 as libc::c_int
                         {
-                            sigprocmask(
+                            c_sigprocmask(
                                 2 as libc::c_int,
                                 &mut oset,
                                 0 as *mut libc::c_void as *mut sigset_t,
@@ -2680,7 +2694,7 @@ pub fn wait_for(pid: pid_t, flags: libc::c_int) -> libc::c_int {
                             );
                         }
                         if check_window_size != 0 {
-                            get_new_window_size(
+                            c_get_new_window_size(
                                 0 as libc::c_int,
                                 0 as *mut libc::c_int,
                                 0 as *mut libc::c_int,
@@ -2698,7 +2712,7 @@ pub fn wait_for(pid: pid_t, flags: libc::c_int) -> libc::c_int {
             }
             _ => {}
         }
-        sigprocmask(
+        c_sigprocmask(
             2 as libc::c_int,
             &mut oset,
             0 as *mut libc::c_void as *mut sigset_t,
@@ -2709,13 +2723,12 @@ pub fn wait_for(pid: pid_t, flags: libc::c_int) -> libc::c_int {
 
 #[no_mangle]
 pub fn wait_for_job(job: libc::c_int, flags: libc::c_int, ps: *mut procstat) -> libc::c_int {
+    let pid: pid_t;
+    let mut r: libc::c_int;
+    let mut state: libc::c_int;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
     unsafe {
-        let mut pid: pid_t = 0;
-        let mut r: libc::c_int = 0;
-        let mut state: libc::c_int = 0;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-
         BLOCK_CHILD(&mut set, &mut oset);
         state = JOBSTATE!(job);
         if state == JSTOPPED as libc::c_int {
@@ -2730,7 +2743,7 @@ pub fn wait_for_job(job: libc::c_int, flags: libc::c_int, ps: *mut procstat) -> 
 
         loop {
             r = wait_for(pid, 0);
-            if r == -1 && errno!() == ECHILD {
+            if r == -1 && *c___errno_location() == ECHILD {
                 mark_all_jobs_as_dead();
             }
 
@@ -2766,14 +2779,13 @@ pub fn wait_for_job(job: libc::c_int, flags: libc::c_int, ps: *mut procstat) -> 
 
 #[no_mangle]
 pub fn wait_for_any_job(flags: libc::c_int, ps: *mut procstat) -> libc::c_int {
+    let mut current_block: u64;
+    let pid: pid_t;
+    let mut i: libc::c_int;
+    let mut r: libc::c_int;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
     unsafe {
-        let mut current_block: u64;
-        let mut pid: pid_t = 0;
-        let mut i: libc::c_int = 0;
-        let mut r: libc::c_int = 0;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-
         if jobs_list_frozen != 0 {
             return -1;
         }
@@ -2829,9 +2841,9 @@ pub fn wait_for_any_job(flags: libc::c_int, ps: *mut procstat) -> libc::c_int {
                     CHECK_TERMSIG!();
                     CHECK_WAIT_INTR!();
 
-                    errno!() = 0;
+                    *c___errno_location() = 0;
                     r = wait_for(ANY_PID, 0);
-                    if r == -1 && errno!() == ECHILD {
+                    if r == -1 && *c___errno_location() == ECHILD {
                         mark_all_jobs_as_dead();
                     }
                     BLOCK_CHILD(&mut set, &mut oset);
@@ -2887,17 +2899,17 @@ pub fn reap_dead_jobs() {
 }
 
 fn most_recent_job_in_state(job: libc::c_int, state: JOB_STATE) -> libc::c_int {
+    let mut i: libc::c_int;
+    let mut result: libc::c_int;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    c_sigemptyset(&mut set);
+    c_sigaddset(&mut set, 17 as libc::c_int);
+    c_sigemptyset(&mut oset);
+    c_sigprocmask(0 as libc::c_int, &mut set, &mut oset);
+    result = -(1 as libc::c_int);
+    i = job - 1 as libc::c_int;
     unsafe {
-        let mut i: libc::c_int = 0;
-        let mut result: libc::c_int = 0;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-        sigemptyset(&mut set);
-        sigaddset(&mut set, 17 as libc::c_int);
-        sigemptyset(&mut oset);
-        sigprocmask(0 as libc::c_int, &mut set, &mut oset);
-        result = -(1 as libc::c_int);
-        i = job - 1 as libc::c_int;
         while i >= 0 as libc::c_int {
             if !(*jobs.offset(i as isize)).is_null()
                 && (**jobs.offset(i as isize)).state as libc::c_int == state as libc::c_int
@@ -2908,7 +2920,7 @@ fn most_recent_job_in_state(job: libc::c_int, state: JOB_STATE) -> libc::c_int {
                 i -= 1;
             }
         }
-        sigprocmask(
+        c_sigprocmask(
             2 as libc::c_int,
             &mut oset,
             0 as *mut libc::c_void as *mut sigset_t,
@@ -2926,7 +2938,7 @@ fn job_last_running(job: libc::c_int) -> libc::c_int {
 }
 
 fn set_current_job(job: libc::c_int) {
-    let mut candidate: libc::c_int = 0;
+    let mut candidate: libc::c_int;
     unsafe {
         if js.j_current != job {
             js.j_previous = js.j_current;
@@ -2941,7 +2953,7 @@ fn set_current_job(job: libc::c_int) {
         {
             return;
         }
-        candidate = NO_JOB;
+        // candidate = NO_JOB;
         if (**jobs.offset(js.j_current as isize)).state as libc::c_int == JSTOPPED as libc::c_int {
             candidate = job_last_stopped(js.j_current);
             if candidate != NO_JOB {
@@ -2965,17 +2977,18 @@ fn set_current_job(job: libc::c_int) {
 }
 
 fn reset_current() {
-    let mut candidate: libc::c_int = 0;
-    unsafe {
-        if js.j_jobslots != 0
+    let mut candidate: libc::c_int;
+
+    if unsafe {
+        js.j_jobslots != 0
             && js.j_current != NO_JOB
             && !(*jobs.offset(js.j_current as isize)).is_null()
             && STOPPED!(js.j_current)
-        {
-            candidate = js.j_current;
-        } else {
-            candidate = NO_JOB;
-
+    } {
+        candidate = unsafe { js.j_current };
+    } else {
+        candidate = NO_JOB;
+        unsafe {
             if js.j_previous != NO_JOB
                 && !(*jobs.offset(js.j_previous as isize)).is_null()
                 && STOPPED!(js.j_previous)
@@ -2989,17 +3002,19 @@ fn reset_current() {
                 candidate = job_last_running(js.j_jobslots);
             }
         }
-        if candidate != NO_JOB {
-            set_current_job(candidate);
-        } else {
+    }
+    if candidate != NO_JOB {
+        set_current_job(candidate);
+    } else {
+        unsafe {
             js.j_previous = NO_JOB;
             js.j_current = js.j_previous;
-        };
-    }
+        }
+    };
 }
 
 fn set_job_running(job: libc::c_int) {
-    let mut p: *mut PROCESS = 0 as *mut PROCESS;
+    let mut p: *mut PROCESS;
     unsafe {
         p = (**jobs.offset(job as isize)).pipe;
         loop {
@@ -3017,12 +3032,12 @@ fn set_job_running(job: libc::c_int) {
 
 #[no_mangle]
 pub fn start_job(job: libc::c_int, foreground: libc::c_int) -> libc::c_int {
-    let mut p: *mut PROCESS = 0 as *mut PROCESS;
-    let mut already_running: libc::c_int = 0;
+    let mut p: *mut PROCESS;
+    let already_running: libc::c_int;
     let mut set: sigset_t = __sigset_t { __val: [0; 16] };
     let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-    let mut wd: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut s: *mut libc::c_char = 0 as *mut libc::c_char;
+    let wd: *mut libc::c_char;
+    let s: *mut libc::c_char;
     static mut save_stty: libc::termios = libc::termios {
         c_iflag: 0,
         c_oflag: 0,
@@ -3142,8 +3157,8 @@ pub fn start_job(job: libc::c_int, foreground: libc::c_int) -> libc::c_int {
             killpg((**jobs.offset(job as isize)).pgrp, 18 as libc::c_int);
         }
         if foreground != 0 {
-            let mut pid: pid_t = 0;
-            let mut st: libc::c_int = 0;
+            let pid: pid_t;
+            let st: libc::c_int;
 
             pid = find_last_pid(job, 0 as libc::c_int);
             UNBLOCK_CHILD(&mut oset);
@@ -3161,27 +3176,27 @@ pub fn start_job(job: libc::c_int, foreground: libc::c_int) -> libc::c_int {
 
 #[no_mangle]
 pub fn kill_pid(mut pid: pid_t, sig: libc::c_int, mut group: libc::c_int) -> libc::c_int {
-    unsafe {
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
-        let mut job: libc::c_int = 0;
-        let mut result: libc::c_int = 0;
-        let mut negative: libc::c_int = 0;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut p: *mut PROCESS;
+    let mut job: libc::c_int = 0;
+    let mut result: libc::c_int;
+    let negative: libc::c_int;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-        if pid < -1 {
-            pid = -pid;
-            negative = 1;
-            group = negative;
-        } else {
-            negative = 0;
-        }
-        result = 0;
-        if group != 0 {
-            BLOCK_CHILD(&mut set, &mut oset);
-            p = find_pipeline(pid, 0, &mut job);
+    if pid < -1 {
+        pid = -pid;
+        negative = 1;
+        group = negative;
+    } else {
+        negative = 0;
+    }
+    result = 0;
+    if group != 0 {
+        BLOCK_CHILD(&mut set, &mut oset);
+        p = find_pipeline(pid, 0, &mut job);
 
-            if job != NO_JOB {
+        if job != NO_JOB {
+            unsafe {
                 (**jobs.offset(job as isize)).flags &= !(J_NOTIFIED as libc::c_int);
                 if negative != 0 && (**jobs.offset(job as isize)).pgrp == shell_pgrp {
                     result = killpg(pid, sig);
@@ -3215,46 +3230,50 @@ pub fn kill_pid(mut pid: pid_t, sig: libc::c_int, mut group: libc::c_int) -> lib
                         (**jobs.offset(job as isize)).flags |= J_NOTIFIED as libc::c_int;
                     }
                 }
-            } else {
+            }
+        } else {
+            unsafe {
                 result = killpg(pid, sig);
             }
-            UNBLOCK_CHILD(&mut oset);
-        } else {
+        }
+        UNBLOCK_CHILD(&mut oset);
+    } else {
+        unsafe {
             result = kill(pid, sig);
         }
-        return result;
     }
+    return result;
 }
 
-fn sigchld_handler(sig: libc::c_int) {
-    let mut n: libc::c_int = 0;
-    let mut oerrno: libc::c_int = 0;
+fn sigchld_handler(_sig: libc::c_int) {
+    // let mut n: libc::c_int = 0;
+    let oerrno: libc::c_int;
     unsafe {
-        oerrno = errno!();
+        oerrno = *c___errno_location();
         sigchld += 1;
-        n = 0;
+        // n = 0;
         if queue_sigchld == 0 {
-            n = waitchld(-1, 0);
+            waitchld(-1, 0);
         }
-        errno!() = oerrno;
+        *c___errno_location() = oerrno;
     }
     return;
 }
-fn waitchld(wpid: pid_t, block: libc::c_int) -> libc::c_int {
+fn waitchld(_wpid: pid_t, block: libc::c_int) -> libc::c_int {
+    let mut status: WAIT = 0;
+    let mut child: *mut PROCESS;
+    let mut pid: pid_t;
+    let mut ind: libc::c_int;
+    let mut call_set_current: libc::c_int;
+    let mut last_stopped_job: libc::c_int;
+    let mut job: libc::c_int = 0;
+    let mut children_exited: libc::c_int;
+    let mut waitpid_flags: libc::c_int;
+    static mut wcontinued: libc::c_int = 8 as libc::c_int;
+    children_exited = 0 as libc::c_int;
+    call_set_current = children_exited;
+    last_stopped_job = -(1 as libc::c_int);
     unsafe {
-        let mut status: WAIT = 0;
-        let mut child: *mut PROCESS = 0 as *mut PROCESS;
-        let mut pid: pid_t = 0;
-        let mut ind: libc::c_int = 0;
-        let mut call_set_current: libc::c_int = 0;
-        let mut last_stopped_job: libc::c_int = 0;
-        let mut job: libc::c_int = 0;
-        let mut children_exited: libc::c_int = 0;
-        let mut waitpid_flags: libc::c_int = 0;
-        static mut wcontinued: libc::c_int = 8 as libc::c_int;
-        children_exited = 0 as libc::c_int;
-        call_set_current = children_exited;
-        last_stopped_job = -(1 as libc::c_int);
         loop {
             waitpid_flags = if job_control != 0 && subshell_environment == 0 as libc::c_int {
                 2 as libc::c_int | wcontinued
@@ -3272,13 +3291,13 @@ fn waitchld(wpid: pid_t, block: libc::c_int) -> libc::c_int {
                 && this_shell_builtin.is_some()
                 && this_shell_builtin == Some(wait_builtin)
             {
-                siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
+                c_siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
             }
             if block == 1 as libc::c_int
                 && queue_sigchld == 0 as libc::c_int
                 && waitpid_flags & 1 as libc::c_int == 0 as libc::c_int
             {
-                internal_warning(dcgettext(
+                internal_warning(c_dcgettext(
                     0 as *const libc::c_char,
                     b"waitchld: turning on WNOHANG to avoid indefinite block\0" as *const u8
                         as *const libc::c_char,
@@ -3287,14 +3306,16 @@ fn waitchld(wpid: pid_t, block: libc::c_int) -> libc::c_int {
                 waitpid_flags |= 1 as libc::c_int;
             }
             pid = waitpid(-(1 as libc::c_int), &mut status, waitpid_flags);
-            if wcontinued != 0 && pid < 0 as libc::c_int && *__errno_location() == 22 as libc::c_int
+            if wcontinued != 0
+                && pid < 0 as libc::c_int
+                && *c___errno_location() == 22 as libc::c_int
             {
                 wcontinued = 0 as libc::c_int;
             } else {
                 if sigchld > 0 as libc::c_int && waitpid_flags & 1 as libc::c_int != 0 {
                     sigchld -= 1;
                 }
-                if pid < 0 as libc::c_int && *__errno_location() == 10 as libc::c_int {
+                if pid < 0 as libc::c_int && *c___errno_location() == 10 as libc::c_int {
                     if !(children_exited == 0 as libc::c_int) {
                         break;
                     }
@@ -3308,10 +3329,10 @@ fn waitchld(wpid: pid_t, block: libc::c_int) -> libc::c_int {
                         && this_shell_builtin.is_some()
                         && this_shell_builtin == Some(wait_builtin)
                     {
-                        siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
+                        c_siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
                     }
                     if pid < 0 as libc::c_int
-                        && *__errno_location() == 4 as libc::c_int
+                        && *c___errno_location() == 4 as libc::c_int
                         && wait_sigint_received != 0
                     {
                         child_caught_sigint = 1 as libc::c_int;
@@ -3416,7 +3437,7 @@ fn waitchld(wpid: pid_t, block: libc::c_int) -> libc::c_int {
                 queue_sigchld_trap(children_exited);
                 wait_signal_received = 17 as libc::c_int;
                 if sigchld == 0 as libc::c_int && wait_intr_flag != 0 {
-                    siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
+                    c_siglongjmp(wait_intr_buf.as_mut_ptr(), 1 as libc::c_int);
                 }
             } else if sigchld != 0 {
                 queue_sigchld_trap(children_exited);
@@ -3447,15 +3468,14 @@ fn waitchld(wpid: pid_t, block: libc::c_int) -> libc::c_int {
 }
 
 fn set_job_status_and_cleanup(job: libc::c_int) -> libc::c_int {
+    let mut child: *mut PROCESS;
+    let tstatus: libc::c_int;
+    let mut job_state: libc::c_int;
+    let mut any_stopped: libc::c_int;
+    let mut any_tstped: libc::c_int;
+    let mut call_set_current: libc::c_int;
+    let mut temp_handler: Option<SigHandler>;
     unsafe {
-        let mut child: *mut PROCESS = 0 as *mut PROCESS;
-        let mut tstatus: libc::c_int = 0;
-        let mut job_state: libc::c_int = 0;
-        let mut any_stopped: libc::c_int = 0;
-        let mut any_tstped: libc::c_int = 0;
-        let mut call_set_current: libc::c_int = 0;
-        let mut temp_handler: Option<SigHandler>;
-
         child = (**jobs.offset(job as isize)).pipe;
         (**jobs.offset(job as isize)).flags &= !(J_NOTIFIED as libc::c_int);
 
@@ -3518,20 +3538,20 @@ fn set_job_status_and_cleanup(job: libc::c_int) -> libc::c_int {
                 && IS_FOREGROUND!(job)
                 && signal_is_trapped(SIGINT as libc::c_int) != 0
             {
-                let mut old_frozen: libc::c_int = 0;
+                let old_frozen: libc::c_int;
                 wait_sigint_received = 0;
                 last_command_exit_value = process_exit_status((*child).status);
 
                 old_frozen = jobs_list_frozen;
                 jobs_list_frozen = 1;
-                tstatus = maybe_call_trap_handler(SIGINT as libc::c_int);
+                maybe_call_trap_handler(SIGINT as libc::c_int);
                 jobs_list_frozen = old_frozen;
             } else if wait_sigint_received != 0
                 && child_caught_sigint == 0
                 && IS_FOREGROUND!(job)
                 && IS_JOBCONTROL!(job) as libc::c_int == 0
             {
-                let mut old_frozen_0: libc::c_int = 0;
+                let old_frozen_0: libc::c_int;
 
                 wait_sigint_received = 0;
 
@@ -3547,7 +3567,6 @@ fn set_job_status_and_cleanup(job: libc::c_int) -> libc::c_int {
                     if temp_handler == Some(trap_handler)
                         && signal_is_trapped(SIGINT as libc::c_int) == 0
                     {
-                        //temp_handler = &mut trap_to_sighandler(SIGINT as libc::c_int);
                         temp_handler = trap_to_sighandler(2 as libc::c_int);
                     }
                     println!("161616161616");
@@ -3556,7 +3575,6 @@ fn set_job_status_and_cleanup(job: libc::c_int) -> libc::c_int {
                         termsig_handler(SIGINT as libc::c_int);
                     } else if temp_handler != SIG_IGN!() {
                         //这里是函数回调传入参数
-                        //(*temp_handler).unwrap()(SIGINT as libc::c_int);
                         (Some(temp_handler.expect("non-null function pointer")))
                             .expect("non-null function pointer")(
                             2 as libc::c_int
@@ -3571,8 +3589,8 @@ fn set_job_status_and_cleanup(job: libc::c_int) -> libc::c_int {
 
 fn setjstatus(j: libc::c_int) {
     unsafe {
-        let mut i: libc::c_int = 0;
-        let mut p: *mut PROCESS = 0 as *mut PROCESS;
+        let mut i: libc::c_int;
+        let mut p: *mut PROCESS;
 
         i = 1;
         p = (**jobs.offset(j as isize)).pipe;
@@ -3606,7 +3624,7 @@ fn setjstatus(j: libc::c_int) {
 pub fn run_sigchld_trap(nchild: libc::c_int) {
     unsafe {
         let trap_command: *mut libc::c_char;
-        let mut i: libc::c_int = 0;
+        let mut i: libc::c_int;
         trap_command = savestring!(*trap_list
             .as_mut_ptr()
             .offset(SIGCHLD as libc::c_int as isize));
@@ -3637,12 +3655,7 @@ pub fn run_sigchld_trap(nchild: libc::c_int) {
             &mut subst_assign_varlist as *mut *mut WordList as *mut libc::c_char,
             ::std::mem::size_of::<*mut WordList>() as libc::c_ulong as libc::c_int,
         );
-        // unsafe {
-        //     unwind_protect_mem(
-        //         &mut this_shell_builtin as *const sh_builtin_func_t as *mut libc::c_char,
-        //         ::std::mem::size_of::<Option<sh_builtin_func_t>>() as libc::c_ulong as libc::c_int,
-        //     );
-        // }
+
         unwind_protect_mem(
             &mut this_shell_builtin as *mut Option<sh_builtin_func_t> as *mut libc::c_char,
             ::core::mem::size_of::<Option<sh_builtin_func_t>>() as libc::c_ulong as libc::c_int,
@@ -3652,9 +3665,9 @@ pub fn run_sigchld_trap(nchild: libc::c_int) {
             ::std::mem::size_of::<*mut HASH_TABLE>() as libc::c_ulong as libc::c_int,
         );
 
-        extern "C" {
-            pub fn xfree(arg1: *mut ::std::os::raw::c_void);
-        }
+        // extern "C" {
+        //     pub fn c_xfree(arg1: *mut ::std::os::raw::c_void);
+        // }
 
         add_unwind_protect(
             std::mem::transmute::<unsafe extern "C" fn(_), Option<Function>>(free),
@@ -3690,37 +3703,42 @@ pub fn run_sigchld_trap(nchild: libc::c_int) {
 }
 
 fn notify_of_job_status() {
-    unsafe {
-        let mut job: libc::c_int = 0;
-        let mut termsig: libc::c_int = 0;
-        let mut dir: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut s: WAIT = 0;
+    let mut job: libc::c_int;
+    let mut termsig: libc::c_int;
+    let mut dir: *mut libc::c_char;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut s: WAIT;
 
-        if jobs.is_null() || js.j_jobslots == 0 {
-            return;
-        }
-        if old_ttou.is_some() {
-            sigemptyset(&mut set);
-            sigaddset(&mut set, SIGCHLD as libc::c_int);
-            sigaddset(&mut set, SIGTTOU as libc::c_int);
-            sigemptyset(&mut oset);
-            sigprocmask(SIG_BLOCK as libc::c_int, &mut set, &mut oset);
-        } else {
+    if unsafe { jobs.is_null() || js.j_jobslots == 0 } {
+        return;
+    }
+    if unsafe { old_ttou.is_some() } {
+        c_sigemptyset(&mut set);
+        c_sigaddset(&mut set, SIGCHLD as libc::c_int);
+        c_sigaddset(&mut set, SIGTTOU as libc::c_int);
+        c_sigemptyset(&mut oset);
+        c_sigprocmask(SIG_BLOCK as libc::c_int, &mut set, &mut oset);
+    } else {
+        unsafe {
             queue_sigchld += 1;
         }
-        job = 0;
-        dir = 0 as *mut libc::c_char;
-        while job < js.j_jobslots {
-            if !(*jobs.offset(job as isize)).is_null() && IS_NOTIFIED!(job) as libc::c_int == 0 {
-                s = raw_job_exit_status(job);
-                termsig = WTERMSIG!(s);
+    }
+    job = 0;
+    dir = 0 as *mut libc::c_char;
+    while unsafe { job < js.j_jobslots } {
+        if unsafe {
+            !(*jobs.offset(job as isize)).is_null() && IS_NOTIFIED!(job) as libc::c_int == 0
+        } {
+            s = raw_job_exit_status(job);
+            termsig = WTERMSIG!(s);
 
-                if !(startup_state == 0
+            if unsafe {
+                !(startup_state == 0
                     && WIFSIGNALED!(s) as libc::c_int == 0
                     && (DEADJOB!(job) && IS_FOREGROUND!(job) as libc::c_int == 0 || STOPPED!(job)))
-                {
+            } {
+                unsafe {
                     if job_control == 0 && interactive_shell != 0
                         || startup_state == 2
                             && subshell_environment & SUBSHELL_COMSUB as libc::c_int != 0
@@ -3823,33 +3841,34 @@ fn notify_of_job_status() {
                     }
                 }
             }
-            job += 1;
         }
-        if old_ttou.is_some() {
-            sigprocmask(
-                SIG_SETMASK as libc::c_int,
-                &mut oset,
-                0 as *mut libc::c_void as *mut sigset_t,
-            );
-        } else {
-            queue_sigchld -= 1;
-        };
+        job += 1;
     }
+    if unsafe { old_ttou.is_some() } {
+        c_sigprocmask(
+            SIG_SETMASK as libc::c_int,
+            &mut oset,
+            0 as *mut libc::c_void as *mut sigset_t,
+        );
+    } else {
+        unsafe {
+            queue_sigchld -= 1;
+        }
+    };
 }
 
 #[no_mangle]
 pub fn initialize_job_control(force: libc::c_int) -> libc::c_int {
+    let current_block: u64;
+    let mut t: pid_t = 0;
+    let mut t_errno: libc::c_int;
+    let mut tty_sigs: libc::c_int;
     unsafe {
-        let current_block: u64;
-        let mut t: pid_t = 0;
-        let mut t_errno: libc::c_int = 0;
-        let mut tty_sigs: libc::c_int = 0;
-
         t_errno = -(1 as libc::c_int);
         shell_pgrp = getpgid(0);
 
         if shell_pgrp == -(1 as libc::c_int) {
-            sys_error(dcgettext(
+            sys_error(c_dcgettext(
                 0 as *const libc::c_char,
                 b"initialize_job_control: getpgrp failed\0" as *const u8 as *const libc::c_char,
                 5 as libc::c_int,
@@ -3894,8 +3913,7 @@ pub fn initialize_job_control(force: libc::c_int) -> libc::c_int {
                     current_block = 5529461102203738653;
                     break;
                 }
-                //let mut ottin: *mut SigHandler;
-                let mut ottin: Option<SigHandler> = None;
+                let ottin: Option<SigHandler>;
                 if terminating_signal != 0 {
                     termsig_handler(terminating_signal);
                 }
@@ -3907,7 +3925,7 @@ pub fn initialize_job_control(force: libc::c_int) -> libc::c_int {
                 if !(fresh35 > 16 as libc::c_int) {
                     continue;
                 }
-                sys_error(dcgettext(
+                sys_error(c_dcgettext(
                     0 as *const libc::c_char,
                     b"initialize_job_control: no job control in background\0" as *const u8
                         as *const libc::c_char,
@@ -3922,10 +3940,10 @@ pub fn initialize_job_control(force: libc::c_int) -> libc::c_int {
                 16073591882049499585 => {}
                 _ => {
                     if terminal_pgrp == -(1 as libc::c_int) {
-                        t_errno = *__errno_location();
+                        t_errno = *c___errno_location();
                     }
                     if set_new_line_discipline(shell_tty) < 0 as libc::c_int {
-                        sys_error(dcgettext(
+                        sys_error(c_dcgettext(
                             0 as *const libc::c_char,
                             b"initialize_job_control: line discipline\0" as *const u8
                                 as *const libc::c_char,
@@ -3938,7 +3956,7 @@ pub fn initialize_job_control(force: libc::c_int) -> libc::c_int {
                         if original_pgrp != shell_pgrp
                             && setpgid(0 as libc::c_int, shell_pgrp) < 0 as libc::c_int
                         {
-                            sys_error(dcgettext(
+                            sys_error(c_dcgettext(
                                 0 as *const libc::c_char,
                                 b"initialize_job_control: setpgid\0" as *const u8
                                     as *const libc::c_char,
@@ -3949,12 +3967,12 @@ pub fn initialize_job_control(force: libc::c_int) -> libc::c_int {
                         job_control = 1 as libc::c_int;
                         if shell_pgrp != original_pgrp && shell_pgrp != terminal_pgrp {
                             if give_terminal_to(shell_pgrp, 0 as libc::c_int) < 0 as libc::c_int {
-                                t_errno = *__errno_location();
+                                t_errno = *c___errno_location();
                                 setpgid(0 as libc::c_int, original_pgrp);
                                 shell_pgrp = original_pgrp;
-                                *__errno_location() = t_errno;
+                                *c___errno_location() = t_errno;
                                 sys_error(
-                                    dcgettext(
+                                    c_dcgettext(
                                         0 as *const libc::c_char,
                                         b"cannot set terminal process group (%d)\0" as *const u8
                                             as *const libc::c_char,
@@ -3970,10 +3988,10 @@ pub fn initialize_job_control(force: libc::c_int) -> libc::c_int {
                             t == -(1 as libc::c_int) || t != shell_pgrp
                         } {
                             if t_errno != -(1 as libc::c_int) {
-                                *__errno_location() = t_errno;
+                                *c___errno_location() = t_errno;
                             }
                             sys_error(
-                                dcgettext(
+                                c_dcgettext(
                                     0 as *const libc::c_char,
                                     b"cannot set terminal process group (%d)\0" as *const u8
                                         as *const libc::c_char,
@@ -3985,7 +4003,7 @@ pub fn initialize_job_control(force: libc::c_int) -> libc::c_int {
                         }
                     }
                     if job_control == 0 as libc::c_int {
-                        internal_error(dcgettext(
+                        internal_error(c_dcgettext(
                             0 as *const libc::c_char,
                             b"no job control in this shell\0" as *const u8 as *const libc::c_char,
                             5 as libc::c_int,
@@ -4000,7 +4018,6 @@ pub fn initialize_job_control(force: libc::c_int) -> libc::c_int {
         }
         set_signal_handler(
             17 as libc::c_int,
-            //sigchld_handler as *mut Option<unsafe extern "C" fn(i32)>,
             std::mem::transmute(sigchld_handler as usize),
         );
         change_flag(
@@ -4019,7 +4036,7 @@ pub fn initialize_job_control(force: libc::c_int) -> libc::c_int {
     }
 }
 
-fn set_new_line_discipline(tty: libc::c_int) -> libc::c_int {
+fn set_new_line_discipline(_tty: libc::c_int) -> libc::c_int {
     return 0 as libc::c_int;
 }
 
@@ -4042,9 +4059,9 @@ pub fn initialize_job_signals() {
     }
 }
 
-fn sigcont_sighandler(sig: libc::c_int) {
+fn sigcont_sighandler(_sig: libc::c_int) {
+    initialize_job_signals();
     unsafe {
-        initialize_job_signals();
         set_signal_handler(SIGCONT as libc::c_int, old_cont);
         kill(getpid(), SIGCONT as libc::c_int);
     }
@@ -4067,59 +4084,63 @@ fn sigstop_sighandler(sig: libc::c_int) {
 
 #[no_mangle]
 pub fn give_terminal_to(pgrp: pid_t, force: libc::c_int) -> libc::c_int {
-    unsafe {
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut r: libc::c_int = 0;
-        let mut e: libc::c_int = 0;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut r: libc::c_int = 0;
+    let mut e: libc::c_int = 0;
 
-        if job_control != 0 || force != 0 {
-            sigemptyset(&mut set);
-            sigaddset(&mut set, SIGTTOU as libc::c_int);
-            sigaddset(&mut set, SIGTTIN as libc::c_int);
-            sigaddset(&mut set, SIGTSTP as libc::c_int);
-            sigaddset(&mut set, SIGCHLD as libc::c_int);
-            sigemptyset(&mut oset);
-            sigprocmask(SIG_BLOCK as libc::c_int, &mut set, &mut oset);
+    if unsafe { job_control != 0 || force != 0 } {
+        c_sigemptyset(&mut set);
+        c_sigaddset(&mut set, SIGTTOU as libc::c_int);
+        c_sigaddset(&mut set, SIGTTIN as libc::c_int);
+        c_sigaddset(&mut set, SIGTSTP as libc::c_int);
+        c_sigaddset(&mut set, SIGCHLD as libc::c_int);
+        c_sigemptyset(&mut oset);
+        c_sigprocmask(SIG_BLOCK as libc::c_int, &mut set, &mut oset);
 
-            if tcsetpgrp(shell_tty, pgrp) < 0 {
-                r = -1;
-                e = errno!();
-            } else {
+        if unsafe { tcsetpgrp(shell_tty, pgrp) < 0 } {
+            r = -1;
+            unsafe {
+                e = *c___errno_location();
+            }
+        } else {
+            unsafe {
                 terminal_pgrp = pgrp;
             }
-            sigprocmask(SIG_SETMASK as libc::c_int, &mut oset, 0 as *mut sigset_t);
         }
-        if r == -1 {
-            errno!() = e;
-        }
-        return r;
+        c_sigprocmask(SIG_SETMASK as libc::c_int, &mut oset, 0 as *mut sigset_t);
     }
+    if r == -1 {
+        unsafe {
+            *c___errno_location() = e;
+        }
+    }
+    return r;
 }
 
 fn maybe_give_terminal_to(opgrp: pid_t, npgrp: pid_t, flags: libc::c_int) -> libc::c_int {
-    unsafe {
-        let mut tpgrp: libc::c_int = 0;
+    let tpgrp: libc::c_int;
 
-        tpgrp = tcgetpgrp(shell_tty);
-        if tpgrp < 0 && errno!() == ENOTTY {
-            return -1;
-        }
-        if tpgrp == npgrp {
-            terminal_pgrp = npgrp;
-            return 0;
-        } else if tpgrp != opgrp {
-            return -1;
-        } else {
-            return give_terminal_to(npgrp, flags);
-        };
+    tpgrp = unsafe { tcgetpgrp(shell_tty) };
+    if unsafe { tpgrp < 0 && *c___errno_location() == ENOTTY } {
+        return -1;
     }
+    if tpgrp == npgrp {
+        unsafe {
+            terminal_pgrp = npgrp;
+        }
+        return 0;
+    } else if tpgrp != opgrp {
+        return -1;
+    } else {
+        return give_terminal_to(npgrp, flags);
+    };
 }
 
 #[no_mangle]
 pub fn delete_all_jobs(running_only: libc::c_int) {
     unsafe {
-        let mut i: libc::c_int = 0;
+        let mut i: libc::c_int;
         let mut set: sigset_t = __sigset_t { __val: [0; 16] };
         let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
@@ -4157,88 +4178,85 @@ pub fn delete_all_jobs(running_only: libc::c_int) {
 
 #[no_mangle]
 pub fn nohup_all_jobs(running_only: libc::c_int) {
-    unsafe {
-        let mut i: libc::c_int = 0;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut i: libc::c_int;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-        BLOCK_CHILD(&mut set, &mut oset);
-        if js.j_jobslots != 0 {
-            i = 0;
-            while i < js.j_jobslots {
-                if !(*jobs.offset(i as isize)).is_null()
+    BLOCK_CHILD(&mut set, &mut oset);
+    if unsafe { js.j_jobslots != 0 } {
+        i = 0;
+        while unsafe { i < js.j_jobslots } {
+            if unsafe {
+                !(*jobs.offset(i as isize)).is_null()
                     && (running_only == 0 || running_only != 0 && RUNNING!(i))
-                {
-                    nohup_job(i);
-                }
-                i += 1;
+            } {
+                nohup_job(i);
             }
+            i += 1;
         }
-        UNBLOCK_CHILD(&mut oset);
     }
+    UNBLOCK_CHILD(&mut oset);
 }
 
 #[no_mangle]
 pub fn count_all_jobs() -> libc::c_int {
-    unsafe {
-        let mut i: libc::c_int = 0;
-        let mut n: libc::c_int = 0;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut i: libc::c_int;
+    let mut n: libc::c_int;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-        BLOCK_CHILD(&mut set, &mut oset);
-        n = 0;
-        i = n;
-        while i < js.j_jobslots {
-            if !(*jobs.offset(i as isize)).is_null()
-                && DEADJOB!(i) as libc::c_int == 0 as libc::c_int
-            {
-                n += 1;
-            }
-            i += 1;
+    BLOCK_CHILD(&mut set, &mut oset);
+    n = 0;
+    i = n;
+    while unsafe { i < js.j_jobslots } {
+        if unsafe {
+            !(*jobs.offset(i as isize)).is_null() && DEADJOB!(i) as libc::c_int == 0 as libc::c_int
+        } {
+            n += 1;
         }
-        UNBLOCK_CHILD(&mut oset);
-        return n;
+        i += 1;
     }
+    UNBLOCK_CHILD(&mut oset);
+    return n;
 }
 
 fn mark_all_jobs_as_dead() {
-    unsafe {
-        let mut i: libc::c_int = 0;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut i: libc::c_int;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-        if js.j_jobslots == 0 {
-            return;
-        }
-        BLOCK_CHILD(&mut set, &mut oset);
-        i = 0;
-        while i < js.j_jobslots {
-            if !(*jobs.offset(i as isize)).is_null() {
+    if unsafe { js.j_jobslots == 0 } {
+        return;
+    }
+    BLOCK_CHILD(&mut set, &mut oset);
+    i = 0;
+    while unsafe { i < js.j_jobslots } {
+        if unsafe { !(*jobs.offset(i as isize)).is_null() } {
+            unsafe {
                 (**jobs.offset(i as isize)).state = JDEAD;
                 js.j_ndead += 1;
             }
-            i += 1;
         }
-        UNBLOCK_CHILD(&mut oset);
+        i += 1;
     }
+    UNBLOCK_CHILD(&mut oset);
 }
 
 fn mark_dead_jobs_as_notified(force: libc::c_int) {
-    unsafe {
-        let mut i: libc::c_int = 0;
-        let mut ndead: libc::c_int = 0;
-        let mut ndeadproc: libc::c_int = 0;
-        let mut set: sigset_t = __sigset_t { __val: [0; 16] };
-        let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut i: libc::c_int;
+    let mut ndead: libc::c_int;
+    let mut ndeadproc: libc::c_int;
+    let mut set: sigset_t = __sigset_t { __val: [0; 16] };
+    let mut oset: sigset_t = __sigset_t { __val: [0; 16] };
 
-        if js.j_jobslots == 0 {
-            return;
-        }
-        BLOCK_CHILD(&mut set, &mut oset);
-        if force != 0 {
-            i = 0;
-            while i < js.j_jobslots {
+    if unsafe { js.j_jobslots == 0 } {
+        return;
+    }
+    BLOCK_CHILD(&mut set, &mut oset);
+    if force != 0 {
+        i = 0;
+        while unsafe { i < js.j_jobslots } {
+            unsafe {
                 if !(*jobs.offset(i as isize)).is_null()
                     && DEADJOB!(i)
                     && (interactive_shell != 0
@@ -4246,52 +4264,54 @@ fn mark_dead_jobs_as_notified(force: libc::c_int) {
                 {
                     (**jobs.offset(i as isize)).flags |= J_NOTIFIED as libc::c_int;
                 }
-                i += 1;
-            }
-            UNBLOCK_CHILD(&mut oset);
-            return;
-        }
-        ndeadproc = 0;
-        ndead = ndeadproc;
-        i = ndead;
-        while i < js.j_jobslots {
-            if !(*jobs.offset(i as isize)).is_null() && DEADJOB!(i) {
-                ndead += 1;
-                ndeadproc += processes_in_job(i);
             }
             i += 1;
         }
-        if js.c_childmax < 0 {
-            set_maxchild(0);
+        UNBLOCK_CHILD(&mut oset);
+        return;
+    }
+    ndeadproc = 0;
+    ndead = ndeadproc;
+    i = ndead;
+    while unsafe { i < js.j_jobslots } {
+        if unsafe { !(*jobs.offset(i as isize)).is_null() && DEADJOB!(i) } {
+            ndead += 1;
+            ndeadproc += processes_in_job(i);
         }
-        if ndeadproc as libc::c_long <= js.c_childmax {
-            UNBLOCK_CHILD(&mut oset);
-            return;
-        }
-        i = 0;
-        while i < js.j_jobslots {
-            if !(*jobs.offset(i as isize)).is_null()
+        i += 1;
+    }
+    if unsafe { js.c_childmax < 0 } {
+        set_maxchild(0);
+    }
+    if unsafe { ndeadproc as libc::c_long <= js.c_childmax } {
+        UNBLOCK_CHILD(&mut oset);
+        return;
+    }
+    i = 0;
+    while unsafe { i < js.j_jobslots } {
+        if unsafe {
+            !(*jobs.offset(i as isize)).is_null()
                 && DEADJOB!(i)
                 && (interactive_shell != 0
                     || find_last_pid(i, 0 as libc::c_int) != last_asynchronous_pid)
-            {
-                ndeadproc -= processes_in_job(i);
+        } {
+            ndeadproc -= processes_in_job(i);
+            unsafe {
                 if ndeadproc as libc::c_long <= js.c_childmax {
                     break;
                 }
                 (**jobs.offset(i as isize)).flags |= J_NOTIFIED as libc::c_int;
             }
-            i += 1;
         }
-        UNBLOCK_CHILD(&mut oset);
+        i += 1;
     }
+    UNBLOCK_CHILD(&mut oset);
 }
 
 #[no_mangle]
 pub fn freeze_jobs_list() -> libc::c_int {
+    let o: libc::c_int;
     unsafe {
-        let mut o: libc::c_int = 0;
-
         o = jobs_list_frozen;
         jobs_list_frozen = 1;
         return o;
@@ -4315,7 +4335,7 @@ pub fn set_jobs_list_frozen(s: libc::c_int) {
 #[no_mangle]
 pub fn set_job_control(arg: libc::c_int) -> libc::c_int {
     unsafe {
-        let mut old: libc::c_int = 0;
+        let old: libc::c_int;
 
         old = job_control;
         job_control = arg;
@@ -4337,13 +4357,13 @@ pub fn set_job_control(arg: libc::c_int) -> libc::c_int {
 
 #[no_mangle]
 pub fn without_job_control() {
+    stop_making_children();
+    start_pipeline();
     unsafe {
-        stop_making_children();
-        start_pipeline();
         sh_closepipe(pgrp_pipe.as_mut_ptr());
-        delete_all_jobs(0);
-        set_job_control(0);
     }
+    delete_all_jobs(0);
+    set_job_control(0);
 }
 #[no_mangle]
 pub fn end_job_control() {
@@ -4374,9 +4394,9 @@ pub fn set_maxchild(mut nchild: libc::c_int) {
     static mut lmaxchild: libc::c_int = -1;
     unsafe {
         if lmaxchild < 0 {
-            errno!() = 0;
-            lmaxchild = getmaxchild() as libc::c_int;
-            if lmaxchild < 0 && *__errno_location() == 0 {
+            *c___errno_location() = 0;
+            lmaxchild = c_getmaxchild() as libc::c_int;
+            if lmaxchild < 0 && *c___errno_location() == 0 {
                 lmaxchild = MAX_CHILD_MAX as libc::c_int;
             }
         }
@@ -4417,7 +4437,7 @@ fn pipe_read(pp: *mut libc::c_int) {
                 &mut ch as *mut libc::c_char as *mut libc::c_void,
                 1,
             ) == -1
-                && errno!() == EINTR as libc::c_int
+                && *c___errno_location() == EINTR as libc::c_int
             {}
         }
     }
