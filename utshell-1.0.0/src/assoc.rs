@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::dispose_cmd::dispose_words;
 use crate::hashlib::{hash_dispose, hash_flush, hash_remove, hash_search};
 use crate::make_cmd::{make_bare_word, make_word_list};
@@ -12,11 +9,9 @@ use crate::subst::{
 
 #[no_mangle]
 pub fn assoc_dispose(hash: *mut HASH_TABLE) {
-    unsafe {
-        if !hash.is_null() {
-            hash_flush(hash, None);
-            hash_dispose(hash);
-        }
+    if !hash.is_null() {
+        hash_flush(hash, None);
+        hash_dispose(hash);
     }
 }
 
@@ -31,7 +26,7 @@ pub fn assoc_insert(
     key: *mut libc::c_char,
     value: *mut libc::c_char,
 ) -> libc::c_int {
-    let mut b: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let b: *mut BUCKET_CONTENTS;
     b = hash_search(key, hash, 0x2 as libc::c_int);
     if b.is_null() {
         return -(1 as libc::c_int);
@@ -55,7 +50,7 @@ pub fn assoc_insert(
 
 #[no_mangle]
 pub fn assoc_remove(hash: *mut HASH_TABLE, string: *mut libc::c_char) {
-    let mut b: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let b: *mut BUCKET_CONTENTS;
     b = hash_remove(string, hash, 0 as libc::c_int);
     unsafe {
         if !b.is_null() {
@@ -68,24 +63,23 @@ pub fn assoc_remove(hash: *mut HASH_TABLE, string: *mut libc::c_char) {
 
 #[no_mangle]
 pub fn assoc_reference(hash: *mut HASH_TABLE, string: *mut libc::c_char) -> *mut libc::c_char {
-    let mut b: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let b: *mut BUCKET_CONTENTS;
     if hash.is_null() {
         return 0 as *mut libc::c_char;
     }
     b = hash_search(string, hash, 0 as libc::c_int);
-    unsafe {
-        return if !b.is_null() {
-            (*b).data as *mut libc::c_char
-        } else {
-            0 as *mut libc::c_char
-        };
-    }
+
+    return if !b.is_null() {
+        unsafe { (*b).data as *mut libc::c_char }
+    } else {
+        0 as *mut libc::c_char
+    };
 }
 #[no_mangle]
 pub fn assoc_quote(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
-    let mut i: libc::c_int = 0;
-    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut i: libc::c_int;
+    let mut tlist: *mut BUCKET_CONTENTS;
+    let mut t: *mut libc::c_char;
     unsafe {
         if h.is_null() || assoc_empty!(h) {
             return 0 as *mut libc::c_void as *mut HASH_TABLE;
@@ -104,7 +98,6 @@ pub fn assoc_quote(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
                 tlist = (*tlist).next;
             }
             i += 1;
-            i;
         }
     }
     return h;
@@ -112,9 +105,9 @@ pub fn assoc_quote(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
 
 #[no_mangle]
 pub fn assoc_quote_escapes(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
-    let mut i: libc::c_int = 0;
-    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut i: libc::c_int;
+    let mut tlist: *mut BUCKET_CONTENTS;
+    let mut t: *mut libc::c_char;
     unsafe {
         if h.is_null() || assoc_empty!(h) {
             return 0 as *mut libc::c_void as *mut HASH_TABLE;
@@ -133,7 +126,6 @@ pub fn assoc_quote_escapes(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
                 tlist = (*tlist).next;
             }
             i += 1;
-            i;
         }
     }
     return h;
@@ -141,9 +133,9 @@ pub fn assoc_quote_escapes(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
 
 #[no_mangle]
 pub fn assoc_dequote(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
-    let mut i: libc::c_int = 0;
-    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut i: libc::c_int;
+    let mut tlist: *mut BUCKET_CONTENTS;
+    let mut t: *mut libc::c_char;
     unsafe {
         if h.is_null() || assoc_empty!(h) {
             return 0 as *mut libc::c_void as *mut HASH_TABLE;
@@ -162,7 +154,6 @@ pub fn assoc_dequote(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
                 tlist = (*tlist).next;
             }
             i += 1;
-            i;
         }
     }
     return h;
@@ -170,9 +161,9 @@ pub fn assoc_dequote(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
 
 #[no_mangle]
 pub fn assoc_dequote_escapes(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
-    let mut i: libc::c_int = 0;
-    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut i: libc::c_int;
+    let mut tlist: *mut BUCKET_CONTENTS;
+    let mut t: *mut libc::c_char;
     unsafe {
         if h.is_null() || assoc_empty!(h) {
             return 0 as *mut libc::c_void as *mut HASH_TABLE;
@@ -191,7 +182,6 @@ pub fn assoc_dequote_escapes(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
                 tlist = (*tlist).next;
             }
             i += 1;
-            i;
         }
     }
     return h;
@@ -199,9 +189,9 @@ pub fn assoc_dequote_escapes(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
 
 #[no_mangle]
 pub fn assoc_remove_quoted_nulls(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
-    let mut i: libc::c_int = 0;
-    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut i: libc::c_int;
+    let mut tlist: *mut BUCKET_CONTENTS;
+    let mut t: *mut libc::c_char;
     unsafe {
         if h.is_null() || assoc_empty!(h) {
             return 0 as *mut libc::c_void as *mut HASH_TABLE;
@@ -216,7 +206,6 @@ pub fn assoc_remove_quoted_nulls(h: *mut HASH_TABLE) -> *mut HASH_TABLE {
                 tlist = (*tlist).next;
             }
             i += 1;
-            i;
         }
     }
     return h;
@@ -231,13 +220,13 @@ pub fn assoc_subrange(
     quoted: libc::c_int,
     pflags: libc::c_int,
 ) -> *mut libc::c_char {
-    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut save: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut h: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut t: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut i: libc::c_int = 0;
-    let mut j: libc::c_int = 0;
-    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut l: *mut WORD_LIST;
+    let save: *mut WORD_LIST;
+    let h: *mut WORD_LIST;
+    let mut t: *mut WORD_LIST;
+    let mut i: libc::c_int;
+    let mut j: libc::c_int;
+    let ret: *mut libc::c_char;
     if unsafe { assoc_empty!(hash) } {
         return 0 as *mut libc::c_void as *mut libc::c_char;
     }
@@ -252,7 +241,6 @@ pub fn assoc_subrange(
     while !l.is_null() && (i as libc::c_long) < start {
         l = unsafe { (*l).next };
         i += 1;
-        i;
     }
     if l.is_null() {
         dispose_words(save);
@@ -265,7 +253,6 @@ pub fn assoc_subrange(
         t = l;
         l = unsafe { (*l).next };
         j += 1;
-        j;
     }
     unsafe {
         (*t).next = 0 as *mut libc::c_void as *mut WORD_LIST;
@@ -292,12 +279,12 @@ pub fn assoc_patsub(
     rep: *mut libc::c_char,
     mflags: libc::c_int,
 ) -> *mut libc::c_char {
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut pchar: libc::c_int = 0;
-    let mut qflags: libc::c_int = 0;
-    let mut pflags: libc::c_int = 0;
-    let mut wl: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut save: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut t: *mut libc::c_char;
+    let pchar: libc::c_int;
+    let qflags: libc::c_int;
+    let pflags: libc::c_int;
+    let mut wl: *mut WORD_LIST;
+    let save: *mut WORD_LIST;
     if h.is_null() || unsafe { assoc_empty!(h) } {
         return 0 as *mut libc::c_void as *mut libc::c_char;
     }
@@ -344,12 +331,12 @@ pub fn assoc_modcase(
     modop: libc::c_int,
     mflags: libc::c_int,
 ) -> *mut libc::c_char {
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut pchar: libc::c_int = 0;
-    let mut qflags: libc::c_int = 0;
-    let mut pflags: libc::c_int = 0;
-    let mut wl: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut save: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut t: *mut libc::c_char;
+    let pchar: libc::c_int;
+    let qflags: libc::c_int;
+    let pflags: libc::c_int;
+    let mut wl: *mut WORD_LIST;
+    let save: *mut WORD_LIST;
     if unsafe { h.is_null() || (*h).nentries == 0 as libc::c_int } {
         return 0 as *mut libc::c_void as *mut libc::c_char;
     }
@@ -360,7 +347,7 @@ pub fn assoc_modcase(
     save = wl;
     unsafe {
         while !wl.is_null() {
-            t = sh_modcase((*(*wl).word).word, pat, modop);
+            t = c_sh_modcase((*(*wl).word).word, pat, modop);
             if !((*(*wl).word).word).is_null() {
                 libc::free((*(*wl).word).word as *mut libc::c_void);
             }
@@ -391,14 +378,14 @@ pub fn assoc_modcase(
 
 #[no_mangle]
 pub fn assoc_to_kvpair(hash: *mut HASH_TABLE, quoted: libc::c_int) -> *mut libc::c_char {
-    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut istr: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut vstr: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut i: libc::c_int = 0;
-    let mut rsize: libc::c_int = 0;
-    let mut rlen: libc::c_int = 0;
-    let mut elen: libc::c_int = 0;
-    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let mut ret: *mut libc::c_char;
+    let mut istr: *mut libc::c_char;
+    let mut vstr: *mut libc::c_char;
+    let mut i: libc::c_int;
+    let mut rsize: libc::c_int;
+    let mut rlen: libc::c_int;
+    let mut elen: libc::c_int;
+    let mut tlist: *mut BUCKET_CONTENTS;
 
     unsafe {
         if hash.is_null() || assoc_empty!(hash) {
@@ -412,27 +399,27 @@ pub fn assoc_to_kvpair(hash: *mut HASH_TABLE, quoted: libc::c_int) -> *mut libc:
         while i < (*hash).nbuckets {
             tlist = hash_items!(i, hash);
             while !tlist.is_null() {
-                if ansic_shouldquote((*tlist).key) != 0 {
-                    istr = ansic_quote((*tlist).key, 0 as libc::c_int, 0 as *mut libc::c_int);
-                } else if sh_contains_shell_metas((*tlist).key) != 0 {
-                    istr = sh_double_quote((*tlist).key);
+                if c_ansic_shouldquote((*tlist).key) != 0 {
+                    istr = c_ansic_quote((*tlist).key, 0 as libc::c_int, 0 as *mut libc::c_int);
+                } else if c_sh_contains_shell_metas((*tlist).key) != 0 {
+                    istr = c_sh_double_quote((*tlist).key);
                 } else if ALL_ELEMENT_SUB!(*((*tlist).key) as i32)
                     && *((*tlist).key).offset(1 as libc::c_int as isize) as libc::c_int
                         == '\0' as i32
                 {
-                    istr = sh_double_quote((*tlist).key);
+                    istr = c_sh_double_quote((*tlist).key);
                 } else {
                     istr = (*tlist).key;
                 }
                 vstr = if !((*tlist).data).is_null() {
-                    if ansic_shouldquote((*tlist).data as *mut libc::c_char) != 0 {
-                        ansic_quote(
+                    if c_ansic_shouldquote((*tlist).data as *mut libc::c_char) != 0 {
+                        c_ansic_quote(
                             (*tlist).data as *mut libc::c_char,
                             0 as libc::c_int,
                             0 as *mut libc::c_int,
                         )
                     } else {
-                        sh_double_quote((*tlist).data as *mut libc::c_char)
+                        c_sh_double_quote((*tlist).data as *mut libc::c_char)
                     }
                 } else {
                     0 as *mut libc::c_char
@@ -460,23 +447,22 @@ pub fn assoc_to_kvpair(hash: *mut HASH_TABLE, quoted: libc::c_int) -> *mut libc:
                     if !istr.is_null() {
                         libc::free(istr as *mut libc::c_void);
                     }
-                    istr = 0 as *mut libc::c_char;
+                    // istr = 0 as *mut libc::c_char;
                 }
                 if !vstr.is_null() {
                     libc::free(vstr as *mut libc::c_void);
                 }
-                vstr = 0 as *mut libc::c_char;
+                // vstr = 0 as *mut libc::c_char;
                 tlist = (*tlist).next;
             }
             i += 1;
-            i;
         }
 
         RESIZE_MALLOCED_BUFFER!(ret, rlen, 1 as libc::c_int, rsize, 8 as libc::c_int);
         *ret.offset(rlen as isize) = '\0' as i32 as libc::c_char;
 
         if quoted != 0 {
-            vstr = sh_single_quote(ret);
+            vstr = c_sh_single_quote(ret);
             libc::free(ret as *mut libc::c_void);
             ret = vstr;
         }
@@ -486,14 +472,14 @@ pub fn assoc_to_kvpair(hash: *mut HASH_TABLE, quoted: libc::c_int) -> *mut libc:
 
 #[no_mangle]
 pub fn assoc_to_assign(hash: *mut HASH_TABLE, quoted: libc::c_int) -> *mut libc::c_char {
-    let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut istr: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut vstr: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut i: libc::c_int = 0;
-    let mut rsize: libc::c_int = 0;
-    let mut rlen: libc::c_int = 0;
-    let mut elen: libc::c_int = 0;
-    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let mut ret: *mut libc::c_char;
+    let mut istr: *mut libc::c_char;
+    let mut vstr: *mut libc::c_char;
+    let mut i: libc::c_int;
+    let mut rsize: libc::c_int;
+    let mut rlen: libc::c_int;
+    let mut elen: libc::c_int;
+    let mut tlist: *mut BUCKET_CONTENTS;
     unsafe {
         if hash.is_null() || assoc_empty!(hash) {
             return 0 as *mut libc::c_char;
@@ -508,27 +494,27 @@ pub fn assoc_to_assign(hash: *mut HASH_TABLE, quoted: libc::c_int) -> *mut libc:
         while i < (*hash).nbuckets {
             tlist = hash_items!(i, hash);
             while !tlist.is_null() {
-                if ansic_shouldquote((*tlist).key) != 0 {
-                    istr = ansic_quote((*tlist).key, 0 as libc::c_int, 0 as *mut libc::c_int);
-                } else if sh_contains_shell_metas((*tlist).key) != 0 {
-                    istr = sh_double_quote((*tlist).key);
+                if c_ansic_shouldquote((*tlist).key) != 0 {
+                    istr = c_ansic_quote((*tlist).key, 0 as libc::c_int, 0 as *mut libc::c_int);
+                } else if c_sh_contains_shell_metas((*tlist).key) != 0 {
+                    istr = c_sh_double_quote((*tlist).key);
                 } else if ALL_ELEMENT_SUB!(*((*tlist).key) as i32)
                     && *((*tlist).key).offset(1 as libc::c_int as isize) as libc::c_int
                         == '\0' as i32
                 {
-                    istr = sh_double_quote((*tlist).key);
+                    istr = c_sh_double_quote((*tlist).key);
                 } else {
                     istr = (*tlist).key;
                 }
                 vstr = if !((*tlist).data).is_null() {
-                    if ansic_shouldquote((*tlist).data as *mut libc::c_char) != 0 {
-                        ansic_quote(
+                    if c_ansic_shouldquote((*tlist).data as *mut libc::c_char) != 0 {
+                        c_ansic_quote(
                             (*tlist).data as *mut libc::c_char,
                             0 as libc::c_int,
                             0 as *mut libc::c_int,
                         )
                     } else {
-                        sh_double_quote((*tlist).data as *mut libc::c_char)
+                        c_sh_double_quote((*tlist).data as *mut libc::c_char)
                     }
                 } else {
                     0 as *mut libc::c_char
@@ -557,23 +543,22 @@ pub fn assoc_to_assign(hash: *mut HASH_TABLE, quoted: libc::c_int) -> *mut libc:
                     if !istr.is_null() {
                         libc::free(istr as *mut libc::c_void);
                     }
-                    istr = 0 as *mut libc::c_char;
+                    // istr = 0 as *mut libc::c_char;
                 }
                 if !vstr.is_null() {
                     libc::free(vstr as *mut libc::c_void);
                 }
-                vstr = 0 as *mut libc::c_char;
+                // vstr = 0 as *mut libc::c_char;
                 tlist = (*tlist).next;
             }
             i += 1;
-            i;
         }
         RESIZE_MALLOCED_BUFFER!(ret, rlen, 1 as libc::c_int, rsize, 8 as libc::c_int);
         *ret.offset(rlen as isize) = ')' as i32 as libc::c_char;
         rlen = rlen + 1;
         *ret.offset(rlen as isize) = '\0' as i32 as libc::c_char;
         if quoted != 0 {
-            vstr = sh_single_quote(ret);
+            vstr = c_sh_single_quote(ret);
             libc::free(ret as *mut libc::c_void);
             ret = vstr;
         }
@@ -582,10 +567,10 @@ pub fn assoc_to_assign(hash: *mut HASH_TABLE, quoted: libc::c_int) -> *mut libc:
 }
 
 fn assoc_to_word_list_internal(h: *mut HASH_TABLE, t: libc::c_int) -> *mut WORD_LIST {
-    let mut list: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut i: libc::c_int = 0;
-    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut w: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut list: *mut WORD_LIST;
+    let mut i: libc::c_int;
+    let mut tlist: *mut BUCKET_CONTENTS;
+    let mut w: *mut libc::c_char;
     unsafe {
         if h.is_null() || assoc_empty!(h) {
             return 0 as *mut libc::c_void as *mut WORD_LIST;
@@ -605,7 +590,6 @@ fn assoc_to_word_list_internal(h: *mut HASH_TABLE, t: libc::c_int) -> *mut WORD_
                 tlist = (*tlist).next;
             }
             i += 1;
-            i;
         }
         return REVERSE_LIST!(list, *mut WORD_LIST);
     }
@@ -627,13 +611,13 @@ pub fn assoc_to_string(
     sep: *mut libc::c_char,
     quoted: libc::c_int,
 ) -> *mut libc::c_char {
-    let mut tlist: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut i: libc::c_int = 0;
-    let mut result: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut w: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut list: *mut WORD_LIST = 0 as *mut WORD_LIST;
-    let mut l: *mut WORD_LIST = 0 as *mut WORD_LIST;
+    let mut tlist: *mut BUCKET_CONTENTS;
+    let mut i: libc::c_int;
+    let result: *mut libc::c_char;
+    let mut t: *mut libc::c_char;
+    let mut w: *mut libc::c_char;
+    let mut list: *mut WORD_LIST;
+    let l: *mut WORD_LIST;
 
     if h.is_null() {
         return 0 as *mut libc::c_void as *mut libc::c_char;
@@ -643,9 +627,9 @@ pub fn assoc_to_string(
             return savestring!(b"\0" as *const u8 as *const libc::c_char);
         }
 
-        result = 0 as *mut libc::c_char;
+        // result = 0 as *mut libc::c_char;
         list = 0 as *mut WORD_LIST;
-        l = list;
+        // l = list;
         i = 0 as libc::c_int;
         while i < (*h).nbuckets {
             tlist = hash_items!(i, h);
@@ -661,12 +645,11 @@ pub fn assoc_to_string(
                     if !t.is_null() {
                         libc::free(t as *mut libc::c_void);
                     }
-                    t = 0 as *mut libc::c_char;
+                    // t = 0 as *mut libc::c_char;
                 }
                 tlist = (*tlist).next;
             }
             i += 1;
-            i;
         }
         l = REVERSE_LIST!(list, *mut WORD_LIST);
         result = if !l.is_null() {
