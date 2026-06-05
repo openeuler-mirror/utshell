@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use super::help::builtin_help;
 use crate::arrayfunc::print_array_assignment;
 use crate::arrayfunc::print_assoc_assignment;
@@ -159,10 +156,10 @@ pub fn set_or_show_attributes(
                         }
                         if (attribute & arrays_only) != 0 {
                             optw[opti] = b'a';
-                            opti += 1;
+                            // opti += 1;
                         } else {
                             optw[opti] = b'A';
-                            opti += 1;
+                            // opti += 1;
                         }
 
                         w = make_word(optw.as_ptr() as *const libc::c_char);
@@ -189,8 +186,6 @@ pub fn set_or_show_attributes(
                 set_var_attribute(name, attribute, undo);
                 if assign != 0 {
                     *(name.offset(assign as isize)) = b'=' as libc::c_char;
-
-                    // *((name as usize + assign as usize) as *mut libc::c_char) = b'=' as libc::c_char;
                     if (aflags & ASS_APPEND) != 0 {
                         *(name.offset((assign - 1) as isize)) = b'+' as libc::c_char;
                     }
@@ -443,7 +438,7 @@ pub fn show_var_attributes(
         } else if ((*var).attributes & att_invisible) != 0 || (*var).value == std::ptr::null_mut() {
             printf(b"%s\n\0" as *const u8 as *const libc::c_char, (*var).name);
         } else {
-            let x = sh_double_quote(value_cell(var));
+            let x = c_sh_double_quote(value_cell(var));
             printf(
                 b"%s=%s\n\0" as *const u8 as *const libc::c_char,
                 (*var).name,
@@ -460,13 +455,13 @@ fn value_cell(var: *mut SHELL_VAR) -> *mut libc::c_char {
     return unsafe { (*var).value };
 }
 
-fn array_cell(var: *mut SHELL_VAR) -> *mut ARRAY {
-    return unsafe { (*var).value as *mut ARRAY };
-}
+// fn array_cell(var: *mut SHELL_VAR) -> *mut ARRAY {
+//     return unsafe { (*var).value as *mut ARRAY };
+// }
 
-fn assoc_cell(var: *mut SHELL_VAR) -> *mut HASH_TABLE {
-    return unsafe { (*var).value as *mut HASH_TABLE };
-}
+// fn assoc_cell(var: *mut SHELL_VAR) -> *mut HASH_TABLE {
+//     return unsafe { (*var).value as *mut HASH_TABLE };
+// }
 
 #[no_mangle]
 pub fn show_name_attributes(name: *mut libc::c_char, nodefs: libc::c_int) -> libc::c_int {
@@ -686,46 +681,3 @@ pub fn var_attribute_string(
 fn cmp_two(a: usize, b: usize) -> bool {
     return a == b;
 }
-/*
-#[no_mangle]
-pub  fn print_array_assignment(var: *mut SHELL_VAR, quote: libc::c_int) {
-    let vstr = array_to_assign(array_cell(var) as *mut ARRAY, quote);
-
-    if vstr == std::ptr::null_mut() {
-        if quote != 0 {
-            println!("{}=\'()\'", CStr::from_ptr((*var).name).to_str().unwrap());
-        } else {
-            println!("{}=()", CStr::from_ptr((*var).name).to_str().unwrap());
-        }
-    } else {
-        println!(
-            "{}={}",
-            CStr::from_ptr((*var).name).to_str().unwrap(),
-            CStr::from_ptr(vstr).to_str().unwrap()
-        );
-        libc::free(vstr as *mut c_void);
-    }
-}
-*/
-
-/*
-#[no_mangle]
-pub  fn print_assoc_assignment(var: *mut SHELL_VAR, quote: libc::c_int) {
-    let vstr = assoc_to_assign(assoc_cell(var) as *mut HASH_TABLE, quote);
-
-    if vstr == std::ptr::null_mut() {
-        if quote != 0 {
-            println!("{}=\'()\'", CStr::from_ptr((*var).name).to_str().unwrap());
-        } else {
-            println!("{}=()", CStr::from_ptr((*var).name).to_str().unwrap());
-        }
-    } else {
-        println!(
-            "{}={}",
-            CStr::from_ptr((*var).name).to_str().unwrap(),
-            CStr::from_ptr(vstr).to_str().unwrap()
-        );
-        libc::free(vstr as *mut c_void);
-    }
-}
-*/
