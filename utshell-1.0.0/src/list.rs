@@ -1,23 +1,20 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::src_common::*;
 
 #[no_mangle]
 pub fn list_reverse(mut list: *mut GENERIC_LIST) -> *mut GENERIC_LIST {
-    unsafe {
-        let mut next: *mut GENERIC_LIST;
-        let mut prev: *mut GENERIC_LIST;
-        prev = 0 as *mut libc::c_void as *mut GENERIC_LIST;
+    let mut next: *mut GENERIC_LIST;
+    let mut prev: *mut GENERIC_LIST;
+    prev = 0 as *mut libc::c_void as *mut GENERIC_LIST;
 
-        while !list.is_null() {
+    while !list.is_null() {
+        unsafe {
             next = (*list).next;
             (*list).next = prev;
-            prev = list;
-            list = next;
         }
-        return prev;
+        prev = list;
+        list = next;
     }
+    return prev;
 }
 #[no_mangle]
 pub fn list_length(mut list: *mut GENERIC_LIST) -> libc::c_int {
