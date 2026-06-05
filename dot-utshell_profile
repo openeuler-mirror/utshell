@@ -1,8 +1,8 @@
 # .utshell_profile
 
 # Get the aliases and functions
-if [ -f ~/.bashrc ]; then
-	. ~/.bashrc
+if [ -f ~/.utshellrc ]; then
+	. ~/.utshellrc
 fi
 
 # User specific environment and startup programs

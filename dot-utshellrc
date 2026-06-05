@@ -3,8 +3,8 @@
 export HISTFILE=~/.utshell_history
 
 # Source global definitions
-if [ -f /etc/bashrc ]; then
-	. /etc/bashrc
+if [ -f /etc/utshellrc ]; then
+	. /etc/utshellrc
 fi
 
 # User specific environment
@@ -18,8 +18,8 @@ export PATH
 # export SYSTEMD_PAGER=
 
 # User specific aliases and functions
-if [ -d ~/.bashrc.d ]; then
-	for rc in ~/.bashrc.d/*; do
+if [ -d ~/.utshellrc.d ]; then
+	for rc in ~/.utshellrc.d/*; do
 		if [ -f "$rc" ]; then
 			. "$rc"
 		fi
