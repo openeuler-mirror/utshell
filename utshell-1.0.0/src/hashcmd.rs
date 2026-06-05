@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::findcmd::executable_file;
 use crate::general::same_file;
 use crate::hashlib::{hash_create, hash_flush, hash_insert, hash_remove, hash_search};
@@ -33,7 +30,7 @@ pub fn phash_flush() {
 
 #[no_mangle]
 pub fn phash_remove(filename: *const libc::c_char) -> libc::c_int {
-    let mut item: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let item: *mut BUCKET_CONTENTS;
     unsafe {
         if hashing_enabled == 0 || hashed_filenames.is_null() {
             return 0 as libc::c_int;
@@ -59,7 +56,7 @@ pub fn phash_insert(
     check_dot: libc::c_int,
     found: libc::c_int,
 ) {
-    let mut item: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
+    let item: *mut BUCKET_CONTENTS;
     unsafe {
         if hashing_enabled == 0 {
             return;
@@ -91,11 +88,11 @@ pub fn phash_insert(
 
 #[no_mangle]
 pub fn phash_search(filename: *const libc::c_char) -> *mut libc::c_char {
-    let mut item: *mut BUCKET_CONTENTS = 0 as *mut BUCKET_CONTENTS;
-    let mut path: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut dotted_filename: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut tail: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut same: libc::c_int = 0;
+    let item: *mut BUCKET_CONTENTS;
+    let path: *mut libc::c_char;
+    let dotted_filename: *mut libc::c_char;
+    let mut tail: *mut libc::c_char;
+    let mut same: libc::c_int;
     unsafe {
         if hashing_enabled == 0 || hashed_filenames.is_null() {
             return 0 as *mut libc::c_char;
@@ -119,9 +116,8 @@ pub fn phash_search(filename: *const libc::c_char) -> *mut libc::c_char {
             if *tail.offset(0 as libc::c_int as isize) as libc::c_int != '.' as i32
                 || *tail.offset(1 as libc::c_int as isize) as libc::c_int != '/' as i32
             {
-                dotted_filename = libc::malloc(
-                    (3 as libc::c_int as libc::c_ulong).wrapping_add(strlen(tail)) as usize,
-                ) as *mut libc::c_char;
+                dotted_filename =
+                    libc::malloc((3 as usize).wrapping_add(strlen(tail))) as *mut libc::c_char;
                 *dotted_filename.offset(0 as isize) = '.' as i32 as libc::c_char;
                 *dotted_filename.offset(1 as isize) = '/' as i32 as libc::c_char;
                 strcpy(dotted_filename.offset(2 as libc::c_int as isize), tail);
