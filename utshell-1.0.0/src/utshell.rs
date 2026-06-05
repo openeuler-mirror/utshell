@@ -1,6 +1,15 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+#![allow(
+    dead_code,
+    mutable_transmutes,
+    non_camel_case_types,
+    non_snake_case,
+    non_upper_case_globals,
+    unused_assignments,
+    unused_mut
+)]
 
-//# SPDX-License-Identifier: GPL-3.0-or-later
+extern crate lazy_static;
+
 use crate::bashhist::{
     bash_history_reinit, bash_initialize_history, load_history, maybe_save_shell_history,
 };
@@ -22,8 +31,8 @@ use crate::execute_cmd::{coproc_flush, executing_line_number};
 use crate::findcmd::find_path_file;
 use crate::flags::{change_flag, initialize_flags};
 use crate::general::{
-    absolute_program, base_pathname, check_binary_file, check_dev_tty, move_to_high_fd,
-    sh_unset_nodelay_mode, tilde_initialize,
+    absolute_program, base_pathname, c_sh_unset_nodelay_mode, check_binary_file, check_dev_tty,
+    move_to_high_fd, tilde_initialize,
 };
 use crate::input::{close_buffered_fd, with_input_from_buffered_stream};
 use crate::jobs::{
@@ -33,6 +42,7 @@ use crate::local::set_default_locale;
 use crate::local::{set_default_lang, set_default_locale_vars};
 use crate::mailcheck::{init_mail_dates, reset_mail_timer};
 use crate::make_cmd::{cmd_init, make_word, make_word_list};
+use crate::parse_and_execute;
 use crate::print_cmd::xtrace_init;
 use crate::sig::initialize_signals;
 use crate::src_common;
@@ -40,6 +50,7 @@ use crate::src_common::*;
 use crate::subst::{expand_string_unsplit_to_string, unlink_all_fifos, unlink_fifo_list};
 use crate::trap::{initialize_traps, run_exit_trap};
 use crate::unwind_prot::uwp_init;
+use crate::variables::get_string_value;
 use crate::variables::{
     bind_variable, delete_all_contexts, delete_all_variables, initialize_shell_variables, pop_args,
     push_args, reinit_special_variables, set_pipestatus_from_exit, set_var_read_only,
@@ -258,21 +269,19 @@ static mut shopt_alist: *mut STRING_INT_ALIST =
     0 as *const STRING_INT_ALIST as *mut STRING_INT_ALIST;
 static mut shopt_ind: libc::c_int = 0 as libc::c_int;
 static mut shopt_len: libc::c_int = 0 as libc::c_int;
-
-fn main_0(
+pub fn main_0(
     mut argc: libc::c_int,
     mut argv: *mut *mut libc::c_char,
     mut env: *mut *mut libc::c_char,
 ) -> libc::c_int {
+    let mut i: libc::c_int = 0;
+    let mut code: libc::c_int = 0;
+    let mut old_errexit_flag: libc::c_int = 0;
+    let mut saverst: libc::c_int = 0;
+    let mut locally_skip_execution: libc::c_int = 0;
+    let mut arg_index: libc::c_int = 0;
+    let mut top_level_arg_index: libc::c_int = 0;
     unsafe {
-        let mut i: libc::c_int = 0;
-        let mut code: libc::c_int = 0;
-        let mut old_errexit_flag: libc::c_int = 0;
-        let mut saverst: libc::c_int = 0;
-        let mut locally_skip_execution: libc::c_int = 0;
-        let mut arg_index: libc::c_int = 0;
-        let mut top_level_arg_index: libc::c_int = 0;
-
         code = setjmp_nosigs!(top_level.as_mut_ptr());
         if code != 0 {
             exit(2);
@@ -327,7 +336,7 @@ fn main_0(
         shell_environment = env;
         set_shell_name(*argv.offset(0 as isize));
 
-        gettimeofday(&mut shellstart, 0 as *mut crate::src_common::timezone);
+        c_gettimeofday(&mut shellstart, 0 as *mut crate::src_common::timezone);
         shell_start_time = shellstart.tv_sec;
 
         arg_index = parse_long_options(argv, arg_index, argc);
@@ -446,19 +455,19 @@ fn main_0(
                 ) != 0 as *mut libc::c_char) as libc::c_int;
                 in_emacs = 1;
             } else if !emacs.is_null() {
+                let msg = CString::new("t").unwrap();
                 emacs_term = (strstr(emacs, b" (term:\0" as *const u8 as *const libc::c_char)
                     != 0 as *mut libc::c_char) as libc::c_int;
-                in_emacs = (emacs_term != 0 || STREQ(emacs, CString::new("t").unwrap().as_ptr()))
-                    as libc::c_int;
+                in_emacs = (emacs_term != 0 || STREQ(emacs, msg.as_ptr())) as libc::c_int;
             } else {
                 emacs_term = 0;
                 in_emacs = emacs_term;
             }
 
-            no_line_editing |= STREQ(term, CString::new("emacs").unwrap().as_ptr()) as libc::c_int;
-            no_line_editing |= (in_emacs != 0
-                && STREQ(term, CString::new("dumb").unwrap().as_ptr()))
-                as libc::c_int;
+            let msg1 = CString::new("emacs").unwrap();
+            no_line_editing |= STREQ(term, msg1.as_ptr()) as libc::c_int;
+            let msg2 = CString::new("dumb").unwrap();
+            no_line_editing |= (in_emacs != 0 && STREQ(term, msg2.as_ptr())) as libc::c_int;
 
             running_under_emacs = (in_emacs != 0
                 || STREQN!(term, String::from("emacs").as_ptr() as *mut libc::c_char, 5) != 0)
@@ -599,7 +608,7 @@ fn main_0(
         reader_loop();
         exit_shell(last_command_exit_value);
         return 0;
-    } //unsafe
+    }
 }
 
 fn parse_long_options(
@@ -607,12 +616,11 @@ fn parse_long_options(
     arg_start: libc::c_int,
     arg_end: libc::c_int,
 ) -> libc::c_int {
+    let mut arg_index: libc::c_int = 0;
+    let mut longarg: libc::c_int = 0;
+    let mut i: libc::c_int = 0;
+    let mut arg_string: *mut libc::c_char = 0 as *mut libc::c_char;
     unsafe {
-        let mut arg_index: libc::c_int = 0;
-        let mut longarg: libc::c_int = 0;
-        let mut i: libc::c_int = 0;
-        let mut arg_string: *mut libc::c_char = 0 as *mut libc::c_char;
-
         arg_index = arg_start;
         while arg_index != arg_end
             && {
@@ -668,7 +676,7 @@ fn parse_long_options(
             }
         }
         return arg_index;
-    } //unsafe
+    }
 }
 
 fn parse_shell_options(
@@ -676,15 +684,14 @@ fn parse_shell_options(
     arg_start: libc::c_int,
     arg_end: libc::c_int,
 ) -> libc::c_int {
+    let mut arg_index: libc::c_int = 0;
+    let mut arg_character: libc::c_int = 0;
+    let mut on_or_off: libc::c_int = 0;
+    let mut next_arg: libc::c_int = 0;
+    let mut i: libc::c_int = 0;
+    let mut o_option: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut arg_string: *mut libc::c_char = 0 as *mut libc::c_char;
     unsafe {
-        let mut arg_index: libc::c_int = 0;
-        let mut arg_character: libc::c_int = 0;
-        let mut on_or_off: libc::c_int = 0;
-        let mut next_arg: libc::c_int = 0;
-        let mut i: libc::c_int = 0;
-        let mut o_option: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut arg_string: *mut libc::c_char = 0 as *mut libc::c_char;
-
         arg_index = arg_start;
         while arg_index != arg_end
             && {
@@ -770,7 +777,7 @@ fn parse_shell_options(
             arg_index = next_arg;
         }
         return arg_index;
-    } //unsafe
+    }
 }
 
 #[no_mangle]
@@ -783,32 +790,32 @@ pub fn exit_shell(mut s: libc::c_int) {
             (Some(rl_deprep_term_function.expect("non-null function pointer")))
                 .expect("non-null function pointer")();
         }
-        if read_tty_modified() != 0 {
-            read_tty_cleanup();
-        }
+    }
+    if read_tty_modified() != 0 {
+        read_tty_cleanup();
+    }
 
-        if signal_is_trapped(0) != 0 {
-            s = run_exit_trap();
-        }
+    if signal_is_trapped(0) != 0 {
+        s = run_exit_trap();
+    }
 
-        unlink_all_fifos();
+    unlink_all_fifos();
 
-        if remember_on_history != 0 {
-            maybe_save_shell_history();
-        }
+    if unsafe { remember_on_history != 0 } {
+        maybe_save_shell_history();
+    }
 
-        coproc_flush();
+    coproc_flush();
 
-        if interactive_shell != 0 && login_shell != 0 && hup_on_exit != 0 {
-            hangup_all_jobs();
-        }
+    if unsafe { interactive_shell != 0 && login_shell != 0 && hup_on_exit != 0 } {
+        hangup_all_jobs();
+    }
 
-        if subshell_environment == 0 {
-            end_job_control();
-        }
+    if unsafe { subshell_environment == 0 } {
+        end_job_control();
+    }
 
-        sh_exit(s);
-    } //unsafe
+    sh_exit(s);
 }
 
 #[no_mangle]
@@ -829,7 +836,7 @@ pub fn subshell_exit(mut s: libc::c_int) {
         }
 
         sh_exit(s);
-    } //unsafe
+    }
 }
 
 #[no_mangle]
@@ -841,62 +848,111 @@ pub fn set_exit_status(s: libc::c_int) {
 }
 
 fn execute_env_file(env_file: *mut libc::c_char) {
-    unsafe {
-        let mut fn_0: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut fn_0: *mut libc::c_char = 0 as *mut libc::c_char;
 
-        if !env_file.is_null() && *env_file as libc::c_int != 0 {
-            fn_0 = expand_string_unsplit_to_string(env_file, Q_DOUBLE_QUOTES as libc::c_int);
-            if !fn_0.is_null() && *fn_0 as libc::c_int != 0 {
-                maybe_execute_file(fn_0, 1);
-            }
+    if unsafe { !env_file.is_null() && *env_file as libc::c_int != 0 } {
+        fn_0 = expand_string_unsplit_to_string(env_file, Q_DOUBLE_QUOTES as libc::c_int);
+        if unsafe { !fn_0.is_null() && *fn_0 as libc::c_int != 0 } {
+            maybe_execute_file(fn_0, 1);
+        }
+        unsafe {
             FREE!(fn_0);
         }
-    } //unsafe
+    }
 }
 
 //执行启动文件  bashrc等
 fn run_startup_files() {
-    unsafe {
-        let mut old_job_control: libc::c_int = 0;
-        let mut sourced_login: libc::c_int = 0;
-        let mut run_by_ssh: libc::c_int = 0;
+    let mut old_job_control: libc::c_int = 0;
+    let mut sourced_login: libc::c_int = 0;
+    let mut run_by_ssh: libc::c_int = 0;
 
-        if interactive_shell == 0
+    if unsafe {
+        interactive_shell == 0
             && no_rc == 0
             && login_shell == 0
             && act_like_sh == 0
             && !command_execution_string.is_null()
-        {
-            run_by_ssh = (!(find_variable(b"SSH_CLIENT\0" as *const u8 as *const libc::c_char))
-                .is_null()
-                || !(find_variable(b"SSH2_CLIENT\0" as *const u8 as *const libc::c_char)).is_null())
-                as libc::c_int;
-
-            if (run_by_ssh != 0 || isnetconn(fileno(stdin)) != 0) && shell_level < 2 {
+    } {
+        run_by_ssh = (!(find_variable(b"SSH_CLIENT\0" as *const u8 as *const libc::c_char))
+            .is_null()
+            || !(find_variable(b"SSH2_CLIENT\0" as *const u8 as *const libc::c_char)).is_null())
+            as libc::c_int;
+        unsafe {
+            if (run_by_ssh != 0 || c_isnetconn(fileno(stdin)) != 0) && shell_level < 2 {
                 maybe_execute_file(bashrc_file, 1);
                 return;
             }
         }
+    }
 
-        old_job_control = if interactive_shell != 0 {
-            set_job_control(0)
-        } else {
-            0
-        };
+    old_job_control = if unsafe { interactive_shell != 0 } {
+        set_job_control(0)
+    } else {
+        0
+    };
 
-        sourced_login = 0;
+    sourced_login = 0;
 
-        if login_shell != 0 && posixly_correct == 0 {
+    if unsafe { login_shell != 0 && posixly_correct == 0 } {
+        unsafe {
             no_rc += 1;
+        }
 
-            if no_profile == 0 {
+        if unsafe { no_profile == 0 } {
+            maybe_execute_file(SYS_PROFILE!(), 1);
+
+            if unsafe { act_like_sh != 0 } {
+                maybe_execute_file(b"~/.profile\0" as *const u8 as *const libc::c_char, 1);
+            } else if maybe_execute_file(
+                b"~/.utshell_profile\0" as *const u8 as *const libc::c_char,
+                1 as libc::c_int,
+            ) == 0
+                && maybe_execute_file(b"~/.utshell_login\0" as *const u8 as *const libc::c_char, 1)
+                    == 0
+            {
+                maybe_execute_file(b"~/.profile\0" as *const u8 as *const libc::c_char, 1);
+            }
+        }
+
+        sourced_login = 1;
+    }
+
+    if unsafe { interactive_shell == 0 && !(su_shell != 0 && login_shell != 0) } {
+        if unsafe {
+            posixly_correct == 0 && act_like_sh == 0 && privileged_mode == 0 && {
+                let fresh2 = sourced_env;
+                sourced_env = sourced_env + 1;
+                fresh2 == 0
+            }
+        } {
+            execute_env_file(get_string_value(
+                b"BASH_ENV\0" as *const u8 as *const libc::c_char,
+            ));
+        }
+        return;
+    }
+
+    if unsafe { posixly_correct == 0 } {
+        if unsafe {
+            login_shell != 0 && {
+                let fresh3 = sourced_login;
+                sourced_login = sourced_login + 1;
+                fresh3 == 0
+            }
+        } {
+            unsafe {
+                no_rc += 1;
+            }
+
+            if unsafe { no_profile == 0 } {
                 maybe_execute_file(SYS_PROFILE!(), 1);
 
-                if act_like_sh != 0 {
+                if unsafe { act_like_sh != 0 } {
                     maybe_execute_file(b"~/.profile\0" as *const u8 as *const libc::c_char, 1);
                 } else if maybe_execute_file(
                     b"~/.utshell_profile\0" as *const u8 as *const libc::c_char,
-                    1 as libc::c_int,
+                    1,
                 ) == 0
                     && maybe_execute_file(
                         b"~/.utshell_login\0" as *const u8 as *const libc::c_char,
@@ -906,79 +962,41 @@ fn run_startup_files() {
                     maybe_execute_file(b"~/.profile\0" as *const u8 as *const libc::c_char, 1);
                 }
             }
-
-            sourced_login = 1;
         }
 
-        if interactive_shell == 0 && !(su_shell != 0 && login_shell != 0) {
-            if posixly_correct == 0 && act_like_sh == 0 && privileged_mode == 0 && {
-                let fresh2 = sourced_env;
-                sourced_env = sourced_env + 1;
-                fresh2 == 0
-            } {
-                execute_env_file(get_string_value(
-                    b"BASH_ENV\0" as *const u8 as *const libc::c_char,
-                ));
+        if unsafe { act_like_sh == 0 && no_rc == 0 } {
+            unsafe {
+                maybe_execute_file(bashrc_file, 1);
             }
-            return;
-        }
-
-        if posixly_correct == 0 {
-            if login_shell != 0 && {
-                let fresh3 = sourced_login;
-                sourced_login = sourced_login + 1;
-                fresh3 == 0
-            } {
-                no_rc += 1;
-
-                if no_profile == 0 {
-                    maybe_execute_file(SYS_PROFILE!(), 1);
-
-                    if act_like_sh != 0 {
-                        maybe_execute_file(b"~/.profile\0" as *const u8 as *const libc::c_char, 1);
-                    } else if maybe_execute_file(
-                        b"~/.utshell_profile\0" as *const u8 as *const libc::c_char,
-                        1,
-                    ) == 0
-                        && maybe_execute_file(
-                            b"~/.utshell_login\0" as *const u8 as *const libc::c_char,
-                            1,
-                        ) == 0
-                    {
-                        maybe_execute_file(b"~/.profile\0" as *const u8 as *const libc::c_char, 1);
-                    }
-                }
-            }
-
-            if act_like_sh == 0 && no_rc == 0 {
-                maybe_execute_file(bashrc_file, 1); //问题
-            } else if act_like_sh != 0 && privileged_mode == 0 && {
+        } else if unsafe {
+            act_like_sh != 0 && privileged_mode == 0 && {
                 let fresh4 = sourced_env;
                 sourced_env = sourced_env + 1;
                 fresh4 == 0
-            } {
-                execute_env_file(get_string_value(
-                    b"ENV\0" as *const u8 as *const libc::c_char,
-                ));
             }
-        } else if interactive_shell != 0 && privileged_mode == 0 && {
-            let fresh5 = sourced_env;
-            sourced_env = sourced_env + 1;
-            fresh5 == 0
         } {
             execute_env_file(get_string_value(
                 b"ENV\0" as *const u8 as *const libc::c_char,
             ));
         }
-        set_job_control(old_job_control);
-    } //unsafe
+    } else if unsafe {
+        interactive_shell != 0 && privileged_mode == 0 && {
+            let fresh5 = sourced_env;
+            sourced_env = sourced_env + 1;
+            fresh5 == 0
+        }
+    } {
+        execute_env_file(get_string_value(
+            b"ENV\0" as *const u8 as *const libc::c_char,
+        ));
+    }
+    set_job_control(old_job_control);
 }
 
 #[no_mangle]
 pub fn shell_is_restricted(name: *mut libc::c_char) -> libc::c_int {
+    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
     unsafe {
-        let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-
         if restricted != 0 {
             return 1;
         }
@@ -989,37 +1007,35 @@ pub fn shell_is_restricted(name: *mut libc::c_char) -> libc::c_int {
         }
 
         return (STREQ(temp, RESTRICTED_SHELL_NAME!())) as libc::c_int;
-    } //unsafe
+    }
 }
 
 #[no_mangle]
 pub fn maybe_make_restricted(name: *mut libc::c_char) -> libc::c_int {
-    unsafe {
-        let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
 
-        temp = base_pathname(name);
+    temp = base_pathname(name);
+    unsafe {
         if *temp as libc::c_int == '-' as i32 {
             temp = temp.offset(1);
         }
-        if restricted != 0 || STREQ(temp, RESTRICTED_SHELL_NAME!()) {
-            set_var_read_only(b"PATH\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
-            set_var_read_only(b"SHELL\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
-            set_var_read_only(b"ENV\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
-            set_var_read_only(
-                b"BASH_ENV\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-            );
-            set_var_read_only(
-                b"HISTFILE\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-            );
+    }
+    if unsafe { restricted != 0 || STREQ(temp, RESTRICTED_SHELL_NAME!()) } {
+        set_var_read_only(b"PATH\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
+        set_var_read_only(b"SHELL\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
+        set_var_read_only(b"ENV\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
+        set_var_read_only(b"BASH_ENV\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
+        set_var_read_only(b"HISTFILE\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
+        unsafe {
             restricted = 1;
         }
-        return restricted;
-    } //unsafe
+    }
+    return unsafe { restricted };
 }
 
 fn uidget() -> libc::c_int {
+    let mut u: uid_t = 0;
     unsafe {
-        let mut u: uid_t = 0;
         u = getuid();
         if current_user.uid != u {
             FREE!(current_user.user_name);
@@ -1035,16 +1051,15 @@ fn uidget() -> libc::c_int {
         current_user.egid = getegid();
         return (current_user.uid != current_user.euid || current_user.gid != current_user.egid)
             as libc::c_int;
-    } //unsafe
+    }
 }
 
 #[no_mangle]
 pub fn disable_priv_mode() {
+    // let mut e: libc::c_int = 0;
     unsafe {
-        let mut e: libc::c_int = 0;
-
         if setresuid(current_user.uid, current_user.uid, current_user.uid) < 0 {
-            e = errno!();
+            // *c___errno_location();
             sys_error(
                 b"cannot set uid to %d: effective uid %d\0" as *const u8 as *const libc::c_char,
                 current_user.uid,
@@ -1064,9 +1079,8 @@ pub fn disable_priv_mode() {
 }
 
 fn run_one_command(command: *mut libc::c_char) -> libc::c_int {
+    let mut code: libc::c_int = 0;
     unsafe {
-        let mut code: libc::c_int = 0;
-
         code = setjmp_nosigs!(top_level.as_mut_ptr());
 
         if code != NOT_JUMPED as libc::c_int {
@@ -1096,7 +1110,7 @@ fn run_one_command(command: *mut libc::c_char) -> libc::c_int {
             b"-c\0" as *const u8 as *const libc::c_char,
             SEVAL_NOHIST as libc::c_int | SEVAL_RESETLINE as libc::c_int,
         );
-    } //unsafe
+    }
 }
 
 fn bind_args(
@@ -1105,14 +1119,14 @@ fn bind_args(
     arg_end: libc::c_int,
     start_index: libc::c_int,
 ) -> libc::c_int {
-    unsafe {
-        let mut i: libc::c_int = 0;
-        let mut args: *mut WordList = 0 as *mut WordList;
-        let mut tl: *mut WordList = 0 as *mut WordList;
+    let mut i: libc::c_int = 0;
+    let mut args: *mut WordList = 0 as *mut WordList;
+    let mut tl: *mut WordList = 0 as *mut WordList;
 
-        i = arg_start;
-        tl = 0 as *mut WordList;
-        args = tl;
+    i = arg_start;
+    tl = 0 as *mut WordList;
+    args = tl;
+    unsafe {
         while i < arg_end {
             if args.is_null() {
                 tl = make_word_list(make_word(*argv.offset(i as isize)), args);
@@ -1147,22 +1161,19 @@ fn bind_args(
             dispose_words(args);
         }
         return i;
-    } //unsafe
+    }
 }
 
 #[no_mangle]
 pub fn unbind_args() {
-    unsafe {
-        remember_args(0 as *mut libc::c_void as *mut WordList, 1);
-        pop_args();
-    } //unsafe
+    remember_args(0 as *mut libc::c_void as *mut WordList, 1);
+    pop_args();
 }
 
 fn start_debugger() {
+    let mut old_errexit: libc::c_int = 0;
+    let mut r: libc::c_int = 0;
     unsafe {
-        let mut old_errexit: libc::c_int = 0;
-        let mut r: libc::c_int = 0;
-
         old_errexit = exit_immediately_on_error;
         exit_immediately_on_error = 0;
 
@@ -1181,43 +1192,42 @@ fn start_debugger() {
         set_bashopts();
 
         exit_immediately_on_error += old_errexit;
-    } //unsafe
+    }
 }
 
 fn open_shell_script(script_name: *mut libc::c_char) -> libc::c_int {
+    let mut fd: libc::c_int = 0;
+    let mut e: libc::c_int = 0;
+    let mut fd_is_tty: libc::c_int = 0;
+    let mut filename: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut path_filename: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut sample: [libc::c_char; 80] = [0; 80];
+    let mut sample_len: libc::c_int = 0;
+    let mut sb: crate::src_common::stat = crate::src_common::stat_init;
+    let mut funcname_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut bash_source_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut bash_lineno_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
+    let mut funcname_a: *mut ARRAY = 0 as *mut ARRAY;
+    let mut bash_source_a: *mut ARRAY = 0 as *mut ARRAY;
+    let mut bash_lineno_a: *mut ARRAY = 0 as *mut ARRAY;
     unsafe {
-        let mut fd: libc::c_int = 0;
-        let mut e: libc::c_int = 0;
-        let mut fd_is_tty: libc::c_int = 0;
-        let mut filename: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut path_filename: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut sample: [libc::c_char; 80] = [0; 80];
-        let mut sample_len: libc::c_int = 0;
-        let mut sb: crate::src_common::stat = crate::src_common::stat_init;
-        let mut funcname_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-        let mut bash_source_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-        let mut bash_lineno_v: *mut SHELL_VAR = 0 as *mut SHELL_VAR;
-        let mut funcname_a: *mut ARRAY = 0 as *mut ARRAY;
-        let mut bash_source_a: *mut ARRAY = 0 as *mut ARRAY;
-        let mut bash_lineno_a: *mut ARRAY = 0 as *mut ARRAY;
-
         filename = savestring!(script_name);
 
         fd = open(filename, O_RDONLY as libc::c_int);
-        if fd < 0 && errno!() == ENOENT!() && absolute_program(filename) == 0 {
-            e = errno!();
+        if fd < 0 && *c___errno_location() == ENOENT!() && absolute_program(filename) == 0 {
+            e = *c___errno_location();
             path_filename = find_path_file(script_name);
             if !path_filename.is_null() {
                 free(filename as *mut c_void);
                 filename = path_filename;
                 fd = open(filename, O_RDONLY as libc::c_int);
             } else {
-                errno!() = e;
+                *c___errno_location() = e;
             }
         }
         if fd < 0 {
-            e = errno!();
+            e = *c___errno_location();
             file_error(filename);
             end_job_control();
             sh_exit(if e == ENOENT!() {
@@ -1240,7 +1250,7 @@ fn open_shell_script(script_name: *mut libc::c_char) -> libc::c_int {
         }
 
         if file_isdir(filename) != 0 {
-            errno!() = EISDIR!();
+            *c___errno_location() = EISDIR!();
             file_error(filename);
             end_job_control();
             sh_exit(EX_NOINPUT as libc::c_int);
@@ -1264,7 +1274,7 @@ fn open_shell_script(script_name: *mut libc::c_char) -> libc::c_int {
 
         array_push!(bash_source_a, filename);
         if !bash_lineno_a.is_null() {
-            t = itos(executing_line_number() as intmax_t);
+            t = c_itos(executing_line_number() as intmax_t);
             array_push!(bash_lineno_a, t);
             free(t as *mut c_void);
         }
@@ -1286,12 +1296,12 @@ fn open_shell_script(script_name: *mut libc::c_char) -> libc::c_int {
             ) as libc::c_int;
 
             if sample_len < 0 {
-                e = errno!();
-                if fstat(fd, &mut sb) == 0 && S_ISDIR!(sb.st_mode) {
-                    errno!() = EISDIR!();
+                e = *c___errno_location();
+                if c_fstat(fd, &mut sb) == 0 && S_ISDIR!(sb.st_mode) {
+                    *c___errno_location() = EISDIR!();
                     file_error(filename);
                 } else {
-                    errno!() = e;
+                    *c___errno_location() = e;
                     file_error(filename);
                 }
 
@@ -1326,15 +1336,15 @@ fn open_shell_script(script_name: *mut libc::c_char) -> libc::c_int {
         free(filename as *mut c_void);
         reading_shell_script = 1;
         return fd;
-    } //unsafe
+    }
 }
 
 fn set_bash_input() {
     unsafe {
         if interactive == 0 {
-            sh_unset_nodelay_mode(default_buffered_input);
+            c_sh_unset_nodelay_mode(default_buffered_input);
         } else {
-            sh_unset_nodelay_mode(fileno(stdin));
+            c_sh_unset_nodelay_mode(fileno(stdin));
         }
         if interactive != 0 && no_line_editing == 0 {
             with_input_from_stdin();
@@ -1346,10 +1356,8 @@ fn set_bash_input() {
         } else {
             with_input_from_stream(default_input, *dollar_vars.as_mut_ptr().offset(0 as isize));
         };
-    } //unsafe
+    }
 }
-
-// pub const st_none: stream_type = 0;
 
 #[no_mangle]
 pub fn unset_bash_input(check_zero: libc::c_int) {
@@ -1362,7 +1370,7 @@ pub fn unset_bash_input(check_zero: libc::c_int) {
             default_buffered_input = bash_input.location.buffered_fd;
             bash_input.type_0 = st_none;
         }
-    } //unsafe
+    }
 }
 
 fn set_shell_name(argv0: *mut libc::c_char) {
@@ -1404,7 +1412,7 @@ fn set_shell_name(argv0: *mut libc::c_char) {
         {
             shell_name = PROGRAM!();
         }
-    } //unsafe
+    }
 }
 
 fn set_option_defaults() {
@@ -1431,7 +1439,7 @@ fn init_interactive() {
         }
         remember_on_history = enable_history_list;
         histexp_flag = history_expansion;
-    } //unsafe
+    }
 }
 
 fn init_noninteractive() {
@@ -1448,7 +1456,7 @@ fn init_noninteractive() {
         expand_aliases = posixly_correct;
         no_line_editing = 1;
         set_job_control((forced_interactive != 0 || jobs_m_flag != 0) as libc::c_int);
-    } //unsafe
+    }
 }
 
 fn init_interactive_script() {
@@ -1462,13 +1470,13 @@ fn init_interactive_script() {
         expand_aliases = interactive_shell;
 
         remember_on_history = enable_history_list;
-    } //unsafe
+    }
 }
 
 #[no_mangle]
 pub fn get_current_user_info() {
+    let mut entry: *mut passwd = 0 as *mut passwd;
     unsafe {
-        let mut entry: *mut passwd = 0 as *mut passwd;
         if (current_user.user_name).is_null() {
             entry = getpwuid(current_user.uid) as *mut src_common::passwd;
             if !entry.is_null() {
@@ -1489,24 +1497,23 @@ pub fn get_current_user_info() {
             }
             endpwent();
         }
-    } //unsafe
+    }
 }
 
 fn shell_initialize() {
+    let mut hostname: [libc::c_char; 256] = [0; 256];
+    let mut should_be_restricted: libc::c_int = 0;
     unsafe {
-        let mut hostname: [libc::c_char; 256] = [0; 256];
-        let mut should_be_restricted: libc::c_int = 0;
-
         if shell_initialized == 0 {
-            sh_setlinebuf(stderr);
-            sh_setlinebuf(stdout);
+            c_sh_setlinebuf(stderr);
+            c_sh_setlinebuf(stdout);
         }
+    }
+    initialize_shell_builtins();
 
-        initialize_shell_builtins();
-
-        initialize_traps();
-        initialize_signals(0);
-
+    initialize_traps();
+    initialize_signals(0);
+    unsafe {
         if current_host_name.is_null() {
             if gethostname(hostname.as_mut_ptr(), 255 as usize) < 0 {
                 current_host_name = b"??host??\0" as *const u8 as *mut libc::c_char;
@@ -1517,9 +1524,9 @@ fn shell_initialize() {
         if interactive_shell != 0 {
             get_current_user_info();
         }
-
-        tilde_initialize();
-
+    }
+    tilde_initialize();
+    unsafe {
         should_be_restricted = shell_is_restricted(shell_name);
 
         initialize_shell_variables(
@@ -1531,11 +1538,11 @@ fn shell_initialize() {
         );
 
         initialize_job_control(jobs_m_flag);
+    }
+    initialize_bash_input();
 
-        initialize_bash_input();
-
-        initialize_flags();
-
+    initialize_flags();
+    unsafe {
         initialize_shell_options(
             (privileged_mode != 0
                 || restricted != 0
@@ -1548,7 +1555,7 @@ fn shell_initialize() {
                 || should_be_restricted != 0
                 || running_setuid != 0) as libc::c_int,
         );
-    } //unsafe
+    }
 }
 
 fn shell_reinitialize() {
@@ -1594,22 +1601,21 @@ fn shell_reinitialize() {
         bashline_reinitialize();
 
         shell_reinitialized = 1;
-    } //unsafe
+    }
 }
 
 fn show_shell_usage(fp: *mut FILE, extra: libc::c_int) {
+    let mut i: libc::c_int = 0;
+    let mut set_opts: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut s: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
     unsafe {
-        let mut i: libc::c_int = 0;
-        let mut set_opts: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut s: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-
         if extra != 0 {
             fprintf(
                 fp,
                 b"utshell, version %s-(%s)\n\0" as *const u8 as *const libc::c_char,
                 shell_version_string(),
-                get_mach_type(),
+                c_get_mach_type(),
             );
         }
         fprintf(
@@ -1710,7 +1716,7 @@ fn show_shell_usage(fp: *mut FILE, extra: libc::c_int) {
                     as *const libc::c_char,
             );
         }
-    } //unsafe
+    }
 }
 
 fn add_shopt_to_alist(opt: *mut libc::c_char, on_or_off: libc::c_int) {
@@ -1727,7 +1733,7 @@ fn add_shopt_to_alist(opt: *mut libc::c_char, on_or_off: libc::c_int) {
         (*shopt_alist.offset(shopt_ind as isize)).word = opt;
         (*shopt_alist.offset(shopt_ind as isize)).token = on_or_off;
         shopt_ind += 1;
-    } //unsafe
+    }
 }
 
 fn run_shopt_alist() {
@@ -1749,37 +1755,5 @@ fn run_shopt_alist() {
         shopt_alist = 0 as *mut STRING_INT_ALIST;
         shopt_len = 0;
         shopt_ind = shopt_len;
-    } //unsafe
-}
-#[no_mangle]
-pub fn r_main() {
-    //获取命令行参数
-    let mut args: Vec<*mut libc::c_char> = Vec::new();
-    for arg in ::std::env::args() {
-        args.push(
-            (::std::ffi::CString::new(arg))
-                .expect("Failed to convert argument into CString.")
-                .into_raw(),
-        );
-    }
-    args.push(::std::ptr::null_mut());
-
-    //获取环境变量
-    let mut vars: Vec<*mut libc::c_char> = Vec::new();
-    for (var_name, var_value) in ::std::env::vars() {
-        let var: String = format!("{}={}", var_name, var_value);
-        vars.push(
-            (::std::ffi::CString::new(var))
-                .expect("Failed to convert environment variable into CString.")
-                .into_raw(),
-        );
-    }
-    vars.push(::std::ptr::null_mut());
-    unsafe {
-        ::std::process::exit(main_0(
-            (args.len() - 1) as libc::c_int,
-            args.as_mut_ptr() as *mut *mut libc::c_char,
-            vars.as_mut_ptr() as *mut *mut libc::c_char,
-        ) as i32)
     }
 }
