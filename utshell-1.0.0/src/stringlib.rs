@@ -1,13 +1,5 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::pathexp::quote_globbing_chars;
 use crate::src_common::*;
-
-extern "C" {
-    fn strmatch(_: *mut libc::c_char, _: *mut libc::c_char, _: libc::c_int) -> libc::c_int;
-    fn glob_pattern_p(_: *const libc::c_char) -> libc::c_int;
-}
 
 #[no_mangle]
 pub fn find_string_in_alist(
@@ -15,15 +7,15 @@ pub fn find_string_in_alist(
     alist: *mut STRING_INT_ALIST,
     flags: libc::c_int,
 ) -> libc::c_int {
-    let mut i: libc::c_int = 0;
-    let mut r: libc::c_int = 0;
+    let mut i: libc::c_int;
+    let mut r: libc::c_int;
 
     r = 0;
     i = r;
     unsafe {
         while !((*alist.offset(i as isize)).word).is_null() {
             if flags != 0 {
-                r = (strmatch((*alist.offset(i as isize)).word, string, FNM_EXTMATCH!())
+                r = (c_strmatch((*alist.offset(i as isize)).word, string, FNM_EXTMATCH!())
                     != FNM_NOMATCH!()) as libc::c_int;
             } else {
                 r = STREQ!(string, (*alist.offset(i as isize)).word) as libc::c_int;
@@ -41,9 +33,9 @@ pub fn find_string_in_alist(
 pub fn find_token_in_alist(
     token: libc::c_int,
     alist: *mut STRING_INT_ALIST,
-    flags: libc::c_int,
+    _flags: libc::c_int,
 ) -> *mut libc::c_char {
-    let mut i: libc::c_int = 0;
+    let mut i: libc::c_int;
     unsafe {
         i = 0;
         while !((*alist.offset(i as isize)).word).is_null() {
@@ -62,14 +54,14 @@ pub fn find_index_in_alist(
     alist: *mut STRING_INT_ALIST,
     flags: libc::c_int,
 ) -> libc::c_int {
-    let mut i: libc::c_int = 0;
-    let mut r: libc::c_int = 0;
+    let mut i: libc::c_int;
+    let mut r: libc::c_int;
     unsafe {
         r = 0;
         i = r;
         while !((*alist.offset(i as isize)).word).is_null() {
             if flags != 0 {
-                r = (strmatch((*alist.offset(i as isize)).word, string, FNM_EXTMATCH!())
+                r = (c_strmatch((*alist.offset(i as isize)).word, string, FNM_EXTMATCH!())
                     != FNM_NOMATCH!()) as libc::c_int;
             } else {
                 r = STREQ!(string, (*alist.offset(i as isize)).word) as libc::c_int;
@@ -89,11 +81,11 @@ pub fn substring(
     start: libc::c_int,
     end: libc::c_int,
 ) -> *mut libc::c_char {
-    unsafe {
-        let mut len: libc::c_int = 0;
-        let mut result: *mut libc::c_char = 0 as *mut libc::c_char;
+    let len: libc::c_int;
+    let result: *mut libc::c_char;
 
-        len = end - start;
+    len = end - start;
+    unsafe {
         result = malloc((len + 1 as libc::c_int) as usize) as *mut libc::c_char;
         memcpy(
             result as *mut c_void,
@@ -112,54 +104,64 @@ pub fn strsub(
     rep: *mut libc::c_char,
     global: libc::c_int,
 ) -> *mut libc::c_char {
-    unsafe {
-        let mut patlen: libc::c_int = 0;
-        let mut replen: libc::c_int = 0;
-        let mut templen: libc::c_int = 0;
-        let mut tempsize: libc::c_int = 0;
-        let mut repl: libc::c_int = 0;
-        let mut i: libc::c_int = 0;
-        let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut r: *mut libc::c_char = 0 as *mut libc::c_char;
+    let patlen: libc::c_int;
+    let replen: libc::c_int;
+    let mut templen: libc::c_int;
+    let mut tempsize: libc::c_int;
+    let mut repl: libc::c_int;
+    let mut i: libc::c_int;
+    let mut temp: *mut libc::c_char;
+    let mut r: *mut libc::c_char;
 
+    unsafe {
         patlen = strlen(pat) as libc::c_int;
         replen = strlen(rep) as libc::c_int;
-        temp = 0 as *mut libc::c_char;
-        tempsize = 0;
-        templen = tempsize;
-        i = templen;
-        repl = 1;
-        while *string.offset(i as isize) != 0 {
-            if repl != 0 && STREQN!(string.offset(i as isize), pat, patlen) != 0 {
-                if replen != 0 {
+    }
+    temp = 0 as *mut libc::c_char;
+    tempsize = 0;
+    templen = tempsize;
+    i = templen;
+    repl = 1;
+    while unsafe { *string.offset(i as isize) != 0 } {
+        if unsafe { repl != 0 && STREQN!(string.offset(i as isize), pat, patlen) != 0 } {
+            if replen != 0 {
+                unsafe {
                     RESIZE_MALLOCED_BUFFER!(temp, templen, replen, tempsize, replen * 2);
                 }
+            }
 
-                r = rep;
+            r = rep;
+            unsafe {
                 while *r != 0 {
                     *temp.offset(templen as isize) = *r;
                     templen = templen + 1;
                     r = r.offset(1);
                 }
+            }
 
-                i += if patlen != 0 { patlen } else { 1 };
-                repl = (global != 0) as libc::c_int;
-            } else {
+            i += if patlen != 0 { patlen } else { 1 };
+            repl = (global != 0) as libc::c_int;
+        } else {
+            unsafe {
                 RESIZE_MALLOCED_BUFFER!(temp, templen, 1, tempsize, 16);
 
                 *temp.offset(templen as isize) = *string.offset(i as isize);
-                templen = templen + 1;
-                i = i + 1;
             }
+            templen = templen + 1;
+            i = i + 1;
         }
+    }
 
-        if !temp.is_null() {
+    if !temp.is_null() {
+        unsafe {
             *temp.offset(templen as isize) = 0 as libc::c_char;
-        } else {
+        }
+    } else {
+        unsafe {
             temp = savestring!(string);
         }
-        return temp;
     }
+    return temp;
 }
 
 #[no_mangle]
@@ -169,16 +171,15 @@ pub fn strcreplace(
     text: *const libc::c_char,
     do_glob: libc::c_int,
 ) -> *mut libc::c_char {
+    let mut ret: *mut libc::c_char;
+    let mut p: *mut libc::c_char;
+    let mut r: *mut libc::c_char;
+    let mut t: *mut libc::c_char;
+    let len: libc::c_int;
+    let mut rlen: libc::c_int;
+    let mut ind: libc::c_int;
+    let mut tlen: libc::c_int;
     unsafe {
-        let mut ret: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut p: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut r: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut len: libc::c_int = 0;
-        let mut rlen: libc::c_int = 0;
-        let mut ind: libc::c_int = 0;
-        let mut tlen: libc::c_int = 0;
-
         len = STRLEN!(text);
         rlen = len + strlen(string) as libc::c_int + 2;
         ret = malloc(rlen as usize) as *mut libc::c_char;
@@ -190,7 +191,7 @@ pub fn strcreplace(
                 if len != 0 {
                     ind = r.offset_from(ret) as libc::c_long as libc::c_int;
                     if do_glob != 0
-                        && (glob_pattern_p(text) != 0 || !(strchr(text, '\\' as i32)).is_null())
+                        && (c_glob_pattern_p(text) != 0 || !(strchr(text, '\\' as i32)).is_null())
                     {
                         t = quote_globbing_chars(text);
                         tlen = strlen(t) as libc::c_int;
