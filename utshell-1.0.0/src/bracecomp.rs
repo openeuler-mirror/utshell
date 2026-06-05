@@ -1,10 +1,8 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
+use crate::readline::c_rl_filename_completion_function;
 use crate::src_common::*;
 
 fn string_gcd(mut s1: *mut libc::c_char, mut s2: *mut libc::c_char) -> libc::c_int {
-    let mut i: libc::c_int = 0;
+    let mut i: libc::c_int;
     if s1.is_null() || s2.is_null() {
         return 0 as libc::c_int;
     }
@@ -28,26 +26,26 @@ fn really_munge_braces(
     real_end: libc::c_int,
     gcd_zero: libc::c_int,
 ) -> *mut libc::c_char {
-    let mut start: libc::c_int = 0;
-    let mut end: libc::c_int = 0;
-    let mut gcd: libc::c_int = 0;
-    let mut result: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut subterm: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut x: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut result_size: libc::c_int = 0;
-    let mut flag: libc::c_int = 0;
-    let mut tlen: libc::c_int = 0;
+    let mut start: libc::c_int;
+    let mut end: libc::c_int;
+    let mut gcd: libc::c_int;
+    let mut result: *mut libc::c_char;
+    let mut subterm: *mut libc::c_char;
+    let mut x: *mut libc::c_char;
+    let mut result_size: libc::c_int;
+    let mut flag: libc::c_int;
+    let mut tlen: libc::c_int;
     flag = 0 as libc::c_int;
     unsafe {
         if real_start == real_end {
             x = if !(*array.offset(real_start as isize)).is_null() {
-                sh_backslash_quote(
+                c_sh_backslash_quote(
                     (*array.offset(real_start as isize)).offset(gcd_zero as isize),
                     0 as *const libc::c_char,
                     0 as libc::c_int,
                 )
             } else {
-                sh_backslash_quote(*array, 0 as *const libc::c_char, 0 as libc::c_int)
+                c_sh_backslash_quote(*array, 0 as *const libc::c_char, 0 as libc::c_int)
             };
             return x;
         }
@@ -59,7 +57,7 @@ fn really_munge_braces(
             gcd = libc::strlen(*array.offset(start as isize)) as libc::c_int;
             end = start + 1 as libc::c_int;
             while end < real_end {
-                let mut temp: libc::c_int = 0;
+                let temp: libc::c_int;
                 temp = string_gcd(*array.offset(start as isize), *array.offset(end as isize));
                 if temp <= gcd_zero {
                     break;
@@ -78,11 +76,10 @@ fn really_munge_braces(
                 *result.offset(0 as libc::c_int as isize) = '{' as i32 as libc::c_char;
                 *result.offset(1 as libc::c_int as isize) = '\0' as i32 as libc::c_char;
                 flag += 1;
-                flag;
             }
             if start == end {
                 x = savestring!((*array.offset(start as isize)).offset(gcd_zero as isize));
-                subterm = sh_backslash_quote(x, 0 as *const libc::c_char, 0 as libc::c_int);
+                subterm = c_sh_backslash_quote(x, 0 as *const libc::c_char, 0 as libc::c_int);
                 libc::free(x as *mut libc::c_void);
             } else {
                 tlen = gcd - gcd_zero;
@@ -93,7 +90,7 @@ fn really_munge_braces(
                     tlen as usize,
                 );
                 *x.offset(tlen as isize) = '\0' as i32 as libc::c_char;
-                subterm = sh_backslash_quote(x, 0 as *const libc::c_char, 0 as libc::c_int);
+                subterm = c_sh_backslash_quote(x, 0 as *const libc::c_char, 0 as libc::c_int);
                 libc::free(x as *mut libc::c_void);
                 result_size += libc::strlen(subterm) as libc::c_int + 1 as libc::c_int;
                 result = libc::realloc(result as *mut libc::c_void, result_size as usize)
@@ -123,7 +120,7 @@ fn really_munge_braces(
 
 fn _strcompare(s1: *mut *mut libc::c_char, s2: *mut *mut libc::c_char) -> libc::c_int {
     unsafe {
-        let mut result: libc::c_int = 0;
+        let mut result: libc::c_int;
         result = **s1 as libc::c_int - **s2 as libc::c_int;
         if result == 0 as libc::c_int {
             result = strcmp(*s1, *s2);
@@ -133,12 +130,12 @@ fn _strcompare(s1: *mut *mut libc::c_char, s2: *mut *mut libc::c_char) -> libc::
 }
 
 fn hack_braces_completion(names: *mut *mut libc::c_char) -> libc::c_int {
-    let mut i: libc::c_int = 0;
-    let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
+    let mut i: libc::c_int;
+    let temp: *mut libc::c_char;
     unsafe {
-        i = strvec_len(names);
-        if __ctype_get_mb_cur_max() > 1 as usize && i > 2 as libc::c_int {
-            qsort(
+        i = c_strvec_len(names);
+        if c___ctype_get_mb_cur_max() > 1 as usize && i > 2 as libc::c_int {
+            c_qsort(
                 names.offset(1 as libc::c_int as isize) as *mut libc::c_void,
                 (i - 1 as libc::c_int) as usize,
                 std::mem::size_of::<*mut libc::c_char>() as usize,
@@ -157,7 +154,6 @@ fn hack_braces_completion(names: *mut *mut libc::c_char) -> libc::c_int {
             let ref mut fresh0 = *names.offset(i as isize);
             *fresh0 = 0 as *mut libc::c_char;
             i += 1;
-            i;
         }
         let ref mut fresh1 = *names.offset(0 as libc::c_int as isize);
         *fresh1 = temp;
@@ -165,23 +161,20 @@ fn hack_braces_completion(names: *mut *mut libc::c_char) -> libc::c_int {
     return 0 as libc::c_int;
 }
 #[no_mangle]
-pub fn bash_brace_completion(count: libc::c_int, ignore: libc::c_int) -> libc::c_int {
-    let mut orig_ignore_func: Option<rl_compignore_func_t> = None;
-    let mut orig_entry_func: Option<rl_compentry_func_t> = None;
-    let mut orig_quoting_func: Option<rl_quote_func_t> = None;
-    let mut orig_attempt_func: Option<rl_completion_func_t> = None;
-    let mut orig_quoting_desired: libc::c_int = 0;
-    let mut r: libc::c_int = 0;
+pub fn bash_brace_completion(_count: libc::c_int, _ignore: libc::c_int) -> libc::c_int {
+    let orig_ignore_func: Option<rl_compignore_func_t>;
+    let orig_entry_func: Option<rl_compentry_func_t>;
+    let orig_quoting_func: Option<rl_quote_func_t>;
+    let orig_attempt_func: Option<rl_completion_func_t>;
+    let orig_quoting_desired: libc::c_int;
+    let r: libc::c_int;
     unsafe {
         orig_ignore_func = rl_ignore_some_completions_function;
         orig_attempt_func = rl_attempted_completion_function;
         orig_entry_func = rl_completion_entry_function;
         orig_quoting_func = rl_filename_quoting_function;
         orig_quoting_desired = rl_filename_quoting_desired;
-        rl_completion_entry_function = Some(std::mem::transmute::<
-            unsafe extern "C" fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-            fn(*const libc::c_char, libc::c_int) -> *mut libc::c_char,
-        >(rl_filename_completion_function));
+        rl_completion_entry_function = Some(c_rl_filename_completion_function);
         rl_attempted_completion_function = ::core::mem::transmute::<
             *mut libc::c_void,
             Option<rl_completion_func_t>,
@@ -198,7 +191,7 @@ pub fn bash_brace_completion(count: libc::c_int, ignore: libc::c_int) -> libc::c
             Option<rl_quote_func_t>,
         >(0 as *mut libc::c_void);
         rl_filename_quoting_desired = 0 as libc::c_int;
-        r = rl_complete_internal('\t' as i32);
+        r = c_rl_complete_internal('\t' as i32);
         rl_ignore_some_completions_function = orig_ignore_func;
         rl_attempted_completion_function = orig_attempt_func;
         rl_completion_entry_function = orig_entry_func;
