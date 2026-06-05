@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::copycmd::copy_command;
 use crate::copycmd::copy_redirect;
 use crate::dispose_cmd::{dispose_command, dispose_redirects};
@@ -10,6 +7,7 @@ use crate::general::sh_validfd;
 use crate::src_common::*;
 use crate::subst::remove_quoted_escapes;
 use crate::unwind_prot::{add_unwind_protect, remove_unwind_protect};
+use crate::variables::get_string_value;
 use crate::y_tab::{decode_prompt_string, find_reserved_word};
 use std::convert::TryInto;
 
@@ -65,7 +63,7 @@ fn make_command_string_internal(command: *mut COMMAND) {
             if (*command).flags != 0 && CMD_INVERT_RETURN != 0 {
                 cprintf(b"! \0" as *const u8 as *const libc::c_char);
             }
-            // (*command).type_ = 11;
+
             match (*command).type_0 as libc::c_uint {
                 command_type_cm_for => print_for_command((*command).value.For),
                 command_type_cm_arith_for => print_arith_for_command((*command).value.ArithFor),
@@ -113,7 +111,7 @@ fn make_command_string_internal(command: *mut COMMAND) {
                                 skip_this_indent = skip_this_indent + 1;
                             }
                         }
-                        // str_3 => {
+
                         59 => {
                             if deferred_heredocs.is_null() {
                                 if was_heredoc == 0 {
@@ -170,8 +168,6 @@ fn make_command_string_internal(command: *mut COMMAND) {
                     make_command_string_internal((*(*command).value.Coproc).command);
                 }
                 _ => {
-                    // let c_str = CString::new("print_command").unwrap();
-                    // let c_str_ptr = c_str.as_ptr();
                     command_error(
                         b"print_command\0" as *const u8 as *const libc::c_char,
                         CMDERR_BADTYPE as i32,
@@ -192,7 +188,6 @@ fn make_command_string_internal(command: *mut COMMAND) {
 #[no_mangle]
 pub fn print_word_list(list: *mut WordList, separator: *mut libc::c_char) {
     let mut w: *mut WordList;
-    // let mut str:*mut libc::c_char;
     w = list;
     unsafe {
         while !w.is_null() {
@@ -266,10 +261,8 @@ pub fn xtrace_reset() {
 
 #[no_mangle]
 pub fn xtrace_fdchk(fd: libc::c_int) {
-    unsafe {
-        if fd == xtrace_fd {
-            xtrace_reset();
-        }
+    if unsafe { fd == xtrace_fd } {
+        xtrace_reset();
     }
 }
 
@@ -375,37 +368,26 @@ pub fn xtrace_print_assignment(
     unsafe {
         CHECK_XTRACE_FP!();
         if xflags != 0 {
-            fprintf(
-                xtrace_fp,
-                CString::new("%s").unwrap().as_ptr(),
-                indirection_level_string(),
-            );
+            let msg = CString::new("%s").unwrap();
+            fprintf(xtrace_fp, msg.as_ptr(), indirection_level_string());
         }
 
         if *value as libc::c_int == '\u{0}' as i32 || assign_list != 0 {
             nval = value;
-        } else if sh_contains_shell_metas(value) != 0 {
-            nval = sh_single_quote(value);
-        } else if ansic_shouldquote(value) != 0 {
-            nval = ansic_quote(value, 0, 0 as *mut libc::c_int);
+        } else if c_sh_contains_shell_metas(value) != 0 {
+            nval = c_sh_single_quote(value);
+        } else if c_ansic_shouldquote(value) != 0 {
+            nval = c_ansic_quote(value, 0, 0 as *mut libc::c_int);
         } else {
             nval = value;
         }
 
         if assign_list != 0 {
-            fprintf(
-                xtrace_fp,
-                CString::new("%s=(%s)\n").unwrap().as_ptr(),
-                name,
-                nval,
-            );
+            let msg = CString::new("%s=(%s)\n").unwrap();
+            fprintf(xtrace_fp, msg.as_ptr(), name, nval);
         } else {
-            fprintf(
-                xtrace_fp,
-                CString::new("%s=%s\n").unwrap().as_ptr(),
-                name,
-                nval,
-            );
+            let msg = CString::new("%s=%s\n").unwrap();
+            fprintf(xtrace_fp, msg.as_ptr(), name, nval);
         }
 
         if nval != value {
@@ -427,20 +409,18 @@ pub fn xtrace_print_word_list(list: *mut WordList, xtflags: libc::c_int) {
         CHECK_XTRACE_FP!();
 
         if (xtflags & 1) != 0 {
-            fprintf(
-                xtrace_fp,
-                CString::new("%s").unwrap().as_ptr(),
-                indirection_level_string(),
-            );
+            let msg = CString::new("%s").unwrap();
+            fprintf(xtrace_fp, msg.as_ptr(), indirection_level_string());
         }
 
         w = list;
         while !w.is_null() {
             t = (*(*w).word).word;
             if t.is_null() || *t as libc::c_int == '\u{0}' as i32 {
+                let msg = CString::new("''%s").unwrap();
                 fprintf(
                     xtrace_fp,
-                    CString::new("''%s").unwrap().as_ptr(),
+                    msg.as_ptr(),
                     if !((*w).next).is_null() {
                         b" \0" as *const u8 as *const libc::c_char
                     } else {
@@ -448,9 +428,10 @@ pub fn xtrace_print_word_list(list: *mut WordList, xtflags: libc::c_int) {
                     },
                 );
             } else if (xtflags & 2) != 0 {
+                let msg = CString::new("%s%s").unwrap();
                 fprintf(
                     xtrace_fp,
-                    CString::new("%s%s").unwrap().as_ptr(),
+                    msg.as_ptr(),
                     t,
                     if !((*w).next).is_null() {
                         b" \0" as *const u8 as *const libc::c_char
@@ -458,11 +439,12 @@ pub fn xtrace_print_word_list(list: *mut WordList, xtflags: libc::c_int) {
                         b"\0" as *const u8 as *const libc::c_char
                     },
                 );
-            } else if sh_contains_shell_metas(t) != 0 {
-                x = sh_single_quote(t);
+            } else if c_sh_contains_shell_metas(t) != 0 {
+                x = c_sh_single_quote(t);
+                let msg = CString::new("%s%s").unwrap();
                 fprintf(
                     xtrace_fp,
-                    CString::new("%s%s").unwrap().as_ptr(),
+                    msg.as_ptr(),
                     x,
                     if !((*w).next).is_null() {
                         b" \0" as *const u8 as *const libc::c_char
@@ -471,11 +453,12 @@ pub fn xtrace_print_word_list(list: *mut WordList, xtflags: libc::c_int) {
                     },
                 );
                 libc::free(x as *mut c_void);
-            } else if ansic_shouldquote(t) != 0 {
-                x = ansic_quote(t, 0, 0 as *mut libc::c_int);
+            } else if c_ansic_shouldquote(t) != 0 {
+                x = c_ansic_quote(t, 0, 0 as *mut libc::c_int);
+                let msg = CString::new("%s%s").unwrap();
                 fprintf(
                     xtrace_fp,
-                    CString::new("%s%s").unwrap().as_ptr(),
+                    msg.as_ptr(),
                     x,
                     if !((*w).next).is_null() {
                         b" \0" as *const u8 as *const libc::c_char
@@ -485,9 +468,10 @@ pub fn xtrace_print_word_list(list: *mut WordList, xtflags: libc::c_int) {
                 );
                 libc::free(x as *mut c_void);
             } else {
+                let msg = CString::new("%s%s").unwrap();
                 fprintf(
                     xtrace_fp,
-                    CString::new("%s%s").unwrap().as_ptr(),
+                    msg.as_ptr(),
                     t,
                     if !((*w).next).is_null() {
                         b" \0" as *const u8 as *const libc::c_char
@@ -498,8 +482,8 @@ pub fn xtrace_print_word_list(list: *mut WordList, xtflags: libc::c_int) {
             }
             w = (*w).next;
         }
-
-        fprintf(xtrace_fp, CString::new("\n").unwrap().as_ptr());
+        let msg = CString::new("\n").unwrap();
+        fprintf(xtrace_fp, msg.as_ptr());
         libc::fflush(xtrace_fp);
     }
 }
@@ -530,7 +514,6 @@ pub fn command_print_word_list(list: *mut WordList, separator: *mut libc::c_char
     }
 }
 
-// 有个cprintf函数
 #[no_mangle]
 pub fn print_for_command_head(for_command: *mut FOR_COM) {
     unsafe {
@@ -549,33 +532,30 @@ pub fn print_for_command_head(for_command: *mut FOR_COM) {
 pub fn xtrace_print_for_command_head(for_command: *mut FOR_COM) {
     unsafe {
         CHECK_XTRACE_FP!();
-        fprintf(
-            xtrace_fp,
-            CString::new("%s").unwrap().as_ptr(),
-            indirection_level_string(),
-        );
-        fprintf(
-            xtrace_fp,
-            CString::new("for %s in ").unwrap().as_ptr(),
-            (*(*for_command).name).word,
-        );
+        let msg1 = CString::new("%s").unwrap();
+        fprintf(xtrace_fp, msg1.as_ptr(), indirection_level_string());
+        let msg2 = CString::new("for %s in ").unwrap();
+        fprintf(xtrace_fp, msg2.as_ptr(), (*(*for_command).name).word);
         xtrace_print_word_list((*for_command).map_list, 2);
     }
 }
 
 #[no_mangle]
 pub fn print_for_command(for_command: *mut FOR_COM) {
+    print_for_command_head(for_command);
     unsafe {
-        print_for_command_head(for_command);
         cprintf(b";\0" as *const u8 as *const libc::c_char);
-        newline(b"do\n\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
+    }
+    newline(b"do\n\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
 
+    unsafe {
         indentation += indentation_amount;
         make_command_string_internal((*for_command).action);
         PRINT_DEFERRED_HEREDOCS!(b"\0" as *const u8 as *mut libc::c_char);
         semicolon();
         indentation -= indentation_amount;
     }
+
     newline(b"done\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
 }
 
@@ -627,16 +607,10 @@ pub fn print_select_command_head(select_command: *mut SELECT_COM) {
 pub fn xtrace_print_select_command_head(select_command: *mut SELECT_COM) {
     unsafe {
         CHECK_XTRACE_FP!();
-        fprintf(
-            xtrace_fp,
-            CString::new("%s").unwrap().as_ptr(),
-            indirection_level_string(),
-        );
-        fprintf(
-            xtrace_fp,
-            CString::new("select %s in ").unwrap().as_ptr(),
-            (*(*select_command).name).word,
-        );
+        let msg1 = CString::new("%s").unwrap();
+        fprintf(xtrace_fp, msg1.as_ptr(), indirection_level_string());
+        let msg2 = CString::new("select %s in ").unwrap();
+        fprintf(xtrace_fp, msg2.as_ptr(), (*(*select_command).name).word);
         xtrace_print_word_list((*select_command).map_list, 2);
     }
 }
@@ -698,16 +672,10 @@ pub fn print_case_command_head(case_command: *mut CASE_COM) {
 pub fn xtrace_print_case_command_head(case_command: *mut CASE_COM) {
     unsafe {
         CHECK_XTRACE_FP!();
-        fprintf(
-            xtrace_fp,
-            CString::new("%s").unwrap().as_ptr(),
-            indirection_level_string(),
-        );
-        fprintf(
-            xtrace_fp,
-            CString::new("case %s in\n").unwrap().as_ptr(),
-            (*(*case_command).word).word,
-        );
+        let msg1 = CString::new("%s").unwrap();
+        fprintf(xtrace_fp, msg1.as_ptr(), indirection_level_string());
+        let msg2 = CString::new("case %s in\n").unwrap();
+        fprintf(xtrace_fp, msg2.as_ptr(), (*(*case_command).word).word);
     }
 }
 
@@ -728,10 +696,8 @@ pub fn print_case_clauses(mut clauses: *mut PATTERN_LIST) {
         indentation += indentation_amount;
         while !clauses.is_null() {
             newline(b"\0" as *const u8 as *const libc::c_char as *mut libc::c_char);
-            command_print_word_list(
-                (*clauses).patterns,
-                CString::new(" | ").unwrap().as_ptr() as *mut libc::c_char,
-            );
+            let msg = CString::new(" | ").unwrap();
+            command_print_word_list((*clauses).patterns, msg.as_ptr() as *mut libc::c_char);
 
             cprintf(b")\n\0" as *const u8 as *const libc::c_char);
             indentation += indentation_amount;
@@ -753,18 +719,14 @@ pub fn print_case_clauses(mut clauses: *mut PATTERN_LIST) {
 
 #[no_mangle]
 pub fn print_while_command(while_command: *mut WHILE_COM) {
-    print_until_or_while(
-        while_command,
-        CString::new("while").unwrap().as_ptr() as *mut libc::c_char,
-    );
+    let msg = CString::new("while").unwrap();
+    print_until_or_while(while_command, msg.as_ptr() as *mut libc::c_char);
 }
 
 #[no_mangle]
 pub fn print_until_command(while_command: *mut WHILE_COM) {
-    print_until_or_while(
-        while_command,
-        CString::new("until").unwrap().as_ptr() as *mut libc::c_char,
-    );
+    let msg = CString::new("until").unwrap();
+    print_until_or_while(while_command, msg.as_ptr() as *mut libc::c_char);
 }
 
 #[no_mangle]
@@ -815,10 +777,8 @@ pub fn print_if_command(if_command: *mut IF_COM) {
 pub fn print_arith_command(arith_cmd_list: *mut WordList) {
     unsafe {
         cprintf(b"((\0" as *const u8 as *const libc::c_char);
-        command_print_word_list(
-            arith_cmd_list,
-            CString::new(" ").unwrap().as_ptr() as *mut libc::c_char,
-        );
+        let msg = CString::new(" ").unwrap();
+        command_print_word_list(arith_cmd_list, msg.as_ptr() as *mut libc::c_char);
         cprintf(b"))\0" as *const u8 as *const libc::c_char);
     }
 }
@@ -882,15 +842,14 @@ pub fn xtrace_print_cond_term(
     unsafe {
         CHECK_XTRACE_FP!();
         command_string_index = 0;
-        fprintf(
-            xtrace_fp,
-            CString::new("%s").unwrap().as_ptr(),
-            indirection_level_string(),
-        );
-        fprintf(xtrace_fp, CString::new("[[ ").unwrap().as_ptr());
+        let msg1 = CString::new("%s").unwrap();
+        fprintf(xtrace_fp, msg1.as_ptr(), indirection_level_string());
+        let msg2 = CString::new("[[ ").unwrap();
+        fprintf(xtrace_fp, msg2.as_ptr());
 
         if invert != 0 {
-            fprintf(xtrace_fp, CString::new("! ").unwrap().as_ptr());
+            let msg3 = CString::new("! ").unwrap();
+            fprintf(xtrace_fp, msg3.as_ptr());
         }
 
         if type_0 == COND_UNARY as i32 {
@@ -898,31 +857,36 @@ pub fn xtrace_print_cond_term(
             if !arg1.is_null() && *arg1 as libc::c_int != 0 {
                 str = arg1;
             } else {
-                str = CString::new("''").unwrap().as_ptr() as *mut libc::c_char;
+                let msg4 = CString::new("''").unwrap();
+                str = msg4.as_ptr() as *mut libc::c_char;
             }
-            fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), (*op).word);
-            fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), str);
+            let msg5 = CString::new("%s ").unwrap();
+            fprintf(xtrace_fp, msg5.as_ptr(), (*op).word);
+            let msg6 = CString::new("%s ").unwrap();
+            fprintf(xtrace_fp, msg6.as_ptr(), str);
         } else if type_0 == COND_BINARY as i32 {
             let str1: *mut libc::c_char;
             let str2: *mut libc::c_char;
             if !arg1.is_null() && *arg1 as libc::c_int != 0 {
                 str1 = arg1;
             } else {
-                str1 = CString::new("''").unwrap().as_ptr() as *mut libc::c_char;
+                let msg7 = CString::new("''").unwrap();
+                str1 = msg7.as_ptr() as *mut libc::c_char;
             }
 
             if !arg2.is_null() && *arg2 as libc::c_int != 0 {
                 str2 = arg2;
             } else {
-                str2 = CString::new("''").unwrap().as_ptr() as *mut libc::c_char;
+                let msg8 = CString::new("''").unwrap();
+                str2 = msg8.as_ptr() as *mut libc::c_char;
             }
-
-            fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), str1);
-            fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), (*op).word);
-            fprintf(xtrace_fp, CString::new("%s ").unwrap().as_ptr(), str2);
+            let msg9 = CString::new("%s ").unwrap();
+            fprintf(xtrace_fp, msg9.as_ptr(), str1);
+            fprintf(xtrace_fp, msg9.as_ptr(), (*op).word);
+            fprintf(xtrace_fp, msg9.as_ptr(), str2);
         }
-
-        fprintf(xtrace_fp, CString::new(" ]]\n").unwrap().as_ptr());
+        let msg10 = CString::new(" ]]\n").unwrap();
+        fprintf(xtrace_fp, msg10.as_ptr());
 
         libc::fflush(xtrace_fp);
     }
@@ -933,12 +897,10 @@ pub fn xtrace_print_arith_cmd(list: *mut WordList) {
     let mut w: *mut WordList;
     unsafe {
         CHECK_XTRACE_FP!();
-        fprintf(
-            xtrace_fp,
-            CString::new("%s").unwrap().as_ptr(),
-            indirection_level_string(),
-        );
-        fprintf(xtrace_fp, CString::new("(( ").unwrap().as_ptr());
+        let msg = CString::new("%s").unwrap();
+        fprintf(xtrace_fp, msg.as_ptr(), indirection_level_string());
+        let msg2 = CString::new("(( ").unwrap();
+        fprintf(xtrace_fp, msg2.as_ptr());
 
         w = list;
         while !w.is_null() {
@@ -948,18 +910,13 @@ pub fn xtrace_print_arith_cmd(list: *mut WordList) {
             } else {
                 str = b"\0" as *const u8 as *const libc::c_char;
             }
-
-            fprintf(
-                xtrace_fp,
-                CString::new("%s%s").unwrap().as_ptr(),
-                (*(*w).word).word,
-                str,
-            );
+            let msg3 = CString::new("%s%s").unwrap();
+            fprintf(xtrace_fp, msg3.as_ptr(), (*(*w).word).word, str);
 
             w = (*w).next;
         }
-
-        fprintf(xtrace_fp, CString::new(" ))\n").unwrap().as_ptr());
+        let msg4 = CString::new(" ))\n").unwrap();
+        fprintf(xtrace_fp, msg4.as_ptr());
 
         libc::fflush(xtrace_fp);
     }
@@ -1120,7 +1077,7 @@ pub fn print_heredoc_header(redirect: *mut REDIRECT) {
             )
         }
         if (*(*redirect).redirectee.filename).flags & W_QUOTED as i32 != 0 {
-            x = sh_single_quote((*redirect).here_doc_eof);
+            x = c_sh_single_quote((*redirect).here_doc_eof);
             cprintf(
                 b"<<%s%s\0" as *const u8 as *const libc::c_char,
                 if kill_leading != 0 {
@@ -1465,7 +1422,6 @@ pub fn print_function_def(func: *mut FUNCTION_DEF) {
             );
         }
 
-        //add_unwind_protect(reset_locals, 0 );
         add_unwind_protect(
             std::mem::transmute::<fn(), Option<Function>>(reset_locals),
             0 as *mut libc::c_char,
@@ -1511,13 +1467,12 @@ pub fn named_function_string(
     command: *mut COMMAND,
     flags: libc::c_int,
 ) -> *mut libc::c_char {
+    let mut result: *mut libc::c_char;
+    let old_indent: libc::c_int;
+    let old_amount: libc::c_int;
+    let cmdcopy: *mut COMMAND;
+    let mut func_redirects: *mut REDIRECT;
     unsafe {
-        let mut result: *mut libc::c_char;
-        let old_indent: libc::c_int;
-        let old_amount: libc::c_int;
-        let cmdcopy: *mut COMMAND;
-        let mut func_redirects: *mut REDIRECT;
-
         old_indent = indentation;
         old_amount = indentation_amount;
         command_string_index = was_heredoc;
@@ -1613,8 +1568,8 @@ static mut indentation_size: libc::c_int = 0;
 
 #[no_mangle]
 fn indent(mut amount: libc::c_int) {
+    let mut i: libc::c_int;
     unsafe {
-        let mut i: libc::c_int;
         RESIZE_MALLOCED_BUFFER!(
             indentation_string,
             0 as libc::c_int,
