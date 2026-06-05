@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use crate::src_common::*;
 use crate::stringlib::substring;
 use crate::subst::skip_to_delim;
@@ -11,6 +8,14 @@ extern "C" {
     fn strvec_sort(_: *mut *mut libc::c_char, _: libc::c_int);
     static mut noglob_dot_filenames: libc::c_int;
     fn glob_filename(_: *mut libc::c_char, _: libc::c_int) -> *mut *mut libc::c_char;
+}
+
+fn c_strvec_sort(a: *mut *mut libc::c_char, b: libc::c_int) -> () {
+    unsafe { strvec_sort(a, b) }
+}
+
+fn c_glob_filename(a: *mut libc::c_char, b: libc::c_int) -> *mut *mut libc::c_char {
+    unsafe { glob_filename(a, b) }
 }
 
 #[inline]
@@ -26,10 +31,10 @@ fn is_basic(c: libc::c_char) -> libc::c_int {
 
 #[no_mangle]
 pub fn unquoted_glob_pattern_p(mut string: *mut libc::c_char) -> libc::c_int {
-    let mut c: libc::c_int = 0;
-    let mut send: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut open: libc::c_int = 0;
-    let mut bsquote: libc::c_int = 0;
+    let mut c: libc::c_int;
+    let send: *mut libc::c_char;
+    let mut open: libc::c_int;
+    let bsquote: libc::c_int;
     let mut state: mbstate_t = mbstate_t {
         __count: 0,
         __value: mbstate_t_value { __wch: 0 },
@@ -89,7 +94,7 @@ pub fn unquoted_glob_pattern_p(mut string: *mut libc::c_char) -> libc::c_int {
                     if *string as libc::c_int != '\u{0}' as i32
                         && *string as libc::c_int != '/' as i32
                     {
-                        bsquote = 1 as libc::c_int;
+                        // bsquote = 1 as libc::c_int;
                         string = string.offset(1);
                         continue;
                     } else if open != 0 && *string as libc::c_int == '/' as i32 {
@@ -120,7 +125,7 @@ pub fn unquoted_glob_pattern_p(mut string: *mut libc::c_char) -> libc::c_int {
                     __count: 0,
                     __value: mbstate_t_value { __wch: 0 },
                 };
-                let mut mblength: size_t = 0;
+                let mblength: size_t;
                 let mut _f: libc::c_int = 0;
                 _f = is_basic(*string);
                 if _f != 0 {
@@ -142,7 +147,7 @@ pub fn unquoted_glob_pattern_p(mut string: *mut libc::c_char) -> libc::c_int {
                     || mblength == -(1 as libc::c_int) as size_t
                 {
                     state = state_bak;
-                    mblength = 1 as libc::c_int as size_t;
+                    // mblength = 1 as libc::c_int as size_t;
                 } else {
                     string = string.offset(
                         (if mblength < 1 as libc::c_int as libc::c_ulong {
@@ -188,18 +193,17 @@ pub fn quote_string_for_globbing(
     pathname: *const libc::c_char,
     qflags: libc::c_int,
 ) -> *mut libc::c_char {
+    let temp: *mut libc::c_char;
+    let mut i: libc::c_int;
+    let mut j: libc::c_int;
+    let mut cclass: libc::c_int;
+    let mut collsym: libc::c_int;
+    let mut equiv: libc::c_int;
+    let mut c: libc::c_int;
+    let last_was_backslash: libc::c_int;
+    let mut savei: libc::c_int;
+    let mut savej: libc::c_int;
     unsafe {
-        let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut i: libc::c_int = 0;
-        let mut j: libc::c_int = 0;
-        let mut cclass: libc::c_int = 0;
-        let mut collsym: libc::c_int = 0;
-        let mut equiv: libc::c_int = 0;
-        let mut c: libc::c_int = 0;
-        let mut last_was_backslash: libc::c_int = 0;
-        let mut savei: libc::c_int = 0;
-        let mut savej: libc::c_int = 0;
-
         temp = libc::malloc(
             (2 as libc::c_int as libc::c_ulong)
                 .wrapping_mul(libc::strlen(pathname) as u64)
@@ -227,7 +231,7 @@ pub fn quote_string_for_globbing(
                     == '\u{0}' as i32
             {
                 let fresh2 = i;
-                i = i + 1;
+                // i = i + 1;
                 let fresh3 = j;
                 j = j + 1;
                 *temp.offset(fresh3 as isize) = *pathname.offset(fresh2 as isize);
@@ -478,7 +482,7 @@ pub fn quote_string_for_globbing(
                 } else if *pathname.offset(i as isize) as libc::c_int == '\\' as i32
                     && qflags & QGLOB_REGEXP as libc::c_int != 0
                 {
-                    last_was_backslash = 1 as libc::c_int;
+                    // last_was_backslash = 1 as libc::c_int;
                 }
             }
             let fresh41 = j;
@@ -494,16 +498,16 @@ pub fn quote_string_for_globbing(
 
 #[no_mangle]
 pub fn quote_globbing_chars(string: *const libc::c_char) -> *mut libc::c_char {
+    let slen: size_t;
+    let temp: *mut libc::c_char;
+    let mut t: *mut libc::c_char;
+    let mut s: *const libc::c_char;
+    let send: *const libc::c_char;
+    let mut state: mbstate_t = mbstate_t {
+        __count: 0,
+        __value: mbstate_t_value { __wch: 0 },
+    };
     unsafe {
-        let mut slen: size_t = 0;
-        let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut s: *const libc::c_char = 0 as *const libc::c_char;
-        let mut send: *const libc::c_char = 0 as *const libc::c_char;
-        let mut state: mbstate_t = mbstate_t {
-            __count: 0,
-            __value: mbstate_t_value { __wch: 0 },
-        };
         libc::memset(
             &mut state as *mut mbstate_t as *mut libc::c_void,
             '\u{0}' as i32,
@@ -528,7 +532,7 @@ pub fn quote_globbing_chars(string: *const libc::c_char) -> *mut libc::c_char {
                     __count: 0,
                     __value: mbstate_t_value { __wch: 0 },
                 };
-                let mut mblength: size_t = 0;
+                let mut mblength: size_t;
                 let mut _k: libc::c_int = 0;
                 _k = is_basic(*s);
                 if _k != 0 {
@@ -579,11 +583,11 @@ pub fn shell_glob_filename(
     pathname: *const libc::c_char,
     qflags: libc::c_int,
 ) -> *mut *mut libc::c_char {
+    let temp: *mut libc::c_char;
+    let mut results: *mut *mut libc::c_char;
+    let gflags: libc::c_int;
+    // let quoted_pattern: libc::c_int = 0;
     unsafe {
-        let mut temp: *mut libc::c_char = 0 as *mut libc::c_char;
-        let mut results: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-        let mut gflags: libc::c_int = 0;
-        let quoted_pattern: libc::c_int = 0;
         noglob_dot_filenames = (glob_dot_filenames == 0 as libc::c_int) as libc::c_int;
         temp = quote_string_for_globbing(pathname, 0x2 as libc::c_int | qflags);
         gflags = if glob_star != 0 {
@@ -591,7 +595,7 @@ pub fn shell_glob_filename(
         } else {
             0 as libc::c_int
         };
-        results = glob_filename(temp, gflags);
+        results = c_glob_filename(temp, gflags);
         libc::free(temp as *mut libc::c_void);
         if !results.is_null()
             && (results == &mut glob_error_return as *mut *mut libc::c_char) as libc::c_int
@@ -601,7 +605,7 @@ pub fn shell_glob_filename(
                 ignore_glob_matches(results);
             }
             if !results.is_null() && !(*results.offset(0 as libc::c_int as isize)).is_null() {
-                strvec_sort(results, 1 as libc::c_int);
+                c_strvec_sort(results, 1 as libc::c_int);
             } else {
                 if !results.is_null() {
                     libc::free(results as *mut libc::c_void);
@@ -624,9 +628,10 @@ static mut globignore: ignorevar = {
 };
 #[no_mangle]
 pub fn setup_glob_ignore(name: *mut libc::c_char) {
-    let mut v: *mut libc::c_char = 0 as *mut libc::c_char;
+    let v: *mut libc::c_char;
+
+    v = get_string_value(name);
     unsafe {
-        v = get_string_value(name);
         setup_ignore_patterns(&mut globignore);
         if globignore.num_ignores != 0 {
             glob_dot_filenames = 1 as libc::c_int;
@@ -642,9 +647,9 @@ pub fn should_ignore_glob_matches() -> libc::c_int {
     }
 }
 fn glob_name_is_acceptable(name: *const libc::c_char) -> libc::c_int {
-    let mut p: *mut ign = 0 as *mut ign;
-    let mut n: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut flags: libc::c_int = 0;
+    let mut p: *mut ign;
+    let mut n: *mut libc::c_char;
+    let flags: libc::c_int;
     unsafe {
         n = libc::strrchr(name, '/' as i32);
         if n.is_null() || *n.offset(1 as libc::c_int as isize) as libc::c_int == 0 as libc::c_int {
@@ -672,7 +677,7 @@ fn glob_name_is_acceptable(name: *const libc::c_char) -> libc::c_int {
             });
         p = globignore.ignores;
         while !((*p).val).is_null() {
-            if strmatch((*p).val, name as *mut libc::c_char, flags) != 1 as libc::c_int {
+            if c_strmatch((*p).val, name as *mut libc::c_char, flags) != 1 as libc::c_int {
                 return 0 as libc::c_int;
             }
             p = p.offset(1);
@@ -681,16 +686,16 @@ fn glob_name_is_acceptable(name: *const libc::c_char) -> libc::c_int {
     return 1 as libc::c_int;
 }
 fn ignore_globbed_names(names: *mut *mut libc::c_char, name_func: Option<sh_ignore_func_t>) {
+    let newnames: *mut *mut libc::c_char;
+    let mut n: libc::c_int;
+    let mut i: libc::c_int;
+    i = 0 as libc::c_int;
     unsafe {
-        let mut newnames: *mut *mut libc::c_char = 0 as *mut *mut libc::c_char;
-        let mut n: libc::c_int = 0;
-        let mut i: libc::c_int = 0;
-        i = 0 as libc::c_int;
         while !(*names.offset(i as isize)).is_null() {
             i += 1;
         }
 
-        newnames = strvec_create(i + 1 as libc::c_int);
+        newnames = c_strvec_create(i + 1 as libc::c_int);
         i = 0 as libc::c_int;
         n = i;
         while !(*names.offset(i as isize)).is_null() {
@@ -743,39 +748,43 @@ pub fn ignore_glob_matches(names: *mut *mut libc::c_char) {
     }
 }
 fn split_ignorespec(s: *mut libc::c_char, ip: *mut libc::c_int) -> *mut libc::c_char {
-    let mut t: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut n: libc::c_int = 0;
-    let mut i: libc::c_int = 0;
+    let t: *mut libc::c_char;
+    let mut n: libc::c_int;
+    let i: libc::c_int;
     if s.is_null() {
         return 0 as *mut libc::c_char;
     }
+
     unsafe {
         i = *ip;
-        if *s.offset(i as isize) as libc::c_int == 0 as libc::c_int {
-            return 0 as *mut libc::c_char;
-        }
-        n = skip_to_delim(
-            s,
-            i,
-            b":\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
-            SD_NOJMP as libc::c_int | SD_EXTGLOB as libc::c_int | SD_GLOB as libc::c_int,
-        );
-        t = substring(s, i, n);
-        if *s.offset(n as isize) as libc::c_int == ':' as i32 {
-            n += 1;
-        }
+    }
+    if unsafe { *s.offset(i as isize) as libc::c_int == 0 as libc::c_int } {
+        return 0 as *mut libc::c_char;
+    }
+    n = skip_to_delim(
+        s,
+        i,
+        b":\0" as *const u8 as *const libc::c_char as *mut libc::c_char,
+        SD_NOJMP as libc::c_int | SD_EXTGLOB as libc::c_int | SD_GLOB as libc::c_int,
+    );
+    t = substring(s, i, n);
+    if unsafe { *s.offset(n as isize) as libc::c_int == ':' as i32 } {
+        n += 1;
+    }
+    unsafe {
         *ip = n;
     }
+
     return t;
 }
 #[no_mangle]
 pub fn setup_ignore_patterns(ivp: *mut ignorevar) {
-    let mut numitems: libc::c_int = 0;
-    let mut maxitems: libc::c_int = 0;
-    let mut ptr: libc::c_int = 0;
-    let mut colon_bit: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut this_ignoreval: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut p: *mut ign = 0 as *mut ign;
+    let mut numitems: libc::c_int;
+    let mut maxitems: libc::c_int;
+    let mut ptr: libc::c_int;
+    let mut colon_bit: *mut libc::c_char;
+    let this_ignoreval: *mut libc::c_char;
+    let mut p: *mut ign;
     unsafe {
         this_ignoreval = get_string_value((*ivp).varname);
         if !this_ignoreval.is_null()
