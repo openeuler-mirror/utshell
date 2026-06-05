@@ -5,7 +5,9 @@
 use std::ffi::CStr;
 use std::ffi::CString;
 
-use crate::alias::{add_alias, all_aliases, delete_all_aliases, find_alias, remove_alias};
+use crate::alias::{
+    add_alias, aliases_is_null, all_aliases, delete_all_aliases, find_alias, remove_alias,
+};
 use crate::findcmd::find_user_command;
 use crate::general::legal_alias_name;
 use crate::src_common::*;
@@ -62,7 +64,7 @@ pub fn alias_builtin(mut list: *mut WordList) -> libc::c_int {
     unsafe {
         list = loptend;
         if list.is_null() || pflag != 0 {
-            if aliases.is_null() {
+            if aliases_is_null() {
                 return EXECUTION_SUCCESS!();
             }
             alias_list = all_aliases();
@@ -95,7 +97,7 @@ pub fn alias_builtin(mut list: *mut WordList) -> libc::c_int {
                     .offset(1 as libc::c_int as isize);
                 if legal_alias_name(name, 0) == 0 {
                     builtin_error(
-                        dcgettext(
+                        c_dcgettext(
                             0 as *const libc::c_char,
                             b"`%s': invalid alias name\0" as *const u8 as *const libc::c_char,
                             5 as libc::c_int,
@@ -191,21 +193,17 @@ pub fn unalias_builtin(mut list: *mut WordList) -> libc::c_int {
 fn print_alias(alias: *mut AliasT, flags: libc::c_int) {
     let value: *mut libc::c_char;
     unsafe {
-        value = sh_single_quote((*alias).value);
+        value = c_sh_single_quote((*alias).value);
         if flags & 0x1 as libc::c_int != 0 {
             print!("alias ");
-            //printf(
-            //    b"alias %s\0" as *const u8 as *const libc::c_char,
+
             if !((*alias).name).is_null()
                 && *((*alias).name).offset(0 as libc::c_int as isize) as libc::c_int == '-' as i32
             {
-                // b"-- \0" as *const u8 as *const libc::c_char
                 print!("-- ");
             } else {
-                // b"\0" as *const u8 as *const libc::c_char
                 print!(" ");
             }
-            //);
         }
         println!(
             "{}={}",
@@ -220,7 +218,7 @@ fn print_alias(alias: *mut AliasT, flags: libc::c_int) {
 fn legal_alias_rust(name: *mut libc::c_char, value: *mut libc::c_char) -> libc::c_int {
     let name_w: *mut libc::c_char;
     let value_w: *mut libc::c_char;
-    let new_value: *mut libc::c_char;
+    let _new_value: *mut libc::c_char;
     let mut new_value_2: *mut libc::c_char;
     let mut _shell_bui: *mut libc::c_char;
     let mut t: *mut AliasT;
@@ -231,11 +229,8 @@ fn legal_alias_rust(name: *mut libc::c_char, value: *mut libc::c_char) -> libc::
         0x1 as libc::c_int
     };
     unsafe {
-        if libc::strstr(
-            value,
-            CString::new(";").unwrap().as_ptr() as *mut libc::c_char,
-        ) != std::ptr::null_mut()
-        {
+        let msg = CString::new(";").unwrap();
+        if libc::strstr(value, msg.as_ptr() as *mut libc::c_char) != std::ptr::null_mut() {
             println!("; is not allow in alias");
             return 1;
         }
@@ -249,18 +244,14 @@ fn legal_alias_rust(name: *mut libc::c_char, value: *mut libc::c_char) -> libc::
             return 1;
         }
         name_w = find_user_command(name);
-        new_value = sh_single_quote(value);
+        _new_value = c_sh_single_quote(value);
         // 按照空格区分
-        new_value_2 = libc::strtok(
-            value,
-            CString::new(" ").unwrap().as_ptr() as *mut libc::c_char,
-        );
+        let msg = CString::new(" ").unwrap();
+        new_value_2 = libc::strtok(value, msg.as_ptr() as *mut libc::c_char);
         t = find_alias(new_value_2);
         while t != std::ptr::null_mut() {
-            new_value_2 = libc::strtok(
-                (*t).value,
-                CString::new(" ").unwrap().as_ptr() as *mut libc::c_char,
-            );
+            let msg = CString::new(" ").unwrap();
+            new_value_2 = libc::strtok((*t).value, msg.as_ptr() as *mut libc::c_char);
             if libc::strcmp((*t).name, new_value_2) == 0 {
                 break;
             }
