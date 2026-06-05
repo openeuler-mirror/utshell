@@ -6,18 +6,16 @@ use super::common::{get_numeric_arg, sh_erange};
 use super::help::builtin_help;
 use crate::src_common::*;
 
-fn checkhelp(l: *mut WordList) -> i32 {
-    unsafe {
-        let tmp = CString::new("--help").unwrap();
-        if l != std::ptr::null_mut()
-            && (*l).word != std::ptr::null_mut()
-            && libc::strcmp((*((*l).word)).word, tmp.as_ptr()) == 0
-        {
-            builtin_help();
-        }
-        return EX_USAGE!();
-    }
-}
+// fn checkhelp(l: *mut WordList) -> i32 {
+//     let tmp = CString::new("--help").unwrap();
+//     if l != std::ptr::null_mut()
+//         && unsafe { (*l).word != std::ptr::null_mut() }
+//         && unsafe { libc::strcmp((*((*l).word)).word, tmp.as_ptr()) == 0 }
+//     {
+//         builtin_help();
+//     }
+//     return EX_USAGE!();
+// }
 
 /* Set up to break x levels, where x defaults to 1, but can be specified
 as the first argument. */
@@ -25,7 +23,6 @@ as the first argument. */
 pub fn break_builtin(list: *mut WordList) -> i32 {
     let mut newbreak: intmax_t = 1 as intmax_t;
     unsafe {
-        // checkhelp(list);
         CHECK_HELPOPT!(list);
         if check_loop_level() == 0 {
             return EXECUTION_SUCCESS!();
@@ -35,7 +32,6 @@ pub fn break_builtin(list: *mut WordList) -> i32 {
         if newbreak <= 0 {
             let tmp = CString::new("loop count ").unwrap();
             sh_erange((*(*list).word).word, tmp.as_ptr() as *mut libc::c_char);
-            //set_breaking (get_loop_level());
             breaking = loop_level;
             return EXECUTION_FAILURE!();
         }
@@ -55,7 +51,6 @@ pub fn continue_builtin(list: *mut WordList) -> i32 {
     let mut newcont: intmax_t = 0 as intmax_t;
     unsafe {
         CHECK_HELPOPT!(list);
-        // checkhelp(list);
     }
     if check_loop_level() == 0 {
         return EXECUTION_SUCCESS!();
@@ -67,7 +62,6 @@ pub fn continue_builtin(list: *mut WordList) -> i32 {
         if newcont <= 0 {
             let tmp = CString::new("loop count ").unwrap();
             sh_erange((*(*list).word).word, tmp.as_ptr() as *mut libc::c_char);
-            //set_breaking(get_loop_level());
             breaking = loop_level;
             return EXECUTION_FAILURE!();
         }
@@ -75,7 +69,6 @@ pub fn continue_builtin(list: *mut WordList) -> i32 {
             newcont = loop_level as i64;
         }
         continuing = newcont as i32;
-        //set_continuing(newcont as i32);
     }
     return EXECUTION_SUCCESS!();
 }
