@@ -1,6 +1,3 @@
-//# SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
-
-//# SPDX-License-Identifier: GPL-3.0-or-later
 use super::help::builtin_help;
 use crate::builtins::bashgetopt::{internal_getopt, reset_internal_getopt};
 use crate::builtins::common::{builtin_usage, display_signal_list, sh_chkwrite, sh_invalidsig};
@@ -49,17 +46,20 @@ pub fn trap_builtin(mut list: *mut WordList) -> i32 {
     }
 
     opt = DSIG_NOCASE | DSIG_SIGPREFIX;
-    unsafe {
-        if list_signal_names != 0 {
-            return sh_chkwrite(display_signal_list(PT_NULL as *mut WordList, 1));
-        } else if display != 0 || list.is_null() {
-            initialize_terminating_signals();
-            get_all_original_signals();
-            return sh_chkwrite(display_traps(
+
+    if list_signal_names != 0 {
+        return sh_chkwrite(display_signal_list(PT_NULL as *mut WordList, 1));
+    } else if display != 0 || list.is_null() {
+        initialize_terminating_signals();
+        get_all_original_signals();
+        return unsafe {
+            sh_chkwrite(display_traps(
                 list,
                 (display != 0 && posixly_correct != 0) as libc::c_int,
-            ));
-        } else {
+            ))
+        };
+    } else {
+        unsafe {
             let mut operation = SET;
             let first_arg = (*(*list).word).word;
             let first_signal = !first_arg.is_null()
@@ -113,7 +113,6 @@ pub fn trap_builtin(mut list: *mut WordList) -> i32 {
                                     if interactive != 0 {
                                         set_signal_handler(
                                             libc::SIGINT,
-                                            //sigint_sighandler as *mut SigHandler,
                                             Some(sigint_sighandler as fn(libc::c_int) -> ()),
                                         );
                                     } else if interactive_shell != 0
@@ -123,13 +122,11 @@ pub fn trap_builtin(mut list: *mut WordList) -> i32 {
                                     {
                                         set_signal_handler(
                                             libc::SIGINT,
-                                            //sigint_sighandler as *mut SigHandler,
                                             Some(sigint_sighandler as fn(libc::c_int) -> ()),
                                         );
                                     } else {
                                         set_signal_handler(
                                             libc::SIGINT,
-                                            //termsig_sighandler as *mut SigHandler,
                                             Some(termsig_sighandler as fn(libc::c_int) -> ()),
                                         );
                                     }
@@ -160,19 +157,19 @@ pub fn trap_builtin(mut list: *mut WordList) -> i32 {
 fn showtrap(i: libc::c_int, show_default: libc::c_int) {
     let t: *mut libc::c_char;
     let p = unsafe { trap_list[i as usize] };
-    if (p == libc::SIG_DFL as *mut libc::c_char) && unsafe { signal_is_hard_ignored(i) } == 0 {
+    if (p == libc::SIG_DFL as *mut libc::c_char) && signal_is_hard_ignored(i) == 0 {
         if show_default != 0 {
             t = "-\0".as_ptr() as *mut libc::c_char;
         } else {
             return;
         }
-    } else if unsafe { signal_is_hard_ignored(i) } != 0 {
+    } else if signal_is_hard_ignored(i) != 0 {
         t = PT_NULL as *mut libc::c_char;
     } else {
         t = if p == libc::SIG_IGN as *mut libc::c_char {
             PT_NULL as *mut libc::c_char
         } else {
-            unsafe { sh_single_quote(p) }
+            c_sh_single_quote(p)
         }
     }
     unsafe {
