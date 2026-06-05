@@ -11,7 +11,8 @@ use crate::builtins::{
 };
 use crate::general::legal_number;
 use crate::list::list_reverse;
-use crate::readline::xfree;
+use crate::parse_and_execute;
+// use crate::readline::c_xfree;
 use crate::sig::{termsig_handler, throw_to_top_level};
 use crate::src_common::*;
 use crate::stringlib::strsub;
@@ -27,26 +28,25 @@ pub fn set_verbose_flag() {
 #[no_mangle]
 pub fn fc_number(list: *mut WordList) -> i32 {
     let mut s: *mut libc::c_char;
+
+    if list.is_null() {
+        return 0;
+    }
     unsafe {
-        if list.is_null() {
-            return 0;
-        }
         s = (*(*list).word).word;
         if *s as libc::c_int == '-' as i32 {
             s = s.offset(1);
         }
-        let res = legal_number(s, std::ptr::null_mut());
-        return res;
     }
+    let res = legal_number(s, std::ptr::null_mut());
+    return res;
 }
 
 fn REVERSE_LIST(list: *mut GENERIC_LIST) -> *mut REPL {
-    unsafe {
-        if list != std::ptr::null_mut() && (*list).next != std::ptr::null_mut() {
-            list_reverse(list) as *mut REPL
-        } else {
-            list as *mut REPL
-        }
+    if unsafe { list != std::ptr::null_mut() && (*list).next != std::ptr::null_mut() } {
+        list_reverse(list) as *mut REPL
+    } else {
+        list as *mut REPL
     }
 }
 
@@ -131,10 +131,8 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
 
         loptend = lcurrent;
         while fc_number(loptend) == 0 {
-            opt = internal_getopt(
-                list,
-                CString::new(":e:lnrs").unwrap().as_ptr() as *mut libc::c_char,
-            );
+            let msg = CString::new(":e:lnrs").unwrap();
+            opt = internal_getopt(list, msg.as_ptr() as *mut libc::c_char);
             if opt != -1 {
                 let optu8: u8 = opt as u8;
                 let optChar: char = char::from(optu8);
@@ -192,7 +190,7 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
             }
 
             rlist = REVERSE_LIST(rlist as *mut GENERIC_LIST);
-            hlist = history_list();
+            hlist = c_history_list();
             if list != std::ptr::null_mut() {
                 command = fc_gethist((*(*list).word).word, hlist, 0);
             } else {
@@ -200,7 +198,8 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
             }
 
             if command == std::ptr::null_mut() {
-                builtin_error(CString::new("no command found").unwrap().as_ptr());
+                let msg = CString::new("no command found").unwrap();
+                builtin_error(msg.as_ptr());
                 if rlist != std::ptr::null_mut() {
                     rl = rlist;
                     while rl != std::ptr::null_mut() {
@@ -241,16 +240,13 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
                 }
                 command = newcom;
             }
-            printToStderr(command);
+            let _ = printToStderr(command);
             fc_replhist(command);
-            return parse_and_execute(
-                command,
-                CString::new("fc").unwrap().as_ptr(),
-                SEVAL_NOHIST!(),
-            );
+            let msg = CString::new("fc").unwrap();
+            return parse_and_execute(command, msg.as_ptr(), SEVAL_NOHIST!());
         }
 
-        hlist = history_list();
+        hlist = c_history_list();
 
         if hlist == std::ptr::null_mut() {
             return EXECUTION_SUCCESS!();
@@ -306,19 +302,16 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
         }
 
         if histbeg == HIST_INVALID!() || histend == HIST_INVALID!() {
-            sh_erange(
-                std::ptr::null_mut(),
-                CString::new("history specification").unwrap().as_ptr() as *mut libc::c_char,
-            );
+            let msg = CString::new("history specification").unwrap();
+            sh_erange(std::ptr::null_mut(), msg.as_ptr() as *mut libc::c_char);
             return EXECUTION_FAILURE!();
         } else if histbeg == HIST_ERANGE!() || histend == HIST_ERANGE!() {
-            sh_erange(
-                std::ptr::null_mut(),
-                CString::new("history specification").unwrap().as_ptr() as *mut libc::c_char,
-            );
+            let msg = CString::new("history specification").unwrap();
+            sh_erange(std::ptr::null_mut(), msg.as_ptr() as *mut libc::c_char);
             return EXECUTION_FAILURE!();
         } else if histbeg == HIST_NOTFOUND!() || histend == HIST_NOTFOUND!() {
-            builtin_error(CString::new("no command found").unwrap().as_ptr() as *mut libc::c_char);
+            let msg = CString::new("no command found").unwrap();
+            builtin_error(msg.as_ptr());
             return EXECUTION_FAILURE!();
         }
 
@@ -357,19 +350,16 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
         }
 
         if histbeg == HIST_INVALID!() || histend == HIST_INVALID!() {
-            sh_erange(
-                std::ptr::null_mut(),
-                CString::new("history specification").unwrap().as_ptr() as *mut libc::c_char,
-            );
+            let msg = CString::new("history specification").unwrap();
+            sh_erange(std::ptr::null_mut(), msg.as_ptr() as *mut libc::c_char);
             return EXECUTION_FAILURE!();
         } else if histbeg == HIST_ERANGE!() || histend == HIST_ERANGE!() {
-            sh_erange(
-                std::ptr::null_mut(),
-                CString::new("history specification").unwrap().as_ptr() as *mut libc::c_char,
-            );
+            let msg = CString::new("history specification").unwrap();
+            sh_erange(std::ptr::null_mut(), msg.as_ptr() as *mut libc::c_char);
             return EXECUTION_FAILURE!();
         } else if histbeg == HIST_NOTFOUND!() || histend == HIST_NOTFOUND!() {
-            builtin_error(CString::new("no command found").unwrap().as_ptr());
+            let msg = CString::new("no command found").unwrap();
+            builtin_error(msg.as_ptr());
             return EXECUTION_FAILURE!();
         }
 
@@ -392,29 +382,21 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
             stream = std::ptr::null_mut();
         } else {
             numbering = 0;
-            stream = sh_mktmpfp(
-                CString::new("bash-fc").unwrap().as_ptr() as *mut libc::c_char,
+            let msg = CString::new("bash-fc").unwrap();
+            stream = c_sh_mktmpfp(
+                msg.as_ptr() as *mut libc::c_char,
                 MT_USERANDOM!() | MT_USETMPDIR!(),
                 &mut fnc,
             );
 
             if stream == std::ptr::null_mut() {
                 if fnc != std::ptr::null_mut() {
-                    builtin_error(
-                        CString::new("%s: cannot open temp file: %s")
-                            .unwrap()
-                            .as_ptr(),
-                        fnc,
-                        strerror(errno!()),
-                    );
+                    let msg = CString::new("%s: cannot open temp file: %s").unwrap();
+                    builtin_error(msg.as_ptr(), fnc, strerror(*c___errno_location()));
                 } else {
-                    builtin_error(
-                        CString::new("%s: cannot open temp file: %s")
-                            .unwrap()
-                            .as_ptr(),
-                        CString::new("").unwrap().as_ptr(),
-                        strerror(errno!()),
-                    );
+                    let msg = CString::new("%s: cannot open temp file: %s").unwrap();
+                    let msg1 = CString::new("").unwrap();
+                    builtin_error(msg.as_ptr(), msg1.as_ptr(), strerror(*c___errno_location()));
                 }
 
                 libc::free(fnc as *mut c_void);
@@ -440,25 +422,24 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
             QUIT();
             if numbering != 0 {
                 if stream != std::ptr::null_mut() {
-                    libc::fprintf(
-                        stream,
-                        CString::new("%d").unwrap().as_ptr(),
-                        i + history_base,
-                    );
+                    let msg1 = CString::new("%d").unwrap();
+                    libc::fprintf(stream, msg1.as_ptr(), i + history_base);
                 } else {
                     let diff = i + history_base;
-                    printToStdout(
-                        CString::new(diff.to_string()).unwrap().as_ptr() as *mut libc::c_char
-                    );
+                    let msg = CString::new(diff.to_string()).unwrap();
+
+                    let _ = printToStdout(msg.as_ptr() as *mut libc::c_char);
                 }
             }
 
             if listing != 0 {
                 if posixly_correct != 0 {
                     if stream != std::ptr::null_mut() {
-                        libc::fputs(CString::new("\t").unwrap().as_ptr(), stream);
+                        let msg = CString::new("\t").unwrap();
+                        libc::fputs(msg.as_ptr(), stream);
                     } else {
-                        printToStdout(CString::new("\t").unwrap().as_ptr() as *mut libc::c_char);
+                        let msg = CString::new("\t").unwrap();
+                        let _ = printToStdout(msg.as_ptr() as *mut libc::c_char);
                     }
                 } else {
                     let mut ch: char;
@@ -471,27 +452,30 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
                     }
 
                     if stream != std::ptr::null_mut() {
-                        libc::fprintf(stream, CString::new("\t%c").unwrap().as_ptr(), &mut ch);
+                        let msg = CString::new("\t%c").unwrap();
+                        libc::fprintf(stream, msg.as_ptr(), &mut ch);
                     } else {
                         let mut th = vec!['\t' as libc::c_char];
                         th.push(ch as libc::c_char);
                         th.push(0);
-                        printToStdout(th.as_ptr() as *mut libc::c_char);
+                        let _ = printToStdout(th.as_ptr() as *mut libc::c_char);
                     }
                 }
             }
 
             if stream != std::ptr::null_mut() {
+                let msg = CString::new("%s\n").unwrap();
                 libc::fprintf(
                     stream,
-                    CString::new("%s\n").unwrap().as_ptr(),
+                    msg.as_ptr(),
                     (**((hlist as usize + (i * 8) as usize) as *mut *mut HIST_ENTRY)).line,
                 );
             } else {
-                printToStdout(
+                let _ = printToStdout(
                     (**((hlist as usize + (i * 8) as usize) as *mut *mut HIST_ENTRY)).line,
                 );
-                printToStdout(CString::new("\n").unwrap().as_ptr() as *mut libc::c_char);
+                let msg = CString::new("\n").unwrap();
+                let _ = printToStdout(msg.as_ptr() as *mut libc::c_char);
             }
 
             ret = reverse != 0;
@@ -533,9 +517,11 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
         if ename != std::ptr::null_mut() {
             command =
                 libc::malloc(libc::strlen(ename) + libc::strlen(fnc) + 2) as *mut libc::c_char;
-            libc::sprintf(command, CString::new("").unwrap().as_ptr());
+            let msg = CString::new("").unwrap();
+            libc::sprintf(command, msg.as_ptr());
             libc::strcpy(command, ename);
-            libc::strcat(command, CString::new(" ").unwrap().as_ptr());
+            let msg1 = CString::new(" ").unwrap();
+            libc::strcat(command, msg1.as_ptr());
             libc::strcat(command, fnc);
         } else {
             if posixly_correct != 0 {
@@ -547,17 +533,16 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
             command =
                 libc::malloc(3 + libc::strlen(fcedit.as_ptr()) as libc::size_t + libc::strlen(fnc))
                     as *mut libc::c_char;
-            libc::sprintf(command, CString::new("").unwrap().as_ptr());
+            let msg = CString::new("").unwrap();
+            libc::sprintf(command, msg.as_ptr());
             libc::strcpy(command, fcedit.as_ptr());
-            libc::strcat(command, CString::new(" ").unwrap().as_ptr());
+            let msg1 = CString::new(" ").unwrap();
+            libc::strcat(command, msg1.as_ptr());
             libc::strcat(command, fnc);
         }
 
-        retval = parse_and_execute(
-            command,
-            CString::new("fc").unwrap().as_ptr(),
-            SEVAL_NOHIST!(),
-        );
+        let msg = CString::new("fc").unwrap();
+        retval = parse_and_execute(command, msg.as_ptr(), SEVAL_NOHIST!());
         if retval != EXECUTION_SUCCESS!() {
             unlink(fnc);
             libc::free(fnc as *mut c_void);
@@ -572,19 +557,8 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
 
         /* Turn on the `v' flag while fc_execute_file runs so the commands
         will be echoed as they are read by the parser. */
-        //begin_unwind_frame (CString::new ("fc builtin").unwrap().as_ptr() as * mut libc::c_char);
-        // let xf: Functions = Functions { f_xfree: xfree };
-        // let uk: Functions = Functions { f_unlink: unlink };
-        // let r_flag: Functions = Functions {
-        //     f_set_verbose: set_verbose_flag,
-        // };
-        // add_unwind_protect(xf, fnc);
-        // add_unwind_protect(uk, fnc);
         add_unwind_protect(
-            std::mem::transmute::<
-                unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_void),
-                Option<Function>,
-            >(xfree),
+            std::mem::transmute::<fn(arg1: *mut ::std::os::raw::c_void), Option<Function>>(c_xfree),
             fnc,
         );
         add_unwind_protect(
@@ -606,7 +580,6 @@ pub fn fc_builtin(mut list: *mut WordList) -> i32 {
         suppress_debug_trap_verbose = 1;
 
         retval = fc_execute_file(fnc);
-        //run_unwind_frame (CString::new ("fc builtin").unwrap().as_ptr() as * mut libc::c_char);
 
         return retval;
     }
@@ -650,143 +623,143 @@ pub fn fc_gethnum(command: *mut libc::c_char, hlist: *mut *mut HIST_ENTRY, mode:
 
     let mut s: *mut libc::c_char;
 
-    unsafe {
-        listing = mode & HN_LISTING!();
-        sign = 1;
-        /* Count history elements. */
-        while !(*hlist.offset(i as isize)).is_null() {
-            i += 1;
-        }
-        /* With the Bash implementation of history, the current command line
-        ("fc blah..." and so on) is already part of the history list by
-        the time we get to this point.  This just skips over that command
-        and makes the last command that this deals with be the last command
-        the user entered before the fc.  We need to check whether the
-        line was actually added (HISTIGNORE may have caused it to not be),
-        so we check hist_last_line_added.  This needs to agree with the
-        calculation of last_hist in fc_builtin above. */
-        /* Even though command substitution through parse_and_execute turns off
-        remember_on_history, command substitution in a shell when set -o history
-        has been enabled (interactive or not) should use it in the last_hist
-        calculation as if it were on. */
-        rh = (remember_on_history != 0
+    listing = mode & HN_LISTING!();
+    sign = 1;
+    /* Count history elements. */
+    while unsafe { !(*hlist.offset(i as isize)).is_null() } {
+        i += 1;
+    }
+    /* With the Bash implementation of history, the current command line
+    ("fc blah..." and so on) is already part of the history list by
+    the time we get to this point.  This just skips over that command
+    and makes the last command that this deals with be the last command
+    the user entered before the fc.  We need to check whether the
+    line was actually added (HISTIGNORE may have caused it to not be),
+    so we check hist_last_line_added.  This needs to agree with the
+    calculation of last_hist in fc_builtin above. */
+    /* Even though command substitution through parse_and_execute turns off
+    remember_on_history, command substitution in a shell when set -o history
+    has been enabled (interactive or not) should use it in the last_hist
+    calculation as if it were on. */
+    rh = unsafe {
+        (remember_on_history != 0
             || ((subshell_environment & SUBSHELL_COMSUB!()) != 0 && enable_history_list != 0))
-            as i32;
-        last_hist = i - rh - hist_last_line_added;
+            as i32
+    };
+    last_hist = unsafe { i - rh - hist_last_line_added };
 
-        if i == last_hist && (*hlist.offset(last_hist as isize)).is_null() {
-            while last_hist >= 0 && (*hlist.offset(last_hist as isize)).is_null() {
-                last_hist -= 1;
-            }
+    if unsafe { i == last_hist && (*hlist.offset(last_hist as isize)).is_null() } {
+        while unsafe { last_hist >= 0 && (*hlist.offset(last_hist as isize)).is_null() } {
+            last_hist -= 1;
         }
+    }
 
-        if last_hist < 0 {
-            return -1;
-        }
+    if last_hist < 0 {
+        return -1;
+    }
 
-        real_last = i;
-        i = last_hist;
+    real_last = i;
+    i = last_hist;
 
-        /* No specification defaults to most recent command. */
-        if command == std::ptr::null_mut() {
-            return i;
-        }
+    /* No specification defaults to most recent command. */
+    if command == std::ptr::null_mut() {
+        return i;
+    }
 
-        /* back up from the end to the last non-null history entry */
-        while (*hlist.offset(real_last as isize)).is_null() && real_last > 0 {
-            real_last -= 1;
-        }
+    /* back up from the end to the last non-null history entry */
+    while unsafe { (*hlist.offset(real_last as isize)).is_null() && real_last > 0 } {
+        real_last -= 1;
+    }
 
-        /* Otherwise, there is a specification.  It can be a number relative to
-        the current position, or an absolute history number. */
-        s = command;
+    /* Otherwise, there is a specification.  It can be a number relative to
+    the current position, or an absolute history number. */
+    s = command;
 
-        /* Handle possible leading minus sign. */
-        if s != std::ptr::null_mut() && (char::from(*s as u8) == '-') {
-            sign = -1;
-            s = s.offset(1)
-        }
+    /* Handle possible leading minus sign. */
+    if unsafe { s != std::ptr::null_mut() && (char::from(*s as u8) == '-') } {
+        sign = -1;
+        s = unsafe { s.offset(1) };
+    }
 
-        if s != std::ptr::null_mut() && DIGIT!(*s) {
-            n = libc::atoi(s);
-            n *= sign;
+    if unsafe { s != std::ptr::null_mut() && DIGIT!(*s) } {
+        n = unsafe { libc::atoi(s) };
+        n *= sign;
 
-            /* We want to return something that is an offset to HISTORY_BASE. */
-            /* If the value is negative or zero, then it is an offset from
-            the current history item. */
-            /* We don't use HN_FIRST here, so we don't return different values
-            depending on whether we're looking for the first or last in a
-            pair of range arguments, but nobody else does, either. */
+        /* We want to return something that is an offset to HISTORY_BASE. */
+        /* If the value is negative or zero, then it is an offset from
+        the current history item. */
+        /* We don't use HN_FIRST here, so we don't return different values
+        depending on whether we're looking for the first or last in a
+        pair of range arguments, but nobody else does, either. */
+        if n < 0 {
+            n += i + 1;
             if n < 0 {
-                n += i + 1;
-                if n < 0 {
+                return 0;
+            } else {
+                return n;
+            }
+        } else if n == 0 {
+            if sign == -1 {
+                if listing != 0 {
+                    return real_last;
+                } else {
+                    return HIST_INVALID!();
+                }
+            } else {
+                return i;
+            }
+        } else {
+            /* If we're out of range (greater than I (last history entry) or
+            less than HISTORY_BASE, we want to return different values
+            based on whether or not we are looking for the first or last
+            value in a desired range of history entries. */
+            n -= unsafe { history_base };
+            if n < 0 {
+                if mode & HN_FIRST!() != 0 {
                     return 0;
                 } else {
-                    return n;
+                    return i;
                 }
-            } else if n == 0 {
-                if sign == -1 {
-                    if listing != 0 {
-                        return real_last;
-                    } else {
-                        return HIST_INVALID!();
-                    }
+            } else if n >= i {
+                if mode & HN_FIRST!() != 0 {
+                    return 0;
                 } else {
                     return i;
                 }
             } else {
-                /* If we're out of range (greater than I (last history entry) or
-                less than HISTORY_BASE, we want to return different values
-                based on whether or not we are looking for the first or last
-                value in a desired range of history entries. */
-                n -= history_base;
-                if n < 0 {
-                    if mode & HN_FIRST!() != 0 {
-                        return 0;
-                    } else {
-                        return i;
-                    }
-                } else if n >= i {
-                    if mode & HN_FIRST!() != 0 {
-                        return 0;
-                    } else {
-                        return i;
-                    }
-                } else {
-                    return n;
-                }
+                return n;
             }
         }
-
-        clen = libc::strlen(command as *const libc::c_char) as i32;
-        j = i;
-        while j >= 0 {
-            if STREQN(command, (*(*hlist.offset(j as isize))).line, clen) {
-                //if STREQN (command, (*(*((hlist as usize + (8*j) as usize ) as  * mut * mut HIST_ENTRY))).line, clen) {
-                return j;
-            }
-            j -= 1;
-        }
-        return HIST_NOTFOUND!();
     }
+
+    clen = unsafe { libc::strlen(command as *const libc::c_char) as i32 };
+    j = i;
+    while j >= 0 {
+        if unsafe { STREQN(command, (*(*hlist.offset(j as isize))).line, clen) } {
+            return j;
+        }
+        j -= 1;
+    }
+    return HIST_NOTFOUND!();
 }
 
 #[no_mangle]
 pub fn fc_dosubs(command: *mut libc::c_char, subs: *mut REPL) -> *mut libc::c_char {
     let mut new: *mut libc::c_char;
     let mut t: *mut libc::c_char;
-    let mut r: *mut REPL;
-    unsafe {
-        new = savestring!(command);
-        while subs != std::ptr::null_mut() {
-            r = subs;
-            t = strsub(new, (*r).pat, (*r).rep, 1);
-            r = (*r).next;
+    let mut _r: *mut REPL;
+
+    new = unsafe { savestring!(command) };
+    while subs != std::ptr::null_mut() {
+        _r = subs;
+        unsafe {
+            t = strsub(new, (*_r).pat, (*_r).rep, 1);
+            _r = (*_r).next;
             libc::free(new as *mut c_void);
-            new = t;
         }
-        return new;
+        new = t;
     }
+    return new;
 }
 
 #[no_mangle]
@@ -835,47 +808,48 @@ pub fn fc_addhist(line: *mut libc::c_char) {
 pub fn fc_readline(stream: *mut libc::FILE) -> *mut libc::c_char {
     let mut c: i32;
     let mut line_len: i32 = 0;
-    let mut lindex: i32 = 0;
+    let mut _lindex: i32 = 0;
     let mut line: *mut libc::c_char = std::ptr::null_mut();
     unsafe {
         c = libc::fgetc(stream);
         while c != libc::EOF {
-            if (lindex + 2) >= line_len {
+            if (_lindex + 2) >= line_len {
                 line_len += 128;
                 line = libc::malloc(line_len as libc::size_t) as *mut libc::c_char;
             }
 
             if c == '\n' as i32 {
-                *((line as usize + (4 * lindex) as usize) as *mut libc::c_char) =
+                *((line as usize + (4 * _lindex) as usize) as *mut libc::c_char) =
                     '\n' as libc::c_char;
-                lindex += 1;
-                *((line as usize + (4 * lindex) as usize) as *mut libc::c_char) =
+                _lindex += 1;
+                *((line as usize + (4 * _lindex) as usize) as *mut libc::c_char) =
                     '\0' as libc::c_char;
-                lindex += 1;
+                _lindex += 1;
                 return line;
             } else {
-                *((line as usize + (4 * lindex) as usize) as *mut libc::c_char) = c as libc::c_char;
-                lindex += 1;
+                *((line as usize + (4 * _lindex) as usize) as *mut libc::c_char) =
+                    c as libc::c_char;
+                _lindex += 1;
             }
 
             c = libc::fgetc(stream);
         }
 
-        if lindex == 0 {
+        if _lindex == 0 {
             if line != std::ptr::null_mut() {
                 libc::free(line as *mut c_void);
             }
             return std::ptr::null_mut();
         }
 
-        if lindex + 2 >= line_len {
-            line = libc::malloc((lindex + 3) as libc::size_t) as *mut libc::c_char;
+        if _lindex + 2 >= line_len {
+            line = libc::malloc((_lindex + 3) as libc::size_t) as *mut libc::c_char;
         }
 
-        *((line as usize + (4 * lindex) as usize) as *mut libc::c_char) = '\n' as libc::c_char;
-        lindex += 1;
-        *((line as usize + (4 * lindex) as usize) as *mut libc::c_char) = '\0' as libc::c_char;
-        lindex += 1;
+        *((line as usize + (4 * _lindex) as usize) as *mut libc::c_char) = '\n' as libc::c_char;
+        _lindex += 1;
+        *((line as usize + (4 * _lindex) as usize) as *mut libc::c_char) = '\0' as libc::c_char;
+        _lindex += 1;
 
         return line;
     }
